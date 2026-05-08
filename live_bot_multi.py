@@ -200,50 +200,57 @@ def create_github_issue(subject, body):
 def place_order(exchange, symbol, signal, equity):
     """
     Calculates size based on risk and executes a market order with SL/TP.
-    MIGRATION NOTE: SL/TP parameters in 'params' are highly exchange-specific.
-    - Blofin:  {'takeProfitPrice': X, 'stopLossPrice': Y}
-    - Binance: {'stopPrice': Y} (requires separate TP/SL orders or 'stopLoss' type)
-    - Bybit:   {'take_profit': X, 'stop_loss': Y}
-    Consult CCXT docs for your exchange's create_order parameter names.
+    Recalculates SL/TP based on LIVE price to maintain R:R ratio.
     """
-    side = signal["side"]
-    risk_amount = equity * RISK_PER_TRADE
-    size = risk_amount / signal["sl_dist"]
-    max_size = (equity * LEVERAGE) / signal["entry"]
-    size = round(min(size, max_size), 3)
-
-    if size <= 0: return None
-
-    log.info("🔔 SIGNAL on %s: %s | Size: %.4f | SL: %.4f | TP: %.4f", symbol, side.upper(), size, signal["sl"], signal["tp"])
-    if DRY_RUN:
-        log.info("🛡️  DRY RUN — order NOT placed.")
-        return None
-
     try:
-        # Unified CCXT TP/SL format — more robust across exchanges
+        # Fetch live price to ensure R:R is accurate at moment of entry
+        ticker = exchange.fetch_ticker(symbol)
+        live_price = ticker["last"]
+        
+        # Original sl_dist from ATR
+        sl_dist = signal["sl_dist"]
+        rr = signal["rr"]
+        side = signal["side"]
+
+        # Recalculate SL/TP from current price
+        if side == "buy":
+            final_sl = live_price - sl_dist
+            final_tp = live_price + (sl_dist * rr)
+        else:
+            final_sl = live_price + sl_dist
+            final_tp = live_price - (sl_dist * rr)
+
+        risk_amount = equity * RISK_PER_TRADE
+        size = risk_amount / sl_dist
+        max_size = (equity * LEVERAGE) / live_price
+        size = round(min(size, max_size), 3)
+
+        if size <= 0: return None
+
+        log.info("🔔 SIGNAL on %s: %s | Size: %.4f | Entry: %.4f | SL: %.4f | TP: %.4f", 
+                 symbol, side.upper(), size, live_price, final_sl, final_tp)
+
+        if DRY_RUN:
+            log.info("🛡️  DRY RUN — order NOT placed.")
+            return None
+
         params = {
             "marginMode": "cross",
             "positionSide": "net",
-            "stopLoss": {"triggerPrice": signal["sl"]},
-            "takeProfit": {"triggerPrice": signal["tp"]}
+            "stopLoss": {"triggerPrice": final_sl},
+            "takeProfit": {"triggerPrice": final_tp}
         }
         
-        exchange.create_order(
-            symbol=symbol,
-            type="market",
-            side=side,
-            amount=size,
-            params=params
-        )
+        exchange.create_order(symbol=symbol, type="market", side=side, amount=size, params=params)
         log.info("✅ Order placed for %s", symbol)
         
         return {
             "symbol": symbol,
             "side": side.upper(),
             "size": size,
-            "entry": signal["entry"],
-            "sl": signal["sl"],
-            "tp": signal["tp"]
+            "entry": live_price,
+            "sl": final_sl,
+            "tp": final_tp
         }
     except Exception as e:
         log.error("❌ Order failed for %s: %s", symbol, e)
