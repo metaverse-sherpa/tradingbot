@@ -197,31 +197,29 @@ def place_order(exchange, symbol, signal, equity):
     max_size = (equity * LEVERAGE) / signal["entry"]
     size = round(min(size, max_size), 3)
 
-    if size <= 0: return
+    if size <= 0: return None
 
     log.info("🔔 SIGNAL on %s: %s | Size: %.4f | SL: %.4f | TP: %.4f", symbol, side.upper(), size, signal["sl"], signal["tp"])
     if DRY_RUN:
         log.info("🛡️  DRY RUN — order NOT placed.")
-        return
+        return None
 
     try:
         exchange.create_order(symbol=symbol, type="market", side=side, amount=size,
             params={"marginMode": "cross", "positionSide": "net", "takeProfitPrice": signal["tp"], "stopLossPrice": signal["sl"]})
         log.info("✅ Order placed for %s", symbol)
         
-        # Trigger GitHub Notification via Issue
-        subject = f"🚀 Trade Opened: {side.upper()} {symbol}"
-        body = (f"### 📈 Market Order Executed\n\n"
-                f"**Symbol:** `{symbol}`\n"
-                f"**Side:** {side.upper()}\n"
-                f"**Size:** `{size}`\n"
-                f"**Entry:** ~`{signal['entry']}`\n"
-                f"**TP:** `{signal['tp']}`\n"
-                f"**SL:** `{signal['sl']}`\n\n"
-                f"**Time:** {datetime.now(timezone.utc)}")
-        create_github_issue(subject, body)
+        return {
+            "symbol": symbol,
+            "side": side.upper(),
+            "size": size,
+            "entry": signal["entry"],
+            "sl": signal["sl"],
+            "tp": signal["tp"]
+        }
     except Exception as e:
         log.error("❌ Order failed for %s: %s", symbol, e)
+        return None
 
 def run():
     log.info("═"*60 + "\n  Multi-Symbol BB Scalper (One-Shot Mode) \n" + "═"*60)
@@ -238,7 +236,8 @@ def run():
         equity = float(balance.get("USDT", {}).get("total", 0))
         log.info("── Pass Start | Equity: $%.2f | %s ──", equity, datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
         
-        if equity > 1.0: # Lowered threshold slightly for dry run flexibility
+        trades_executed = []
+        if equity > 1.0:
             for symbol in SYMBOLS:
                 try:
                     ohlcv = exchange.fetch_ohlcv(symbol, TIMEFRAME, limit=CANDLE_LIMIT)
@@ -247,9 +246,28 @@ def run():
                     if signal:
                         pos = exchange.fetch_positions([symbol])
                         if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                            place_order(exchange, symbol, signal, equity)
+                            trade_res = place_order(exchange, symbol, signal, equity)
+                            if trade_res:
+                                trades_executed.append(trade_res)
                 except Exception as e:
                     log.error("%s Error: %s", symbol, e)
+            
+            # If trades were made, send a single summary issue
+            if trades_executed:
+                count = len(trades_executed)
+                subject = f"🚀 {count} New Trade{'s' if count > 1 else ''} Opened"
+                
+                rows = []
+                for t in trades_executed:
+                    rows.append(f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.4f} | {t['tp']:.4f} | {t['sl']:.4f} |")
+                
+                body = (f"### 📈 Execution Summary\n\n"
+                        f"| Symbol | Side | Size | Entry | TP | SL |\n"
+                        f"| :--- | :--- | :--- | :--- | :--- | :--- |\n"
+                        + "\n".join(rows) + 
+                        f"\n\n**Time:** {datetime.now(timezone.utc)}")
+                
+                create_github_issue(subject, body)
         else:
             log.warning("Equity too low ($%.2f). Skip trading.", equity)
 
