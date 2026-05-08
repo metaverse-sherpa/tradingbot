@@ -85,6 +85,13 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def create_exchange() -> ccxt.blofin:
+    """
+    Initializes the Blofin exchange. 
+    MIGRATION NOTE: To use a different exchange (e.g., Binance, Bybit, OKX):
+    1. Change 'ccxt.blofin' to 'ccxt.binance' or your exchange ID.
+    2. Ensure API credentials and 'options': {'defaultType': 'swap'} match 
+       the exchange's requirement for perpetual futures.
+    """
     exchange = ccxt.blofin({
         "apiKey":    os.getenv("BLOFIN_API_KEY"),
         "secret":    os.getenv("BLOFIN_API_SECRET"),
@@ -191,6 +198,14 @@ def create_github_issue(subject, body):
         log.error("❌ GitHub API Error: %s", e)
 
 def place_order(exchange, symbol, signal, equity):
+    """
+    Calculates size based on risk and executes a market order with SL/TP.
+    MIGRATION NOTE: SL/TP parameters in 'params' are highly exchange-specific.
+    - Blofin:  {'takeProfitPrice': X, 'stopLossPrice': Y}
+    - Binance: {'stopPrice': Y} (requires separate TP/SL orders or 'stopLoss' type)
+    - Bybit:   {'take_profit': X, 'stop_loss': Y}
+    Consult CCXT docs for your exchange's create_order parameter names.
+    """
     side = signal["side"]
     risk_amount = equity * RISK_PER_TRADE
     size = risk_amount / signal["sl_dist"]
