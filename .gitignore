@@ -1,5 +1,6 @@
-# Environment variables (Sensitive)
+# Sensitive Credentials
 .env
+.env.copy
 
 # Python
 __pycache__/
@@ -7,7 +8,14 @@ __pycache__/
 *$py.class
 venv/
 .venv/
+.pytest_cache/
 
-# Data & Logs (Local only)
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Data & Large Files
 csv/
-# results/live_log.txt  <-- We actually WANT this one committed in the Action
+results/*.txt
+!results/live_log.txt  # Keep ONLY the live log for tracking
