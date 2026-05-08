@@ -240,10 +240,12 @@ def run():
     log.info("═"*60 + "\n  Multi-Symbol BB Scalper (One-Shot Mode) \n" + "═"*60)
     exchange = create_exchange()
     
-    # Pre-set leverage
+    # Pre-set leverage and position mode
     for sym in SYMBOLS:
         try:
             exchange.set_leverage(LEVERAGE, sym, params={"marginMode": "cross"})
+            # Force One-way Mode (net mode) to avoid "Position mode mismatch"
+            exchange.set_position_mode(False, sym) 
         except: pass
 
     try:
