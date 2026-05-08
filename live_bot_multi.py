@@ -14,6 +14,7 @@ Risk: 1% per symbol | Leverage: 20x
 import os
 import time
 import logging
+import requests
 from datetime import datetime, timezone
 
 import ccxt
@@ -167,6 +168,28 @@ def compute_signal(df: pd.DataFrame, symbol: str) -> dict | None:
 # Execution
 # ---------------------------------------------------------------------------
 
+def create_github_issue(subject, body):
+    token = os.getenv("GITHUB_TOKEN")
+    repo = os.getenv("GITHUB_REPOSITORY") # Automatically provided by GitHub Actions
+    if not token or not repo:
+        return
+
+    url = f"https://api.github.com/repos/{repo}/issues"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    payload = {"title": subject, "body": body}
+
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        if response.status_code == 201:
+            log.info("🎫 GitHub Issue created for notification")
+        else:
+            log.error("❌ Failed to create GitHub Issue: %s", response.text)
+    except Exception as e:
+        log.error("❌ GitHub API Error: %s", e)
+
 def place_order(exchange, symbol, signal, equity):
     side = signal["side"]
     risk_amount = equity * RISK_PER_TRADE
@@ -185,6 +208,18 @@ def place_order(exchange, symbol, signal, equity):
         exchange.create_order(symbol=symbol, type="market", side=side, amount=size,
             params={"marginMode": "cross", "positionSide": "net", "takeProfitPrice": signal["tp"], "stopLossPrice": signal["sl"]})
         log.info("✅ Order placed for %s", symbol)
+        
+        # Trigger GitHub Notification via Issue
+        subject = f"🚀 Trade Opened: {side.upper()} {symbol}"
+        body = (f"### 📈 Market Order Executed\n\n"
+                f"**Symbol:** `{symbol}`\n"
+                f"**Side:** {side.upper()}\n"
+                f"**Size:** `{size}`\n"
+                f"**Entry:** ~`{signal['entry']}`\n"
+                f"**TP:** `{signal['tp']}`\n"
+                f"**SL:** `{signal['sl']}`\n\n"
+                f"**Time:** {datetime.now(timezone.utc)}")
+        create_github_issue(subject, body)
     except Exception as e:
         log.error("❌ Order failed for %s: %s", symbol, e)
 

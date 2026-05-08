@@ -34,6 +34,7 @@ jobs:
           BLOFIN_API_SECRET: ${{ secrets.BLOFIN_API_SECRET }}
           BLOFIN_API_PASSWORD: ${{ secrets.BLOFIN_API_PASSWORD }}
           BLOFIN_DRY_RUN: 'false' # Keep 'true' until you've verified a few runs
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python live_bot_multi.py
 
       - name: 📝 Commit & Push Logs
