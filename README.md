@@ -60,7 +60,10 @@ Because this bot uses the **CCXT** library, it can be adapted for other exchange
 
 ## 📊 Strategy Overview
 
-The bot monitors a 20-symbol basket including BTC, ETH, SOL, and others. It uses a 4-layer filter to ensure high-quality entries:
+The bot monitors a **20-symbol basket** of highly liquid assets:
+`BTC`, `ETH`, `SOL`, `DOGE`, `ADA`, `LINK`, `DOT`, `TON`, `ZEC`, `PEPE`, `BNB`, `NEAR`, `SUI`, `NOT`, `TAO`, `ONDO`, `ENA`, `FET`, `WIF`, `SHIB`.
+
+It uses a 4-layer filter to ensure high-quality entries:
 1.  **Trend Filter**: Only longs above the 200 EMA.
 2.  **Volatility Filter**: Uses ADX to skip "choppy" or hyper-trending markets.
 3.  **Momentum Filter**: RSI oversold/overbought checks.
