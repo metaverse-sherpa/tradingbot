@@ -14,7 +14,7 @@ venv/
 .idea/
 .DS_Store
 
-# Data & Large Files
+# Data & Logs (Private)
 csv/
-results/*.txt
-!results/live_log.txt  # Keep ONLY the live log for tracking
+results/
+
