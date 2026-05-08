@@ -220,8 +220,21 @@ def place_order(exchange, symbol, signal, equity):
         return None
 
     try:
-        exchange.create_order(symbol=symbol, type="market", side=side, amount=size,
-            params={"marginMode": "cross", "positionSide": "net", "takeProfitPrice": signal["tp"], "stopLossPrice": signal["sl"]})
+        # Unified CCXT TP/SL format — more robust across exchanges
+        params = {
+            "marginMode": "cross",
+            "positionSide": "net",
+            "stopLoss": {"triggerPrice": signal["sl"]},
+            "takeProfit": {"triggerPrice": signal["tp"]}
+        }
+        
+        exchange.create_order(
+            symbol=symbol,
+            type="market",
+            side=side,
+            amount=size,
+            params=params
+        )
         log.info("✅ Order placed for %s", symbol)
         
         return {
