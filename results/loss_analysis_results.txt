@@ -1,0 +1,107 @@
+
+=================================================================
+  FULL STRATEGY — Longs + Shorts
+=================================================================
+  Period:       2024-08-08 → 2026-05-08
+  Final equity: $18,909.06  (PnL: +89.1%)
+  Win rate:     57.4%   (222W / 165L of 387 trades)
+  Max DD:       11.3%
+  Trades/yr:    221  (0.61/day)
+
+  --- 1. Direction Breakdown ---
+  Long  : 178 trades | WR: 60.1% | Wins: 107  Losses: 71
+  Short : 209 trades | WR: 55.0% | Wins: 115  Losses: 94
+
+  --- 2. Losses by Hour of Entry (UTC) ---
+  Bad hours (WR<45%): [6, 12, 5, 4, 18, 23]
+  Good hours (WR≥55%): [0, 2, 9, 20, 7, 16, 19, 21, 11, 22, 1, 14, 17]
+  00:00 UTC |  15 trades | WR:  80.0% ████████████████
+  04:00 UTC |   8 trades | WR:  37.5% ███████
+  08:00 UTC |  22 trades | WR:  54.5% ██████████
+  12:00 UTC |  19 trades | WR:  36.8% ███████
+  16:00 UTC |  12 trades | WR:  66.7% █████████████
+  20:00 UTC |  11 trades | WR:  72.7% ██████████████
+
+  --- 3. Win Rate by ADX at Entry ---
+  ADX <20    |   7 trades | WR:  42.9% ████████
+  ADX 20-25  | 122 trades | WR:  63.1% ████████████
+  ADX 25-30  | 158 trades | WR:  55.1% ███████████
+  ADX 30-35  |  61 trades | WR:  62.3% ████████████
+  ADX 35-40  |  25 trades | WR:  40.0% ████████
+  ADX >40    |  14 trades | WR:  50.0% ██████████
+
+  --- 4. Trade Duration (bars until SL/TP) ---
+  Winning trades  — avg: 78 bars | median: 45 bars | max: 486 bars
+  Losing  trades  — avg: 71 bars | median: 38 bars | max: 803 bars
+  Quick losses (≤4 bars / ≤1hr): 13 (8% of all losses)
+
+  --- 5. Per-Symbol Win Rate ---
+  BTC  :  25 trades | WR: 60.0%  ✅
+  ETH  :  22 trades | WR: 68.2%  ✅
+  SOL  :  50 trades | WR: 54.0%  ✅
+  DOGE :  60 trades | WR: 46.7%  ⚠️ 
+  ADA  :  57 trades | WR: 56.1%  ✅
+  LINK :  42 trades | WR: 52.4%  ✅
+  DOT  :  20 trades | WR: 60.0%  ✅
+  TON  :  31 trades | WR: 58.1%  ✅
+  ZEC  :  45 trades | WR: 66.7%  ✅
+  PEPE :  35 trades | WR: 65.7%  ✅
+
+=================================================================
+  LONGS ONLY — Shorts Disabled
+=================================================================
+  Period:       2024-08-08 → 2026-05-08
+  Final equity: $14,988.12  (PnL: +49.9%)
+  Win rate:     60.1%   (107W / 71L of 178 trades)
+  Max DD:       11.2%
+  Trades/yr:    102  (0.28/day)
+
+  --- 1. Direction Breakdown ---
+  Long  : 178 trades | WR: 60.1% | Wins: 107  Losses: 71
+
+  --- 2. Losses by Hour of Entry (UTC) ---
+  Bad hours (WR<45%): [6, 12, 4, 2, 10, 18, 23]
+  Good hours (WR≥55%): [17, 21, 7, 0, 22, 9, 1, 20, 11, 14, 15, 3, 5, 13]
+  00:00 UTC |   5 trades | WR:  80.0% ████████████████
+  04:00 UTC |   5 trades | WR:  20.0% ████
+  08:00 UTC |   8 trades | WR:  50.0% ██████████
+  12:00 UTC |   9 trades | WR:  33.3% ██████
+  16:00 UTC |   4 trades | WR:  50.0% ██████████
+  20:00 UTC |   7 trades | WR:  71.4% ██████████████
+
+  --- 3. Win Rate by ADX at Entry ---
+  ADX <20    |   2 trades | WR:  50.0% ██████████
+  ADX 20-25  |  65 trades | WR:  64.6% ████████████
+  ADX 25-30  |  74 trades | WR:  52.7% ██████████
+  ADX 30-35  |  22 trades | WR:  72.7% ██████████████
+  ADX 35-40  |   9 trades | WR:  55.6% ███████████
+  ADX >40    |   6 trades | WR:  66.7% █████████████
+
+  --- 4. Trade Duration (bars until SL/TP) ---
+  Winning trades  — avg: 82 bars | median: 61 bars | max: 486 bars
+  Losing  trades  — avg: 79 bars | median: 45 bars | max: 493 bars
+  Quick losses (≤4 bars / ≤1hr): 2 (3% of all losses)
+
+  --- 5. Per-Symbol Win Rate ---
+  BTC  :  15 trades | WR: 53.3%  ✅
+  ETH  :   9 trades | WR: 66.7%  ✅
+  SOL  :  22 trades | WR: 50.0%  ✅
+  DOGE :  31 trades | WR: 51.6%  ✅
+  ADA  :  18 trades | WR: 61.1%  ✅
+  LINK :  18 trades | WR: 55.6%  ✅
+  DOT  :  13 trades | WR: 69.2%  ✅
+  TON  :  13 trades | WR: 53.8%  ✅
+  ZEC  :  20 trades | WR: 80.0%  ✅
+  PEPE :  19 trades | WR: 68.4%  ✅
+
+=================================================================
+  COMPARISON SUMMARY
+=================================================================
+  Metric                   Full (L+S)     Longs Only
+  --------------------------------------------------
+  Final Equity         $   18,909.06 $   14,988.12
+  PnL                           89.1%          49.9%
+  Win Rate                      57.4%          60.1%
+  Max Drawdown                  11.3%          11.2%
+  Total Trades                    387            178
+  Trades/yr                      221           102

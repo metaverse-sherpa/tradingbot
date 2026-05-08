@@ -1,0 +1,12 @@
+2026-05-08 11:59:51 [INFO] ════════════════════════════════════════════════════════════
+  Multi-Symbol BB Scalper (20 Symbols) 
+════════════════════════════════════════════════════════════
+2026-05-08 11:59:51 [INFO] 🔴 PRODUCTION BOT STARTING — Connected to Blofin
+2026-05-08 11:59:51 [INFO] 🛡️  DRY RUN enabled — signals logged, NO orders placed
+2026-05-08 11:59:56 [INFO] ── Cycle | Equity: $0.00 | 2026-05-08 10:59 UTC ──
+2026-05-08 12:00:56 [INFO] ── Cycle | Equity: $0.00 | 2026-05-08 11:00 UTC ──
+2026-05-08 12:01:56 [INFO] ── Cycle | Equity: $0.00 | 2026-05-08 11:01 UTC ──
+2026-05-08 12:02:56 [INFO] ── Cycle | Equity: $0.00 | 2026-05-08 11:02 UTC ──
+2026-05-08 12:03:56 [INFO] ── Cycle | Equity: $0.00 | 2026-05-08 11:03 UTC ──
+2026-05-08 12:04:56 [INFO] ── Cycle | Equity: $0.00 | 2026-05-08 11:04 UTC ──
+2026-05-08 12:05:57 [INFO] ── Cycle | Equity: $0.00 | 2026-05-08 11:05 UTC ──

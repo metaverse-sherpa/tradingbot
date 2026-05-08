@@ -1,0 +1,43 @@
+name: 📈 Trade Bot Execution
+
+on:
+  schedule:
+    # Runs every 15 minutes starting at 00:00 UTC
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allows manual trigger for testing
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push logs back to repo
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🤖 Execute Bot Pass
+        env:
+          BLOFIN_API_KEY: ${{ secrets.BLOFIN_API_KEY }}
+          BLOFIN_API_SECRET: ${{ secrets.BLOFIN_API_SECRET }}
+          BLOFIN_API_PASSWORD: ${{ secrets.BLOFIN_API_PASSWORD }}
+          BLOFIN_DRY_RUN: 'true' # Keep 'true' until you've verified a few runs
+        run: python live_bot_multi.py
+
+      - name: 📝 Commit & Push Logs
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add results/live_log.txt
+          git commit -m "Automated log update [skip ci]" || echo "No changes to commit"
+          git push
