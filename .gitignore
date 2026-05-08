@@ -1,6 +1,5 @@
 # Sensitive Credentials
 .env
-.env.copy
 
 # Python
 __pycache__/
