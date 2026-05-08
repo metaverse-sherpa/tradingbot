@@ -203,9 +203,16 @@ def place_order(exchange, symbol, signal, equity):
     Recalculates SL/TP based on LIVE price to maintain R:R ratio.
     """
     try:
-        # Fetch live price to ensure R:R is accurate at moment of entry
+        # Fetch live price
         ticker = exchange.fetch_ticker(symbol)
         live_price = ticker["last"]
+
+        # Slippage Check (Max 1.0%)
+        ideal_price = signal["entry"]
+        slippage = abs(live_price - ideal_price) / ideal_price
+        if slippage > 0.01:
+            log.warning("⚠️ Skipping %s: Price moved too far (Slippage: %.2f%%)", symbol, slippage * 100)
+            return None
         
         # Original sl_dist from ATR
         sl_dist = signal["sl_dist"]
@@ -241,8 +248,14 @@ def place_order(exchange, symbol, signal, equity):
             "takeProfit": {"triggerPrice": final_tp}
         }
         
+        # Explicitly set leverage again right before the trade
+        try:
+            exchange.set_leverage(LEVERAGE, symbol, params={"marginMode": "cross"})
+        except Exception as le:
+            log.warning("⚠️ Could not set leverage to %dx for %s: %s", LEVERAGE, symbol, le)
+
         exchange.create_order(symbol=symbol, type="market", side=side, amount=size, params=params)
-        log.info("✅ Order placed for %s", symbol)
+        log.info("✅ Order placed for %s at %dx leverage", symbol, LEVERAGE)
         
         return {
             "symbol": symbol,
@@ -259,6 +272,7 @@ def place_order(exchange, symbol, signal, equity):
 def run():
     log.info("═"*60 + "\n  Multi-Symbol BB Scalper (One-Shot Mode) \n" + "═"*60)
     exchange = create_exchange()
+    errors_encountered = []
     
     # Pre-set leverage and position mode
     for sym in SYMBOLS:
@@ -287,7 +301,9 @@ def run():
                             if trade_res:
                                 trades_executed.append(trade_res)
                 except Exception as e:
-                    log.error("%s Error: %s", symbol, e)
+                    err_msg = f"{symbol} Error: {e}"
+                    log.error(err_msg)
+                    errors_encountered.append(err_msg)
             
             # If trades were made, send a single summary issue
             if trades_executed:
@@ -309,9 +325,17 @@ def run():
             log.warning("Equity too low ($%.2f). Skip trading.", equity)
 
     except Exception as e:
-        log.error("Execution Error: %s", e)
-
-    log.info("═"*60 + "\n  Pass Complete \n" + "═"*60)
+        err_msg = f"Critical Bot Error: {e}"
+        log.error(err_msg)
+        errors_encountered.append(err_msg)
+    finally:
+        # If any major errors occurred, notify the user
+        if errors_encountered:
+            subject = "🚨 Bot Error Alert"
+            body = "The following errors occurred during the last pass:\n\n- " + "\n- ".join(errors_encountered)
+            create_github_issue(subject, body)
+            
+        log.info("═"*60 + "\n  Pass Complete \n" + "═"*60)
 
 if __name__ == "__main__":
     run()
