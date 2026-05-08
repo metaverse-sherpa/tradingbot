@@ -24,11 +24,17 @@ To allow the bot to trade securely, you must add your Blofin API credentials as 
     *   `BLOFIN_API_SECRET`: Your Blofin API Secret.
     *   `BLOFIN_API_PASSWORD`: Your Blofin API Passphrase.
 
-### 4. Verify & Monitor
-1.  Go back to the **Actions** tab.
-2.  Select **📈 Trade Bot Execution** on the left.
-3.  Click **Run workflow** to trigger a manual test.
-4.  Once finished, any trades found will appear in the **Issues** tab and be logged in `results/live_log.txt`.
+### 4. How to Run Manually
+You don't have to wait for the 15-minute timer to test your bot:
+1.  Go to the **Actions** tab in your GitHub repository.
+2.  On the left side, click on **📈 Trade Bot Execution**.
+3.  Click the **Run workflow** button on the right and select the **main** branch.
+4.  Click the green **Run workflow** button.
+5.  Refresh the page after a few seconds to see the progress.
+
+### 5. Verify & Monitor
+1.  Once the manual run is finished, any trades found will appear in the **Issues** tab.
+2.  Detailed logs are stored in your local `results/live_log.txt` (if running locally).
 
 ### 5. Going Live
 The bot starts in **Dry Run** mode (no real orders) by default. To start trading real money:

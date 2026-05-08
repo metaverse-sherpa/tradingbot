@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Needed to push logs back to repo
+      issues: write   # Needed to create trade notifications
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
