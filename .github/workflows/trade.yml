@@ -46,4 +46,5 @@ jobs:
           git config --global user.email 'action@github.com'
           git add README.md
           git commit -m "docs: automated performance update [skip ci]" || echo "No changes to commit"
-          git push
+          git pull --rebase origin main || echo "Pull skipped or failed"
+          git push origin HEAD:main
