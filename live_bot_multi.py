@@ -140,7 +140,12 @@ def place_order(exchange, symbol, signal, equity):
         
         # Calculate size and cap at exchange market limit
         raw_size = (equity * RISK_PER_TRADE) / sl_dist
-        max_market = market['limits']['market']['amount']['max']
+        
+        # Robust limit fetching
+        limits = market.get('limits', {})
+        market_limits = limits.get('market', {})
+        max_market = market_limits.get('amount', {}).get('max', float('inf'))
+        
         size = round(min(raw_size, max_market, (equity * LEVERAGE) / lp), 3)
         
         if size <= 0: return None
