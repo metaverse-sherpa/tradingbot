@@ -161,8 +161,14 @@ def place_order(exchange, symbol, signal, equity):
         except: pass
         try: exchange.set_position_mode(False, symbol)
         except: pass
+        
+        # MARKETABLE LIMIT ORDER BYPASS
+        # By pricing a limit order 1% worse than the market, it fills instantly like a market order
+        # but bypasses the ultra-strict "Max Market Size" limits on meme coins.
+        limit_price = lp * 1.01 if signal["side"] == "buy" else lp * 0.99
+        
         params = {"marginMode": "isolated", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
-        exchange.create_order(symbol, "market", "buy", size, params=params)
+        exchange.create_order(symbol, "limit", signal["side"], size, limit_price, params=params)
         log.info("✅ Order placed for %s", symbol)
         return {"symbol": symbol, "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
     except Exception as e:
