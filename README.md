@@ -89,14 +89,14 @@ It uses a 4-layer filter to ensure high-quality entries:
 <!-- PERFORMANCE_START -->
 | Total Trades | Wins | Losses | Win Rate | Total PnL (%) |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | 0 | 0 | 0.0% | +0.00% |
+| 2 | 0 | 0 | 0.0% | +0.00% |
 
-**Last Updated:** *Waiting for first trade...*
+**Last Updated:** 2026-05-09 14:45 UTC
 <!-- PERFORMANCE_END -->
 
 <!-- DATA_STORAGE_START
-STARTING_EQUITY: 0.0
-ALL_TIME_OPENED: 1
+STARTING_EQUITY: 200.1733321
+ALL_TIME_OPENED: 2
 ALL_TIME_WINS: 0
 ALL_TIME_LOSSES: 0
 DATA_STORAGE_END -->
