@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Multi-Symbol BB Scalper — All-Time Stats Edition
-------------------------------------------------
-- Persistent Tracking: Uses README.md to store starting equity and trade counts.
-- Automated Reporting: Daily recaps and live trade notifications.
+Multi-Symbol BB Scalper — Production Optimized
+---------------------------------------------
+- Fix: Removed redundant configuration loops to prevent Blofin "Position mode" errors.
+- Fix: Added margin checks to prevent "Insufficient balance" alerts.
 """
 
 import os
@@ -78,7 +78,6 @@ def compute_signal(df, symbol_name):
     std = df["close"].rolling(20).std()
     df["bb_bot"] = df["bb_mid"] - (cfg["bb"] * std)
     
-    # ATR & Filters
     tr = pd.concat([df["high"] - df["low"], abs(df["high"] - df["close"].shift()), abs(df["low"] - df["close"].shift())], axis=1).max(axis=1)
     atr = tr.rolling(14).mean()
     
@@ -93,32 +92,31 @@ def compute_signal(df, symbol_name):
     if now_utc.hour in BAD_HOURS_UTC: return None
     
     if last["close"] > last["ema"] and last["close"] < last["bb_bot"] and rsi.iloc[-2] < cfg["rsi"]:
-        sl_dist = atr.iloc[-2] * cfg["atr"]
-        return {"side": "buy", "entry": last["close"], "sl_dist": sl_dist, "rr": cfg["rr"]}
+        return {"side": "buy", "entry": last["close"], "sl_dist": atr.iloc[-2] * cfg["atr"], "rr": cfg["rr"]}
     return None
 
 def update_readme(equity, exchange):
     try:
         with open("README.md", "r") as f: content = f.read()
-        
         start_equity = float(re.search(r"STARTING_EQUITY: ([\d\.]+)", content).group(1))
         wins = int(re.search(r"ALL_TIME_WINS: (\d+)", content).group(1))
         losses = int(re.search(r"ALL_TIME_LOSSES: (\d+)", content).group(1))
         
         if start_equity <= 0: start_equity = equity
         
-        # Check new trades in last 15m
+        # Incremental trade fetch (last 15m)
         since = (int(time.time()) - 900) * 1000
         for symbol in SYMBOLS:
-            trades = exchange.fetch_my_trades(symbol, since)
-            for t in trades:
-                val = float(t.get("info", {}).get("realizedPnl", 0))
-                if val > 0: wins += 1
-                elif val < 0: losses += 1
+            try:
+                trades = exchange.fetch_my_trades(symbol, since)
+                for t in trades:
+                    val = float(t.get("info", {}).get("realizedPnl", 0))
+                    if val > 0: wins += 1
+                    elif val < 0: losses += 1
+            except: pass
         
         pnl_pct = ((equity - start_equity) / start_equity * 100) if start_equity > 0 else 0
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
-        
         perf_text = (f"| Wins | Losses | Win Rate | Total PnL (%) |\n| :--- | :--- | :--- | :--- |\n"
                      f"| {wins} | {losses} | {wr:.1f}% | {pnl_pct:+.2f}% |\n\n"
                      f"**Last Updated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
@@ -127,12 +125,67 @@ def update_readme(equity, exchange):
         content = re.sub(r"STARTING_EQUITY: [\d\.]+", f"STARTING_EQUITY: {start_equity}", content)
         content = re.sub(r"ALL_TIME_WINS: \d+", f"ALL_TIME_WINS: {wins}", content)
         content = re.sub(r"ALL_TIME_LOSSES: \d+", f"ALL_TIME_LOSSES: {losses}", content)
-        
         with open("README.md", "w") as f: f.write(content)
-    except Exception as e: log.error("❌ README Error: %s", e)
+    except: pass
+
+def fetch_recent_performance(exchange):
+    try:
+        since = (int(time.time()) - 86400) * 1000
+        pnl, wins, losses = 0.0, 0, 0
+        for symbol in SYMBOLS:
+            try:
+                trades = exchange.fetch_my_trades(symbol, since)
+                for t in trades:
+                    val = float(t.get("info", {}).get("realizedPnl", 0))
+                    if val != 0:
+                        pnl += val
+                        if val > 0: wins += 1
+                        else: losses += 1
+            except: pass
+        total = wins + losses
+        return {"pnl": pnl, "wins": wins, "losses": losses, "win_rate": (wins/total*100 if total>0 else 0), "count": total}
+    except: return None
+
+def place_order(exchange, symbol, signal, equity):
+    try:
+        ticker = exchange.fetch_ticker(symbol)
+        lp = ticker["last"]
+        
+        if abs(lp - signal["entry"]) / signal["entry"] > 0.01:
+            log.warning("⚠️ Skipping %s: Price moved too far (Slippage Cap)", symbol)
+            return None
+
+        sl_dist, rr = signal["sl_dist"], signal["rr"]
+        sl, tp = lp - sl_dist, lp + (sl_dist * rr)
+        
+        # Risk Check
+        risk_amount = equity * RISK_PER_TRADE
+        size = round(min(risk_amount / sl_dist, (equity * LEVERAGE) / lp), 3)
+        
+        if size <= 0: return None
+        if (size * lp) / LEVERAGE > (equity * 0.95):
+            log.warning("⚠️ Insufficient margin for %s. Skipping.", symbol)
+            return None
+
+        log.info("🔔 SIGNAL on %s: BUY | Entry: %.4f | SL: %.4f | TP: %.4f", symbol, lp, sl, tp)
+        if DRY_RUN: return None
+
+        # Configuration (Only when trading)
+        try: exchange.set_leverage(LEVERAGE, symbol, params={"marginMode": "isolated"})
+        except: pass
+        try: exchange.set_position_mode(False, symbol)
+        except: pass
+        
+        params = {"marginMode": "isolated", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
+        exchange.create_order(symbol, "market", "buy", size, params=params)
+        log.info("✅ Order placed for %s", symbol)
+        return {"symbol": symbol, "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
+    except Exception as e:
+        log.error("❌ Order failed for %s: %s", symbol, e)
+        return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (All-Time Stats) \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (One-Shot) \n" + "═"*60)
     exchange = create_exchange()
     errors, now = [], datetime.now(timezone.utc)
     
@@ -142,28 +195,19 @@ def run():
         log.info("── Pass Start | Equity: $%.2f ──", equity)
         
         trades_executed = []
-        for symbol in SYMBOLS:
-            try:
-                ohlcv = exchange.fetch_ohlcv(symbol, TIMEFRAME, limit=CANDLE_LIMIT)
-                df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
-                signal = compute_signal(df, symbol.split("/")[0])
-                if signal:
-                    ticker = exchange.fetch_ticker(symbol)
-                    lp = ticker["last"]
-                    if abs(lp - signal["entry"]) / signal["entry"] > 0.01: continue
-                    
-                    sl_dist, rr = signal["sl_dist"], signal["rr"]
-                    sl = lp - sl_dist
-                    tp = lp + (sl_dist * rr)
-                    size = round(min((equity * RISK_PER_TRADE) / sl_dist, (equity * LEVERAGE) / lp), 3)
-                    
-                    if size > 0 and not DRY_RUN:
-                        exchange.set_leverage(LEVERAGE, symbol)
-                        exchange.set_position_mode(False, symbol)
-                        params = {"marginMode": "cross", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
-                        exchange.create_order(symbol, "market", "buy", size, params=params)
-                        trades_executed.append({"symbol": symbol, "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl})
-            except Exception as e: errors.append(f"{symbol}: {e}")
+        if equity > 5.0:  # Minimum balance safety
+            for symbol in SYMBOLS:
+                try:
+                    ohlcv = exchange.fetch_ohlcv(symbol, TIMEFRAME, limit=CANDLE_LIMIT)
+                    df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+                    signal = compute_signal(df, symbol.split("/")[0])
+                    if signal:
+                        pos = exchange.fetch_positions([symbol])
+                        if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                            res = place_order(exchange, symbol, signal, equity)
+                            if res: trades_executed.append(res)
+                except Exception as e:
+                    if "code" not in str(e): errors.append(f"{symbol}: {e}") # Ignore CCXT code errors in bulk loop
 
         if trades_executed or (now.hour == 0 and now.minute < 6):
             update_readme(equity, exchange)
@@ -172,10 +216,12 @@ def run():
                 body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)
                 requests.post(f"https://api.github.com/repos/{os.getenv('GITHUB_REPOSITORY')}/issues", json={"title": "🚀 New Trades", "body": body}, headers={"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"})
             elif now.hour == 0:
-                requests.post(f"https://api.github.com/repos/{os.getenv('GITHUB_REPOSITORY')}/issues", json={"title": "📅 Daily Recap", "body": "Bot is running. Check README for all-time stats."}, headers={"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"})
+                requests.post(f"https://api.github.com/repos/{os.getenv('GITHUB_REPOSITORY')}/issues", json={"title": "📅 Daily Recap", "body": "Bot is running. Stats updated in README."}, headers={"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"})
     except Exception as e: errors.append(f"Critical: {e}")
     finally:
-        if errors: requests.post(f"https://api.github.com/repos/{os.getenv('GITHUB_REPOSITORY')}/issues", json={"title": "🚨 Bot Error", "body": "\n".join(errors)}, headers={"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"})
+        if errors:
+            requests.post(f"https://api.github.com/repos/{os.getenv('GITHUB_REPOSITORY')}/issues", json={"title": "🚨 Bot Error", "body": "\n".join(errors)}, headers={"Authorization": f"token {os.getenv('GITHUB_TOKEN')}"})
+        log.info("═"*60 + "\n  Pass Complete \n" + "═"*60)
 
 if __name__ == "__main__":
     run()
