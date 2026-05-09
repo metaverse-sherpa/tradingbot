@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Multi-Symbol BB Scalper — Final Polish
---------------------------------------
-- Feature: Auto-assign issues to trigger email notifications.
-- Feature: Isolated Margin support.
-- Feature: All-Time Stats in README.
+Multi-Symbol BB Scalper — Complete Edition
+-------------------------------------------
+- Persistent Tracking: Wins, Losses, and Total Trades Opened.
+- Automated Reporting: Daily recaps and auto-assigned notifications.
 """
 
 import os
@@ -73,14 +72,11 @@ def create_exchange():
     })
 
 def create_github_issue(subject, body):
-    token = os.getenv("GITHUB_TOKEN")
-    repo = os.getenv("GITHUB_REPOSITORY")
+    token, repo = os.getenv("GITHUB_TOKEN"), os.getenv("GITHUB_REPOSITORY")
     if not token or not repo: return
     owner = repo.split("/")[0]
-    url = f"https://api.github.com/repos/{repo}/issues"
-    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
     try:
-        requests.post(url, json={"title": subject, "body": body, "assignees": [owner]}, headers=headers)
+        requests.post(f"https://api.github.com/repos/{repo}/issues", json={"title": subject, "body": body, "assignees": [owner]}, headers={"Authorization": f"token {token}"})
     except: pass
 
 def compute_signal(df, symbol_name):
@@ -97,19 +93,22 @@ def compute_signal(df, symbol_name):
     rs = gain / (loss + 1e-10)
     rsi = 100 - (100 / (1 + rs))
     last = df.iloc[-2]
-    now_utc = datetime.now(timezone.utc)
-    if now_utc.hour in BAD_HOURS_UTC: return None
+    if datetime.now(timezone.utc).hour in BAD_HOURS_UTC: return None
     if last["close"] > last["ema"] and last["close"] < last["bb_bot"] and rsi.iloc[-2] < cfg["rsi"]:
         return {"side": "buy", "entry": last["close"], "sl_dist": atr.iloc[-2] * cfg["atr"], "rr": cfg["rr"]}
     return None
 
-def update_readme(equity, exchange):
+def update_readme(equity, exchange, new_trades_count):
     try:
         with open("README.md", "r") as f: content = f.read()
         start_equity = float(re.search(r"STARTING_EQUITY: ([\d\.]+)", content).group(1))
+        opened = int(re.search(r"ALL_TIME_OPENED: (\d+)", content).group(1))
         wins = int(re.search(r"ALL_TIME_WINS: (\d+)", content).group(1))
         losses = int(re.search(r"ALL_TIME_LOSSES: (\d+)", content).group(1))
+        
         if start_equity <= 0: start_equity = equity
+        opened += new_trades_count
+        
         since = (int(time.time()) - 900) * 1000
         for symbol in SYMBOLS:
             try:
@@ -119,17 +118,21 @@ def update_readme(equity, exchange):
                     if val > 0: wins += 1
                     elif val < 0: losses += 1
             except: pass
+        
         pnl_pct = ((equity - start_equity) / start_equity * 100) if start_equity > 0 else 0
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
-        perf_text = (f"| Wins | Losses | Win Rate | Total PnL (%) |\n| :--- | :--- | :--- | :--- |\n"
-                     f"| {wins} | {losses} | {wr:.1f}% | {pnl_pct:+.2f}% |\n\n"
+        
+        perf_text = (f"| Total Trades | Wins | Losses | Win Rate | Total PnL (%) |\n| :--- | :--- | :--- | :--- | :--- |\n"
+                     f"| {opened} | {wins} | {losses} | {wr:.1f}% | {pnl_pct:+.2f}% |\n\n"
                      f"**Last Updated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+        
         content = re.sub(r"<!-- PERFORMANCE_START -->.*?<!-- PERFORMANCE_END -->", f"<!-- PERFORMANCE_START -->\n{perf_text}\n<!-- PERFORMANCE_END -->", content, flags=re.DOTALL)
         content = re.sub(r"STARTING_EQUITY: [\d\.]+", f"STARTING_EQUITY: {start_equity}", content)
+        content = re.sub(r"ALL_TIME_OPENED: \d+", f"ALL_TIME_OPENED: {opened}", content)
         content = re.sub(r"ALL_TIME_WINS: \d+", f"ALL_TIME_WINS: {wins}", content)
         content = re.sub(r"ALL_TIME_LOSSES: \d+", f"ALL_TIME_LOSSES: {losses}", content)
         with open("README.md", "w") as f: f.write(content)
-    except: pass
+    except Exception as e: log.error("❌ README Error: %s", e)
 
 def place_order(exchange, symbol, signal, equity):
     try:
@@ -155,7 +158,7 @@ def place_order(exchange, symbol, signal, equity):
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (One-Shot) \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Complete) \n" + "═"*60)
     exchange = create_exchange()
     errors, now = [], datetime.now(timezone.utc)
     try:
@@ -175,8 +178,9 @@ def run():
                         if res: trades_executed.append(res)
             except Exception as e: 
                 if "code" not in str(e): errors.append(f"{symbol}: {e}")
+        
         if trades_executed or (now.hour == 0 and now.minute < 6):
-            update_readme(equity, exchange)
+            update_readme(equity, exchange, len(trades_executed))
             if trades_executed:
                 rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.4f} | {t['tp']:.4f} | {t['sl']:.4f} |" for t in trades_executed]
                 body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)

@@ -87,15 +87,16 @@ It uses a 4-layer filter to ensure high-quality entries:
 
 ## 📈 Live Performance (All-Time)
 <!-- PERFORMANCE_START -->
-| Wins | Losses | Win Rate | Total PnL (%) |
-| :--- | :--- | :--- | :--- |
-| 0 | 0 | 0.0% | +0.00% |
+| Total Trades | Wins | Losses | Win Rate | Total PnL (%) |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | 0 | 0 | 0.0% | +0.00% |
 
-**Last Updated:** 2026-05-09 09:35 UTC
+**Last Updated:** *Waiting for first trade...*
 <!-- PERFORMANCE_END -->
 
 <!-- DATA_STORAGE_START
-STARTING_EQUITY: 200.23839658
+STARTING_EQUITY: 0.0
+ALL_TIME_OPENED: 1
 ALL_TIME_WINS: 0
 ALL_TIME_LOSSES: 0
 DATA_STORAGE_END -->
