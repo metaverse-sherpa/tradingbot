@@ -135,13 +135,13 @@ def place_order(exchange, symbol, signal, equity):
         ticker = exchange.fetch_ticker(symbol)
         lp = ticker["last"]
         if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
-        sl_dist, rr = signal["sl_dist"], signal["rr"]
-        sl, tp = lp - sl_dist, lp + (sl_dist * rr)
+        # Calculate size in Contracts (crucial for derivatives)
+        contract_size = market.get('contractSize', 1)
+        if contract_size <= 0: contract_size = 1
         
-        # Calculate size and cap at exchange market limit
-        raw_size = (equity * RISK_PER_TRADE) / sl_dist
+        raw_size = (equity * RISK_PER_TRADE) / (sl_dist * contract_size)
         
-        # Robust limit fetching (check Market, then General, then Notional Cap)
+        # Robust limit fetching (check Market, then General)
         limits = market.get('limits', {})
         max_market = limits.get('market', {}).get('amount', {}).get('max')
         if max_market is None:
@@ -149,10 +149,9 @@ def place_order(exchange, symbol, signal, equity):
         if max_market is None:
             max_market = float('inf')
             
-        # Safety Notional Cap (e.g., Max $50k market order)
-        notional_cap = 50000 / lp
+        max_leverage_size = (equity * LEVERAGE) / (lp * contract_size)
         
-        size = round(min(raw_size, max_market, notional_cap, (equity * LEVERAGE) / lp), 3)
+        size = round(min(raw_size, max_market, max_leverage_size), 3)
         
         if size <= 0: return None
         log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f | Size: %.2f", symbol, lp, sl, tp, size)
