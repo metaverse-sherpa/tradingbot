@@ -2,8 +2,10 @@ name: 📈 Trade Bot Execution
 
 on:
   schedule:
-    # Runs every 5 minutes
+    # Keeps the timer as a fallback
     - cron: '*/5 * * * *'
+  repository_dispatch:
+    types: [trigger-bot]
   workflow_dispatch: # Allows manual trigger for testing
 
 jobs:
