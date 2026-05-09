@@ -39,3 +39,11 @@ jobs:
           BLOFIN_DRY_RUN: 'false' # Keep 'true' until you've verified a few runs
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python live_bot_multi.py
+
+      - name: 📝 Update Repository
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add README.md
+          git commit -m "docs: automated performance update [skip ci]" || echo "No changes to commit"
+          git push

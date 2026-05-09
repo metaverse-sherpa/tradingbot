@@ -83,5 +83,22 @@ It uses a 4-layer filter to ensure high-quality entries:
 *   `results/live_log.txt`: **The History.** Automatically updated by the bot every run.
 *   `scripts/`: Research and optimization tools for advanced users.
 
+---
+
+## 📈 Live Performance (All-Time)
+<!-- PERFORMANCE_START -->
+| Wins | Losses | Win Rate | Total PnL (%) |
+| :--- | :--- | :--- | :--- |
+| 0 | 0 | 0.0% | +0.00% |
+
+**Last Updated:** *Waiting for first trade...*
+<!-- PERFORMANCE_END -->
+
+<!-- DATA_STORAGE_START
+STARTING_EQUITY: 0.0
+ALL_TIME_WINS: 0
+ALL_TIME_LOSSES: 0
+DATA_STORAGE_END -->
+
 ## ⚠️ Disclaimer
 Trading cryptocurrency involves significant risk. This bot is provided for educational purposes. Always start with **Dry Run** mode to verify behavior before committing real capital.
