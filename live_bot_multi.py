@@ -141,12 +141,16 @@ def place_order(exchange, symbol, signal, equity):
         # Calculate size and cap at exchange market limit
         raw_size = (equity * RISK_PER_TRADE) / sl_dist
         
-        # Robust limit fetching
+        # Robust limit fetching (check Market, then General, then Notional Cap)
         limits = market.get('limits', {})
-        market_limits = limits.get('market', {})
-        max_market = market_limits.get('amount', {}).get('max', float('inf'))
+        max_market = limits.get('market', {}).get('amount', {}).get('max')
+        if not max_market:
+            max_market = limits.get('amount', {}).get('max', float('inf'))
+            
+        # Safety Notional Cap (e.g., Max $50k market order)
+        notional_cap = 50000 / lp
         
-        size = round(min(raw_size, max_market, (equity * LEVERAGE) / lp), 3)
+        size = round(min(raw_size, max_market, notional_cap, (equity * LEVERAGE) / lp), 3)
         
         if size <= 0: return None
         log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f | Size: %.2f", symbol, lp, sl, tp, size)
