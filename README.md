@@ -91,11 +91,11 @@ It uses a 4-layer filter to ensure high-quality entries:
 | :--- | :--- | :--- | :--- |
 | 0 | 0 | 0.0% | +0.00% |
 
-**Last Updated:** *Waiting for first trade...*
+**Last Updated:** 2026-05-09 09:35 UTC
 <!-- PERFORMANCE_END -->
 
 <!-- DATA_STORAGE_START
-STARTING_EQUITY: 0.0
+STARTING_EQUITY: 200.23839658
 ALL_TIME_WINS: 0
 ALL_TIME_LOSSES: 0
 DATA_STORAGE_END -->
