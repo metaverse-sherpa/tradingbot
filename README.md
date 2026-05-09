@@ -24,16 +24,23 @@ To allow the bot to trade securely, you must add your Blofin API credentials as 
     *   `BLOFIN_API_SECRET`: Your Blofin API Secret.
     *   `BLOFIN_API_PASSWORD`: Your Blofin API Passphrase.
 
-### 4. How to Run Manually
-You don't have to wait for the 15-minute timer to test your bot:
-1.  Go to the **Actions** tab in your GitHub repository.
-2.  On the left side, click on **📈 Trade Bot Execution**.
-3.  Click the **Run workflow** button on the right and select the **main** branch.
-4.  Click the green **Run workflow** button.
-5.  Refresh the page after a few seconds to see the progress.
+### 5. Precision Scheduling (Optional - Recommended)
+GitHub's built-in scheduler can be delayed by 10-60 minutes. For professional-grade 5-minute precision, use **Google Cloud Scheduler** to "ping" the bot:
 
-### 5. Verify & Monitor
-1.  Once the manual run is finished, any trades found will appear in the **Issues** tab.
+1.  **Create a GitHub PAT**: Go to **Developer Settings** > **Tokens (classic)** and create a token with `repo` and `workflow` scopes.
+2.  **Google Cloud Scheduler**: Create a new job:
+    *   **Frequency**: `*/5 * * * *`
+    *   **Target**: `HTTP`
+    *   **URL**: `https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/dispatches`
+    *   **Method**: `POST`
+    *   **Headers**:
+        *   `Accept`: `application/vnd.github+json`
+        *   `Authorization`: `Bearer YOUR_GITHUB_PAT`
+        *   `User-Agent`: `Google-Cloud-Scheduler`
+    *   **Body**: `{ "event_type": "trigger-bot" }`
+
+### 6. Verify & Monitor
+1.  Once the bot runs (automatically or via Google Cloud), any trades found will appear in the **Issues** tab.
 2.  Detailed logs are stored in your local `results/live_log.txt` (if running locally).
 
 ### 5. Going Live
