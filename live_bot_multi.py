@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Multi-Symbol BB Scalper — Complete Edition
--------------------------------------------
-- Persistent Tracking: Wins, Losses, and Total Trades Opened.
-- Automated Reporting: Daily recaps and auto-assigned notifications.
+Multi-Symbol BB Scalper — Final Polish (Memecoin Optimized)
+-----------------------------------------------------------
+- Fix: Caps market order size to exchange limits (fixing PEPE/SHIB errors).
+- Fix: High-precision logging for small-cap tokens.
 """
 
 import os
@@ -105,10 +105,8 @@ def update_readme(equity, exchange, new_trades_count):
         opened = int(re.search(r"ALL_TIME_OPENED: (\d+)", content).group(1))
         wins = int(re.search(r"ALL_TIME_WINS: (\d+)", content).group(1))
         losses = int(re.search(r"ALL_TIME_LOSSES: (\d+)", content).group(1))
-        
         if start_equity <= 0: start_equity = equity
         opened += new_trades_count
-        
         since = (int(time.time()) - 900) * 1000
         for symbol in SYMBOLS:
             try:
@@ -118,32 +116,35 @@ def update_readme(equity, exchange, new_trades_count):
                     if val > 0: wins += 1
                     elif val < 0: losses += 1
             except: pass
-        
         pnl_pct = ((equity - start_equity) / start_equity * 100) if start_equity > 0 else 0
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
-        
         perf_text = (f"| Total Trades | Wins | Losses | Win Rate | Total PnL (%) |\n| :--- | :--- | :--- | :--- | :--- |\n"
                      f"| {opened} | {wins} | {losses} | {wr:.1f}% | {pnl_pct:+.2f}% |\n\n"
                      f"**Last Updated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
-        
         content = re.sub(r"<!-- PERFORMANCE_START -->.*?<!-- PERFORMANCE_END -->", f"<!-- PERFORMANCE_START -->\n{perf_text}\n<!-- PERFORMANCE_END -->", content, flags=re.DOTALL)
         content = re.sub(r"STARTING_EQUITY: [\d\.]+", f"STARTING_EQUITY: {start_equity}", content)
         content = re.sub(r"ALL_TIME_OPENED: \d+", f"ALL_TIME_OPENED: {opened}", content)
         content = re.sub(r"ALL_TIME_WINS: \d+", f"ALL_TIME_WINS: {wins}", content)
         content = re.sub(r"ALL_TIME_LOSSES: \d+", f"ALL_TIME_LOSSES: {losses}", content)
         with open("README.md", "w") as f: f.write(content)
-    except Exception as e: log.error("❌ README Error: %s", e)
+    except: pass
 
 def place_order(exchange, symbol, signal, equity):
     try:
+        market = exchange.market(symbol)
         ticker = exchange.fetch_ticker(symbol)
         lp = ticker["last"]
         if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
         sl_dist, rr = signal["sl_dist"], signal["rr"]
         sl, tp = lp - sl_dist, lp + (sl_dist * rr)
-        size = round(min((equity * RISK_PER_TRADE) / sl_dist, (equity * LEVERAGE) / lp), 3)
+        
+        # Calculate size and cap at exchange market limit
+        raw_size = (equity * RISK_PER_TRADE) / sl_dist
+        max_market = market['limits']['market']['amount']['max']
+        size = round(min(raw_size, max_market, (equity * LEVERAGE) / lp), 3)
+        
         if size <= 0: return None
-        log.info("🔔 SIGNAL on %s: BUY | Entry: %.4f | SL: %.4f | TP: %.4f", symbol, lp, sl, tp)
+        log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f | Size: %.2f", symbol, lp, sl, tp, size)
         if DRY_RUN: return None
         try: exchange.set_leverage(LEVERAGE, symbol, params={"marginMode": "isolated"})
         except: pass
@@ -158,8 +159,9 @@ def place_order(exchange, symbol, signal, equity):
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Complete) \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Final Polish) \n" + "═"*60)
     exchange = create_exchange()
+    exchange.load_markets() # Required for size limits
     errors, now = [], datetime.now(timezone.utc)
     try:
         balance = exchange.fetch_balance(params={"type": "futures"})
@@ -178,11 +180,10 @@ def run():
                         if res: trades_executed.append(res)
             except Exception as e: 
                 if "code" not in str(e): errors.append(f"{symbol}: {e}")
-        
         if trades_executed or (now.hour == 0 and now.minute < 6):
             update_readme(equity, exchange, len(trades_executed))
             if trades_executed:
-                rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.4f} | {t['tp']:.4f} | {t['sl']:.4f} |" for t in trades_executed]
+                rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.8f} | {t['tp']:.8f} | {t['sl']:.8f} |" for t in trades_executed]
                 body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)
                 create_github_issue("🚀 New Trades", body)
             elif now.hour == 0:
