@@ -135,6 +135,10 @@ def place_order(exchange, symbol, signal, equity):
         ticker = exchange.fetch_ticker(symbol)
         lp = ticker["last"]
         if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
+        
+        sl_dist, rr = signal["sl_dist"], signal["rr"]
+        sl, tp = lp - sl_dist, lp + (sl_dist * rr)
+        
         # Calculate size in Contracts (crucial for derivatives)
         contract_size = market.get('contractSize', 1)
         if contract_size <= 0: contract_size = 1
