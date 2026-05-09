@@ -144,8 +144,10 @@ def place_order(exchange, symbol, signal, equity):
         # Robust limit fetching (check Market, then General, then Notional Cap)
         limits = market.get('limits', {})
         max_market = limits.get('market', {}).get('amount', {}).get('max')
-        if not max_market:
-            max_market = limits.get('amount', {}).get('max', float('inf'))
+        if max_market is None:
+            max_market = limits.get('amount', {}).get('max')
+        if max_market is None:
+            max_market = float('inf')
             
         # Safety Notional Cap (e.g., Max $50k market order)
         notional_cap = 50000 / lp
