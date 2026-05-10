@@ -89,9 +89,9 @@ It uses a 4-layer filter to ensure high-quality entries:
 <!-- PERFORMANCE_START -->
 | Total Trades | Wins | Losses | Win Rate | Total PnL (%) |
 | :--- | :--- | :--- | :--- | :--- |
-| 4 | 0 | 0 | 0.0% | -10.35% |
+| 4 | 0 | 0 | 0.0% | -10.34% |
 
-**Last Updated:** 2026-05-10 00:00 UTC
+**Last Updated:** 2026-05-10 00:05 UTC
 <!-- PERFORMANCE_END -->
 
 <!-- DATA_STORAGE_START
