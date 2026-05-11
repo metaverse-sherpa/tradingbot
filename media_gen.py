@@ -99,16 +99,16 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     margin_x = 50
     margin_y = 50
     
-    # 1. Header
+    # 1. Header (Top Left)
     draw_text_shadow((margin_x, margin_y), "TRADING PERFORMANCE", font=font_main, fill=color_white)
     
-    # 2. Overall PnL (Massive)
-    draw_text_shadow((margin_x, margin_y + 100), f"Overall: {overall_pnl:+.2f}%", font=font_massive, fill=color_neon)
+    # 2. Overall PnL (Massive, Bottom Left for better contrast)
+    draw_text_shadow((margin_x, base_img.height - 380), f"Overall: {overall_pnl:+.2f}%", font=font_massive, fill=color_neon)
     
-    # 3. Stats Block (Bottom Left)
-    draw_text_shadow((margin_x, base_img.height - 280), f"Daily PnL: {daily_pnl:+.2f}%", font=font_sub, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 210), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 140), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
+    # 3. Stats Block (Stacked above Handle)
+    draw_text_shadow((margin_x, base_img.height - 240), f"Daily PnL: {daily_pnl:+.2f}%", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 180), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 120), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
     
     # 4. Handle
     handle_text = "@metaversesherpa_trading_bot"
