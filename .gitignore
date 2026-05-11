@@ -17,4 +17,5 @@ venv/
 # Data & Logs (Private)
 csv/
 results/
+bot_users.db
 

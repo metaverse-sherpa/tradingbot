@@ -122,27 +122,41 @@ def update_readme(equity, exchange, new_trades_count):
             try:
                 trades = exchange.fetch_my_trades(symbol, last_ts)
                 for t in trades:
-                    # Blofin timestamp is in milliseconds
                     if t['timestamp'] <= last_ts: continue
                     
                     info = t.get("info", {})
-                    # Blofin specifically uses 'fillPnl' to report profit on exit fills
-                    realized = float(info.get("fillPnl") or 0)
+                    # Blofin specifically uses 'fillPnl' to report gross profit on exit fills
+                    gross_pnl = float(info.get("fillPnl") or 0)
                     
-                    if realized != 0:
-                        # Calculate ROE based on the fixed risk we use
-                        pnl_pct = (realized / (equity * RISK_PER_TRADE)) * 100
-                        cum_pnl += pnl_pct
-                        if realized > 0: wins += 1
+                    if gross_pnl != 0:
+                        # Estimate round-trip fee by doubling the exit fee
+                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                        net_pnl = gross_pnl - (fee * 2)
+                        
+                        # Calculate ROE exactly like Blofin UI (Net PnL / Initial Margin)
+                        try:
+                            market = exchange.market(symbol)
+                            contract_size = float(market.get('contractSize', 1))
+                            price = float(t['price'])
+                            size = float(t['amount'])
+                            initial_margin = (price * size * contract_size) / LEVERAGE
+                            roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                        except:
+                            roe_pct = 0
+                            
+                        cum_pnl += net_pnl # Add actual USDT profit, not the leveraged ROE %
+                        if net_pnl > 0: wins += 1
                         else: losses += 1
-                        log.info("📊 Found closed trade: %s | PnL: $%.2f | Approx ROE: %.2f%%", symbol, realized, pnl_pct)
+                        log.info("📊 Found closed trade: %s | Net PnL: $%.2f | Blofin ROE: %.2f%%", symbol, net_pnl, roe_pct)
             except Exception as e:
                 log.debug("⚠️ Trade fetch failed for %s: %s", symbol, e)
         
         # 3. Update Table
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
+        account_pnl_pct = (cum_pnl / start_equity) * 100 if start_equity > 0 else 0
+        
         perf_text = (f"| Total Trades | Wins | Losses | Win Rate | Total PnL (%) |\n| :--- | :--- | :--- | :--- | :--- |\n"
-                     f"| {opened} | {wins} | {losses} | {wr:.1f}% | {cum_pnl:+.2f}% |\n\n"
+                     f"| {opened} | {wins} | {losses} | {wr:.1f}% | {account_pnl_pct:+.2f}% |\n\n"
                      f"**Last Updated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
         
         content = re.sub(r"<!-- PERFORMANCE_START -->.*?<!-- PERFORMANCE_END -->", f"<!-- PERFORMANCE_START -->\n{perf_text}\n<!-- PERFORMANCE_END -->", content, flags=re.DOTALL)
@@ -156,10 +170,10 @@ def update_readme(equity, exchange, new_trades_count):
         content = re.sub(r"LAST_FETCH_TIMESTAMP: \d+", f"LAST_FETCH_TIMESTAMP: {now_ts}", content)
         
         with open("README.md", "w") as f: f.write(content)
-        log.info("📝 README.md updated. Wins: %d, Losses: %d, Cum PnL: %.2f%%", wins, losses, cum_pnl)
+        log.info("📝 README.md updated. Wins: %d, Losses: %d, Account PnL: %.2f%%", wins, losses, account_pnl_pct)
         
         # Return stats so the main loop can use them for emails
-        return {"opened": opened, "wins": wins, "losses": losses, "wr": wr, "cum_pnl": cum_pnl}
+        return {"opened": opened, "wins": wins, "losses": losses, "wr": wr, "account_pnl_pct": account_pnl_pct}
     except Exception as e: 
         log.error("❌ README Error: %s", e)
         return None
