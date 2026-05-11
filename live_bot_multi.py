@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Multi-Symbol BB Scalper — Precision Analytics Edition (Fixed)
+Multi-Symbol BB Scalper — Precision Analytics Edition (Blofin Raw Fix)
 ------------------------------------------------------
-- Feature: Uses Position History for accurate Win/Loss/PnL tracking.
-- Feature: Captures exact ROE % from the exchange.
-- Feature: Persistent Trade Fetching (no missed wins/losses).
+- Feature: Uses Raw Blofin API for Position History.
+- Feature: Robust fallback for Win/Loss tracking.
 """
 
 import os
@@ -48,7 +47,6 @@ SYMBOL_CONFIGS = {
 }
 
 SYMBOLS = [f"{s}/USDT:USDT" for s in SYMBOL_CONFIGS.keys()]
-ADX_UPPER_CAP = 35
 BAD_HOURS_UTC = {4, 12}
 TIMEFRAME     = "15m"
 LEVERAGE      = 20
@@ -103,7 +101,6 @@ def update_readme(equity, exchange, new_trades_count):
     try:
         with open("README.md", "r") as f: content = f.read()
         
-        # 1. Parse Current Data
         start_equity = float(re.search(r"STARTING_EQUITY: ([\d\.]+)", content).group(1))
         opened = int(re.search(r"ALL_TIME_OPENED: (\d+)", content).group(1))
         wins = int(re.search(r"ALL_TIME_WINS: (\d+)", content).group(1))
@@ -112,47 +109,41 @@ def update_readme(equity, exchange, new_trades_count):
         last_ts = int(re.search(r"LAST_FETCH_TIMESTAMP: (\d+)", content).group(1))
         
         if start_equity <= 0: start_equity = equity
-        if last_ts == 0: last_ts = (int(time.time()) - 172800) * 1000 # Look back 48h for first sync
+        if last_ts == 0: last_ts = (int(time.time()) - 172800) * 1000 # 48h lookback
         
         opened += new_trades_count
         now_ts = int(time.time() * 1000)
         
-        # 2. Fetch Position History (Closed Trades)
-        try:
-            # fetch_positions_history is more reliable for realized PnL
-            # Blofin API uses a 'since' parameter for this
-            closed_positions = exchange.fetch_positions_history(None, last_ts)
-            for p in closed_positions:
-                p_ts = p.get('timestamp')
-                if not p_ts or p_ts <= last_ts: continue
+        # 2. Try Raw Blofin API for Position History
+        for symbol in SYMBOLS:
+            try:
+                # Direct Blofin raw endpoint call
+                # Symbol on Blofin API is like 'BTC-USDT'
+                blofin_symbol = symbol.replace("/USDT:USDT", "-USDT")
+                raw_history = exchange.private_get_trade_position_history({"instId": blofin_symbol})
                 
-                realized = float(p.get("realizedPnl", 0))
-                symbol = p.get("symbol", "Unknown")
-                
-                # Use ROE directly if available, otherwise calculate from margin
-                pnl_pct = p.get("percentage")
-                if pnl_pct is None:
-                    # Fallback calculation
-                    notional = float(p.get("contracts", 0)) * float(p.get("entryPrice", 1))
-                    if notional > 0:
-                        margin = notional / LEVERAGE
-                        pnl_pct = (realized / margin) * 100
-                    else: pnl_pct = 0
-                
-                if realized != 0:
-                    cum_pnl += pnl_pct
-                    if realized > 0: wins += 1
-                    else: losses += 1
-                    log.info("📊 Found closed trade: %s | PnL: %.2f | ROE: %.2f%%", symbol, realized, pnl_pct)
-        except Exception as e:
-            log.warning("⚠️ fetch_positions_history failed, falling back to trades: %s", e)
-            # Fallback to trade history if positions history fails
-            for symbol in SYMBOLS:
+                for p in raw_history.get('data', []):
+                    p_ts = int(p.get('utime', 0))
+                    if p_ts <= last_ts: continue
+                    
+                    realized = float(p.get("realizedPnl", 0))
+                    pnl_pct = float(p.get("roe", 0)) * 100 # ROE is usually a decimal (0.28)
+                    
+                    if realized != 0:
+                        cum_pnl += pnl_pct
+                        if realized > 0: wins += 1
+                        else: losses += 1
+                        log.info("📊 Found trade via Raw API: %s | PnL: %.2f | ROE: %.2f%%", symbol, realized, pnl_pct)
+            except Exception as e:
+                log.debug("Raw history failed for %s: %s", symbol, e)
+                # Fallback to trade history
                 try:
                     trades = exchange.fetch_my_trades(symbol, last_ts)
                     for t in trades:
                         if t['timestamp'] <= last_ts: continue
-                        realized = float(t.get("info", {}).get("realizedPnl", 0))
+                        info = t.get("info", {})
+                        # Search for ANY PnL-like key in the raw info
+                        realized = float(info.get("realizedPnl") or info.get("realized_pnl") or info.get("pnl") or 0)
                         if realized != 0:
                             amount = float(t.get("amount", 0))
                             price = float(t.get("price", 0))
@@ -191,33 +182,24 @@ def place_order(exchange, symbol, signal, equity):
         ticker = exchange.fetch_ticker(symbol)
         lp = ticker["last"]
         if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
-        
         sl_dist, rr = signal["sl_dist"], signal["rr"]
         sl, tp = lp - sl_dist, lp + (sl_dist * rr)
-        
         contract_size = market.get('contractSize', 1)
         if contract_size <= 0: contract_size = 1
-        
         raw_size = (equity * RISK_PER_TRADE) / (sl_dist * contract_size)
-        
         limits = market.get('limits', {})
         max_market = limits.get('market', {}).get('amount', {}).get('max')
-        if max_market is None:
-            max_market = limits.get('amount', {}).get('max', float('inf'))
-            
+        if max_market is None: max_market = limits.get('amount', {}).get('max', float('inf'))
         max_leverage_size = (equity * LEVERAGE) / (lp * contract_size)
         size = round(min(raw_size, max_market, max_leverage_size), 3)
-        
         if size <= 0: return None
         log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, lp, sl, tp)
         if DRY_RUN: return None
-        
         try: exchange.set_leverage(LEVERAGE, symbol, params={"marginMode": "isolated"})
         except: pass
         try: exchange.set_position_mode(False, symbol)
         except: pass
-        
-        limit_price = lp * 1.01 # 1% slippage bypass
+        limit_price = lp * 1.01
         params = {"marginMode": "isolated", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
         exchange.create_order(symbol, "limit", "buy", size, limit_price, params=params)
         log.info("✅ Order placed for %s", symbol)
@@ -227,7 +209,7 @@ def place_order(exchange, symbol, signal, equity):
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Position History Fix) \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Raw API Fix) \n" + "═"*60)
     exchange = create_exchange()
     exchange.load_markets()
     errors, now = [], datetime.now(timezone.utc)
@@ -235,7 +217,6 @@ def run():
         balance = exchange.fetch_balance(params={"type": "futures"})
         equity = float(balance.get("USDT", {}).get("total", 0))
         log.info("── Pass Start | Equity: $%.2f ──", equity)
-        
         trades_executed = []
         for symbol in SYMBOLS:
             try:
@@ -249,10 +230,7 @@ def run():
                         if res: trades_executed.append(res)
             except Exception as e: 
                 if "code" not in str(e): errors.append(f"{symbol}: {e}")
-
-        # Always update README to catch closed trades, even if no new trades opened
         update_readme(equity, exchange, len(trades_executed))
-        
         if trades_executed:
             sym_list = ", ".join([t['symbol'] for t in trades_executed])
             rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.8f} | {t['tp']:.8f} | {t['sl']:.8f} |" for t in trades_executed]
@@ -260,7 +238,6 @@ def run():
             create_github_issue(f"🚀 New Trades: {sym_list}", body)
         elif now.hour == 0 and now.minute < 6:
             create_github_issue("📅 Daily Recap", "Bot is running. Stats updated in README.")
-            
     except Exception as e: errors.append(f"Critical: {e}")
     finally:
         if errors: create_github_issue("🚨 Bot Error", "\n".join(errors))
