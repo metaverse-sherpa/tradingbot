@@ -339,12 +339,15 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Chart generation failed for {sym}: {e}")
 
             if chart_path and os.path.exists(chart_path):
-                # Prepare Share Button
-                callback_data = f"share_{sym}_{side}_{roe:.2f}_{entry}_{mark_price}_{upnl:.2f}"
+                # Prepare Share Button (Compressed to stay under 64-byte Telegram limit)
+                # Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
+                # Using short prefixes and rounded numbers to save space
+                s_side = "l" if side.lower() == "long" else "s"
+                callback_data = f"sh_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
                 keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
-                pnl_str = f"${upnl:+.2f}" if not user_data['hide_dollars'] else "****"
+                pnl_str = f"${upnl:+.2f}" if not user['hide_dollars'] else "****"
                 caption = (
                     f"{'🟢' if side == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
                     f"Entry: `{entry:.8f}`\n"
@@ -356,7 +359,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_photo(photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
                 os.remove(chart_path) # Cleanup
             else:
-                pnl_str = f"${upnl:+.2f}" if not user_data['hide_dollars'] else "****"
+                pnl_str = f"${upnl:+.2f}" if not user['hide_dollars'] else "****"
                 msg = (
                     f"{'🟢' if side == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
                     f"Entry: `{entry:.8f}`\n"
@@ -411,9 +414,11 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
-    # Format: share_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
+    # Compressed Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
     parts = query.data.split("_")
-    sym, side, roe, entry, mark, pnl = parts[1], parts[2], float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
+    sym = parts[1]
+    side = "long" if parts[2] == "l" else "short"
+    roe, entry, mark, pnl = float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
     
     user = database.get_user(query.message.chat.id)
     card_path = media_gen.generate_pnl_card(sym, side, roe, entry, mark, hide_dollars=user['hide_dollars'], pnl_usdt=pnl)
@@ -625,7 +630,7 @@ def main():
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(share_callback, pattern="^share_"))
+    app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh_"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
     
