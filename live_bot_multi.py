@@ -157,7 +157,12 @@ def update_readme(equity, exchange, new_trades_count):
         
         with open("README.md", "w") as f: f.write(content)
         log.info("📝 README.md updated. Wins: %d, Losses: %d, Cum PnL: %.2f%%", wins, losses, cum_pnl)
-    except Exception as e: log.error("❌ README Error: %s", e)
+        
+        # Return stats so the main loop can use them for emails
+        return {"opened": opened, "wins": wins, "losses": losses, "wr": wr, "cum_pnl": cum_pnl}
+    except Exception as e: 
+        log.error("❌ README Error: %s", e)
+        return None
 
 def place_order(exchange, symbol, signal, equity):
     try:
@@ -213,14 +218,20 @@ def run():
                         if res: trades_executed.append(res)
             except Exception as e: 
                 if "code" not in str(e): errors.append(f"{symbol}: {e}")
-        update_readme(equity, exchange, len(trades_executed))
+        
+        stats = update_readme(equity, exchange, len(trades_executed))
+        
         if trades_executed:
             sym_list = ", ".join([t['symbol'] for t in trades_executed])
             rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.8f} | {t['tp']:.8f} | {t['sl']:.8f} |" for t in trades_executed]
             body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)
             create_github_issue(f"🚀 New Trades: {sym_list}", body)
         elif now.hour == 0 and now.minute < 6:
-            create_github_issue("📅 Daily Recap", "Bot is running. Stats updated in README.")
+            if stats:
+                body = f"### 📊 Daily Performance Recap\n\n* **Total Trades Opened:** {stats['opened']}\n* **Win Rate:** {stats['wr']:.1f}%\n* **Wins:** {stats['wins']} | **Losses:** {stats['losses']}\n* **All-Time PnL:** {stats['cum_pnl']:+.2f}%\n\nView the full history in the [repository README](https://github.com/{os.getenv('GITHUB_REPOSITORY')})."
+                create_github_issue(f"📅 Daily Recap: {stats['cum_pnl']:+.2f}% PnL", body)
+            else:
+                create_github_issue("📅 Daily Recap", "Bot is running. Check README for stats.")
     except Exception as e: errors.append(f"Critical: {e}")
     finally:
         if errors: create_github_issue("🚨 Bot Error", "\n".join(errors))
