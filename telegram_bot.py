@@ -424,16 +424,22 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    chat_id = query.message.chat_id
+    chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
+    if not user:
+        await query.answer("User record not found.")
+        return
+
     if query.data == "toggle_privacy":
         new_val = not user['hide_dollars']
         database.update_user_preference(chat_id, "hide_dollars", 1 if new_val else 0)
         await query.answer("✅ Privacy Mode updated!")
         
-        # Refresh the menu
-        privacy_status = "🔒 HIDDEN" if new_val else "👁️ SHOWN"
+        # Refresh the user object from database to get latest state
+        user = database.get_user(chat_id)
+        
+        privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
         msg = (
             f"⚙️ *User Settings*\n\n"
             f"Strategy: *{user['strategy']}*\n"
@@ -441,12 +447,13 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Handle: @metaversesherpa_trading_bot\n"
         )
         keyboard = [
-            [InlineKeyboardButton(f"Toggle Privacy ({'Show' if new_val else 'Hide'})", callback_data="toggle_privacy")],
+            [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
             [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")]
         ]
         await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     
     elif query.data == "strategy_menu":
+        await query.answer()
         await strategy_command(update, context) # Re-use existing strategy menu logic
 
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
