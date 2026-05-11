@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Multi-Symbol BB Scalper — Precision Analytics Edition (Blofin Raw Fix)
+Multi-Symbol BB Scalper — Precision Analytics Edition (Blofin Global Fix)
 ------------------------------------------------------
-- Feature: Uses Raw Blofin API for Position History.
-- Feature: Robust fallback for Win/Loss tracking.
+- Feature: Fetches entire account position history in one call.
+- Feature: Improved symbol matching and PnL parsing.
 """
 
 import os
@@ -109,52 +109,37 @@ def update_readme(equity, exchange, new_trades_count):
         last_ts = int(re.search(r"LAST_FETCH_TIMESTAMP: (\d+)", content).group(1))
         
         if start_equity <= 0: start_equity = equity
-        if last_ts == 0: last_ts = (int(time.time()) - 172800) * 1000 # 48h lookback
+        # If timestamp is old/missing, look back 48h
+        if last_ts < (time.time() - 172800) * 1000:
+            last_ts = int((time.time() - 172800) * 1000)
+            log.info("⏰ Performing a 48-hour history catch-up...")
         
         opened += new_trades_count
         now_ts = int(time.time() * 1000)
         
-        # 2. Try Raw Blofin API for Position History
-        for symbol in SYMBOLS:
-            try:
-                # Direct Blofin raw endpoint call
-                # Symbol on Blofin API is like 'BTC-USDT'
-                blofin_symbol = symbol.replace("/USDT:USDT", "-USDT")
-                raw_history = exchange.private_get_trade_position_history({"instId": blofin_symbol})
+        # 2. Fetch GLOBAL Position History
+        try:
+            # We omit 'instId' to fetch history for ALL symbols at once
+            raw_history = exchange.private_get_trade_position_history({})
+            data_list = raw_history.get('data', [])
+            log.info("📡 Fetched %d items from Blofin history", len(data_list))
+            
+            for p in data_list:
+                # Blofin uses 'utime' (updated time) in ms
+                p_ts = int(p.get('utime', 0))
+                if p_ts <= last_ts: continue
                 
-                for p in raw_history.get('data', []):
-                    p_ts = int(p.get('utime', 0))
-                    if p_ts <= last_ts: continue
-                    
-                    realized = float(p.get("realizedPnl", 0))
-                    pnl_pct = float(p.get("roe", 0)) * 100 # ROE is usually a decimal (0.28)
-                    
-                    if realized != 0:
-                        cum_pnl += pnl_pct
-                        if realized > 0: wins += 1
-                        else: losses += 1
-                        log.info("📊 Found trade via Raw API: %s | PnL: %.2f | ROE: %.2f%%", symbol, realized, pnl_pct)
-            except Exception as e:
-                log.debug("Raw history failed for %s: %s", symbol, e)
-                # Fallback to trade history
-                try:
-                    trades = exchange.fetch_my_trades(symbol, last_ts)
-                    for t in trades:
-                        if t['timestamp'] <= last_ts: continue
-                        info = t.get("info", {})
-                        # Search for ANY PnL-like key in the raw info
-                        realized = float(info.get("realizedPnl") or info.get("realized_pnl") or info.get("pnl") or 0)
-                        if realized != 0:
-                            amount = float(t.get("amount", 0))
-                            price = float(t.get("price", 0))
-                            notional = amount * price
-                            if notional > 0:
-                                margin = notional / LEVERAGE
-                                trade_pnl_pct = (realized / margin) * 100
-                                cum_pnl += trade_pnl_pct
-                                if realized > 0: wins += 1
-                                else: losses += 1
-                except: pass
+                realized = float(p.get("realizedPnl", 0))
+                # ROE % is usually in the 'roe' field as a float (0.28 = 28%)
+                pnl_pct = float(p.get("roe", 0)) * 100
+                
+                if realized != 0:
+                    cum_pnl += pnl_pct
+                    if realized > 0: wins += 1
+                    else: losses += 1
+                    log.info("📊 Found closed trade: %s | PnL: %.2f | ROE: %.2f%%", p.get('instId'), realized, pnl_pct)
+        except Exception as e:
+            log.error("❌ Global history fetch failed: %s", e)
         
         # 3. Update Table
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
@@ -209,7 +194,7 @@ def place_order(exchange, symbol, signal, equity):
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Raw API Fix) \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Global API Fix) \n" + "═"*60)
     exchange = create_exchange()
     exchange.load_markets()
     errors, now = [], datetime.now(timezone.utc)
