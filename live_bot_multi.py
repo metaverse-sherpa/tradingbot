@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Multi-Symbol BB Scalper — Precision Analytics Edition
+Multi-Symbol BB Scalper — Precision Analytics Edition (Fixed)
 ------------------------------------------------------
-- Feature: Cumulative % PnL tracking (sum of all trade returns).
+- Feature: Uses Position History for accurate Win/Loss/PnL tracking.
+- Feature: Captures exact ROE % from the exchange.
 - Feature: Persistent Trade Fetching (no missed wins/losses).
-- Feature: Detailed GitHub Issue subjects with symbol names.
 """
 
 import os
@@ -112,34 +112,58 @@ def update_readme(equity, exchange, new_trades_count):
         last_ts = int(re.search(r"LAST_FETCH_TIMESTAMP: (\d+)", content).group(1))
         
         if start_equity <= 0: start_equity = equity
-        if last_ts == 0: last_ts = (int(time.time()) - 86400) * 1000 # Default to 24h ago
+        if last_ts == 0: last_ts = (int(time.time()) - 172800) * 1000 # Look back 48h for first sync
         
         opened += new_trades_count
-        
-        # 2. Fetch Trades since Last Fetch
         now_ts = int(time.time() * 1000)
-        for symbol in SYMBOLS:
-            try:
-                trades = exchange.fetch_my_trades(symbol, last_ts)
-                for t in trades:
-                    if t['timestamp'] <= last_ts: continue # Skip if already seen
-                    
-                    realized = float(t.get("info", {}).get("realizedPnl", 0))
-                    if realized != 0:
-                        # Calculate % PnL of this trade
-                        # PnL % = (Realized PnL / Margin) * 100
-                        # Margin = Notional / Leverage
-                        amount = float(t.get("amount", 0))
-                        price = float(t.get("price", 0))
-                        notional = amount * price
-                        if notional > 0:
-                            margin = notional / LEVERAGE
-                            trade_pnl_pct = (realized / margin) * 100
-                            cum_pnl += trade_pnl_pct
-                            
-                            if realized > 0: wins += 1
-                            else: losses += 1
-            except: pass
+        
+        # 2. Fetch Position History (Closed Trades)
+        try:
+            # fetch_positions_history is more reliable for realized PnL
+            # Blofin API uses a 'since' parameter for this
+            closed_positions = exchange.fetch_positions_history(None, last_ts)
+            for p in closed_positions:
+                p_ts = p.get('timestamp')
+                if not p_ts or p_ts <= last_ts: continue
+                
+                realized = float(p.get("realizedPnl", 0))
+                symbol = p.get("symbol", "Unknown")
+                
+                # Use ROE directly if available, otherwise calculate from margin
+                pnl_pct = p.get("percentage")
+                if pnl_pct is None:
+                    # Fallback calculation
+                    notional = float(p.get("contracts", 0)) * float(p.get("entryPrice", 1))
+                    if notional > 0:
+                        margin = notional / LEVERAGE
+                        pnl_pct = (realized / margin) * 100
+                    else: pnl_pct = 0
+                
+                if realized != 0:
+                    cum_pnl += pnl_pct
+                    if realized > 0: wins += 1
+                    else: losses += 1
+                    log.info("📊 Found closed trade: %s | PnL: %.2f | ROE: %.2f%%", symbol, realized, pnl_pct)
+        except Exception as e:
+            log.warning("⚠️ fetch_positions_history failed, falling back to trades: %s", e)
+            # Fallback to trade history if positions history fails
+            for symbol in SYMBOLS:
+                try:
+                    trades = exchange.fetch_my_trades(symbol, last_ts)
+                    for t in trades:
+                        if t['timestamp'] <= last_ts: continue
+                        realized = float(t.get("info", {}).get("realizedPnl", 0))
+                        if realized != 0:
+                            amount = float(t.get("amount", 0))
+                            price = float(t.get("price", 0))
+                            notional = amount * price
+                            if notional > 0:
+                                margin = notional / LEVERAGE
+                                trade_pnl_pct = (realized / margin) * 100
+                                cum_pnl += trade_pnl_pct
+                                if realized > 0: wins += 1
+                                else: losses += 1
+                except: pass
         
         # 3. Update Table
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
@@ -203,7 +227,7 @@ def place_order(exchange, symbol, signal, equity):
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Precision) \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Position History Fix) \n" + "═"*60)
     exchange = create_exchange()
     exchange.load_markets()
     errors, now = [], datetime.now(timezone.utc)
@@ -226,15 +250,17 @@ def run():
             except Exception as e: 
                 if "code" not in str(e): errors.append(f"{symbol}: {e}")
 
-        if trades_executed or (now.hour == 0 and now.minute < 6):
-            update_readme(equity, exchange, len(trades_executed))
-            if trades_executed:
-                sym_list = ", ".join([t['symbol'] for t in trades_executed])
-                rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.8f} | {t['tp']:.8f} | {t['sl']:.8f} |" for t in trades_executed]
-                body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)
-                create_github_issue(f"🚀 New Trades: {sym_list}", body)
-            elif now.hour == 0:
-                create_github_issue("📅 Daily Recap", "Bot is running. Stats updated in README.")
+        # Always update README to catch closed trades, even if no new trades opened
+        update_readme(equity, exchange, len(trades_executed))
+        
+        if trades_executed:
+            sym_list = ", ".join([t['symbol'] for t in trades_executed])
+            rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.8f} | {t['tp']:.8f} | {t['sl']:.8f} |" for t in trades_executed]
+            body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)
+            create_github_issue(f"🚀 New Trades: {sym_list}", body)
+        elif now.hour == 0 and now.minute < 6:
+            create_github_issue("📅 Daily Recap", "Bot is running. Stats updated in README.")
+            
     except Exception as e: errors.append(f"Critical: {e}")
     finally:
         if errors: create_github_issue("🚨 Bot Error", "\n".join(errors))
