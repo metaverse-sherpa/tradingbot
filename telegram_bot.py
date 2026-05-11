@@ -8,6 +8,7 @@ import media_gen
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
+from telegram.error import BadRequest
 import database
 
 # Load environment variables
@@ -452,7 +453,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         try:
             await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-        except telegram.error.BadRequest as e:
+        except BadRequest as e:
             if "Message is not modified" not in str(e):
                 raise e
     
@@ -478,11 +479,12 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     side = "long" if parts[2] == "l" else "short"
     roe, entry, mark, pnl = float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
     
-    user = database.get_user(query.message.chat.id)
+    chat_id = query.from_user.id
+    user = database.get_user(chat_id)
     # Generate the professional share card using the official logo
     card_path = media_gen.generate_pnl_card(
         sym, side, roe, entry, mark, 
-        hide_dollars=user['hide_dollars'], 
+        hide_dollars=user['hide_dollars'] if user else True, 
         pnl_usdt=pnl,
         user_id=chat_id
     )

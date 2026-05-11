@@ -70,7 +70,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, equity):
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
