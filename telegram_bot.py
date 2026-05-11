@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Quick reply buttons for daily monitoring
-    keyboard = [['/opentrades', '/list', '/stats']]
+    keyboard = [['/opentrades', '/list', '/balance', '/stats']]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
     await update.message.reply_text(
@@ -283,6 +283,53 @@ async def resume_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     database.set_active(update.message.chat_id, True)
     await update.message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.")
 
+async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user_data = database.get_user(chat_id)
+    
+    if not user_data:
+        await update.message.reply_text("❌ No API keys found. Please run /setup first.")
+        return
+        
+    await update.message.reply_text("💰 Fetching your live balance...")
+    
+    try:
+        # Note: database.get_user already returns decrypted keys
+        api_key = user_data['api_key']
+        api_secret = user_data['api_secret']
+        api_pass = user_data['api_password']
+        
+        user_ex = ccxt.blofin({
+            "apiKey": api_key,
+            "secret": api_secret,
+            "password": api_pass,
+            "options": {"defaultType": "swap"},
+        })
+        
+        balance = user_ex.fetch_balance(params={"type": "futures"})
+        free = float(balance.get("USDT", {}).get("free", 0))
+        
+        # True Equity Calculation: Available + Margin + Unrealized PnL
+        total_value = free
+        try:
+            positions = user_ex.fetch_positions()
+            for p in positions:
+                margin = float(p.get('info', {}).get('margin', 0))
+                upnl = float(p.get('info', {}).get('unrealizedPnl', 0))
+                total_value += (margin + upnl)
+        except: pass
+        
+        msg = (
+            "💰 *Your Account Balance*\n\n"
+            f"Available Cash: *${free:.2f}* USDT\n"
+            f"Total Account Value: *${total_value:.2f}* USDT\n\n"
+            "_Total Value = Available + Margin + PnL_"
+        )
+        await update.message.reply_text(msg, parse_mode="Markdown")
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error fetching balance: {e}")
+
 import asyncio
 import ccxt
 import pandas as pd
@@ -317,7 +364,8 @@ async def trading_engine(application):
                 
             # 3. Fetch all active users from DB (MUST run every pass for stat syncing)
             import sqlite3
-            conn = sqlite3.connect('bot_users.db')
+            # 3. Pull all ACTIVE users from database
+            conn = sqlite3.connect(database.DB_PATH)
             c = conn.cursor()
             c.execute('SELECT telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password FROM Users WHERE is_active = 1')
             active_users = c.fetchall()
@@ -444,6 +492,7 @@ async def post_init(application: ApplicationBuilder):
         ("stats", "📊 View account performance"),
         ("opentrades", "🛰 View live active positions"),
         ("list", "📜 List last 10 closed trades"),
+        ("balance", "💰 Check available USDT balance"),
         ("setup", "⚙️ Configure API keys"),
         ("stop", "🔴 Pause trading"),
         ("resume", "🟢 Resume trading"),
@@ -464,6 +513,7 @@ def main():
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("opentrades", open_trades))
     app.add_handler(CommandHandler("list", list_trades))
+    app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
     
