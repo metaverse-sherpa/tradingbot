@@ -450,7 +450,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
             [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")]
         ]
-        await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        try:
+            await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        except telegram.error.BadRequest as e:
+            if "Message is not modified" not in str(e):
+                raise e
     
     elif query.data == "strategy_menu":
         await query.answer()
@@ -475,7 +479,13 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     roe, entry, mark, pnl = float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
     
     user = database.get_user(query.message.chat.id)
-    card_path = media_gen.generate_pnl_card(sym, side, roe, entry, mark, hide_dollars=user['hide_dollars'], pnl_usdt=pnl)
+    # Generate the professional share card using the official logo
+    card_path = media_gen.generate_pnl_card(
+        sym, side, roe, entry, mark, 
+        hide_dollars=user['hide_dollars'], 
+        pnl_usdt=pnl,
+        user_id=chat_id
+    )
     
     if card_path:
         with open(card_path, 'rb') as photo:

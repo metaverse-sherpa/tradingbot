@@ -16,6 +16,11 @@ venv/
 
 # Data & Logs (Private)
 csv/
+*.db
+*.log
+*.png
+*.jpg
+*.jpeg
 results/
 bot_users.db
 

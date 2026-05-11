@@ -4,7 +4,7 @@ import os
 # Path to your official logo
 LOGO_PATH = "/Users/johngiles/.gemini/antigravity/brain/37bf787e-4046-4151-a19d-af587714554a/media__1778508286364.png"
 
-def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0):
+def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id=""):
     """
     Generates a professional PnL card using the brand logo as the background.
     Places info in the top left corner.
@@ -21,9 +21,6 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     # Create a dark overlay for the top left area to make text pop
     overlay = Image.new("RGBA", base_img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    
-    # Optional: Subtle dark gradient or box behind text area
-    # draw.rectangle([0, 0, 500, 400], fill=(0, 0, 0, 100))
     
     # Try to load fonts
     try:
@@ -68,7 +65,7 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     # Combine logo with overlay
     combined = Image.alpha_composite(base_img, overlay)
     
-    # Save result
-    save_path = f"pnl_card_{clean_sym.replace('/', '_')}.png"
-    combined.convert("RGB").save(save_path, "JPEG", quality=95)
-    return save_path
+    # Save result with UNIQUE user_id
+    save_filename = f"pnl_card_{user_id}_{clean_sym.replace('/', '_')}.png"
+    combined.convert("RGB").save(save_filename, "JPEG", quality=95)
+    return save_filename
