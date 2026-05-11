@@ -373,23 +373,24 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
-                pnl_str = f"${upnl:+.2f}" if not user['hide_dollars'] else "****"
+                target_suffix = f" of {target_roe_str.replace('+', '')}" if target_roe_str != "N/A" else ""
+                
                 caption = (
-                    f"{'🟢' if side == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
+                    f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
                     f"Entry: `{entry:.8f}`\n"
                     f"TP: `{tp_price:.8f}` | SL: `{sl_price:.8f}`\n"
-                    f"PnL: *{pnl_str}* | ROE: *{roe:+.2f}%*"
+                    f"PnL: *{roe:+.2f}%{target_suffix}*"
                 )
                 
                 with open(chart_path, 'rb') as photo:
                     await update.message.reply_photo(photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
                 os.remove(chart_path) # Cleanup
             else:
-                pnl_str = f"${upnl:+.2f}" if not user['hide_dollars'] else "****"
+                target_suffix = f" of {target_roe_str.replace('+', '')}" if target_roe_str != "N/A" else ""
                 msg = (
-                    f"{'🟢' if side == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
+                    f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
                     f"Entry: `{entry:.8f}`\n"
-                    f"PnL: *{pnl_str}* | ROE: *{roe:+.2f}%*"
+                    f"PnL: *{roe:+.2f}%{target_suffix}*"
                 )
                 await update.message.reply_text(msg, parse_mode="Markdown")
         
