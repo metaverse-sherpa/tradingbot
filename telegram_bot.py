@@ -208,6 +208,9 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_ex.load_markets()
         
         import live_bot_multi
+        import charting
+        import os
+        
         positions = user_ex.fetch_positions(live_bot_multi.SYMBOLS)
         active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
         
@@ -215,7 +218,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("You have no open trades at the moment.")
             return
             
-        msg = "🛰 *Your Active Positions*\n\n"
+        await update.message.reply_text(f"🛰 *Active Positions Found: {len(active)}*\nGenerating charts...")
+
         for p in active:
             sym = p['symbol']
             side = p['side'].upper()
@@ -232,7 +236,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 roe = 0
                 initial_margin = 0
             
-                # 2. Fetch TP/SL Prices and Calculate Target ROE
+            # 2. Fetch TP/SL Prices and Calculate Target ROE
             tp_price = 0
             sl_price = 0
             target_roe_str = "N/A"
@@ -258,19 +262,32 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     target_roe_str = f"{target_roe:+.1f}%"
             except: pass
 
+            # 3. Generate the Chart
+            chart_path = None
+            try:
+                ohlcv = user_ex.fetch_ohlcv(sym, timeframe='4h', limit=100)
+                df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                chart_path = charting.generate_trade_chart(sym, df, entry, tp_price, sl_price, side)
+            except Exception as e:
+                logger.error(f"Chart generation failed for {sym}: {e}")
+
             emoji = "🟢" if upnl >= 0 else "🔴"
-            msg += f"{emoji} *{sym}* ({side})\n"
-            msg += f"Entry: `{entry:.4f}`\n"
-            
-            # Use 8 decimal places to avoid scientific notation for small coins like SHIB
             tp_disp = f"{tp_price:.8f}".rstrip('0').rstrip('.') if tp_price > 0 else "None"
             sl_disp = f"{sl_price:.8f}".rstrip('0').rstrip('.') if sl_price > 0 else "None"
             
-            msg += f"TP: `{tp_disp}` | SL: `{sl_disp}`\n"
-            msg += f"PnL: *${upnl:+.2f}* | ROE: *{roe:+.2f}%*\n"
-            msg += f"Target ROE: *{target_roe_str}*\n\n"
+            msg = (
+                f"{emoji} *{sym}* ({side})\n"
+                f"Entry: `{entry:.4f}`\n"
+                f"TP: `{tp_disp}` | SL: `{sl_disp}`\n"
+                f"PnL: *${upnl:+.2f}* | ROE: *{roe:+.2f}%* of *{target_roe_str}* (target)"
+            )
             
-        await update.message.reply_text(msg, parse_mode="Markdown")
+            if chart_path and os.path.exists(chart_path):
+                with open(chart_path, 'rb') as photo:
+                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+                os.remove(chart_path) # Cleanup
+            else:
+                await update.message.reply_text(msg, parse_mode="Markdown")
         
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching positions: {e}")
