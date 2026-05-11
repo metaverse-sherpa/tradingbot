@@ -117,48 +117,27 @@ def update_readme(equity, exchange, new_trades_count):
         opened += new_trades_count
         now_ts = int(time.time() * 1000)
         
-        # 2. Fetch GLOBAL Position History
-        try:
-            # Bypass CCXT wrappers completely and hit the Blofin endpoint directly
-            raw_history = exchange.request('/api/v1/trade/position-history', 'private', 'GET', {})
-            data_list = raw_history.get('data', [])
-            log.info("📡 Fetched %d items from Blofin raw position history", len(data_list))
-            
-            for p in data_list:
-                p_ts = int(p.get('utime', p.get('cTime', 0)))
-                if p_ts <= last_ts: continue
-                
-                realized = float(p.get("realizedPnl", p.get("pnl", 0)))
-                pnl_pct = float(p.get("roe", 0)) * 100
-                
-                if realized != 0:
-                    cum_pnl += pnl_pct
-                    if realized > 0: wins += 1
-                    else: losses += 1
-                    log.info("📊 Found closed trade: %s | PnL: %.2f | ROE: %.2f%%", p.get('instId', 'Unknown'), realized, pnl_pct)
-        except Exception as e:
-            log.warning("⚠️ Raw request failed (%s). Falling back to ledger bills...", e)
+        # 2. Fetch Position History via Trades
+        for symbol in SYMBOLS:
             try:
-                # Fallback: Read the account ledger for "Realized PnL" bills
-                ledger = exchange.fetch_ledger(None, last_ts)
-                for item in ledger:
-                    if item['timestamp'] <= last_ts: continue
-                    if item['amount'] == 0: continue
+                trades = exchange.fetch_my_trades(symbol, last_ts)
+                for t in trades:
+                    # Blofin timestamp is in milliseconds
+                    if t['timestamp'] <= last_ts: continue
                     
-                    info = item.get('info', {})
-                    bill_type = str(info.get('billType', info.get('type', ''))).lower()
+                    info = t.get("info", {})
+                    # Blofin specifically uses 'fillPnl' to report profit on exit fills
+                    realized = float(info.get("fillPnl") or 0)
                     
-                    if 'pnl' in bill_type or 'realized' in bill_type or item.get('type') == 'realized_pnl':
-                        realized = float(item['amount'])
-                        if realized != 0:
-                            # Estimate ROE % based on the fixed risk we use
-                            pnl_pct = (realized / (equity * RISK_PER_TRADE)) * 100
-                            cum_pnl += pnl_pct
-                            if realized > 0: wins += 1
-                            else: losses += 1
-                            log.info("📊 Found ledger PnL: %.2f | Approx ROE: %.2f%%", realized, pnl_pct)
-            except Exception as e2:
-                log.error("❌ Both history and ledger fetches failed: %s", e2)
+                    if realized != 0:
+                        # Calculate ROE based on the fixed risk we use
+                        pnl_pct = (realized / (equity * RISK_PER_TRADE)) * 100
+                        cum_pnl += pnl_pct
+                        if realized > 0: wins += 1
+                        else: losses += 1
+                        log.info("📊 Found closed trade: %s | PnL: $%.2f | Approx ROE: %.2f%%", symbol, realized, pnl_pct)
+            except Exception as e:
+                log.debug("⚠️ Trade fetch failed for %s: %s", symbol, e)
         
         # 3. Update Table
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
