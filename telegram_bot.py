@@ -94,26 +94,82 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(success_text, parse_mode="Markdown")
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = database.get_user(update.message.chat_id)
+    chat_id = update.message.chat_id
+    user = database.get_user(chat_id)
     if not user:
         await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
     
+    await update.message.reply_text("📊 Calculating your performance stats...")
+
+    # Calculate Daily PnL from Exchange (Realized + Unrealized)
+    realized_daily_pnl = 0.0
+    total_unrealized_pnl = 0.0
+    open_positions_count = 0
+    import ccxt
+    import time
+    import live_bot_multi
+    
+    try:
+        user_ex = ccxt.blofin({
+            "apiKey": user['api_key'],
+            "secret": user['api_secret'],
+            "password": user['api_password'],
+            "options": {"defaultType": "swap"},
+        })
+        
+        now_ms = int(time.time() * 1000)
+        twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
+        
+        # 1. Get Realized PnL for last 24h
+        for sym in live_bot_multi.SYMBOLS:
+            try:
+                trades = user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago)
+                for t in trades:
+                    info = t.get("info", {})
+                    gross_pnl = float(info.get("fillPnl") or 0)
+                    if gross_pnl != 0:
+                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                        net_pnl = gross_pnl - (fee * 2)
+                        realized_daily_pnl += net_pnl
+            except: pass
+            
+        # 2. Get Total Unrealized PnL from positions
+        try:
+            positions = user_ex.fetch_positions(live_bot_multi.SYMBOLS)
+            for p in positions:
+                contracts = float(p.get("contracts", 0) or 0)
+                if contracts != 0:
+                    open_positions_count += 1
+                    total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or 0)
+        except: pass
+            
+    except Exception as e:
+        logger.error(f"PnL calculation failed: {e}")
+
     wins = user['wins']
     losses = user['losses']
-    opened = user['opened']
-    cum_pnl_usdt = user.get('cum_pnl', 0.0)
-    equity = user.get('equity', 200.0) # Fallback to 200 if not fetched yet
+    cum_pnl_realized = user.get('cum_pnl', 0.0)
+    equity = user.get('equity', 200.0)
     
-    wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
-    account_pnl_pct = (cum_pnl_usdt / equity) * 100 if equity > 0 else 0
+    # Combined Totals
+    overall_pnl_usdt = cum_pnl_realized + total_unrealized_pnl
+    daily_pnl_usdt = realized_daily_pnl + total_unrealized_pnl
     
-    msg = f"📊 *Your All-Time Stats*\n\n"
+    total_closed = wins + losses
+    wr = (wins / total_closed * 100) if total_closed > 0 else 0
+    overall_pnl_pct = (overall_pnl_usdt / equity) * 100 if equity > 0 else 0
+    daily_pnl_pct = (daily_pnl_usdt / equity) * 100 if equity > 0 else 0
+    
+    msg = f"📊 *Your Trading Performance*\n"
+    msg += "_(Includes Open Positions PnL)_\n\n"
+    msg += f"Overall PnL: *{overall_pnl_pct:+.2f}% (${overall_pnl_usdt:+.2f})*\n"
+    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}% (${daily_pnl_usdt:+.2f})*\n\n"
     msg += f"Status: {'🟢 Active' if user['is_active'] else '🔴 Paused'}\n"
-    msg += f"Total Trades Opened: {opened}\n"
+    msg += f"Open Positions: *{open_positions_count}*\n"
+    msg += f"Closed Trades: *{total_closed}*\n"
     msg += f"Wins: {wins} | Losses: {losses}\n"
     msg += f"Win Rate: {wr:.1f}%\n"
-    msg += f"Account PnL: {account_pnl_pct:+.2f}% (${cum_pnl_usdt:+.2f})\n"
     
     await update.message.reply_text(msg, parse_mode="Markdown")
 
@@ -265,9 +321,10 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 3. Generate the Chart
             chart_path = None
             try:
-                ohlcv = user_ex.fetch_ohlcv(sym, timeframe='4h', limit=100)
+                open_ts = int(p.get('info', {}).get('createTime') or 0)
+                ohlcv = user_ex.fetch_ohlcv(sym, timeframe='1h', limit=100)
                 df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-                chart_path = charting.generate_trade_chart(sym, df, entry, tp_price, sl_price, side)
+                chart_path = charting.generate_trade_chart(sym, df, entry, tp_price, sl_price, side, open_ts)
             except Exception as e:
                 logger.error(f"Chart generation failed for {sym}: {e}")
 
