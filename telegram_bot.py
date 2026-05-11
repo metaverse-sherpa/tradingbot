@@ -402,6 +402,53 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 
+async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user = database.get_user(chat_id)
+    
+    privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
+    
+    msg = (
+        f"⚙️ *User Settings*\n\n"
+        f"Strategy: *{user['strategy']}*\n"
+        f"Dollar PnL: *{privacy_status}*\n\n"
+        f"Handle: @metaversesherpa_trading_bot\n"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
+        [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+
+async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    user = database.get_user(chat_id)
+    
+    if query.data == "toggle_privacy":
+        new_val = not user['hide_dollars']
+        database.update_user_preference(chat_id, "hide_dollars", 1 if new_val else 0)
+        await query.answer("✅ Privacy Mode updated!")
+        
+        # Refresh the menu
+        privacy_status = "🔒 HIDDEN" if new_val else "👁️ SHOWN"
+        msg = (
+            f"⚙️ *User Settings*\n\n"
+            f"Strategy: *{user['strategy']}*\n"
+            f"Dollar PnL: *{privacy_status}*\n\n"
+            f"Handle: @metaversesherpa_trading_bot\n"
+        )
+        keyboard = [
+            [InlineKeyboardButton(f"Toggle Privacy ({'Show' if new_val else 'Hide'})", callback_data="toggle_privacy")],
+            [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")]
+        ]
+        await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    
+    elif query.data == "strategy_menu":
+        await strategy_command(update, context) # Re-use existing strategy menu logic
+
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user = database.get_user(chat_id)
@@ -597,6 +644,7 @@ async def post_init(application: ApplicationBuilder):
     # Set the bot's command menu (the button in the bottom left of Telegram)
     await application.bot.set_my_commands([
         ("privacy", "🔒 Toggle hide/show dollar PnL"),
+        ("settings", "⚙️ Bot settings & privacy"),
         ("docs", "📖 View user manual & tutorials"),
         ("help", "❓ Get help & command guide"),
         ("stats", "📊 View account performance"),
@@ -620,6 +668,7 @@ def main():
     
     # Register Commands
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("privacy", privacy_command))
     app.add_handler(CommandHandler("docs", docs))
     app.add_handler(CommandHandler("help", docs))
@@ -630,6 +679,7 @@ def main():
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh_"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))

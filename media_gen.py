@@ -1,63 +1,74 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
 
-# Path to the CLEAN background image
-BG_PATH = "/Users/johngiles/.gemini/antigravity/brain/37bf787e-4046-4151-a19d-af587714554a/pnl_card_bg_pro_1778508170393.png"
+# Path to your official logo
+LOGO_PATH = "/Users/johngiles/.gemini/antigravity/brain/37bf787e-4046-4151-a19d-af587714554a/media__1778508286364.png"
 
-def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=False, pnl_usdt=0):
+def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0):
     """
-    Generates a minimalist, high-impact PnL share card.
+    Generates a professional PnL card using the brand logo as the background.
+    Places info in the top left corner.
     """
-    if not os.path.exists(BG_PATH):
+    if not os.path.exists(LOGO_PATH):
         return None
         
-    img = Image.open(BG_PATH).convert("RGBA")
-    # Resize to a consistent 1024x1024 if needed, though background is 1200x800
-    # Let's keep original aspect ratio but use fixed positions
-    draw = ImageDraw.Draw(img)
+    # Open logo and ensure it's a good size for sharing
+    base_img = Image.open(LOGO_PATH).convert("RGBA")
+    # If the image is small, let's upscale it for quality
+    if base_img.width < 1000:
+        base_img = base_img.resize((1024, 1024), Image.Resampling.LANCZOS)
     
-    # Try to load a clean font, fallback to default
+    # Create a dark overlay for the top left area to make text pop
+    overlay = Image.new("RGBA", base_img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    
+    # Optional: Subtle dark gradient or box behind text area
+    # draw.rectangle([0, 0, 500, 400], fill=(0, 0, 0, 100))
+    
+    # Try to load fonts
     try:
-        # Common path for macOS
-        font_main = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 70)
-        font_sub = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 45)
-        font_massive = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 180)
+        font_main = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 60)
+        font_sub = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 40)
+        font_massive = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 140)
+        font_handle = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 30)
     except:
         font_main = ImageFont.load_default()
         font_sub = ImageFont.load_default()
         font_massive = ImageFont.load_default()
+        font_handle = ImageFont.load_default()
 
     # Colors
-    color_green = (0, 230, 118, 255) if roe >= 0 else (255, 23, 68, 255)
+    color_neon = (0, 255, 150, 255) if roe >= 0 else (255, 50, 50, 255)
     color_white = (255, 255, 255, 255)
     
-    # 1. Draw Symbol (Centered horizontally)
-    sym_text = f"{symbol.split(':')[0]} PERP"
-    w = draw.textlength(sym_text, font=font_main)
-    draw.text(((img.width - w) / 2, 180), sym_text, font=font_main, fill=color_white)
+    # Text Margin
+    margin_x = 50
+    margin_y = 50
+    
+    # 1. Draw Symbol (Top Left)
+    clean_sym = symbol.split(':')[0]
+    draw.text((margin_x, margin_y), f"{clean_sym} PERP", font=font_main, fill=color_white)
     
     # 2. Draw Side & Leverage (Below Symbol)
-    side_text = f"{side.upper()} 20X"
-    w_side = draw.textlength(side_text, font=font_sub)
-    draw.text(((img.width - w_side) / 2, 270), side_text, font=font_sub, fill=color_green)
+    draw.text((margin_x, margin_y + 80), f"{side.upper()} 20X", font=font_sub, fill=color_neon)
     
-    # 3. Draw MASSIVE ROE (Dead Center)
-    roe_text = f"{roe:+.2f}%"
-    w_roe = draw.textlength(roe_text, font=font_massive)
-    draw.text(((img.width - w_roe) / 2, 380), roe_text, font=font_massive, fill=color_green)
+    # 3. Draw MASSIVE ROE (Below Side)
+    draw.text((margin_x, margin_y + 140), f"{roe:+.2f}%", font=font_massive, fill=color_neon)
     
-    # 4. Draw PnL USDT (if not hidden, smaller at bottom)
+    # 4. Draw PnL USDT (If not hidden)
     if not hide_dollars:
         pnl_text = f"+${pnl_usdt:,.2f} USDT" if pnl_usdt >= 0 else f"-${abs(pnl_usdt):,.2f} USDT"
-        w_pnl = draw.textlength(pnl_text, font=font_main)
-        draw.text(((img.width - w_pnl) / 2, 600), pnl_text, font=font_main, fill=color_white)
+        draw.text((margin_x, margin_y + 300), pnl_text, font=font_main, fill=color_white)
     
-    # 5. Add Brand Footer (Optional, very subtle)
-    footer = "METAVERSE SHERPA TRADING"
-    w_f = draw.textlength(footer, font=font_sub)
-    draw.text(((img.width - w_f) / 2, 720), footer, font=font_sub, fill=(100, 100, 100, 150))
+    # 5. Draw Bot Handle (Bottom Right)
+    handle_text = "@metaversesherpa_trading_bot"
+    w_h = draw.textlength(handle_text, font=font_handle)
+    draw.text((base_img.width - w_h - 20, base_img.height - 50), handle_text, font=font_handle, fill=(255, 255, 255, 180))
+    
+    # Combine logo with overlay
+    combined = Image.alpha_composite(base_img, overlay)
     
     # Save result
-    save_path = f"pnl_card_{symbol.replace('/', '_').replace(':', '_')}.png"
-    img.save(save_path)
+    save_path = f"pnl_card_{clean_sym.replace('/', '_')}.png"
+    combined.convert("RGB").save(save_path, "JPEG", quality=95)
     return save_path
