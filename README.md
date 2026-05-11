@@ -34,18 +34,18 @@ A production-ready, multi-symbol mean-reversion trading bot for the Blofin excha
 <!-- PERFORMANCE_START -->
 | Total Trades | Wins | Losses | Win Rate | Total PnL (%) |
 | :--- | :--- | :--- | :--- | :--- |
-| 12 | 0 | 0 | 0.0% | +0.00% |
+| 12 | 5 | 2 | 71.4% | +371.77% |
 
-**Last Updated:** 2026-05-11 08:10 UTC
+**Last Updated:** 2026-05-11 08:09 UTC
 <!-- PERFORMANCE_END -->
 
 <!-- DATA_STORAGE_START
 STARTING_EQUITY: 200.1733321
 ALL_TIME_OPENED: 12
-ALL_TIME_WINS: 0
-ALL_TIME_LOSSES: 0
-ALL_TIME_CUMULATIVE_PNL: 0.0
-LAST_FETCH_TIMESTAMP: 1778487032664
+ALL_TIME_WINS: 5
+ALL_TIME_LOSSES: 2
+ALL_TIME_CUMULATIVE_PNL: 371.7744390773077
+LAST_FETCH_TIMESTAMP: 1778486965796
 DATA_STORAGE_END -->
 
 ## ⚠️ Disclaimer
