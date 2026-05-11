@@ -181,7 +181,15 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg += f"Open Positions: *{open_positions_count} ({upnl_pct:+.2f}%)*\n"
     msg += f"Closed Trades: *{total_closed}*\n"
     
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    # Add Share Stats button
+    cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
+    keyboard = [[InlineKeyboardButton("📸 Share Performance Card", callback_data=cb_data)]]
+    
+    await update.message.reply_text(
+        msg, 
+        reply_markup=InlineKeyboardMarkup(keyboard), 
+        parse_mode="Markdown"
+    )
 
 async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = database.get_user(update.message.chat_id)
@@ -230,27 +238,43 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         msg = "📜 *Your Last 10 Trades*\n\n"
-        for t in last_10:
+        keyboard = []
+        row = []
+        
+        for i, t in enumerate(last_10):
             import datetime
             dt = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
             icon = "🚀" if t['net_pnl'] > 0 else "❌"
             status = "Won" if t['net_pnl'] > 0 else "Lost"
             
-            # Calculate ROE for the list view
+            # 1. Determine Side (Historical)
+            side_raw = t.get('side', 'buy') # buy or sell
+            is_long = side_raw == 'sell' 
+            side_str = "l" if is_long else "s"
+            side_display = "LONG" if is_long else "SHORT"
+            
+            # 2. Calculate ROE
             try:
                 market = user_ex.market(t['symbol'])
                 contract_size = float(market.get('contractSize', 1))
-                # Initial margin = (Price * Amount * ContractSize) / Leverage
-                initial_margin = (t['price'] * t['amount'] * contract_size) / live_bot_multi.LEVERAGE
+                initial_margin = (t['price'] * t['amount'] * contract_size) / 20 # Assume 20X
                 roe_pct = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
-            except:
-                roe_pct = 0
+            except: roe_pct = 0
             
-            msg += f"{icon} *Trade {status}* ({dt})\n"
-            msg += f"Symbol: `{t['symbol']}`\n"
-            msg += f"PnL: *${t['net_pnl']:+.2f}* | ROE: *{roe_pct:+.2f}%*\n\n"
+            msg += f"{i+1}. {icon} *{side_display}* ({dt})\n"
+            msg += f"Symbol: `{t['symbol']}` | PnL: *${t['net_pnl']:.2f}* ({roe_pct:+.2f}%)\n\n"
             
-        await update.message.reply_text(msg, parse_mode="Markdown")
+            # 3. Add Share Button (Compressed format)
+            cb_data = f"sh_{t['symbol']}_{side_str}_{roe_pct:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
+            btn = InlineKeyboardButton(f"📸 Share #{i+1}", callback_data=cb_data)
+            row.append(btn)
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        
+        if row: keyboard.append(row)
+            
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching trades: {e}")
@@ -471,27 +495,53 @@ async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    
-    # Compressed Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
-    parts = query.data.split("_")
-    sym = parts[1]
-    side = "long" if parts[2] == "l" else "short"
-    roe, entry, mark, pnl = float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
-    
+    data = query.data
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
-    # Generate the professional share card using the official logo
-    card_path = media_gen.generate_pnl_card(
-        sym, side, roe, entry, mark, 
-        hide_dollars=user['hide_dollars'] if user else True, 
-        pnl_usdt=pnl,
-        user_id=chat_id
-    )
     
-    if card_path:
+    # Notify user we're working on it
+    await query.answer("📸 Generating your Sherpa Share Card...")
+    
+    card_path = None
+    share_label = ""
+    
+    if data.startswith("shs_"): # SHARE STATS
+        # Format: shs_{overall}_{daily}_{wr}_{total}
+        parts = data.split("_")
+        overall, daily, wr, total = float(parts[1]), float(parts[2]), float(parts[3]), int(parts[4])
+        card_path = media_gen.generate_stats_card(overall, daily, wr, total, user_id=chat_id)
+        share_label = "performance summary"
+        
+    elif data.startswith("sh_"): # SHARE TRADE
+        # Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
+        parts = data.split("_")
+        sym = parts[1]
+        side = "long" if parts[2] == "l" else "short"
+        roe, entry, mark, pnl = float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
+        card_path = media_gen.generate_pnl_card(
+            sym, side, roe, entry, mark, 
+            hide_dollars=user['hide_dollars'] if user else True, 
+            pnl_usdt=pnl,
+            user_id=chat_id
+        )
+        share_label = f"trade results for {sym}"
+    
+    if card_path and os.path.exists(card_path):
         with open(card_path, 'rb') as photo:
-            await query.message.reply_photo(photo, caption=f"🚀 My *{sym}* trade results! Powered by Metaverse Sherpa.", parse_mode="Markdown")
+            await context.bot.send_photo(chat_id=chat_id, photo=photo)
+        
+        # Update the original message to let them know it's ready below
+        feedback_msg = f"✅ *Share card generated for {share_label}!*\n\nScroll down to the bottom of the chat to see your Cyber-Sherpa card. 👇"
+        
+        try:
+            if query.message.caption:
+                await query.edit_message_caption(caption=feedback_msg, parse_mode="Markdown")
+            else:
+                await query.edit_message_text(feedback_msg, parse_mode="Markdown")
+        except: pass # Ignore redundant updates
+        
+        # Cleanup
+        os.remove(card_path)
     else:
         await query.answer("❌ Error generating card.", show_alert=True)
 
@@ -699,7 +749,7 @@ def main():
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
     app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu"))
-    app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh_"))
+    app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
     
