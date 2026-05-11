@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Multi-Symbol BB Scalper — Final Polish (Memecoin Optimized)
------------------------------------------------------------
-- Fix: Caps market order size to exchange limits (fixing PEPE/SHIB errors).
-- Fix: High-precision logging for small-cap tokens.
+Multi-Symbol BB Scalper — Precision Analytics Edition
+------------------------------------------------------
+- Feature: Cumulative % PnL tracking (sum of all trade returns).
+- Feature: Persistent Trade Fetching (no missed wins/losses).
+- Feature: Detailed GitHub Issue subjects with symbol names.
 """
 
 import os
@@ -101,33 +102,64 @@ def compute_signal(df, symbol_name):
 def update_readme(equity, exchange, new_trades_count):
     try:
         with open("README.md", "r") as f: content = f.read()
+        
+        # 1. Parse Current Data
         start_equity = float(re.search(r"STARTING_EQUITY: ([\d\.]+)", content).group(1))
         opened = int(re.search(r"ALL_TIME_OPENED: (\d+)", content).group(1))
         wins = int(re.search(r"ALL_TIME_WINS: (\d+)", content).group(1))
         losses = int(re.search(r"ALL_TIME_LOSSES: (\d+)", content).group(1))
+        cum_pnl = float(re.search(r"ALL_TIME_CUMULATIVE_PNL: ([\-\d\.]+)", content).group(1))
+        last_ts = int(re.search(r"LAST_FETCH_TIMESTAMP: (\d+)", content).group(1))
+        
         if start_equity <= 0: start_equity = equity
+        if last_ts == 0: last_ts = (int(time.time()) - 86400) * 1000 # Default to 24h ago
+        
         opened += new_trades_count
-        since = (int(time.time()) - 900) * 1000
+        
+        # 2. Fetch Trades since Last Fetch
+        now_ts = int(time.time() * 1000)
         for symbol in SYMBOLS:
             try:
-                trades = exchange.fetch_my_trades(symbol, since)
+                trades = exchange.fetch_my_trades(symbol, last_ts)
                 for t in trades:
-                    val = float(t.get("info", {}).get("realizedPnl", 0))
-                    if val > 0: wins += 1
-                    elif val < 0: losses += 1
+                    if t['timestamp'] <= last_ts: continue # Skip if already seen
+                    
+                    realized = float(t.get("info", {}).get("realizedPnl", 0))
+                    if realized != 0:
+                        # Calculate % PnL of this trade
+                        # PnL % = (Realized PnL / Margin) * 100
+                        # Margin = Notional / Leverage
+                        amount = float(t.get("amount", 0))
+                        price = float(t.get("price", 0))
+                        notional = amount * price
+                        if notional > 0:
+                            margin = notional / LEVERAGE
+                            trade_pnl_pct = (realized / margin) * 100
+                            cum_pnl += trade_pnl_pct
+                            
+                            if realized > 0: wins += 1
+                            else: losses += 1
             except: pass
-        pnl_pct = ((equity - start_equity) / start_equity * 100) if start_equity > 0 else 0
+        
+        # 3. Update Table
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
         perf_text = (f"| Total Trades | Wins | Losses | Win Rate | Total PnL (%) |\n| :--- | :--- | :--- | :--- | :--- |\n"
-                     f"| {opened} | {wins} | {losses} | {wr:.1f}% | {pnl_pct:+.2f}% |\n\n"
+                     f"| {opened} | {wins} | {losses} | {wr:.1f}% | {cum_pnl:+.2f}% |\n\n"
                      f"**Last Updated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+        
         content = re.sub(r"<!-- PERFORMANCE_START -->.*?<!-- PERFORMANCE_END -->", f"<!-- PERFORMANCE_START -->\n{perf_text}\n<!-- PERFORMANCE_END -->", content, flags=re.DOTALL)
+        
+        # 4. Save Back
         content = re.sub(r"STARTING_EQUITY: [\d\.]+", f"STARTING_EQUITY: {start_equity}", content)
         content = re.sub(r"ALL_TIME_OPENED: \d+", f"ALL_TIME_OPENED: {opened}", content)
         content = re.sub(r"ALL_TIME_WINS: \d+", f"ALL_TIME_WINS: {wins}", content)
         content = re.sub(r"ALL_TIME_LOSSES: \d+", f"ALL_TIME_LOSSES: {losses}", content)
+        content = re.sub(r"ALL_TIME_CUMULATIVE_PNL: [\-\d\.]+", f"ALL_TIME_CUMULATIVE_PNL: {cum_pnl}", content)
+        content = re.sub(r"LAST_FETCH_TIMESTAMP: \d+", f"LAST_FETCH_TIMESTAMP: {now_ts}", content)
+        
         with open("README.md", "w") as f: f.write(content)
-    except: pass
+        log.info("📝 README.md updated. Wins: %d, Losses: %d, Cum PnL: %.2f%%", wins, losses, cum_pnl)
+    except Exception as e: log.error("❌ README Error: %s", e)
 
 def place_order(exchange, symbol, signal, equity):
     try:
@@ -139,54 +171,47 @@ def place_order(exchange, symbol, signal, equity):
         sl_dist, rr = signal["sl_dist"], signal["rr"]
         sl, tp = lp - sl_dist, lp + (sl_dist * rr)
         
-        # Calculate size in Contracts (crucial for derivatives)
         contract_size = market.get('contractSize', 1)
         if contract_size <= 0: contract_size = 1
         
         raw_size = (equity * RISK_PER_TRADE) / (sl_dist * contract_size)
         
-        # Robust limit fetching (check Market, then General)
         limits = market.get('limits', {})
         max_market = limits.get('market', {}).get('amount', {}).get('max')
         if max_market is None:
-            max_market = limits.get('amount', {}).get('max')
-        if max_market is None:
-            max_market = float('inf')
+            max_market = limits.get('amount', {}).get('max', float('inf'))
             
         max_leverage_size = (equity * LEVERAGE) / (lp * contract_size)
-        
         size = round(min(raw_size, max_market, max_leverage_size), 3)
         
         if size <= 0: return None
-        log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f | Size: %.2f", symbol, lp, sl, tp, size)
+        log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, lp, sl, tp)
         if DRY_RUN: return None
+        
         try: exchange.set_leverage(LEVERAGE, symbol, params={"marginMode": "isolated"})
         except: pass
         try: exchange.set_position_mode(False, symbol)
         except: pass
         
-        # MARKETABLE LIMIT ORDER BYPASS
-        # By pricing a limit order 1% worse than the market, it fills instantly like a market order
-        # but bypasses the ultra-strict "Max Market Size" limits on meme coins.
-        limit_price = lp * 1.01 if signal["side"] == "buy" else lp * 0.99
-        
+        limit_price = lp * 1.01 # 1% slippage bypass
         params = {"marginMode": "isolated", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
-        exchange.create_order(symbol, "limit", signal["side"], size, limit_price, params=params)
+        exchange.create_order(symbol, "limit", "buy", size, limit_price, params=params)
         log.info("✅ Order placed for %s", symbol)
-        return {"symbol": symbol, "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
+        return {"symbol": symbol.split("/")[0], "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
     except Exception as e:
         log.error("❌ Order failed for %s: %s", symbol, e)
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Final Polish) \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Precision) \n" + "═"*60)
     exchange = create_exchange()
-    exchange.load_markets() # Required for size limits
+    exchange.load_markets()
     errors, now = [], datetime.now(timezone.utc)
     try:
         balance = exchange.fetch_balance(params={"type": "futures"})
         equity = float(balance.get("USDT", {}).get("total", 0))
         log.info("── Pass Start | Equity: $%.2f ──", equity)
+        
         trades_executed = []
         for symbol in SYMBOLS:
             try:
@@ -200,12 +225,14 @@ def run():
                         if res: trades_executed.append(res)
             except Exception as e: 
                 if "code" not in str(e): errors.append(f"{symbol}: {e}")
+
         if trades_executed or (now.hour == 0 and now.minute < 6):
             update_readme(equity, exchange, len(trades_executed))
             if trades_executed:
+                sym_list = ", ".join([t['symbol'] for t in trades_executed])
                 rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.8f} | {t['tp']:.8f} | {t['sl']:.8f} |" for t in trades_executed]
                 body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)
-                create_github_issue("🚀 New Trades", body)
+                create_github_issue(f"🚀 New Trades: {sym_list}", body)
             elif now.hour == 0:
                 create_github_issue("📅 Daily Recap", "Bot is running. Stats updated in README.")
     except Exception as e: errors.append(f"Critical: {e}")
