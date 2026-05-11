@@ -21,8 +21,11 @@ def encrypt(data):
 def decrypt(data):
     return cipher_suite.decrypt(data.encode()).decode()
 
+# Database configuration
+DB_PATH = '/Users/johngiles/projects/tradingbot/bot_users.db'
+
 def init_db():
-    conn = sqlite3.connect('bot_users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS Users
                  (telegram_chat_id INTEGER PRIMARY KEY,
@@ -45,7 +48,7 @@ def init_db():
     conn.close()
 
 def upsert_user(chat_id, api_key, api_secret, api_pass, equity):
-    conn = sqlite3.connect('bot_users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -60,7 +63,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, equity):
     conn.close()
 
 def get_user(chat_id):
-    conn = sqlite3.connect('bot_users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
@@ -81,14 +84,14 @@ def get_user(chat_id):
     return None
 
 def set_active(chat_id, active):
-    conn = sqlite3.connect('bot_users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?', (active, chat_id))
     conn.commit()
     conn.close()
 
 def update_user_stats(chat_id, wins, losses, cum_pnl, last_ts):
-    conn = sqlite3.connect('bot_users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''UPDATE Users 
                  SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ? 
@@ -98,7 +101,7 @@ def update_user_stats(chat_id, wins, losses, cum_pnl, last_ts):
     conn.close()
 
 def increment_opened(chat_id):
-    conn = sqlite3.connect('bot_users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('UPDATE Users SET total_trades_opened = total_trades_opened + 1 WHERE telegram_chat_id = ?', (chat_id,))
     conn.commit()

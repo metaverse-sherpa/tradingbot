@@ -144,7 +144,9 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         all_closed.append({
                             "symbol": sym,
                             "timestamp": t['timestamp'],
-                            "net_pnl": net_pnl
+                            "net_pnl": net_pnl,
+                            "price": t['price'],
+                            "amount": t['amount']
                         })
             except: pass
                 
@@ -160,13 +162,107 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for t in last_10:
             import datetime
             dt = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
-            emoji = "🟢" if t['net_pnl'] > 0 else "🔴"
-            msg += f"{emoji} {dt} | {t['symbol']} | ${t['net_pnl']:+.2f}\n"
+            icon = "🚀" if t['net_pnl'] > 0 else "❌"
+            status = "Won" if t['net_pnl'] > 0 else "Lost"
+            
+            # Calculate ROE for the list view
+            try:
+                market = user_ex.market(t['symbol'])
+                contract_size = float(market.get('contractSize', 1))
+                # Initial margin = (Price * Amount * ContractSize) / Leverage
+                initial_margin = (t['price'] * t['amount'] * contract_size) / live_bot_multi.LEVERAGE
+                roe_pct = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
+            except:
+                roe_pct = 0
+            
+            msg += f"{icon} *Trade {status}* ({dt})\n"
+            msg += f"Symbol: `{t['symbol']}`\n"
+            msg += f"PnL: *${t['net_pnl']:+.2f}* | ROE: *{roe_pct:+.2f}%*\n\n"
             
         await update.message.reply_text(msg, parse_mode="Markdown")
         
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching trades: {e}")
+
+async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = database.get_user(update.message.chat_id)
+    if not user:
+        await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
+        return
+        
+    await update.message.reply_text("🔍 Checking your live positions on the exchange...")
+    
+    try:
+        import ccxt
+        user_ex = ccxt.blofin({
+            "apiKey": user['api_key'],
+            "secret": user['api_secret'],
+            "password": user['api_password'],
+            "options": {"defaultType": "swap"},
+        })
+        user_ex.load_markets()
+        
+        import live_bot_multi
+        positions = user_ex.fetch_positions(live_bot_multi.SYMBOLS)
+        active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
+        
+        if not active:
+            await update.message.reply_text("You have no open trades at the moment.")
+            return
+            
+        msg = "🛰 *Your Active Positions*\n\n"
+        for p in active:
+            sym = p['symbol']
+            side = p['side'].upper()
+            entry = float(p['entryPrice'] or 0)
+            upnl = float(p['unrealizedPnl'] or 0)
+            
+            # 1. Calculate Current ROE
+            try:
+                market = user_ex.market(sym)
+                contract_size = float(market.get('contractSize', 1))
+                initial_margin = (entry * float(p['contracts']) * contract_size) / live_bot_multi.LEVERAGE
+                roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
+            except:
+                roe = 0
+                initial_margin = 0
+            
+            # 2. Fetch Target Price and Calculate Target ROE
+            target_roe_str = "N/A"
+            try:
+                # Try fetching ALL algo orders for the account to be safe
+                raw_algo = user_ex.private_get_trade_algo_orders_pending()
+                
+                tp_price = 0
+                if raw_algo and "data" in raw_algo:
+                    for algo in raw_algo["data"]:
+                        # Match by symbol (Blofin uses instId like 'TAO-USDT')
+                        if algo.get('instId') == market['id']:
+                            is_opposite = (side == "LONG" and algo['side'].lower() == "sell") or (side == "SHORT" and algo['side'].lower() == "buy")
+                            if is_opposite:
+                                # Any order with a TP trigger price
+                                tp_price = float(algo.get('tpTriggerPx') or algo.get('triggerPx') or algo.get('tpOrdPx') or 0)
+                                if tp_price > 0: break
+
+                if tp_price > 0:
+                    if side == "LONG":
+                        target_roe = ((tp_price - entry) / entry) * live_bot_multi.LEVERAGE * 100
+                    else: # SHORT
+                        target_roe = ((entry - tp_price) / entry) * live_bot_multi.LEVERAGE * 100
+                    target_roe_str = f"{target_roe:+.1f}%"
+            except:
+                pass
+
+            emoji = "🟢" if upnl >= 0 else "🔴"
+            msg += f"{emoji} *{sym}* ({side})\n"
+            msg += f"Entry: `{entry:.4f}`\n"
+            msg += f"PnL: *${upnl:+.2f}* | ROE: *{roe:+.2f}%*\n"
+            msg += f"Target ROE: *{target_roe_str}*\n\n"
+            
+        await update.message.reply_text(msg, parse_mode="Markdown")
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error fetching positions: {e}")
 
 async def stop_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     database.set_active(update.message.chat_id, False)
@@ -274,14 +370,29 @@ async def trading_engine(application):
                                         roe_pct = 0
                                         
                                     cum_pnl += net_pnl # Add actual USDT profit, not the leveraged ROE %
-                                    if net_pnl > 0: wins += 1
-                                    else: losses += 1
+                                    if net_pnl > 0: 
+                                        wins += 1
+                                        header = "🚀 *Trade Won!*"
+                                    else: 
+                                        losses += 1
+                                        header = "❌ *Trade Lost*"
                                     
-                                    msg = f"🔔 *Trade Closed!*\n\nSymbol: {sym}\nPnL: ${net_pnl:.2f}\nROE: {roe_pct:+.2f}%"
+                                    msg = (
+                                        f"{header}\n\n"
+                                        f"Symbol: `{sym}`\n"
+                                        f"PnL: *${net_pnl:.2f}*\n"
+                                        f"ROE: *{roe_pct:+.2f}%*"
+                                    )
                                     await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
                         except: pass
                     
                     database.update_user_stats(chat_id, wins, losses, cum_pnl, now_ts)
+                    # Update equity in DB so /stats is accurate
+                    conn = sqlite3.connect(database.DB_PATH)
+                    c = conn.cursor()
+                    c.execute('UPDATE Users SET starting_equity = ? WHERE telegram_chat_id = ?', (equity, chat_id))
+                    conn.commit()
+                    conn.close()
                     
                     # --- EXECUTE NEW SIGNALS ---
                     if signals:
@@ -317,6 +428,15 @@ async def trading_engine(application):
             await asyncio.sleep(60) # Wait a minute before retrying to prevent error spam
 
 async def post_init(application: ApplicationBuilder):
+    # Set the bot's command menu (the button in the bottom left of Telegram)
+    await application.bot.set_my_commands([
+        ("stats", "📊 View account performance"),
+        ("opentrades", "🛰 View live active positions"),
+        ("list", "📜 List last 10 closed trades"),
+        ("setup", "⚙️ Configure API keys"),
+        ("stop", "🔴 Pause trading"),
+        ("resume", "🟢 Resume trading"),
+    ])
     # This automatically starts the background engine when the Telegram bot boots up
     asyncio.create_task(trading_engine(application))
 
@@ -331,6 +451,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("setup", setup))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("opentrades", open_trades))
     app.add_handler(CommandHandler("list", list_trades))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
