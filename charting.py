@@ -4,20 +4,38 @@ import os
 
 def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     """
-    Generates a candlestick chart with Green/Red R:R boxes starting from open_ts.
+    Generates a candlestick chart with EMA, BB, RSI, and Green/Red R:R boxes.
     """
-    # 1. Prepare Data for mplfinance
+    df = df.copy()
     df.index = pd.to_datetime(df['timestamp'], unit='ms')
     
+    # 1. Calculate Indicators
+    # EMA 200
+    df["ema"] = df["close"].ewm(span=200, adjust=False).mean()
+    # Bollinger Bands (20, 2)
+    df["bb_mid"] = df["close"].rolling(window=20).mean()
+    std = df["close"].rolling(window=20).std()
+    df["bb_up"] = df["bb_mid"] + (2 * std)
+    df["bb_low"] = df["bb_mid"] - (2 * std)
+    # RSI (14)
+    delta = df["close"].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    df["rsi"] = 100 - (100 / (1 + (gain / (loss + 1e-10))))
+
     # 2. Define the R:R Box logic with 'where' mask
-    # This ensures boxes only start from when the trade opened
     start_time = pd.to_datetime(open_ts, unit='ms')
     where_mask = (df.index >= start_time)
     
-    # Style settings
+    # 3. Setup Plots
+    ap = [
+        mpf.make_addplot(df["ema"], color='#2962FF', width=1.2), # EMA 200 (Blue)
+        mpf.make_addplot(df[["bb_up", "bb_low"]], color='#26a69a', alpha=0.2, width=0.8), # BB (Greenish)
+        mpf.make_addplot(df["rsi"], panel=1, color='#787b86', width=1, secondary_y=False) # RSI (Grey)
+    ]
+
     style = mpf.make_mpf_style(base_mpf_style='charles', gridstyle='', facecolor='#161a1e', edgecolor='#2b2f36')
     
-    # Setup the plot
     filename = f"chart_{symbol.replace('/', '_')}.png"
     filepath = os.path.join(os.getcwd(), filename)
     
@@ -30,13 +48,16 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     
     mpf.plot(df, type='candle', 
              style=style,
-             title=f"\n{symbol} ({side}) - 1H Trade Setup",
-             ylabel='',
+             title=f"\n{symbol} ({side}) - 15M Strategy Setup",
+             ylabel='Price (USDT)',
+             ylabel_lower='RSI',
+             addplot=ap,
              hlines=hlines_dict,
              fill_between=[fb_tp, fb_sl],
              savefig=dict(fname=filepath, dpi=100, bbox_inches='tight'),
              volume=False,
-             figratio=(16,9),
-             figscale=1.2)
+             figratio=(16,10),
+             figscale=1.2,
+             panel_ratios=(6,2)) # RSI panel is smaller
              
     return filepath

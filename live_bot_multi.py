@@ -78,24 +78,35 @@ def create_github_issue(subject, body):
         requests.post(f"https://api.github.com/repos/{repo}/issues", json={"title": subject, "body": body, "assignees": [owner]}, headers={"Authorization": f"token {token}"})
     except: pass
 
-def compute_signal(df, symbol_name):
+import strategies
+
+def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
+    """
+    Modular signal computation using the selected strategy.
+    """
+    strat = strategies.get_strategy(strategy_name)
+    side = strat.check_signal(df)
+    
+    if not side:
+        return None
+        
+    # Standardize output for the engine
     cfg = SYMBOL_CONFIGS[symbol_name]
-    df["ema"] = df["close"].ewm(span=200, adjust=False).mean()
-    df["bb_mid"] = df["close"].rolling(20).mean()
-    std = df["close"].rolling(20).std()
-    df["bb_bot"] = df["bb_mid"] - (cfg["bb"] * std)
+    
+    # ATR for SL calculation (common across strategies)
     tr = pd.concat([df["high"] - df["low"], abs(df["high"] - df["close"].shift()), abs(df["low"] - df["close"].shift())], axis=1).max(axis=1)
     atr = tr.rolling(14).mean()
-    delta = df["close"].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    rs = gain / (loss + 1e-10)
-    rsi = 100 - (100 / (1 + rs))
     last = df.iloc[-2]
-    if datetime.now(timezone.utc).hour in BAD_HOURS_UTC: return None
-    if last["close"] > last["ema"] and last["close"] < last["bb_bot"] and rsi.iloc[-2] < cfg["rsi"]:
-        return {"side": "buy", "entry": last["close"], "sl_dist": atr.iloc[-2] * cfg["atr"], "rr": cfg["rr"]}
-    return None
+    
+    if datetime.now(timezone.utc).hour in BAD_HOURS_UTC: 
+        return None
+        
+    return {
+        "side": "buy" if side == "LONG" else "sell", 
+        "entry": last["close"], 
+        "sl_dist": atr.iloc[-2] * cfg["atr"], 
+        "rr": cfg["rr"]
+    }
 
 def update_readme(equity, exchange, new_trades_count):
     try:

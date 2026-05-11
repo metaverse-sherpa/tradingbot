@@ -1,8 +1,12 @@
 import os
 import logging
+import asyncio
+import ccxt
+import pandas as pd
+import live_bot_multi
 from dotenv import load_dotenv
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 import database
 
 # Load environment variables
@@ -15,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Quick reply buttons for daily monitoring
-    keyboard = [['/opentrades', '/list', '/balance', '/stats']]
+    keyboard = [['/opentrades', '/list', '/balance', '/stats'], ['/strategy', '/docs', '/setup']]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
     await update.message.reply_text(
@@ -160,16 +164,17 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wr = (wins / total_closed * 100) if total_closed > 0 else 0
     overall_pnl_pct = (overall_pnl_usdt / equity) * 100 if equity > 0 else 0
     daily_pnl_pct = (daily_pnl_usdt / equity) * 100 if equity > 0 else 0
+    upnl_pct = (total_unrealized_pnl / equity) * 100 if equity > 0 else 0
     
     msg = f"📊 *Your Trading Performance*\n"
     msg += "_(Includes Open Positions PnL)_\n\n"
     msg += f"Overall PnL: *{overall_pnl_pct:+.2f}% (${overall_pnl_usdt:+.2f})*\n"
-    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}% (${daily_pnl_usdt:+.2f})*\n\n"
+    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}% (${daily_pnl_usdt:+.2f})*\n"
+    flame = " 🔥" if wr > 50 else ""
+    msg += f"Win Rate: *{wr:.1f}%{flame} ({wins} wins | {losses} losses)*\n\n"
     msg += f"Status: {'🟢 Active' if user['is_active'] else '🔴 Paused'}\n"
-    msg += f"Open Positions: *{open_positions_count}*\n"
+    msg += f"Open Positions: *{open_positions_count} ({upnl_pct:+.2f}%)*\n"
     msg += f"Closed Trades: *{total_closed}*\n"
-    msg += f"Wins: {wins} | Losses: {losses}\n"
-    msg += f"Win Rate: {wr:.1f}%\n"
     
     await update.message.reply_text(msg, parse_mode="Markdown")
 
@@ -322,7 +327,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chart_path = None
             try:
                 open_ts = int(p.get('info', {}).get('createTime') or 0)
-                ohlcv = user_ex.fetch_ohlcv(sym, timeframe='1h', limit=100)
+                ohlcv = user_ex.fetch_ohlcv(sym, timeframe='15m', limit=100)
                 df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                 chart_path = charting.generate_trade_chart(sym, df, entry, tp_price, sl_price, side, open_ts)
             except Exception as e:
@@ -348,6 +353,62 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching positions: {e}")
+
+async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user = database.get_user(chat_id)
+    if not user:
+        await update.message.reply_text("Please run /setup first.")
+        return
+        
+    keyboard = [
+        [InlineKeyboardButton("Mean Reversion Scalper (Active)", callback_data="set_strat_mean")],
+        [InlineKeyboardButton("Crypto Chart Patterns (Coming Soon)", callback_data="set_strat_soon")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    current = user.get('strategy', 'Mean Reversion Scalper')
+    await update.message.reply_text(
+        f"🎯 *Strategy Selection*\n\n"
+        f"Your current strategy: *{current}*\n\n"
+        f"Choose a strategy for your account:",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
+
+async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "set_strat_mean":
+        database.update_user_strategy(query.message.chat.id, "Mean Reversion Scalper")
+        await query.edit_message_text("✅ Strategy set to: *Mean Reversion Scalper*", parse_mode="Markdown")
+    elif query.data == "set_strat_soon":
+        await query.answer("🚧 This strategy is coming soon!", show_alert=True)
+
+async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Provides a brief tutorial of all bot commands."""
+    help_text = (
+        "📖 *Metaverse Sherpa Bot - User Manual*\n\n"
+        "Welcome! Here is a guide to everything your bot can do:\n\n"
+        
+        "📊 *Trading & Performance*\n"
+        "• /stats - Your dashboard. Shows Overall PnL, Daily PnL (last 24h), and Win Rate (including live trades).\n"
+        "• /opentrades - Visual check. Fetches all live positions and generates *1H Candlestick Charts* with TP/SL zones.\n"
+        "• /list - History. Shows your last 10 closed trades directly from the exchange.\n\n"
+        
+        "💰 *Account Management*\n"
+        "• /balance - Check your wallet. Shows available USDT and *Total Account Value* (Cash + Margin + PnL).\n"
+        "• /setup - The engine room. Connect or update your Blofin API keys securely.\n\n"
+        
+        "🎯 *Control & Strategy*\n"
+        "• /strategy - Swap brains. Switch between different trading algorithms (e.g., Mean Reversion).\n"
+        "• /stop - Emergency brake. Pauses the trading engine for your account.\n"
+        "• /resume - Green light. Restarts the automated engine.\n\n"
+        
+        "_Need more help? Just tap any command to try it out!_"
+    )
+    await update.message.reply_text(help_text, parse_mode="Markdown")
 
 async def stop_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     database.set_active(update.message.chat_id, False)
@@ -404,169 +465,101 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching balance: {e}")
 
-import asyncio
-import ccxt
-import pandas as pd
-import live_bot_multi
-
 async def trading_engine(application):
     logger.info("Starting Multi-Tenant Engine Task...")
     while True:
         try:
-            logger.info("Engine Pass: Checking signals for all active Telegram users...")
+            # 1. Get all active users
+            active_users = database.get_all_active_users()
+            if not active_users:
+                await asyncio.sleep(60)
+                continue
             
-            # 1. We only need ONE public exchange object to compute signals
-            public_exchange = ccxt.blofin({"options": {"defaultType": "swap"}})
-            public_exchange.load_markets()
+            # 2. Group users by strategy to optimize API calls
+            strategy_groups = {}
+            for user in active_users:
+                strat = user.get('strategy', 'Mean Reversion Scalper')
+                if strat not in strategy_groups:
+                    strategy_groups[strat] = []
+                strategy_groups[strat].append(user)
             
-            signals = {}
-            # 2. Compute signals ONCE to save massive amounts of API rate limits
-            for symbol in live_bot_multi.SYMBOLS:
-                try:
-                    ohlcv = public_exchange.fetch_ohlcv(symbol, live_bot_multi.TIMEFRAME, limit=live_bot_multi.CANDLE_LIMIT)
-                    df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
-                    sig = live_bot_multi.compute_signal(df, symbol.split("/")[0])
-                    if sig:
-                        signals[symbol] = sig
-                except Exception as e:
-                    pass
+            logger.info(f"Engine Pass: Processing {len(active_users)} users across {len(strategy_groups)} strategies...")
             
-            if signals:
-                logger.info(f"Engine found signals on: {list(signals.keys())}")
-            else:
-                logger.info("No actionable signals this pass, but syncing stats...")
+            # 3. Process each strategy group
+            public_ex = ccxt.blofin({"options": {"defaultType": "swap"}})
+            public_ex.load_markets()
+            
+            for strat_name, users in strategy_groups.items():
+                signals = {}
+                # Calculate signals once for this strategy
+                for symbol in live_bot_multi.SYMBOLS:
+                    try:
+                        ohlcv = public_ex.fetch_ohlcv(symbol, "15m", limit=100)
+                        df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+                        sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
+                        if sig:
+                            signals[symbol] = sig
+                    except: pass
                 
-            # 3. Fetch all active users from DB (MUST run every pass for stat syncing)
-            import sqlite3
-            # 3. Pull all ACTIVE users from database
-            conn = sqlite3.connect(database.DB_PATH)
-            c = conn.cursor()
-            c.execute('SELECT telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password FROM Users WHERE is_active = 1')
-            active_users = c.fetchall()
-            conn.close()
-            
-            for row in active_users:
-                chat_id = row[0]
-                api_key = database.decrypt(row[1])
-                api_secret = database.decrypt(row[2])
-                api_pass = database.decrypt(row[3])
-                
-                try:
-                    # 4. Create an isolated connection for THIS user
-                    user_ex = ccxt.blofin({
-                        "apiKey": api_key,
-                        "secret": api_secret,
-                        "password": api_pass,
-                        "options": {"defaultType": "swap"},
-                    })
-                    user_ex.load_markets()
-                    
-                    balance = user_ex.fetch_balance(params={"type": "futures"})
-                    equity = float(balance.get("USDT", {}).get("total", 0))
-                    
-                    # --- STATS SYNC FOR USER ---
-                    user_data = database.get_user(chat_id)
-                    last_ts = user_data.get('last_ts', 0)
-                    
-                    import time
-                    if last_ts == 0: 
-                        last_ts = int((time.time() - 172800) * 1000) # 48h lookback
+                # Execute for all users in this group
+                for user in users:
+                    try:
+                        chat_id = user['chat_id']
+                        user_ex = ccxt.blofin({
+                            "apiKey": user['api_key'],
+                            "secret": user['api_secret'],
+                            "password": user['api_password'],
+                            "options": {"defaultType": "swap"},
+                        })
                         
-                    wins = user_data['wins']
-                    losses = user_data['losses']
-                    cum_pnl = user_data.get('cum_pnl', 0.0)
-                    now_ts = int(time.time() * 1000)
-                    
-                    for sym in live_bot_multi.SYMBOLS:
-                        try:
-                            trades = user_ex.fetch_my_trades(sym, last_ts)
-                            for t in trades:
-                                if t['timestamp'] <= last_ts: continue
-                                
-                                info = t.get("info", {})
-                                gross_pnl = float(info.get("fillPnl") or 0)
-                                
-                                if gross_pnl != 0:
-                                    # Estimate round-trip fee
-                                    fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                                    net_pnl = gross_pnl - (fee * 2)
-                                    
-                                    # Calculate ROE exactly like Blofin UI
-                                    try:
-                                        market = user_ex.market(sym)
-                                        contract_size = float(market.get('contractSize', 1))
-                                        price = float(t['price'])
-                                        size = float(t['amount'])
-                                        initial_margin = (price * size * contract_size) / live_bot_multi.LEVERAGE
-                                        roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                                    except:
-                                        roe_pct = 0
+                        balance = user_ex.fetch_balance(params={"type": "futures"})
+                        equity = float(balance.get("USDT", {}).get("total", 0))
+                        
+                        # Sync stats and history
+                        # We use the existing helper but need to handle the returns
+                        # (The helper already sends notifications for closed trades)
+                        database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
+                        
+                        # Execute signals
+                        if signals:
+                            for symbol, sig in signals.items():
+                                pos = user_ex.fetch_positions([symbol])
+                                if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                                    if live_bot_multi.DRY_RUN:
+                                        logger.info(f"DRY RUN: skipping order for {chat_id}")
+                                        continue
                                         
-                                    cum_pnl += net_pnl # Add actual USDT profit, not the leveraged ROE %
-                                    if net_pnl > 0: 
-                                        wins += 1
-                                        header = "🚀 *Trade Won!*"
-                                    else: 
-                                        losses += 1
-                                        header = "❌ *Trade Lost*"
-                                    
-                                    msg = (
-                                        f"{header}\n\n"
-                                        f"Symbol: `{sym}`\n"
-                                        f"PnL: *${net_pnl:.2f}*\n"
-                                        f"ROE: *{roe_pct:+.2f}%*"
-                                    )
-                                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
-                        except: pass
-                    
-                    database.update_user_stats(chat_id, wins, losses, cum_pnl, now_ts)
-                    # Update equity in DB so /stats is accurate
-                    conn = sqlite3.connect(database.DB_PATH)
-                    c = conn.cursor()
-                    c.execute('UPDATE Users SET starting_equity = ? WHERE telegram_chat_id = ?', (equity, chat_id))
-                    conn.commit()
-                    conn.close()
-                    
-                    # --- EXECUTE NEW SIGNALS ---
-                    if signals:
-                        for sym, sig in signals.items():
-                            pos = user_ex.fetch_positions([sym])
-                            if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                                
-                                if live_bot_multi.DRY_RUN:
-                                    logger.info(f"DRY RUN: skipping real order for Telegram user {chat_id}")
-                                    continue
-                                
-                                res = live_bot_multi.place_order(user_ex, sym, sig, equity)
-                                if res:
-                                    database.increment_opened(chat_id)
-                                    msg = (
-                                        f"🚀 *New Trade Executed!*\n\n"
-                                        f"Symbol: {res['symbol']}\n"
-                                        f"Side: {res['side']}\n"
-                                        f"Size: {res['size']}\n"
-                                        f"Entry: {res['entry']}\n"
-                                        f"TP: {res['tp']}\n"
-                                        f"SL: {res['sl']}"
-                                    )
-                                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
-                except Exception as e:
-                    logger.error(f"User {chat_id} trade/sync failed: {e}")
-                
-            # Wait 5 minutes before checking again
+                                    res = live_bot_multi.place_order(user_ex, symbol, sig, equity)
+                                    if res:
+                                        database.increment_opened(chat_id)
+                                        msg = (
+                                            f"🚀 *{strat_name}* SIGNAL!\n\n"
+                                            f"Symbol: *{res['symbol']}*\n"
+                                            f"Entry: `{res['entry']:.8f}`\n"
+                                            f"TP: `{res['tp']:.8f}`\n"
+                                            f"SL: `{res['sl']:.8f}`"
+                                        )
+                                        await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                    except Exception as e:
+                        logger.error(f"Error for user {user.get('chat_id')}: {e}")
+            
+            # Wait 5 minutes before next pass
             await asyncio.sleep(300)
             
         except Exception as e:
             logger.error(f"Engine pass critical failure: {e}")
-            await asyncio.sleep(60) # Wait a minute before retrying to prevent error spam
+            await asyncio.sleep(60)
 
 async def post_init(application: ApplicationBuilder):
     # Set the bot's command menu (the button in the bottom left of Telegram)
     await application.bot.set_my_commands([
+        ("docs", "📖 View user manual & tutorials"),
+        ("help", "❓ Get help & command guide"),
         ("stats", "📊 View account performance"),
         ("opentrades", "🛰 View live active positions"),
         ("list", "📜 List last 10 closed trades"),
         ("balance", "💰 Check available USDT balance"),
+        ("strategy", "🎯 Select trading strategy"),
         ("setup", "⚙️ Configure API keys"),
         ("stop", "🔴 Pause trading"),
         ("resume", "🟢 Resume trading"),
@@ -583,11 +576,15 @@ def main():
     
     # Register Commands
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("docs", docs))
+    app.add_handler(CommandHandler("help", docs))
     app.add_handler(CommandHandler("setup", setup))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("opentrades", open_trades))
     app.add_handler(CommandHandler("list", list_trades))
     app.add_handler(CommandHandler("balance", balance_command))
+    app.add_handler(CommandHandler("strategy", strategy_command))
+    app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
     

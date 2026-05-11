@@ -1,12 +1,11 @@
 import sqlite3
 import os
+import time
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# We generate a master encryption key if it doesn't exist
-# This ensures API keys are NEVER saved in plain text
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
     ENCRYPTION_KEY = Fernet.generate_key().decode()
@@ -21,7 +20,6 @@ def encrypt(data):
 def decrypt(data):
     return cipher_suite.decrypt(data.encode()).decode()
 
-# Database configuration
 DB_PATH = '/Users/johngiles/projects/tradingbot/bot_users.db'
 
 def init_db():
@@ -34,14 +32,19 @@ def init_db():
                   blofin_api_password TEXT,
                   starting_equity REAL,
                   is_active BOOLEAN,
-                  total_wins INTEGER,
-                  total_losses INTEGER,
-                  total_trades_opened INTEGER)''')
+                  total_wins INTEGER DEFAULT 0,
+                  total_losses INTEGER DEFAULT 0,
+                  total_trades_opened INTEGER DEFAULT 0,
+                  cumulative_pnl REAL DEFAULT 0.0,
+                  last_fetch_timestamp INTEGER DEFAULT 0,
+                  strategy TEXT DEFAULT 'Mean Reversion Scalper')''')
     
-    # Try to add new columns if they don't exist (for seamless upgrades)
+    # Ensure columns exist for older databases
     try: c.execute("ALTER TABLE Users ADD COLUMN cumulative_pnl REAL DEFAULT 0.0")
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN last_fetch_timestamp INTEGER DEFAULT 0")
+    except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN strategy TEXT DEFAULT 'Mean Reversion Scalper'")
     except: pass
     
     conn.commit()
@@ -50,22 +53,22 @@ def init_db():
 def upsert_user(chat_id, api_key, api_secret, api_pass, equity):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active)
+                 VALUES (?, ?, ?, ?, ?, ?)
                  ON CONFLICT(telegram_chat_id) DO UPDATE SET
                  blofin_api_key=excluded.blofin_api_key,
                  blofin_api_secret=excluded.blofin_api_secret,
                  blofin_api_password=excluded.blofin_api_password,
                  starting_equity=excluded.starting_equity,
                  is_active=excluded.is_active''',
-              (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), equity, True, 0, 0, 0, 0.0, 0))
+              (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), equity, True))
     conn.commit()
     conn.close()
 
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -78,25 +81,32 @@ def get_user(chat_id):
             "wins": row[5],
             "losses": row[6],
             "opened": row[7],
-            "cum_pnl": row[8] if len(row) > 8 and row[8] is not None else 0.0,
-            "last_ts": row[9] if len(row) > 9 and row[9] is not None else 0
+            "cum_pnl": row[8] or 0.0,
+            "last_ts": row[9] or 0,
+            "strategy": row[10] or 'Mean Reversion Scalper',
+            "chat_id": chat_id
         }
     return None
 
-def set_active(chat_id, active):
+def get_all_active_users():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?', (active, chat_id))
+    c.execute('SELECT telegram_chat_id FROM Users WHERE is_active = 1')
+    chat_ids = [row[0] for row in c.fetchall()]
+    conn.close()
+    return [get_user(cid) for cid in chat_ids]
+
+def set_active(chat_id, is_active):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?", (1 if is_active else 0, chat_id))
     conn.commit()
     conn.close()
 
-def update_user_stats(chat_id, wins, losses, cum_pnl, last_ts):
+def update_user_strategy(chat_id, strategy_name):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''UPDATE Users 
-                 SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ? 
-                 WHERE telegram_chat_id = ?''', 
-              (wins, losses, cum_pnl, last_ts, chat_id))
+    c.execute("UPDATE Users SET strategy = ? WHERE telegram_chat_id = ?", (strategy_name, chat_id))
     conn.commit()
     conn.close()
 
@@ -107,6 +117,68 @@ def increment_opened(chat_id):
     conn.commit()
     conn.close()
 
-if __name__ == "__main__":
-    init_db()
-    print("Database initialized successfully.")
+def update_user_stats_from_engine(chat_id, equity, exchange, application):
+    """
+    Syncs trades from exchange and updates DB stats.
+    Sends Telegram notifications for closed trades.
+    """
+    user = get_user(chat_id)
+    if not user: return
+    
+    last_ts = user['last_ts']
+    if last_ts == 0:
+        last_ts = int((time.time() - 172800) * 1000) # 48h
+        
+    wins = user['wins']
+    losses = user['losses']
+    cum_pnl = user['cum_pnl']
+    now_ts = int(time.time() * 1000)
+    
+    import live_bot_multi
+    new_closed = []
+    
+    for sym in live_bot_multi.SYMBOLS:
+        try:
+            trades = exchange.fetch_my_trades(sym, last_ts)
+            for t in trades:
+                if t['timestamp'] <= last_ts: continue
+                
+                info = t.get("info", {})
+                gross_pnl = float(info.get("fillPnl") or 0)
+                
+                if gross_pnl != 0:
+                    fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                    net_pnl = gross_pnl - (fee * 2)
+                    
+                    try:
+                        market = exchange.market(sym)
+                        contract_size = float(market.get('contractSize', 1))
+                        initial_margin = (float(t['price']) * float(t['amount']) * contract_size) / 20
+                        roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                    except: roe_pct = 0
+                    
+                    cum_pnl += net_pnl
+                    if net_pnl > 0:
+                        wins += 1
+                        header = "🚀 *Trade Won!*"
+                    else:
+                        losses += 1
+                        header = "❌ *Trade Lost*"
+                        
+                    new_closed.append({
+                        "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*"
+                    })
+        except: pass
+        
+    # Update DB
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''UPDATE Users SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ?, starting_equity = ?
+                 WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, now_ts, equity, chat_id))
+    conn.commit()
+    conn.close()
+    
+    # Notify User
+    import asyncio
+    for nc in new_closed:
+        asyncio.create_task(application.bot.send_message(chat_id=chat_id, text=nc['msg'], parse_mode="Markdown"))
