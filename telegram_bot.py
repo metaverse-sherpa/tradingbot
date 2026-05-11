@@ -168,8 +168,9 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     daily_pnl_pct = (daily_pnl_usdt / equity) * 100 if equity > 0 else 0
     upnl_pct = (total_unrealized_pnl / equity) * 100 if equity > 0 else 0
     
-    overall_pnl_usdt_str = f"${overall_pnl_usdt:+.2f}" if not user['hide_dollars'] else "****"
-    daily_pnl_usdt_str = f"${daily_pnl_usdt:+.2f}" if not user['hide_dollars'] else "****"
+    hide = user.get('hide_dollars', False)
+    overall_pnl_usdt_str = f"${overall_pnl_usdt:+.2f}" if not hide else "PROTECTED"
+    daily_pnl_usdt_str = f"${daily_pnl_usdt:+.2f}" if not hide else "PROTECTED"
     
     msg = f"📊 *Your Trading Performance*\n"
     msg += "_(Includes Open Positions PnL)_\n\n"
@@ -427,14 +428,13 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 
-async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    user = database.get_user(chat_id)
-    
+def get_settings_ui(user):
     privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
+    bot_status = "🟢 ACTIVE" if user['is_active'] else "🔴 PAUSED"
     
     msg = (
-        f"⚙️ *User Settings*\n\n"
+        f"⚙️ *Cyber-Sherpa Settings*\n\n"
+        f"Status: *{bot_status}*\n"
         f"Strategy: *{user['strategy']}*\n"
         f"Dollar PnL: *{privacy_status}*\n\n"
         f"Handle: @metaversesherpa_trading_bot\n"
@@ -442,9 +442,24 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     keyboard = [
         [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
-        [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")]
+        [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if user['is_active']:
+        keyboard.append([InlineKeyboardButton("🔴 Stop Trading", callback_data="toggle_active")])
+    else:
+        keyboard.append([InlineKeyboardButton("🟢 Resume Trading", callback_data="toggle_active")])
+        
+    return msg, InlineKeyboardMarkup(keyboard)
+
+async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user = database.get_user(chat_id)
+    if not user:
+        await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
+        return
+        
+    msg, reply_markup = get_settings_ui(user)
     await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -461,29 +476,30 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         database.update_user_preference(chat_id, "hide_dollars", 1 if new_val else 0)
         await query.answer("✅ Privacy Mode updated!")
         
-        # Refresh the user object from database to get latest state
-        user = database.get_user(chat_id)
-        
-        privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
-        msg = (
-            f"⚙️ *User Settings*\n\n"
-            f"Strategy: *{user['strategy']}*\n"
-            f"Dollar PnL: *{privacy_status}*\n\n"
-            f"Handle: @metaversesherpa_trading_bot\n"
-        )
-        keyboard = [
-            [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
-            [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")]
-        ]
-        try:
-            await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-        except BadRequest as e:
-            if "Message is not modified" not in str(e):
-                raise e
-    
+    elif query.data == "toggle_active":
+        new_val = not user['is_active']
+        database.update_user_active(chat_id, 1 if new_val else 0)
+        status_txt = "Bot Resumed! 🟢" if new_val else "Bot Stopped! 🔴"
+        await query.answer(status_txt)
+
     elif query.data == "strategy_menu":
         await query.answer()
-        await strategy_command(update, context) # Re-use existing strategy menu logic
+        # Strategy selection buttons
+        keyboard = [
+            [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
+            [InlineKeyboardButton("🚧 Coming Soon...", callback_data="set_strat_soon")]
+        ]
+        await query.edit_message_text("🎯 *Select Trading Strategy*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    # Refresh and show settings UI
+    user = database.get_user(chat_id)
+    msg, reply_markup = get_settings_ui(user)
+    try:
+        await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+    except BadRequest as e:
+        if "Message is not modified" not in str(e):
+            raise e
 
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -712,18 +728,14 @@ async def trading_engine(application):
 async def post_init(application: ApplicationBuilder):
     # Set the bot's command menu (the button in the bottom left of Telegram)
     await application.bot.set_my_commands([
-        ("privacy", "🔒 Toggle hide/show dollar PnL"),
-        ("settings", "⚙️ Bot settings & privacy"),
-        ("docs", "📖 View user manual & tutorials"),
-        ("help", "❓ Get help & command guide"),
-        ("stats", "📊 View account performance"),
         ("opentrades", "🛰 View live active positions"),
         ("list", "📜 List last 10 closed trades"),
+        ("stats", "📊 View account performance"),
         ("balance", "💰 Check available USDT balance"),
-        ("strategy", "🎯 Select trading strategy"),
-        ("setup", "⚙️ Configure API keys"),
-        ("stop", "🔴 Pause trading"),
-        ("resume", "🟢 Resume trading"),
+        ("help", "❓ Get help & command guide"),
+        ("settings", "⚙️ Bot settings & privacy"),
+        ("docs", "📖 View user manual & tutorials"),
+        ("reset", "🔄 Reconfigure API keys"),
     ])
     # This automatically starts the background engine when the Telegram bot boots up
     asyncio.create_task(trading_engine(application))
@@ -742,13 +754,14 @@ def main():
     app.add_handler(CommandHandler("docs", docs))
     app.add_handler(CommandHandler("help", docs))
     app.add_handler(CommandHandler("setup", setup))
+    app.add_handler(CommandHandler("reset", setup))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("opentrades", open_trades))
     app.add_handler(CommandHandler("list", list_trades))
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))

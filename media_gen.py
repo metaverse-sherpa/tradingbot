@@ -59,10 +59,12 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     w_h = draw.textlength(handle_text, font=font_handle)
     draw.text((base_img.width - w_h - 20, base_img.height - 50), handle_text, font=font_handle, fill=(255, 255, 255, 180))
     
+    os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
     save_filename = f"pnl_card_{user_id}_{clean_sym.replace('/', '_')}.png"
-    combined.convert("RGB").save(save_filename, "JPEG", quality=95)
-    return save_filename
+    save_path = os.path.join("pnl_cards", save_filename)
+    combined.convert("RGB").save(save_path, "JPEG", quality=95)
+    return save_path
 
 def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=""):
     """
@@ -115,7 +117,9 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     w_h = draw.textlength(handle_text, font=font_handle)
     draw.text((base_img.width - w_h - 20, base_img.height - 50), handle_text, font=font_handle, fill=(255, 255, 255, 180))
     
+    os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
     save_filename = f"stats_card_{user_id}.png"
-    combined.convert("RGB").save(save_filename, "JPEG", quality=95)
-    return save_filename
+    save_path = os.path.join("pnl_cards", save_filename)
+    combined.convert("RGB").save(save_path, "JPEG", quality=95)
+    return save_path

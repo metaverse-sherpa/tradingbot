@@ -21,6 +21,7 @@ csv/
 *.png
 *.jpg
 *.jpeg
+pnl_cards/
 results/
 bot_users.db
 

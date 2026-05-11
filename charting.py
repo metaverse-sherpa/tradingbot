@@ -32,10 +32,13 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     
     # 3. Vibrant Neon Addplots
     ap = [
-        # EMA 200 (Bright Neon Yellow)
-        mpf.make_addplot(df["ema"], color='#FFEB3B', width=1.5, alpha=0.8),
-        # Bollinger Bands (Vibrant Cyan)
-        mpf.make_addplot(df[["bb_up", "bb_low"]], color='#00E5FF', alpha=0.3, width=0.8),
+        
+        # Bollinger Bands - Upper/Lower (Vibrant Cyan, thicker)
+        mpf.make_addplot(df["bb_up"], color='#00E5FF', alpha=0.5, width=1.2),
+        mpf.make_addplot(df["bb_low"], color='#00E5FF', alpha=0.5, width=1.2),
+        # Bollinger Mid (Subtle Dashed Cyan)
+        mpf.make_addplot(df["bb_mid"], color='#00E5FF', alpha=0.3, width=0.8, linestyle='--'),
+        
         # TP Line (Neon Green) - Only starts from trade open
         mpf.make_addplot(tp_line, color='#00C853', width=1.8, linestyle='-'),
         # Entry Line (White) - Only starts from trade open
@@ -53,19 +56,21 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
         marketcolors=mpf.make_marketcolors(up='#00C853', down='#FF1744', inherit=True)
     )
     
+    os.makedirs("pnl_cards", exist_ok=True)
     filename = f"chart_{symbol.replace('/', '_')}.png"
-    filepath = os.path.join(os.getcwd(), filename)
+    filepath = os.path.join(os.getcwd(), "pnl_cards", filename)
     
-    # Shaded R:R Boxes
+    # Shaded Areas (R:R Boxes + Bollinger Cloud)
     fb_tp = dict(y1=entry, y2=tp, where=where_mask, color='#00C853', alpha=0.10)
     fb_sl = dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.10)
+    fb_bb = dict(y1=df["bb_up"].values, y2=df["bb_low"].values, color='#00E5FF', alpha=0.05)
     
     mpf.plot(df, type='candle', 
              style=style,
              title=f"\n{symbol} ({side}) - 15M Strategy Setup",
              ylabel='Price (USDT)',
              addplot=ap,
-             fill_between=[fb_tp, fb_sl],
+             fill_between=[fb_tp, fb_sl, fb_bb],
              savefig=dict(fname=filepath, dpi=120, bbox_inches='tight'),
              volume=False,
              figratio=(16,9),
