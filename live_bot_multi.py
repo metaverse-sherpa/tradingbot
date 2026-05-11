@@ -119,27 +119,46 @@ def update_readme(equity, exchange, new_trades_count):
         
         # 2. Fetch GLOBAL Position History
         try:
-            # We omit 'instId' to fetch history for ALL symbols at once
-            raw_history = exchange.private_get_trade_position_history({})
+            # Bypass CCXT wrappers completely and hit the Blofin endpoint directly
+            raw_history = exchange.request('/api/v1/trade/position-history', 'private', 'GET', {})
             data_list = raw_history.get('data', [])
-            log.info("📡 Fetched %d items from Blofin history", len(data_list))
+            log.info("📡 Fetched %d items from Blofin raw position history", len(data_list))
             
             for p in data_list:
-                # Blofin uses 'utime' (updated time) in ms
-                p_ts = int(p.get('utime', 0))
+                p_ts = int(p.get('utime', p.get('cTime', 0)))
                 if p_ts <= last_ts: continue
                 
-                realized = float(p.get("realizedPnl", 0))
-                # ROE % is usually in the 'roe' field as a float (0.28 = 28%)
+                realized = float(p.get("realizedPnl", p.get("pnl", 0)))
                 pnl_pct = float(p.get("roe", 0)) * 100
                 
                 if realized != 0:
                     cum_pnl += pnl_pct
                     if realized > 0: wins += 1
                     else: losses += 1
-                    log.info("📊 Found closed trade: %s | PnL: %.2f | ROE: %.2f%%", p.get('instId'), realized, pnl_pct)
+                    log.info("📊 Found closed trade: %s | PnL: %.2f | ROE: %.2f%%", p.get('instId', 'Unknown'), realized, pnl_pct)
         except Exception as e:
-            log.error("❌ Global history fetch failed: %s", e)
+            log.warning("⚠️ Raw request failed (%s). Falling back to ledger bills...", e)
+            try:
+                # Fallback: Read the account ledger for "Realized PnL" bills
+                ledger = exchange.fetch_ledger(None, last_ts)
+                for item in ledger:
+                    if item['timestamp'] <= last_ts: continue
+                    if item['amount'] == 0: continue
+                    
+                    info = item.get('info', {})
+                    bill_type = str(info.get('billType', info.get('type', ''))).lower()
+                    
+                    if 'pnl' in bill_type or 'realized' in bill_type or item.get('type') == 'realized_pnl':
+                        realized = float(item['amount'])
+                        if realized != 0:
+                            # Estimate ROE % based on the fixed risk we use
+                            pnl_pct = (realized / (equity * RISK_PER_TRADE)) * 100
+                            cum_pnl += pnl_pct
+                            if realized > 0: wins += 1
+                            else: losses += 1
+                            log.info("📊 Found ledger PnL: %.2f | Approx ROE: %.2f%%", realized, pnl_pct)
+            except Exception as e2:
+                log.error("❌ Both history and ledger fetches failed: %s", e2)
         
         # 3. Update Table
         wr = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
