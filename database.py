@@ -46,6 +46,8 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN strategy TEXT DEFAULT 'Mean Reversion Scalper'")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN hide_dollars BOOLEAN DEFAULT 0")
+    except: pass
     
     conn.commit()
     conn.close()
@@ -84,6 +86,7 @@ def get_user(chat_id):
             "cum_pnl": row[8] or 0.0,
             "last_ts": row[9] or 0,
             "strategy": row[10] or 'Mean Reversion Scalper',
+            "hide_dollars": bool(row[11]) if len(row) > 11 else False,
             "chat_id": chat_id
         }
     return None
@@ -103,10 +106,13 @@ def set_active(chat_id, is_active):
     conn.commit()
     conn.close()
 
-def update_user_strategy(chat_id, strategy_name):
+def update_user_preference(chat_id, key, value):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("UPDATE Users SET strategy = ? WHERE telegram_chat_id = ?", (strategy_name, chat_id))
+    # Map key to column name
+    cols = {"strategy": "strategy", "hide_dollars": "hide_dollars"}
+    if key in cols:
+        c.execute(f"UPDATE Users SET {cols[key]} = ? WHERE telegram_chat_id = ?", (value, chat_id))
     conn.commit()
     conn.close()
 

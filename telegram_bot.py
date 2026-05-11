@@ -4,6 +4,7 @@ import asyncio
 import ccxt
 import pandas as pd
 import live_bot_multi
+import media_gen
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
@@ -166,10 +167,13 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     daily_pnl_pct = (daily_pnl_usdt / equity) * 100 if equity > 0 else 0
     upnl_pct = (total_unrealized_pnl / equity) * 100 if equity > 0 else 0
     
+    overall_pnl_usdt_str = f"${overall_pnl_usdt:+.2f}" if not user['hide_dollars'] else "****"
+    daily_pnl_usdt_str = f"${daily_pnl_usdt:+.2f}" if not user['hide_dollars'] else "****"
+    
     msg = f"📊 *Your Trading Performance*\n"
     msg += "_(Includes Open Positions PnL)_\n\n"
-    msg += f"Overall PnL: *{overall_pnl_pct:+.2f}% (${overall_pnl_usdt:+.2f})*\n"
-    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}% (${daily_pnl_usdt:+.2f})*\n"
+    msg += f"Overall PnL: *{overall_pnl_pct:+.2f}% ({overall_pnl_usdt_str})*\n"
+    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}% ({daily_pnl_usdt_str})*\n"
     flame = " 🔥" if wr > 50 else ""
     msg += f"Win Rate: *{wr:.1f}%{flame} ({wins} wins | {losses} losses)*\n\n"
     msg += f"Status: {'🟢 Active' if user['is_active'] else '🔴 Paused'}\n"
@@ -285,6 +289,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sym = p['symbol']
             side = p['side'].upper()
             entry = float(p['entryPrice'] or 0)
+            mark_price = float(p.get('markPrice') or 0)
             upnl = float(p['unrealizedPnl'] or 0)
             
             # 1. Calculate Current ROE
@@ -333,22 +338,30 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.error(f"Chart generation failed for {sym}: {e}")
 
-            emoji = "🟢" if upnl >= 0 else "🔴"
-            tp_disp = f"{tp_price:.8f}".rstrip('0').rstrip('.') if tp_price > 0 else "None"
-            sl_disp = f"{sl_price:.8f}".rstrip('0').rstrip('.') if sl_price > 0 else "None"
-            
-            msg = (
-                f"{emoji} *{sym}* ({side})\n"
-                f"Entry: `{entry:.4f}`\n"
-                f"TP: `{tp_disp}` | SL: `{sl_disp}`\n"
-                f"PnL: *${upnl:+.2f}* | ROE: *{roe:+.2f}%* of *{target_roe_str}* (target)"
-            )
-            
             if chart_path and os.path.exists(chart_path):
+                # Prepare Share Button
+                callback_data = f"share_{sym}_{side}_{roe:.2f}_{entry}_{mark_price}_{upnl:.2f}"
+                keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                pnl_str = f"${upnl:+.2f}" if not user_data['hide_dollars'] else "****"
+                caption = (
+                    f"{'🟢' if side == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
+                    f"Entry: `{entry:.8f}`\n"
+                    f"TP: `{tp_price:.8f}` | SL: `{sl_price:.8f}`\n"
+                    f"PnL: *{pnl_str}* | ROE: *{roe:+.2f}%*"
+                )
+                
                 with open(chart_path, 'rb') as photo:
-                    await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+                    await update.message.reply_photo(photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
                 os.remove(chart_path) # Cleanup
             else:
+                pnl_str = f"${upnl:+.2f}" if not user_data['hide_dollars'] else "****"
+                msg = (
+                    f"{'🟢' if side == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
+                    f"Entry: `{entry:.8f}`\n"
+                    f"PnL: *{pnl_str}* | ROE: *{roe:+.2f}%*"
+                )
                 await update.message.reply_text(msg, parse_mode="Markdown")
         
     except Exception as e:
@@ -385,6 +398,31 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("✅ Strategy set to: *Mean Reversion Scalper*", parse_mode="Markdown")
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
+
+async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    user = database.get_user(chat_id)
+    new_val = not user['hide_dollars']
+    database.update_user_preference(chat_id, "hide_dollars", 1 if new_val else 0)
+    status = "HIDDEN 🔒" if new_val else "SHOWN 👁️"
+    await update.message.reply_text(f"✅ Privacy Mode: Dollar amounts are now *{status}*.", parse_mode="Markdown")
+
+async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    # Format: share_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
+    parts = query.data.split("_")
+    sym, side, roe, entry, mark, pnl = parts[1], parts[2], float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
+    
+    user = database.get_user(query.message.chat.id)
+    card_path = media_gen.generate_pnl_card(sym, side, roe, entry, mark, hide_dollars=user['hide_dollars'], pnl_usdt=pnl)
+    
+    if card_path:
+        with open(card_path, 'rb') as photo:
+            await query.message.reply_photo(photo, caption=f"🚀 My *{sym}* trade results! Powered by Metaverse Sherpa.", parse_mode="Markdown")
+    else:
+        await query.answer("❌ Error generating card.", show_alert=True)
 
 async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Provides a brief tutorial of all bot commands."""
@@ -553,6 +591,7 @@ async def trading_engine(application):
 async def post_init(application: ApplicationBuilder):
     # Set the bot's command menu (the button in the bottom left of Telegram)
     await application.bot.set_my_commands([
+        ("privacy", "🔒 Toggle hide/show dollar PnL"),
         ("docs", "📖 View user manual & tutorials"),
         ("help", "❓ Get help & command guide"),
         ("stats", "📊 View account performance"),
@@ -576,6 +615,7 @@ def main():
     
     # Register Commands
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("privacy", privacy_command))
     app.add_handler(CommandHandler("docs", docs))
     app.add_handler(CommandHandler("help", docs))
     app.add_handler(CommandHandler("setup", setup))
@@ -585,6 +625,7 @@ def main():
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
+    app.add_handler(CallbackQueryHandler(share_callback, pattern="^share_"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
     

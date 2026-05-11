@@ -1,10 +1,11 @@
 import mplfinance as mpf
 import pandas as pd
+import numpy as np
 import os
 
 def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     """
-    Generates a high-contrast Neon chart with clear indicators.
+    Generates a high-contrast Neon chart where TP/SL/Entry lines only start from open_ts.
     """
     df = df.copy()
     df.index = pd.to_datetime(df['timestamp'], unit='ms')
@@ -16,16 +17,31 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     df["bb_up"] = df["bb_mid"] + (2 * std)
     df["bb_low"] = df["bb_mid"] - (2 * std)
 
-    # 2. Define the R:R Box logic
+    # 2. Define the R:R lines logic (Only start from open_ts)
     start_time = pd.to_datetime(open_ts, unit='ms')
     where_mask = (df.index >= start_time)
+    
+    # Create price level series that are NaN before start_time
+    tp_line = pd.Series(np.nan, index=df.index)
+    entry_line = pd.Series(np.nan, index=df.index)
+    sl_line = pd.Series(np.nan, index=df.index)
+    
+    tp_line.loc[where_mask] = tp
+    entry_line.loc[where_mask] = entry
+    sl_line.loc[where_mask] = sl
     
     # 3. Vibrant Neon Addplots
     ap = [
         # EMA 200 (Bright Neon Yellow)
-        mpf.make_addplot(df["ema"], color='#FFEB3B', width=1.8),
+        mpf.make_addplot(df["ema"], color='#FFEB3B', width=1.5, alpha=0.8),
         # Bollinger Bands (Vibrant Cyan)
-        mpf.make_addplot(df[["bb_up", "bb_low"]], color='#00E5FF', alpha=0.4, width=1.0)
+        mpf.make_addplot(df[["bb_up", "bb_low"]], color='#00E5FF', alpha=0.3, width=0.8),
+        # TP Line (Neon Green) - Only starts from trade open
+        mpf.make_addplot(tp_line, color='#00C853', width=1.8, linestyle='-'),
+        # Entry Line (White) - Only starts from trade open
+        mpf.make_addplot(entry_line, color='#FFFFFF', width=1.2, linestyle='--'),
+        # SL Line (Neon Red) - Only starts from trade open
+        mpf.make_addplot(sl_line, color='#FF1744', width=1.8, linestyle='-')
     ]
 
     # Pro-Grade Dark Style
@@ -40,19 +56,15 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     filename = f"chart_{symbol.replace('/', '_')}.png"
     filepath = os.path.join(os.getcwd(), filename)
     
-    # Precise trade level lines
-    hlines_dict = dict(hlines=[tp, entry, sl], colors=['#00C853', '#FFFFFF', '#FF1744'], linestyle='-', linewidths=1.2, alpha=0.6)
-    
     # Shaded R:R Boxes
-    fb_tp = dict(y1=entry, y2=tp, where=where_mask, color='#00C853', alpha=0.12)
-    fb_sl = dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.12)
+    fb_tp = dict(y1=entry, y2=tp, where=where_mask, color='#00C853', alpha=0.10)
+    fb_sl = dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.10)
     
     mpf.plot(df, type='candle', 
              style=style,
              title=f"\n{symbol} ({side}) - 15M Strategy Setup",
              ylabel='Price (USDT)',
              addplot=ap,
-             hlines=hlines_dict,
              fill_between=[fb_tp, fb_sl],
              savefig=dict(fname=filepath, dpi=120, bbox_inches='tight'),
              volume=False,
