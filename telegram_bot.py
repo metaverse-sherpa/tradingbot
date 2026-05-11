@@ -14,10 +14,10 @@ logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_text = (
-    # Optional: Add quick reply buttons
+    # Quick reply buttons for daily monitoring
     keyboard = [['/opentrades', '/list', '/stats']]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
     await update.message.reply_text(
         "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
         "This bot allows multiple users to trade using their own Blofin API keys.\n\n"
