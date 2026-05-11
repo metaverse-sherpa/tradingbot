@@ -42,20 +42,26 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     margin_x = 50
     margin_y = 50
     
+    # Helper for drop shadow to make text pop on ANY background
+    def draw_text_shadow(pos, text, font, fill, shadow_fill=(0, 0, 0, 200), offset=(3, 3)):
+        draw.text((pos[0] + offset[0], pos[1] + offset[1]), text, font=font, fill=shadow_fill)
+        draw.text(pos, text, font=font, fill=fill)
+
     # 1. Draw Symbol (Top Left)
     clean_sym = symbol.split(':')[0]
-    draw.text((margin_x, margin_y), f"{clean_sym} PERP", font=font_main, fill=color_white)
+    draw_text_shadow((margin_x, margin_y), f"{clean_sym} PERP", font=font_main, fill=color_white)
     
     # 2. Draw Side & Leverage (Below Symbol)
-    draw.text((margin_x, margin_y + 80), f"{side.upper()} 20X", font=font_sub, fill=color_neon)
+    draw_text_shadow((margin_x, margin_y + 80), f"{side.upper()} 20X", font=font_sub, fill=color_neon)
     
-    # 3. Draw MASSIVE ROE (Below Side)
-    draw.text((margin_x, margin_y + 140), f"{roe:+.2f}%", font=font_massive, fill=color_neon)
+    # 3. Draw MASSIVE ROE (Now Bottom Left for better contrast)
+    roe_text = f"{roe:+.2f}%"
+    draw_text_shadow((margin_x, base_img.height - 220), roe_text, font=font_massive, fill=color_neon)
     
-    # 4. Draw PnL USDT (If not hidden)
+    # 4. Draw PnL USDT (If not hidden, below ROE)
     if not hide_dollars:
         pnl_text = f"+${pnl_usdt:,.2f} USDT" if pnl_usdt >= 0 else f"-${abs(pnl_usdt):,.2f} USDT"
-        draw.text((margin_x, margin_y + 300), pnl_text, font=font_main, fill=color_white)
+        draw_text_shadow((margin_x, base_img.height - 80), pnl_text, font=font_sub, fill=color_white)
     
     # 5. Draw Bot Handle (Bottom Right)
     handle_text = "@metaversesherpa_trading_bot"
