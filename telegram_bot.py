@@ -169,13 +169,13 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     upnl_pct = (total_unrealized_pnl / equity) * 100 if equity > 0 else 0
     
     hide = user.get('hide_dollars', False)
-    overall_pnl_usdt_str = f"${overall_pnl_usdt:+.2f}" if not hide else "PROTECTED"
-    daily_pnl_usdt_str = f"${daily_pnl_usdt:+.2f}" if not hide else "PROTECTED"
+    pnl_suffix = f" (${overall_pnl_usdt:+.2f})" if not hide else ""
+    daily_suffix = f" (${daily_pnl_usdt:+.2f})" if not hide else ""
     
     msg = f"📊 *Your Trading Performance*\n"
     msg += "_(Includes Open Positions PnL)_\n\n"
-    msg += f"Overall PnL: *{overall_pnl_pct:+.2f}% ({overall_pnl_usdt_str})*\n"
-    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}% ({daily_pnl_usdt_str})*\n"
+    msg += f"Overall PnL: *{overall_pnl_pct:+.2f}%{pnl_suffix}*\n"
+    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}%{daily_suffix}*\n"
     flame = " 🔥" if wr > 50 else ""
     msg += f"Win Rate: *{wr:.1f}%{flame} ({wins} wins | {losses} losses)*\n\n"
     msg += f"Status: {'🟢 Active' if user['is_active'] else '🔴 Paused'}\n"
