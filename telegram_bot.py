@@ -15,16 +15,21 @@ logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "👋 *Welcome to the Sherpa BB Scalper!*\n\n"
-        "I am an automated crypto trading bot that executes a high-precision Bollinger Band mean-reversion strategy directly on your exchange account.\n\n"
-        "To get started, tap /setup to securely connect your API keys."
-    )
-    
     # Optional: Add quick reply buttons
-    keyboard = [[KeyboardButton("/setup"), KeyboardButton("/stats")]]
+    keyboard = [['/opentrades', '/list', '/stats']]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    
-    await update.message.reply_text(welcome_text, parse_mode="Markdown", reply_markup=reply_markup)
+    await update.message.reply_text(
+        "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
+        "This bot allows multiple users to trade using their own Blofin API keys.\n\n"
+        "Commands:\n"
+        "1. /setup - Configure your API keys (AES encrypted)\n"
+        "2. /stats - View your individual PnL and trade counts\n"
+        "3. /opentrades - Check live positions and Target ROE\n"
+        "4. /list - View your recent trade history\n"
+        "5. /stop - Pause the bot for your account\n"
+        "6. /resume - Resume trading",
+        reply_markup=reply_markup
+    )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -227,35 +232,41 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 roe = 0
                 initial_margin = 0
             
-            # 2. Fetch Target Price and Calculate Target ROE
+                # 2. Fetch TP/SL Prices and Calculate Target ROE
+            tp_price = 0
+            sl_price = 0
             target_roe_str = "N/A"
+            
             try:
-                # Try fetching ALL algo orders for the account to be safe
-                raw_algo = user_ex.private_get_trade_algo_orders_pending()
-                
-                tp_price = 0
-                if raw_algo and "data" in raw_algo:
-                    for algo in raw_algo["data"]:
-                        # Match by symbol (Blofin uses instId like 'TAO-USDT')
-                        if algo.get('instId') == market['id']:
-                            is_opposite = (side == "LONG" and algo['side'].lower() == "sell") or (side == "SHORT" and algo['side'].lower() == "buy")
-                            if is_opposite:
-                                # Any order with a TP trigger price
-                                tp_price = float(algo.get('tpTriggerPx') or algo.get('triggerPx') or algo.get('tpOrdPx') or 0)
-                                if tp_price > 0: break
-
+                # 🛡️ Verified Blofin TPSL system
+                try:
+                    all_tpsl = user_ex.private_get_trade_orders_tpsl_pending({"instType": "SWAP"})
+                    if all_tpsl and "data" in all_tpsl:
+                        for o in all_tpsl["data"]:
+                            if o.get('instId') == market['id']:
+                                tp = float(o.get('tpTriggerPrice') or 0)
+                                sl = float(o.get('slTriggerPrice') or 0)
+                                if tp > 0: tp_price = tp
+                                if sl > 0: sl_price = sl
+                except: pass
+                    
                 if tp_price > 0:
                     if side == "LONG":
                         target_roe = ((tp_price - entry) / entry) * live_bot_multi.LEVERAGE * 100
                     else: # SHORT
                         target_roe = ((entry - tp_price) / entry) * live_bot_multi.LEVERAGE * 100
                     target_roe_str = f"{target_roe:+.1f}%"
-            except:
-                pass
+            except: pass
 
             emoji = "🟢" if upnl >= 0 else "🔴"
             msg += f"{emoji} *{sym}* ({side})\n"
             msg += f"Entry: `{entry:.4f}`\n"
+            
+            # Use 8 decimal places to avoid scientific notation for small coins like SHIB
+            tp_disp = f"{tp_price:.8f}".rstrip('0').rstrip('.') if tp_price > 0 else "None"
+            sl_disp = f"{sl_price:.8f}".rstrip('0').rstrip('.') if sl_price > 0 else "None"
+            
+            msg += f"TP: `{tp_disp}` | SL: `{sl_disp}`\n"
             msg += f"PnL: *${upnl:+.2f}* | ROE: *{roe:+.2f}%*\n"
             msg += f"Target ROE: *{target_roe_str}*\n\n"
             
