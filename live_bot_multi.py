@@ -197,14 +197,20 @@ def place_order(exchange, symbol, signal, equity):
         if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
         sl_dist, rr = signal["sl_dist"], signal["rr"]
         sl, tp = lp - sl_dist, lp + (sl_dist * rr)
-        contract_size = market.get('contractSize', 1)
+        contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
+        
         raw_size = (equity * RISK_PER_TRADE) / (sl_dist * contract_size)
+        
         limits = market.get('limits', {})
         max_market = limits.get('market', {}).get('amount', {}).get('max')
-        if max_market is None: max_market = limits.get('amount', {}).get('max', float('inf'))
+        if max_market is None: 
+            max_market = limits.get('amount', {}).get('max')
+        if max_market is None:
+            max_market = 999999999.0 # Safe fallback
+            
         max_leverage_size = (equity * LEVERAGE) / (lp * contract_size)
-        size = round(min(raw_size, max_market, max_leverage_size), 3)
+        size = round(min(float(raw_size), float(max_market), float(max_leverage_size)), 3)
         if size <= 0: return None
         log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, lp, sl, tp)
         if DRY_RUN: return None
