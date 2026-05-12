@@ -22,12 +22,39 @@ If setting up a new `e2-micro` instance, follow these essential steps:
     sudo mkswap /swapfile && sudo swapon /swapfile
     echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
     ```
-2.  **Install Dependencies**:
+2.  **Install Dependencies & Setup Venv**:
     ```bash
     sudo apt update && sudo apt install -y python3-pip python3-venv git libfontconfig1 fonts-dejavu-core
+    cd ~/tradingbot
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
     ```
 3.  **Setup Service (Systemd)**:
-    Create `/etc/systemd/system/tradingbot.service` to keep the bot running 24/7.
+    Create the service file: `sudo nano /etc/systemd/system/tradingbot.service`
+    ```ini
+    [Unit]
+    Description=Cyber-Sherpa Trading Bot
+    After=network.target
+
+    [Service]
+    User=gilesasp
+    WorkingDirectory=/home/gilesasp/tradingbot
+    ExecStart=/home/gilesasp/tradingbot/venv/bin/python3 telegram_bot.py
+    Restart=always
+    RestartSec=10
+    StandardOutput=journal
+    StandardError=journal
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    Then run:
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable tradingbot
+    sudo systemctl start tradingbot
+    ```
 
 ## 🔄 Updates & Maintenance
 
