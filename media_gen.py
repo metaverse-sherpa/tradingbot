@@ -2,14 +2,16 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
 import gc
 
-# Path to your official logo
-LOGO_PATH = "/Users/johngiles/.gemini/antigravity/brain/37bf787e-4046-4151-a19d-af587714554a/media__1778508286364.png"
+# Path to your official logo - Looking for logo.png in the project root
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGO_PATH = os.path.join(BASE_DIR, "logo.png")
 
 def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id=""):
     """
     Generates a professional PnL card using the brand logo as the background.
     """
     if not os.path.exists(LOGO_PATH):
+        print(f"❌ Error: Logo not found at {LOGO_PATH}")
         return None
         
     base_img = Image.open(LOGO_PATH).convert("RGBA")
