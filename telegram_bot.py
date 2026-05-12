@@ -575,7 +575,7 @@ def get_settings_ui(user):
     
     keyboard = [
         [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk"),
-         InlineKeyboardButton("🛰 Manage Symbols", callback_data="manage_symbols")],
+         InlineKeyboardButton("🛰 Symbols", callback_data="manage_symbols")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
     ]
