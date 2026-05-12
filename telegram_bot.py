@@ -629,6 +629,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif exchange_id == 'mexc':
             guide = (
                 "💠 *MEXC API Setup*\n\n"
+                "⚠️ *Requirement*: You MUST complete **Primary KYC** on MEXC to use Futures API keys.\n\n"
                 "1️⃣ Go to **API Management** on MEXC.\n"
                 "2️⃣ Create Key with **'Futures'** permissions.\n"
                 "3️⃣ (Optional) Whitelist the VPS IP to avoid key expiration.\n\n"

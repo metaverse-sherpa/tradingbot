@@ -96,8 +96,9 @@ To ensure 100% functionality, users must follow these exchange-specific steps wh
 ### 💠 MEXC
 1.  Navigate to **API Management**.
 2.  Create a new API Key.
-3.  **Permissions**: Ensure **"Futures"** is checked (Spot is optional).
-4.  **Security**: Whitelist the VPS IP to avoid key expiration.
+3.  **MEXC KYC**: Users MUST complete Primary KYC on MEXC to enable Futures trading via API.
+4.  **Permissions**: Ensure **"Futures"** is checked (Spot is optional).
+5.  **Security**: Whitelist the VPS IP to avoid key expiration.
 
 ---
 
