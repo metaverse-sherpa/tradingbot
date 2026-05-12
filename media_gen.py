@@ -201,7 +201,7 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, period_text):
 
         font_main = find_font(50)
         font_sub = find_font(35)
-        font_massive = find_font(90)
+        font_massive = find_font(70)
         font_handle = find_font(30)
     except:
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
