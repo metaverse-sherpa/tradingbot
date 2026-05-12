@@ -206,7 +206,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         context.user_data.clear()
-        await update.message.reply_text("🎊 *Setup Complete!*\n\nThe Sherpa is now tracking your account. Trading will begin on the next engine cycle.\n\nTap /settings to customize your risk or symbols.", parse_mode="Markdown")
+        keyboard = [[InlineKeyboardButton("💰 Check My Balance", callback_data="check_balance_setup")]]
+        await update.message.reply_text(
+            "🎊 *Setup Complete!*\n\n"
+            "The Sherpa is now tracking your account. Trading will begin on the next engine cycle.\n\n"
+            "Tap the button below to verify your connection and check your trading funds.", 
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
 
     elif context.user_data.get('setting_risk'):
         try:
@@ -644,6 +651,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer("User record not found. Please run /setup.")
             return
 
+    if query.data == "check_balance_setup":
+        await query.answer()
+        await balance_command(update, context)
+        return
+
     if query.data == "toggle_privacy":
         new_val = not user['hide_dollars']
         database.update_user_preference(chat_id, "hide_dollars", 1 if new_val else 0)
@@ -845,14 +857,20 @@ async def resume_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.")
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    if update.message:
+        chat_id = update.message.chat_id
+        target = update.message
+    else:
+        chat_id = update.callback_query.from_user.id
+        target = update.callback_query.message
+        
     user_data = database.get_user(chat_id)
     
     if not user_data:
-        await update.message.reply_text("❌ No API keys found. Please run /setup first.")
+        await target.reply_text("❌ No API keys found. Please run /setup first.")
         return
         
-    await update.message.reply_text("💰 Fetching your live balance...")
+    await target.reply_text("💰 Fetching your live balance...")
     
     try:
         # Note: database.get_user already returns decrypted keys
@@ -877,10 +895,10 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Total Account Value: *${total_value:.2f}* USDT\n\n"
             "_Total Value = Available + Margin + PnL_"
         )
-        await update.message.reply_text(msg, parse_mode="Markdown")
+        await target.reply_text(msg, parse_mode="Markdown")
         
     except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching balance: {e}")
+        await target.reply_text(f"❌ Error fetching balance: {e}")
 
 async def trading_engine(application):
     logger.info("Starting Multi-Tenant Engine Task...")
