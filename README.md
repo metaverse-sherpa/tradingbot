@@ -66,6 +66,10 @@ Follow these steps each time you push new code to Github:
     cd ~/tradingbot
     git pull
     sudo systemctl restart tradingbot
+
+    or
+
+    cd /home/gilesasp/tradingbot && git pull && sudo systemctl restart tradingbot && journalctl -u tradingbot -f
     ```
 3.  **Logs**: Monitor live activity with `journalctl -u tradingbot -f`
 4.  **Disk Safety**: Limit system logs to 500MB to prevent disk bloat:
