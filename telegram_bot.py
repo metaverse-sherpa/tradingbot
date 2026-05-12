@@ -788,7 +788,7 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🏔️ *Contact the Sherpa*\n\n"
         "Have questions, feedback, or a new strategy idea? Reach out directly to the project lead:\n\n"
         "👤 *Lead:* @metaverse\\_sherpa\n"
-        "📢 *Community:* @metaversesherpa\\_trading\\_bot\n\n"
+        "📢 *Community:* [Join Here](https://t.me/+2pYhCm5BOoI0Mjkx)\n\n"
         "We are constantly refining the Cyber-Sherpa engine and value your input!"
     )
     await update.message.reply_text(msg, parse_mode="Markdown")
