@@ -109,8 +109,11 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
     }
 
 
-def place_order(exchange, symbol, signal, equity):
+def place_order(exchange, symbol, signal, equity, risk_pct=None):
     try:
+        # Use user-specific risk or fallback to global default
+        risk_val = (risk_pct / 100.0) if risk_pct is not None else RISK_PER_TRADE
+        
         market = exchange.market(symbol)
         ticker = exchange.fetch_ticker(symbol)
         lp = ticker["last"]
@@ -120,7 +123,7 @@ def place_order(exchange, symbol, signal, equity):
         contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
         
-        raw_size = (equity * RISK_PER_TRADE) / (sl_dist * contract_size)
+        raw_size = (equity * risk_val) / (sl_dist * contract_size)
         
         limits = market.get('limits', {})
         max_market = limits.get('market', {}).get('amount', {}).get('max')

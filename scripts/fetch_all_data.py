@@ -32,6 +32,11 @@ SYMBOLS = {
     "ENA/USDT":  "ENA",
     "FET/USDT":  "FET",
     "WIF/USDT":  "WIF",
+    "XRP/USDT":  "XRP",
+    "TRX/USDT":  "TRX",
+    "AVAX/USDT": "AVAX",
+    "LTC/USDT":  "LTC",
+    "SHIB/USDT": "SHIB",
 }
 
 def fetch_data():

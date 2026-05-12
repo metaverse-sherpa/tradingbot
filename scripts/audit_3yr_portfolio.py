@@ -13,7 +13,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 RESULTS_FILE    = os.path.join(RESULTS_DIR, "audit_3yr_results.txt")
 
 START_CASH      = 10_000.0
-RISK_PER_TRADE  = 0.01      # 1% of equity per trade
+RISK_PER_TRADE  = 0.015     # 1.5% of equity per trade
 LEVERAGE        = 20.0
 COMMISSION      = 0.0006    # 0.06%
 SLIPPAGE        = 0.0005    # 0.05%
@@ -153,26 +153,87 @@ def run_portfolio(datasets):
         
         eq_curve.append(equity)
 
-    total_trades = sum(s["wins"] + s["losses"] for s in states.values())
-    win_rate = sum(s["wins"] for s in states.values()) / total_trades * 100 if total_trades else 0
+    total_trades = sum(st["wins"] + st["losses"] for st in states.values())
+    win_rate = sum(st["wins"] for st in states.values()) / total_trades * 100 if total_trades else 0
+    
     return {"pnl_pct": (equity - START_CASH) / START_CASH * 100, "final_equity": equity,
             "max_dd": max_dd, "total_trades": total_trades, "win_rate": win_rate,
-            "states": states, "start": common_idx[EMA_PERIOD], "end": common_idx[-1]}
+            "start": common_idx[EMA_PERIOD], "end": common_idx[-1]}
+
+def run_solo(name, d):
+    cfg = SYMBOL_CONFIGS[name]
+    close = d["close"]; high = d["high"]; low = d["low"]; ema_v = d["ema"]
+    rsi_v = d["rsi"]; atr_v = d["atr"]; adx_v = d["adx"]; bb_top = d["bb_top"]; bb_bot = d["bb_bot"]
+    
+    equity = START_CASH; max_eq = START_CASH; max_dd = 0.0
+    wins = losses = 0; in_trade = False; cooldown = 0
+    side = 0; sl = tp = size = risk_amt = 0.0
+
+    for i in range(EMA_PERIOD, len(close) - 1):
+        if cooldown > 0: cooldown -= 1; continue
+        if not in_trade:
+            if cfg["adx"] > 0 and adx_v[i] < cfg["adx"]: continue
+            if close[i] > ema_v[i] and close[i] < bb_bot[i] and rsi_v[i] < cfg["rsi"]:
+                side = 1; fill = close[i] * (1 + SLIPPAGE); sl_dist = atr_v[i] * cfg["atr"]
+                sl = fill - sl_dist; tp = fill + sl_dist * cfg["rr"]; risk_amt = equity * RISK_PER_TRADE
+                size = min(risk_amt / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * size * COMMISSION; in_trade = True
+            elif not cfg.get("long_only") and close[i] < ema_v[i] and close[i] > bb_top[i] and rsi_v[i] > (100 - cfg["rsi"]):
+                side = -1; fill = close[i] * (1 - SLIPPAGE); sl_dist = atr_v[i] * cfg["atr"]
+                sl = fill + sl_dist; tp = fill - sl_dist * cfg["rr"]; risk_amt = equity * RISK_PER_TRADE
+                size = min(risk_amt / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * size * COMMISSION; in_trade = True
+        else:
+            hit_sl = hit_tp = False; ex = 0.0
+            if side == 1:
+                if low[i] <= sl: hit_sl = True; ex = sl
+                elif high[i] >= tp: hit_tp = True; ex = tp
+            else:
+                if high[i] >= sl: hit_sl = True; ex = sl
+                elif low[i] <= tp: hit_tp = True; ex = tp
+            if hit_sl or hit_tp:
+                pnl = risk_amt * cfg["rr"] if hit_tp else -risk_amt
+                equity += pnl - ex * size * COMMISSION
+                if hit_tp: wins += 1
+                else: losses += 1
+                in_trade = False; cooldown = 3
+                if equity > max_eq: max_eq = equity
+                else:
+                    dd = (max_eq - equity) / max_eq * 100
+                    if dd > max_dd: max_dd = dd
+    t = wins + losses
+    return {"trades": t, "wr": wins/t*100 if t else 0, "dd": max_dd}
 
 def run():
     datasets = {}
+    print("Loading data...")
     for name in SYMBOL_CONFIGS:
         path = os.path.join(CSV_DIR, f"cache_{name}_15m.csv")
         if not os.path.exists(path): continue
         df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
         datasets[name] = prepare_indicators(df, SYMBOL_CONFIGS[name])
     
+    print("Running solo audits...")
+    sym_stats = []
+    for name, d in datasets.items():
+        res = run_solo(name, d)
+        sym_stats.append({"name": name, **res})
+    
+    print("Running master portfolio simulation...")
     res = run_portfolio(datasets)
-    output = (f"  Audit Period: {res['start'].date()} -> {res['end'].date()}\n"
-              f"  Starting: ${START_CASH:,.2f} | Final: ${res['final_equity']:,.2f}\n"
-              f"  Total PnL: {res['pnl_pct']:+.1f}% | Win Rate: {res['win_rate']:.1f}%\n"
-              f"  Max Drawdown: {res['max_dd']:.1f}% | Total Trades: {res['total_trades']}")
-    print("\n" + "="*60 + "\n" + output + "\n" + "="*60)
+    
+    lines = []
+    lines.append("="*60)
+    lines.append(f"  Audit Period: {res['start'].date()} -> {res['end'].date()}")
+    lines.append(f"  Starting: ${START_CASH:,.2f} | Final: ${res['final_equity']:,.2f}")
+    lines.append(f"  Total PnL: {res['pnl_pct']:+.1f}% | Win Rate: {res['win_rate']:.1f}%")
+    lines.append(f"  Max Drawdown: {res['max_dd']:.1f}% | Total Trades: {res['total_trades']}")
+    lines.append("="*60)
+    lines.append(f"\n  {'Symbol':<6} {'Trades':>7} {'Win Rate':>10} {'Max DD':>8}")
+    lines.append("  " + "-"*35)
+    for s in sorted(sym_stats, key=lambda x: x["wr"], reverse=True):
+        lines.append(f"  {s['name']:<6} {s['trades']:>7} {s['wr']:>9.1f}% {s['dd']:>7.1f}%")
+    
+    output = "\n".join(lines)
+    print("\n" + output + "\n")
     with open(RESULTS_FILE, "w") as f: f.write(output)
 
 if __name__ == "__main__": run()

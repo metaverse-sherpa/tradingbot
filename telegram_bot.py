@@ -111,34 +111,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif step == 3:
         context.user_data['api_pass'] = text
+        context.user_data['api_password'] = text
         try: await update.message.delete()
         except: pass
         
-        await update.message.reply_text("🔄 Encrypting and saving credentials...")
-        
-        # In a full implementation, we'd test the CCXT connection here before saving.
-        # For now, we save it directly to the database.
+        # Save to DB
         database.upsert_user(
             chat_id, 
-            context.user_data['api_key'], 
-            context.user_data['api_secret'], 
-            context.user_data['api_pass'], 
-            0.0 # Starting equity will be fetched by the engine on its first run
+            context.user_data['api_key'],
+            context.user_data['api_secret'],
+            context.user_data['api_password'],
+            0.0 # Starting equity will be fetched by engine
         )
         
-        context.user_data['setup_step'] = 0
         context.user_data.clear()
-        
-        success_text = (
-            "🎉 *Setup Complete!*\n\n"
-            "Your credentials have been encrypted with military-grade symmetric encryption and stored safely. The trading engine will pick up your account on its next 5-minute cycle.\n\n"
-            "Quick Commands:\n"
-            "🛰 /opentrades - View live positions\n"
-            "📜 /list - See recent trade history\n"
-            "📊 /stats - Check your performance\n"
-            "❓ /help - View the command guide"
-        )
-        await update.message.reply_text(success_text, parse_mode="Markdown")
+        await update.message.reply_text("🎊 *Setup Complete!*\n\nThe Sherpa is now tracking your account. Trading will begin on the next engine cycle.\n\nTap /settings to customize your risk or symbols.", parse_mode="Markdown")
+
+    elif context.user_data.get('setting_risk'):
+        try:
+            val = float(text.replace("%", ""))
+            if 0.01 <= val <= 100.0:
+                database.update_user_preference(chat_id, "risk_pct", val)
+                context.user_data.pop('setting_risk', None)
+                await update.message.reply_text(f"✅ Risk updated to *{val:.2f}%*", parse_mode="Markdown")
+                # Show settings again
+                user = database.get_user(chat_id)
+                msg, reply_markup = get_settings_ui(user)
+                await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+            else:
+                await update.message.reply_text("❌ Please enter a value between 0.01 and 100.")
+        except:
+            await update.message.reply_text("❌ Invalid number. Please enter a value like `1.5`.")
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -473,16 +476,22 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_settings_ui(user):
     privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
     bot_status = "🟢 ACTIVE" if user['is_active'] else "🔴 PAUSED"
+    risk_val = user.get('risk_pct', 1.5)
+    syms = user.get('enabled_symbols', [])
     
     msg = (
         f"⚙️ *Cyber-Sherpa Settings*\n\n"
         f"Status: *{bot_status}*\n"
         f"Strategy: *{user['strategy']}*\n"
+        f"Risk Level: *{risk_val:.2f}%*\n"
+        f"Active Symbols: *{len(syms)}/19*\n"
         f"Dollar PnL: *{privacy_status}*\n\n"
         f"Handle: @metaversesherpa_trading_bot\n"
     )
     
     keyboard = [
+        [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk"),
+         InlineKeyboardButton("🛰 Manage Symbols", callback_data="manage_symbols")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
     ]
@@ -520,7 +529,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif query.data == "toggle_active":
         new_val = not user['is_active']
-        database.update_user_active(chat_id, 1 if new_val else 0)
+        database.set_active(chat_id, new_val)
         status_txt = "Bot Resumed! 🟢" if new_val else "Bot Stopped! 🔴"
         await query.answer(status_txt)
 
@@ -529,10 +538,45 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Strategy selection buttons
         keyboard = [
             [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
-            [InlineKeyboardButton("🚧 Coming Soon...", callback_data="set_strat_soon")]
+            [InlineKeyboardButton("🚧 Coming Soon...", callback_data="set_strat_soon")],
+            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
         ]
         await query.edit_message_text("🎯 *Select Trading Strategy*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         return
+
+    elif query.data == "set_risk":
+        await query.answer()
+        context.user_data['setting_risk'] = True
+        await query.edit_message_text(
+            "⚖️ *Set Risk Percentage*\n\n"
+            "Please type your preferred risk-per-trade as a number (e.g., `1.5` or `2.0`).\n\n"
+            "This percentage of your equity will be risked on every trade based on the SL distance.\n\n"
+            "_Current: " + f"{user['risk_pct']:.2f}%_",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")]]),
+            parse_mode="Markdown"
+        )
+        return
+
+    elif query.data == "manage_symbols":
+        await query.answer()
+        await show_symbol_menu(query, user)
+        return
+
+    elif query.data.startswith("tsym_"): # TOGGLE SYMBOL
+        sym_to_toggle = query.data.split("_")[1]
+        current_syms = user['enabled_symbols']
+        if sym_to_toggle in current_syms:
+            current_syms.remove(sym_to_toggle)
+        else:
+            current_syms.append(sym_to_toggle)
+        database.update_user_preference(chat_id, "enabled_symbols", current_syms)
+        await query.answer(f"✅ Updated {sym_to_toggle}")
+        await show_symbol_menu(query, database.get_user(chat_id))
+        return
+
+    elif query.data == "back_to_settings":
+        context.user_data.pop('setting_risk', None)
+        await query.answer()
 
     # Refresh and show settings UI
     user = database.get_user(chat_id)
@@ -542,6 +586,27 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except BadRequest as e:
         if "Message is not modified" not in str(e):
             raise e
+
+async def show_symbol_menu(query, user):
+    all_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
+    enabled = user['enabled_symbols']
+    
+    keyboard = []
+    row = []
+    for s in all_syms:
+        label = f"✅ {s}" if s in enabled else f"❌ {s}"
+        row.append(InlineKeyboardButton(label, callback_data=f"tsym_{s}"))
+        if len(row) == 3:
+            keyboard.append(row)
+            row = []
+    if row: keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
+    
+    await query.edit_message_text(
+        "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account.",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
 
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -733,30 +798,35 @@ async def trading_engine(application):
                         equity = float(balance.get("USDT", {}).get("total", 0))
                         
                         # Sync stats and history
-                        # We use the existing helper but need to handle the returns
-                        # (The helper already sends notifications for closed trades)
                         database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
                         
                         # Execute signals
-                        if signals:
-                            for symbol, sig in signals.items():
-                                pos = user_ex.fetch_positions([symbol])
-                                if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                                    if live_bot_multi.DRY_RUN:
-                                        logger.info(f"DRY RUN: skipping order for {chat_id}")
-                                        continue
-                                        
-                                    res = live_bot_multi.place_order(user_ex, symbol, sig, equity)
-                                    if res:
-                                        database.increment_opened(chat_id)
-                                        msg = (
-                                            f"🚀 *{strat_name}* SIGNAL!\n\n"
-                                            f"Symbol: *{res['symbol']}*\n"
-                                            f"Entry: `{res['entry']:.8f}`\n"
-                                            f"TP: `{res['tp']:.8f}`\n"
-                                            f"SL: `{res['sl']:.8f}`"
-                                        )
-                                        await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                        user_enabled = user.get('enabled_symbols', [])
+                        user_risk = user.get('risk_pct', 1.5)
+                        
+                        for symbol, sig in signals.items():
+                            clean_sym = symbol.split("/")[0]
+                            if clean_sym not in user_enabled:
+                                continue
+                                
+                            pos = user_ex.fetch_positions([symbol])
+                            if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                                if live_bot_multi.DRY_RUN:
+                                    logger.info(f"DRY RUN: skipping order for {chat_id}")
+                                    continue
+                                    
+                                res = live_bot_multi.place_order(user_ex, symbol, sig, equity, risk_pct=user_risk)
+                                if res:
+                                    database.increment_opened(chat_id)
+                                    msg = (
+                                        f"🚀 *{strat_name}* SIGNAL!\n\n"
+                                        f"Symbol: *{res['symbol']}*\n"
+                                        f"Risk: `{user_risk:.2f}%`\n"
+                                        f"Entry: `{res['entry']:.8f}`\n"
+                                        f"TP: `{res['tp']:.8f}`\n"
+                                        f"SL: `{res['sl']:.8f}`"
+                                    )
+                                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
                     except Exception as e:
                         logger.error(f"Error for user {user.get('chat_id')}: {e}")
             

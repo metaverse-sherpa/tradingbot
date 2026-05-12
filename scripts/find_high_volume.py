@@ -25,19 +25,21 @@ if __name__ == "__main__":
     top_symbols = get_top_volume_symbols(30)
     print(top_symbols)
     
-    # Current basket
+    # Current basket (19 tokens)
     current_basket = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "DOGE/USDT", "ADA/USDT", 
                       "LINK/USDT", "DOT/USDT", "TON/USDT", "ZEC/USDT", "PEPE/USDT",
-                      "AVAX/USDT", "TRX/USDT", "XRP/USDT", "LTC/USDT"]
+                      "BNB/USDT", "NEAR/USDT", "SUI/USDT", "NOT/USDT", "TAO/USDT", 
+                      "ONDO/USDT", "ENA/USDT", "FET/USDT", "WIF/USDT"]
     
     # Filter out current basket and some stablecoins/leveraged tokens
-    exclude = [s.replace('/', '') for s in current_basket] + ['USDCUSDT', 'FDUSD/USDT', 'TUSD/USDT', 'EURI/USDT', 'AEUR/USDT']
+    exclude = [s.replace('/', '') for s in current_basket] + ['USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'EURIUSDT', 'AEURUSDT', 'USDTUSDT']
     
     candidates = []
     for _, row in top_symbols.iterrows():
         clean_sym = row['symbol'].replace('/', '')
         if clean_sym not in exclude and 'UP' not in clean_sym and 'DOWN' not in clean_sym:
-            candidates.append(clean_sym)
+            candidates.append(row['symbol'])
             
     print("\nRecommended New Candidates (High Volume):")
-    print(candidates[:10])
+    for c in candidates[:10]:
+        print(f"  - {c}")

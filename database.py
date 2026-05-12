@@ -49,6 +49,10 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN hide_dollars BOOLEAN DEFAULT 0")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN risk_pct REAL DEFAULT 1.5")
+    except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN enabled_symbols TEXT")
+    except: pass
     
     conn.commit()
     conn.close()
@@ -56,25 +60,28 @@ def init_db():
 def upsert_user(chat_id, api_key, api_secret, api_pass, equity):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active)
-                 VALUES (?, ?, ?, ?, ?, ?)
+    # Default symbols
+    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
+    c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, enabled_symbols)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(telegram_chat_id) DO UPDATE SET
                  blofin_api_key=excluded.blofin_api_key,
                  blofin_api_secret=excluded.blofin_api_secret,
                  blofin_api_password=excluded.blofin_api_password,
                  starting_equity=excluded.starting_equity,
                  is_active=excluded.is_active''',
-              (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), equity, True))
+              (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), equity, True, def_syms))
     conn.commit()
     conn.close()
 
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
+        def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
         return {
             "api_key": decrypt(row[0]),
             "api_secret": decrypt(row[1]),
@@ -87,7 +94,9 @@ def get_user(chat_id):
             "cum_pnl": row[8] or 0.0,
             "last_ts": row[9] or 0,
             "strategy": row[10] or 'Mean Reversion Scalper',
-            "hide_dollars": bool(row[11]) if len(row) > 11 else False,
+            "hide_dollars": bool(row[11]),
+            "risk_pct": row[12] if row[12] is not None else 1.5,
+            "enabled_symbols": (row[13] if row[13] else def_syms).split(","),
             "chat_id": chat_id
         }
     return None
@@ -111,8 +120,10 @@ def update_user_preference(chat_id, key, value):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     # Map key to column name
-    cols = {"strategy": "strategy", "hide_dollars": "hide_dollars"}
+    cols = {"strategy": "strategy", "hide_dollars": "hide_dollars", "risk_pct": "risk_pct", "enabled_symbols": "enabled_symbols"}
     if key in cols:
+        if key == "enabled_symbols" and isinstance(value, list):
+            value = ",".join(value)
         c.execute(f"UPDATE Users SET {cols[key]} = ? WHERE telegram_chat_id = ?", (value, chat_id))
     conn.commit()
     conn.close()
