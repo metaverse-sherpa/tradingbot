@@ -64,20 +64,43 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, parse_mode="Markdown")
 
 async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user):
-    """Runs a 3-year backtest for a specific user's risk and symbols."""
+    """Runs a 3-year backtest for a specific user's risk and symbols with animation."""
     chat_id = user['chat_id']
     risk = user['risk_pct']
     syms = user['enabled_symbols']
     
+    # 🏔️ Animation Frames
+    frames = [
+        "🥾 *Sherpa is packing the gear...*",
+        "🧗‍♂️ *Climbing the 2024 candles...*",
+        "🧗‍♂️ *Navigating the 2025 volatility...*",
+        "🏔️ *Reaching the 2026 peak...*",
+        "🛰️ *Syncing your private results...*"
+    ]
+    
     status_msg = await context.bot.send_message(
         chat_id=chat_id, 
-        text=f"🔄 *Re-calculating your personalized 3-Year Audit...*\n\nSettings: `{risk:.2f}% Risk` | `{len(syms)} Tokens`",
+        text=f"{frames[0]}\n\nSettings: `{risk:.2f}% Risk` | `{len(syms)} Tokens`",
         parse_mode="Markdown"
     )
     
+    # Start the audit in a separate thread/task so we can animate
+    audit_task = asyncio.create_task(asyncio.to_thread(run_custom_audit, risk, syms))
+    
+    idx = 1
+    while not audit_task.done():
+        await asyncio.sleep(1.5)
+        if idx < len(frames):
+            try:
+                await status_msg.edit_text(
+                    f"{frames[idx]}\n\nSettings: `{risk:.2f}% Risk` | `{len(syms)} Tokens`",
+                    parse_mode="Markdown"
+                )
+                idx += 1
+            except: pass
+            
     try:
-        # Run the audit engine (this takes ~5-10s)
-        res = run_custom_audit(risk, syms)
+        res = await audit_task
         if not res:
             await status_msg.edit_text("❌ Personal audit failed. Check settings.")
             return
