@@ -108,17 +108,6 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
         "rr": cfg["rr"]
     }
 
-        content = re.sub(r"ALL_TIME_CUMULATIVE_PNL: [\-\d\.]+", f"ALL_TIME_CUMULATIVE_PNL: {cum_pnl}", content)
-        content = re.sub(r"LAST_FETCH_TIMESTAMP: \d+", f"LAST_FETCH_TIMESTAMP: {now_ts}", content)
-        
-        with open("README.md", "w") as f: f.write(content)
-        log.info("📝 README.md updated. Wins: %d, Losses: %d, Account PnL: %.2f%%", wins, losses, account_pnl_pct)
-        
-        # Return stats so the main loop can use them for emails
-        return {"opened": opened, "wins": wins, "losses": losses, "wr": wr, "cum_pnl": account_pnl_pct}
-    except Exception as e: 
-        log.error("❌ README Error: %s", e)
-        return None
 
 def place_order(exchange, symbol, signal, equity):
     try:
