@@ -62,13 +62,8 @@ log = logging.getLogger("Bot")
 # Functions
 # ---------------------------------------------------------------------------
 
-def create_exchange():
-    return ccxt.blofin({
-        "apiKey": os.getenv("BLOFIN_API_KEY"),
-        "secret": os.getenv("BLOFIN_API_SECRET"),
-        "password": os.getenv("BLOFIN_API_PASSWORD"),
-        "options": {"defaultType": "swap"},
-    })
+import database
+from database import get_exchange_client, normalize_symbol
 
 def create_github_issue(subject, body):
     token, repo = os.getenv("GITHUB_TOKEN"), os.getenv("GITHUB_REPOSITORY")
@@ -137,59 +132,68 @@ def place_order(exchange, symbol, signal, equity, risk_pct=None):
         if size <= 0: return None
         log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, lp, sl, tp)
         if DRY_RUN: return None
-        try: exchange.set_leverage(LEVERAGE, symbol, params={"marginMode": "isolated"})
-        except: pass
-        try: exchange.set_position_mode(False, symbol)
-        except: pass
-        limit_price = lp * 1.01
-        params = {"marginMode": "isolated", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
-        exchange.create_order(symbol, "limit", "buy", size, limit_price, params=params)
-        log.info("✅ Order placed for %s", symbol)
+        # 3-Order Combo for Fragmented Exchanges (Binance/MEXC)
+        if exchange.id in ['binance', 'mexc']:
+            # 1. Place Entry
+            order = exchange.create_order(symbol, "market", "buy", size)
+            # 2. Place SL (STOP_MARKET)
+            exchange.create_order(symbol, "stop_market", "sell", size, params={"stopPrice": sl, "reduceOnly": True})
+            # 3. Place TP (TAKE_PROFIT_MARKET)
+            exchange.create_order(symbol, "take_profit_market", "sell", size, params={"stopPrice": tp, "reduceOnly": True})
+        else:
+            # Integrated exchanges like Blofin
+            limit_price = lp * 1.01
+            params = {"marginMode": "isolated", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
+            exchange.create_order(symbol, "limit", "buy", size, limit_price, params=params)
+            
+        log.info("✅ Order placed for %s on %s", symbol, exchange.id)
         return {"symbol": symbol.split("/")[0], "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
     except Exception as e:
         log.error("❌ Order failed for %s: %s", symbol, e)
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Symbol BB Scalper (Global API Fix) \n" + "═"*60)
-    exchange = create_exchange()
-    exchange.load_markets()
-    errors, now = [], datetime.now(timezone.utc)
-    try:
-        balance = exchange.fetch_balance(params={"type": "futures"})
-        equity = float(balance.get("USDT", {}).get("total", 0))
-        log.info("── Pass Start | Equity: $%.2f ──", equity)
-        trades_executed = []
-        for symbol in SYMBOLS:
-            try:
-                ohlcv = exchange.fetch_ohlcv(symbol, TIMEFRAME, limit=CANDLE_LIMIT)
-                df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
-                signal = compute_signal(df, symbol.split("/")[0])
-                if signal:
-                    pos = exchange.fetch_positions([symbol])
-                    if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                        res = place_order(exchange, symbol, signal, equity)
-                        if res: trades_executed.append(res)
-            except Exception as e: 
-                if "code" not in str(e): errors.append(f"{symbol}: {e}")
-        
-        # (README Update Removed)
-        
-        if trades_executed:
-            sym_list = ", ".join([t['symbol'] for t in trades_executed])
-            rows = [f"| {t['symbol']} | {t['side']} | {t['size']} | {t['entry']:.8f} | {t['tp']:.8f} | {t['sl']:.8f} |" for t in trades_executed]
-            body = "### 📈 New Trades\n| Symbol | Side | Size | Entry | TP | SL |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n" + "\n".join(rows)
-            create_github_issue(f"🚀 New Trades: {sym_list}", body)
-        elif now.hour == 0 and now.minute < 6:
-            if stats:
-                body = f"### 📊 Daily Performance Recap\n\n* **Total Trades Opened:** {stats['opened']}\n* **Win Rate:** {stats['wr']:.1f}%\n* **Wins:** {stats['wins']} | **Losses:** {stats['losses']}\n* **All-Time PnL:** {stats['cum_pnl']:+.2f}%\n\nView the full history in the [repository README](https://github.com/{os.getenv('GITHUB_REPOSITORY')})."
-                create_github_issue(f"📅 Daily Recap: {stats['cum_pnl']:+.2f}% PnL", body)
-            else:
-                create_github_issue("📅 Daily Recap", "Bot is running. Check README for stats.")
-    except Exception as e: errors.append(f"Critical: {e}")
-    finally:
-        if errors: create_github_issue("🚨 Bot Error", "\n".join(errors))
-        log.info("═"*60 + "\n  Pass Complete \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Exchange Cyber-Sherpa Engine \n" + "═"*60)
+    import database
+    active_users = database.get_all_active_users()
+    if not active_users:
+        log.info("No active users found. Skipping pass.")
+        return
+
+    # Use a shared public exchange for market data to save rate limits
+    market_data_ex = ccxt.blofin() 
+    market_data_ex.load_markets()
+    errors = []
+
+    for symbol in SYMBOLS:
+        try:
+            ohlcv = market_data_ex.fetch_ohlcv(symbol, TIMEFRAME, limit=CANDLE_LIMIT)
+            df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+            
+            # Compute signals for all strategies used by users
+            # (In the future we can optimize by only computing strategies currently active)
+            signal = compute_signal(df, symbol.split("/")[0])
+            
+            if signal:
+                for user in active_users:
+                    if symbol.split("/")[0] not in user.get('enabled_symbols', []):
+                        continue
+                    
+                    try:
+                        ex = get_exchange_client(user)
+                        norm_sym = normalize_symbol(symbol, ex.id)
+                        
+                        # Check existing positions
+                        pos = ex.fetch_positions([norm_sym])
+                        if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                            place_order(ex, norm_sym, signal, user['equity'], risk_pct=user.get('risk_pct'))
+                    except Exception as ue:
+                        log.error("User %s error on %s: %s", user['chat_id'], symbol, ue)
+                        
+        except Exception as e:
+            log.error("Global signal error for %s: %s", symbol, e)
+
+    log.info("═"*60 + "\n  Multi-Exchange Pass Complete \n" + "═"*60)
 
 if __name__ == "__main__":
     run()

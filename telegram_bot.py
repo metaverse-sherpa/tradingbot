@@ -154,18 +154,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    context.user_data['setup_step'] = 1
     
-    warning_text = (
-        "🏔️ *Cyber-Sherpa API Setup*\n\n"
-        "To link your Blofin account, please follow these steps:\n\n"
-        "1️⃣ Log in to **Blofin.com** -> API Management.\n"
-        "2️⃣ Create a new API Key (Set a name and passphrase).\n"
-        "3️⃣ Enable **'Read'** and **'Trade'** permissions.\n"
-        "4️⃣ (Optional) Whitelist the VPS IP for max security.\n\n"
-        "Once ready, please paste your **Blofin API Key** below:"
+    keyboard = [
+        [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
+        [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
+        [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")]
+    ]
+    
+    await update.message.reply_text(
+        "🌍 *Select Your Exchange*\n\n"
+        "Which exchange would you like to link to the Cyber-Sherpa?",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
     )
-    await update.message.reply_text(warning_text, parse_mode="Markdown")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -200,7 +201,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['api_key'],
             context.user_data['api_secret'],
             context.user_data['api_password'],
-            0.0 # Starting equity will be fetched by engine
+            exchange_id=context.user_data.get('exchange_id', 'blofin'),
+            equity=0.0 # Starting equity will be fetched by engine
         )
         
         context.user_data.clear()
@@ -327,13 +329,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_msg = await update.message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
     
     try:
-        import ccxt
-        user_ex = ccxt.blofin({
-            "apiKey": user['api_key'],
-            "secret": user['api_secret'],
-            "password": user['api_password'],
-            "options": {"defaultType": "swap"},
-        })
+        user_ex = database.get_exchange_client(user)
         user_ex.load_markets()
         
         import live_bot_multi
@@ -341,18 +337,23 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # We check the last 100 trades to ensure we find enough realized PnL events
         for sym in live_bot_multi.SYMBOLS:
             try:
-                trades = user_ex.fetch_my_trades(sym, limit=50)
+                norm_sym = database.normalize_symbol(sym, user_ex.id)
+                trades = user_ex.fetch_my_trades(norm_sym, limit=50)
                 for t in trades:
                     info = t.get("info", {})
-                    # Realized PnL is usually only on the closing execution
-                    gross_pnl = float(info.get("fillPnl") or 0)
+                    # PnL Reconstruction logic for different exchanges
+                    gross_pnl = 0
+                    if user_ex.id == 'blofin':
+                        gross_pnl = float(info.get("fillPnl") or 0)
+                    else:
+                        # For Binance/MEXC, we might need more complex matching. 
+                        # Simple fallback: look for 'realizedPnl' field if it exists in raw info
+                        gross_pnl = float(info.get("realizedPnl") or 0)
+                        
                     if gross_pnl != 0:
                         fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
                         net_pnl = gross_pnl - (fee * 2)
                         
-                        # Fix Side Detection: 
-                        # If we SOLD to close, it was a LONG. 
-                        # If we BOUGHT to close, it was a SHORT.
                         side_raw = t.get('side', 'buy').lower()
                         is_long = (side_raw == 'sell')
                         
@@ -421,20 +422,16 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔍 Checking your live positions on the exchange...")
     
     try:
-        import ccxt
-        user_ex = ccxt.blofin({
-            "apiKey": user['api_key'],
-            "secret": user['api_secret'],
-            "password": user['api_password'],
-            "options": {"defaultType": "swap"},
-        })
+        user_ex = database.get_exchange_client(user)
         user_ex.load_markets()
         
         import live_bot_multi
         import charting
         import os
         
-        positions = user_ex.fetch_positions(live_bot_multi.SYMBOLS)
+        # Normalize all symbols for this exchange
+        norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
+        positions = user_ex.fetch_positions(norm_syms)
         active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
         
         if not active:
@@ -606,9 +603,46 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
-    if not user:
-        await query.answer("User record not found.")
+    if query.data.startswith("setex_"):
+        exchange_id = query.data.split("_")[1]
+        context.user_data['exchange_id'] = exchange_id
+        context.user_data['setup_step'] = 1
+        await query.answer()
+        
+        # Customize instructions based on exchange
+        if exchange_id == 'binance':
+            guide = (
+                "🔶 *Binance API Setup*\n\n"
+                "1️⃣ Go to **API Management** on Binance.\n"
+                "2️⃣ Create a 'System Generated' Key.\n"
+                "3️⃣ Click 'Edit Restrictions' -> **'Enable Futures'**.\n"
+                "4️⃣ **Security**: You MUST whitelist the VPS IP for Futures trading.\n\n"
+                "Please paste your **Binance API Key** below:"
+            )
+        elif exchange_id == 'mexc':
+            guide = (
+                "💠 *MEXC API Setup*\n\n"
+                "1️⃣ Go to **API Management** on MEXC.\n"
+                "2️⃣ Create Key with **'Futures'** permissions.\n"
+                "3️⃣ (Optional) Whitelist the VPS IP to avoid key expiration.\n\n"
+                "Please paste your **MEXC API Key** below:"
+            )
+        else:
+            guide = (
+                "🏔️ *Blofin API Setup*\n\n"
+                "1️⃣ Go to **API Management** on Blofin.\n"
+                "2️⃣ Create Key with **'Read'** & **'Trade'** permissions.\n"
+                "3️⃣ Note your passphrase for the final step.\n\n"
+                "Please paste your **Blofin API Key** below:"
+            )
+            
+        await query.edit_message_text(guide, parse_mode="Markdown")
         return
+
+    if not user:
+        if not query.data.startswith("setex_"):
+            await query.answer("User record not found. Please run /setup.")
+            return
 
     if query.data == "toggle_privacy":
         new_val = not user['hide_dollars']
@@ -822,16 +856,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         # Note: database.get_user already returns decrypted keys
-        api_key = user_data['api_key']
-        api_secret = user_data['api_secret']
-        api_pass = user_data['api_password']
-        
-        user_ex = ccxt.blofin({
-            "apiKey": api_key,
-            "secret": api_secret,
-            "password": api_pass,
-            "options": {"defaultType": "swap"},
-        })
+        user_ex = database.get_exchange_client(user_data)
         
         balance = user_ex.fetch_balance(params={"type": "futures"})
         free = float(balance.get("USDT", {}).get("free", 0))

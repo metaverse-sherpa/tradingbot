@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import time
+import ccxt
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
@@ -13,6 +14,29 @@ if not ENCRYPTION_KEY:
         f.write(f"\nENCRYPTION_KEY={ENCRYPTION_KEY}\n")
 
 cipher_suite = Fernet(ENCRYPTION_KEY.encode())
+
+def get_exchange_client(user):
+    """
+    Factory function to create a CCXT exchange client for a specific user.
+    """
+    ex_id = user.get('exchange_id', 'blofin')
+    config = {
+        "apiKey": user["api_key"],
+        "secret": user["api_secret"],
+        "password": user["api_password"],
+        "options": {"defaultType": "swap"},
+        "enableRateLimit": True,
+    }
+    client = getattr(ccxt, ex_id)(config)
+    return client
+
+def normalize_symbol(symbol, exchange_id):
+    """
+    Handles exchange-specific symbol dialects.
+    """
+    if exchange_id == 'mexc':
+        return symbol.split(":")[0]
+    return symbol
 
 def encrypt(data):
     return cipher_suite.encrypt(data.encode()).decode()
@@ -31,6 +55,7 @@ def init_db():
                   blofin_api_key TEXT,
                   blofin_api_secret TEXT,
                   blofin_api_password TEXT,
+                  exchange_id TEXT DEFAULT 'blofin',
                   starting_equity REAL,
                   is_active BOOLEAN,
                   total_wins INTEGER DEFAULT 0,
@@ -41,6 +66,8 @@ def init_db():
                   strategy TEXT DEFAULT 'Mean Reversion Scalper')''')
     
     # Ensure columns exist for older databases
+    try: c.execute("ALTER TABLE Users ADD COLUMN exchange_id TEXT DEFAULT 'blofin'")
+    except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN cumulative_pnl REAL DEFAULT 0.0")
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN last_fetch_timestamp INTEGER DEFAULT 0")
@@ -57,27 +84,28 @@ def init_db():
     conn.commit()
     conn.close()
 
-def upsert_user(chat_id, api_key, api_secret, api_pass, equity):
+def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', equity=0.0):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     # Default symbols
     def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
-    c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, enabled_symbols)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)
+    c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id, starting_equity, is_active, enabled_symbols)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(telegram_chat_id) DO UPDATE SET
                  blofin_api_key=excluded.blofin_api_key,
                  blofin_api_secret=excluded.blofin_api_secret,
                  blofin_api_password=excluded.blofin_api_password,
+                 exchange_id=excluded.exchange_id,
                  starting_equity=excluded.starting_equity,
                  is_active=excluded.is_active''',
-              (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), equity, True, def_syms))
+               (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, equity, True, def_syms))
     conn.commit()
     conn.close()
 
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -97,6 +125,7 @@ def get_user(chat_id):
             "hide_dollars": bool(row[11]),
             "risk_pct": row[12] if row[12] is not None else 1.5,
             "enabled_symbols": (row[13] if row[13] else def_syms).split(","),
+            "exchange_id": row[14] or 'blofin',
             "chat_id": chat_id
         }
     return None
@@ -120,7 +149,7 @@ def update_user_preference(chat_id, key, value):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     # Map key to column name
-    cols = {"strategy": "strategy", "hide_dollars": "hide_dollars", "risk_pct": "risk_pct", "enabled_symbols": "enabled_symbols"}
+    cols = {"strategy": "strategy", "hide_dollars": "hide_dollars", "risk_pct": "risk_pct", "enabled_symbols": "enabled_symbols", "exchange_id": "exchange_id"}
     if key in cols:
         if key == "enabled_symbols" and isinstance(value, list):
             value = ",".join(value)
@@ -157,19 +186,26 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
     
     for sym in live_bot_multi.SYMBOLS:
         try:
-            trades = exchange.fetch_my_trades(sym, last_ts)
+            norm_sym = normalize_symbol(sym, exchange.id)
+            trades = exchange.fetch_my_trades(norm_sym, last_ts)
             for t in trades:
                 if t['timestamp'] <= last_ts: continue
                 
                 info = t.get("info", {})
-                gross_pnl = float(info.get("fillPnl") or 0)
+                # PnL Reconstruction
+                gross_pnl = 0
+                if exchange.id == 'blofin':
+                    gross_pnl = float(info.get("fillPnl") or 0)
+                else:
+                    # Binance/MEXC/Bybit
+                    gross_pnl = float(info.get("realizedPnl") or 0)
                 
                 if gross_pnl != 0:
                     fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
                     net_pnl = gross_pnl - (fee * 2)
                     
                     try:
-                        market = exchange.market(sym)
+                        market = exchange.market(norm_sym)
                         contract_size = float(market.get('contractSize', 1))
                         initial_margin = (float(t['price']) * float(t['amount']) * contract_size) / 20
                         roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
