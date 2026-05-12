@@ -1,32 +1,46 @@
 # Trading Bot: Multi-Symbol BB Scalper 📈
 
-A production-ready, multi-symbol mean-reversion trading bot for the Blofin exchange. This bot utilizes Bollinger Band scalping, trend filters (EMA 200), and volatility protection (ADX/RSI) to execute high-precision trades automatically via GitHub Actions and Google Cloud Scheduler.
+A production-ready, multi-tenant Telegram trading bot for the Blofin exchange. This bot utilizes Bollinger Band scalping, trend filters, and volatility protection to trade for multiple users simultaneously from a dedicated VPS.
 
 ## 🚀 Features
 
-*   **Multi-Symbol Support**: Currently trading 20 high-liquidity assets (BTC, ETH, SOL, PEPE, etc.).
-*   **Mean Reversion Strategy**: Buys the "dip" when price crosses the lower Bollinger Band during an uptrend.
-*   **Precision Execution**: Triggered every 5 minutes with marketable limit orders to bypass exchange size limits.
-*   **Safety First**:
-    *   **Isolated Margin**: 20x leverage strictly isolated to each trade.
-    *   **Slippage Protection**: Cancels trades if the price moves more than 1% from the signal entry.
-    *   **Dynamic Risk/Reward**: Automatically calculates a 1.25:1 TP/SL ratio based on live price action.
-*   **Automated Tracking**: Real-time Win Rate, PnL %, and trade counts updated automatically in this README.
-*   **Instant Alerts**: Sends trade execution summaries and error reports via GitHub Issues (email notifications).
+*   **Multi-Tenant Telegram Interface**: Users securely connect their own accounts via `/setup` or `/reset`.
+*   **Professional Dashboards**: Real-time stats, open position charts with Bollinger Clouds, and trade history.
+*   **Precision Execution**: Async engine runs every 5 minutes with marketable limit orders to bypass size limits.
+*   **Safety & Privacy**: 
+    *   **Military-Grade Encryption**: API keys are encrypted with Fernet symmetric encryption at rest.
+    *   **Privacy Mode**: Toggle between showing dollar PnL or protected percentages.
+*   **Automated Tracking**: Real-time Win Rate, PnL %, and trade counts updated live.
 
-## 🛠️ Strategy Mechanics
+## 🛠️ Initial VPS Setup (GCP/Ubuntu)
 
-1.  **Trend Filter**: Only opens LONG positions if the price is above the 200-period EMA.
-2.  **Volatility Filter**: Uses ADX to skip "choppy" or hyper-trending markets.
-3.  **Momentum Filter**: RSI oversold/overbought checks.
-4.  **Session Filter**: Skips low-liquidity UTC hours (04:00 and 12:00) to reduce "fakeouts."
+If setting up a new `e2-micro` instance, follow these essential steps:
 
-## 📂 Project Structure
+1.  **Memory Safety (Swap File)**:
+    ```bash
+    sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+    sudo mkswap /swapfile && sudo swapon /swapfile
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+    ```
+2.  **Install Dependencies**:
+    ```bash
+    sudo apt update && sudo apt install -y python3-pip python3-venv git libfontconfig1
+    ```
+3.  **Setup Service (Systemd)**:
+    Create `/etc/systemd/system/tradingbot.service` to keep the bot running 24/7.
 
-*   `live_bot_multi.py`: **The Brain.** Refactored for efficient one-shot execution.
-*   `.github/workflows/trade.yml`: **The Scheduler.** Tells GitHub to run the brain every 15 minutes.
-*   `results/live_log.txt`: **The History.** Automatically updated by the bot every run.
-*   `scripts/`: Research and optimization tools for advanced users.
+## 🔄 Updates & Maintenance
+
+Follow these steps each time you push new code to Github:
+
+1.  **Local**: `git add .` -> `git commit -m "Update"` -> `git push`
+2.  **VPS**: Connect via SSH and run:
+    ```bash
+    cd ~/tradingbot
+    git pull
+    sudo systemctl restart tradingbot
+    ```
+3.  **Logs**: Monitor live activity with `journalctl -u tradingbot -f`
 
 ---
 
@@ -36,7 +50,7 @@ A production-ready, multi-symbol mean-reversion trading bot for the Blofin excha
 | :--- | :--- | :--- | :--- | :--- |
 | 12 | 11 | 4 | 73.3% | +4.24% |
 
-**Last Updated:** 2026-05-12 07:30 UTC
+**Last Updated:** 2026-05-12 07:25 UTC
 <!-- PERFORMANCE_END -->
 
 <!-- DATA_STORAGE_START
@@ -45,7 +59,7 @@ ALL_TIME_OPENED: 12
 ALL_TIME_WINS: 11
 ALL_TIME_LOSSES: 4
 ALL_TIME_CUMULATIVE_PNL: 8.477543328
-LAST_FETCH_TIMESTAMP: 1778571044298
+LAST_FETCH_TIMESTAMP: 1778570752434
 DATA_STORAGE_END -->
 
 ## ⚠️ Disclaimer
