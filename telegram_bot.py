@@ -314,12 +314,13 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = database.get_user(update.message.chat_id)
+    chat_id = update.message.chat_id
+    user = database.get_user(chat_id)
     if not user:
         await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
-    await update.message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
+    status_msg = await update.message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
     
     try:
         import ccxt
@@ -333,70 +334,76 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         import live_bot_multi
         all_closed = []
+        # We check the last 100 trades to ensure we find enough realized PnL events
         for sym in live_bot_multi.SYMBOLS:
             try:
                 trades = user_ex.fetch_my_trades(sym, limit=50)
                 for t in trades:
                     info = t.get("info", {})
+                    # Realized PnL is usually only on the closing execution
                     gross_pnl = float(info.get("fillPnl") or 0)
                     if gross_pnl != 0:
                         fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
                         net_pnl = gross_pnl - (fee * 2)
+                        
+                        # Fix Side Detection: 
+                        # If we SOLD to close, it was a LONG. 
+                        # If we BOUGHT to close, it was a SHORT.
+                        side_raw = t.get('side', 'buy').lower()
+                        is_long = (side_raw == 'sell')
+                        
                         all_closed.append({
                             "symbol": sym,
                             "timestamp": t['timestamp'],
                             "net_pnl": net_pnl,
                             "price": t['price'],
-                            "amount": t['amount']
+                            "amount": t['amount'],
+                            "side": "l" if is_long else "s",
+                            "side_display": "LONG" if is_long else "SHORT"
                         })
             except: pass
-                
+                 
         # Sort by timestamp descending
         all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
         last_10 = all_closed[:10]
         
         if not last_10:
-            await update.message.reply_text("No closed trades found yet.")
+            await status_msg.edit_text("No recently closed trades found in your Blofin account.")
             return
             
-        msg = "📜 *Your Last 10 Trades*\n\n"
-        keyboard = []
-        row = []
+        await status_msg.delete()
+        await update.message.reply_text("📜 *Your Last 10 Trades*")
         
-        for i, t in enumerate(last_10):
+        for t in last_10:
             import datetime
             dt = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
             icon = "🚀" if t['net_pnl'] > 0 else "❌"
-            status = "Won" if t['net_pnl'] > 0 else "Lost"
             
-            # 1. Determine Side (Historical)
-            side_raw = t.get('side', 'buy') # buy or sell
-            is_long = side_raw == 'sell' 
-            side_str = "l" if is_long else "s"
-            side_display = "LONG" if is_long else "SHORT"
-            
-            # 2. Calculate ROE
+            # Calculate ROE (Estimate based on position size)
             try:
                 market = user_ex.market(t['symbol'])
                 contract_size = float(market.get('contractSize', 1))
-                initial_margin = (t['price'] * t['amount'] * contract_size) / 20 # Assume 20X
+                # ROE = (PnL / Margin). We assume 20x for the visual card if not specified.
+                initial_margin = (t['price'] * t['amount'] * contract_size) / 20
                 roe_pct = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
             except: roe_pct = 0
             
-            msg += f"{i+1}. {icon} *{side_display}* ({dt})\n"
-            msg += f"Symbol: `{t['symbol']}` | PnL: *${t['net_pnl']:.2f}* ({roe_pct:+.2f}%)\n\n"
+            msg = (
+                f"{icon} *{t['side_display']}* ({dt})\n"
+                f"Symbol: `{t['symbol']}`\n"
+                f"PnL: *${t['net_pnl']:.2f}* ({roe_pct:+.2f}%)\n"
+            )
             
-            # 3. Add Share Button (Compressed format)
-            cb_data = f"sh_{t['symbol']}_{side_str}_{roe_pct:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
-            btn = InlineKeyboardButton(f"📸 Share #{i+1}", callback_data=cb_data)
-            row.append(btn)
-            if len(row) == 2:
-                keyboard.append(row)
-                row = []
-        
-        if row: keyboard.append(row)
+            # Add Share Button directly under this trade
+            cb_data = f"sh_{t['symbol']}_{t['side']}_{roe_pct:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Share This Result", callback_data=cb_data)]])
             
-        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+            await update.message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
+            await asyncio.sleep(0.2) # Small delay to keep order
+            
+    except Exception as e:
+        logger.error(f"Error fetching history: {e}")
+        await update.message.reply_text(f"❌ Error fetching trade history: {e}")
         
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching trades: {e}")
