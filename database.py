@@ -20,7 +20,8 @@ def encrypt(data):
 def decrypt(data):
     return cipher_suite.decrypt(data.encode()).decode()
 
-DB_PATH = '/Users/johngiles/projects/tradingbot/bot_users.db'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'bot_users.db')
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
