@@ -176,18 +176,24 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
                     except: roe_pct = 0
                     
                     cum_pnl += net_pnl
+                    share_data = None
                     if net_pnl > 0:
                         wins += 1
                         header = "🚀 *Trade Won!*"
+                        # sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
+                        side_code = "l" # assume long for notification if side is missing from raw info
+                        share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
                     else:
                         losses += 1
                         header = "❌ *Trade Lost*"
                         
                     new_closed.append({
-                        "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*"
+                        "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
+                        "share_data": share_data
                     })
         except: pass
         
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     # Update DB
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -199,4 +205,14 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
     # Notify User
     import asyncio
     for nc in new_closed:
-        asyncio.create_task(application.bot.send_message(chat_id=chat_id, text=nc['msg'], parse_mode="Markdown"))
+        markup = None
+        if nc.get("share_data"):
+            btn = InlineKeyboardButton("📸 Share Result", callback_data=nc["share_data"])
+            markup = InlineKeyboardMarkup([[btn]])
+        
+        asyncio.create_task(application.bot.send_message(
+            chat_id=chat_id, 
+            text=nc['msg'], 
+            reply_markup=markup,
+            parse_mode="Markdown"
+        ))
