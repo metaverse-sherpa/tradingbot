@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
+import gc
 
 # Path to your official logo
 LOGO_PATH = "/Users/johngiles/.gemini/antigravity/brain/37bf787e-4046-4151-a19d-af587714554a/media__1778508286364.png"
@@ -19,15 +20,26 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     draw = ImageDraw.Draw(overlay)
     
     try:
-        font_main = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 60)
-        font_sub = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 40)
-        font_massive = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 140)
-        font_handle = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 30)
+        # Standard paths for Linux (Ubuntu) and Mac
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "Arial"
+        ]
+        
+        def find_font(size):
+            for path in font_paths:
+                try: return ImageFont.truetype(path, size)
+                except: continue
+            return ImageFont.load_default()
+
+        font_main = find_font(60)
+        font_sub = find_font(40)
+        font_massive = find_font(140)
+        font_handle = find_font(30)
     except:
-        font_main = ImageFont.load_default()
-        font_sub = ImageFont.load_default()
-        font_massive = ImageFont.load_default()
-        font_handle = ImageFont.load_default()
+        font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
     color_neon = (0, 255, 150, 255) if roe >= 0 else (255, 50, 50, 255)
     color_white = (255, 255, 255, 255)
@@ -63,7 +75,18 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     combined = Image.alpha_composite(base_img, overlay)
     save_filename = f"pnl_card_{user_id}_{clean_sym.replace('/', '_')}.png"
     save_path = os.path.join("pnl_cards", save_filename)
-    combined.convert("RGB").save(save_path, "JPEG", quality=95)
+    
+    # Save as JPEG with optimized quality to save RAM/Space
+    rgb_final = combined.convert("RGB")
+    rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
+    
+    # CRITICAL: Close all image objects to release RAM
+    base_img.close()
+    overlay.close()
+    combined.close()
+    rgb_final.close()
+    gc.collect() # Force garbage collection
+    
     return save_path
 
 def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=""):
@@ -81,15 +104,26 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     draw = ImageDraw.Draw(overlay)
     
     try:
-        font_main = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 60)
-        font_sub = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 45)
-        font_massive = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 100)
-        font_handle = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 30)
+        # Standard paths for Linux (Ubuntu) and Mac
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "Arial"
+        ]
+        
+        def find_font(size):
+            for path in font_paths:
+                try: return ImageFont.truetype(path, size)
+                except: continue
+            return ImageFont.load_default()
+
+        font_main = find_font(60)
+        font_sub = find_font(45)
+        font_massive = find_font(100)
+        font_handle = find_font(30)
     except:
-        font_main = ImageFont.load_default()
-        font_sub = ImageFont.load_default()
-        font_massive = ImageFont.load_default()
-        font_handle = ImageFont.load_default()
+        font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
     color_neon = (0, 255, 150, 255) if overall_pnl >= 0 else (255, 50, 50, 255)
     color_white = (255, 255, 255, 255)
@@ -121,5 +155,16 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     combined = Image.alpha_composite(base_img, overlay)
     save_filename = f"stats_card_{user_id}.png"
     save_path = os.path.join("pnl_cards", save_filename)
-    combined.convert("RGB").save(save_path, "JPEG", quality=95)
+    
+    # Save as JPEG with optimized quality to save RAM/Space
+    rgb_final = combined.convert("RGB")
+    rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
+    
+    # CRITICAL: Close all image objects to release RAM
+    base_img.close()
+    overlay.close()
+    combined.close()
+    rgb_final.close()
+    gc.collect() # Force garbage collection
+    
     return save_path

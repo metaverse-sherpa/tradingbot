@@ -2,6 +2,11 @@ import mplfinance as mpf
 import pandas as pd
 import numpy as np
 import os
+import matplotlib
+import matplotlib.pyplot as plt
+
+# Use a non-interactive backend to save RAM and avoid VPS issues
+matplotlib.use('Agg')
 
 def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     """
@@ -65,15 +70,19 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     fb_sl = dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.10)
     fb_bb = dict(y1=df["bb_up"].values, y2=df["bb_low"].values, color='#00E5FF', alpha=0.05)
     
-    mpf.plot(df, type='candle', 
+    # Generate and save the chart
+    fig, axlist = mpf.plot(df, type='candle', 
              style=style,
              title=f"\n{symbol} ({side}) - 15M Strategy Setup",
              ylabel='Price (USDT)',
              addplot=ap,
              fill_between=[fb_tp, fb_sl, fb_bb],
-             savefig=dict(fname=filepath, dpi=120, bbox_inches='tight'),
+             savefig=dict(fname=filepath, dpi=100, bbox_inches='tight'),
              volume=False,
              figratio=(16,9),
-             figscale=1.3)
+             figscale=1.3,
+             returnfig=True)
              
+    # CRITICAL: Explicitly close the figure to release memory!
+    plt.close(fig)
     return filepath
