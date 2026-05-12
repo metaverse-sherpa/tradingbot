@@ -776,7 +776,7 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• /resume - Green light. Restarts the automated engine.\n\n"
         
         "🤝 *Support*\n"
-        "• /contact - Reach out to @metaverse_sherpa for questions or ideas.\n\n"
+        "• /contact - Reach out to @metaverse\\_sherpa for questions or ideas.\n\n"
         
         "_Need more help? Just tap any command to try it out!_"
     )
@@ -787,8 +787,8 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = (
         "🏔️ *Contact the Sherpa*\n\n"
         "Have questions, feedback, or a new strategy idea? Reach out directly to the project lead:\n\n"
-        "👤 *Lead:* @metaverse_sherpa\n"
-        "📢 *Community:* @metaversesherpa_trading_bot\n\n"
+        "👤 *Lead:* @metaverse\\_sherpa\n"
+        "📢 *Community:* @metaversesherpa\\_trading\\_bot\n\n"
         "We are constantly refining the Cyber-Sherpa engine and value your input!"
     )
     await update.message.reply_text(msg, parse_mode="Markdown")
