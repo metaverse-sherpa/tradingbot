@@ -15,7 +15,7 @@ venv/
 .DS_Store
 
 # Data & Logs (Private)
-csv/
+# csv/ (Tracked for pre-loaded backtesting)
 *.db
 *.log
 *.png

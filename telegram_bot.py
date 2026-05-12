@@ -10,6 +10,12 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboard
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from telegram.error import BadRequest
 import database
+import sys
+
+# Add scripts directory to path for imports
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(BASE_DIR, "scripts"))
+from audit_3yr_portfolio import run_custom_audit
 
 # Load environment variables
 load_dotenv()
@@ -38,25 +44,71 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text("📊 Generating Verified 3-Year Audit Report...")
     
-    # Generate the visual card
     card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text)
     
     msg = (
-        "🏔️ *Cyber-Sherpa: 3-Year Strategy Audit*\n"
-        "Strategy: *BB Precision Scalper (v2.0)*\n\n"
-        f"📈 *Total Return*: `{pnl_pct:+.1f}%`\n"
-        "💰 *Growth*: `$10,000` ➡️ `$67,622`\n"
-        f"🎯 *Win Rate*: `{win_rate:.1f}%` ({total_trades} trades)\n"
-        f"🛡️ *Max Drawdown*: `{max_dd:.1f}%` (Low Risk)\n"
-        f"🔄 *Avg Trades/Day*: `{avg_trades_day:.2f}`\n\n"
-        "_*Verified across 19 symbols using 3 years of 15m historical data._"
+        "📈 *Cyber-Sherpa 3-Year Portfolio Audit*\n\n"
+        f"Period: `{period_text}`\n"
+        f"Total PnL: *{pnl_pct:+.1f}%*\n"
+        f"Win Rate: *{win_rate:.1f}%*\n"
+        f"Max Drawdown: *{max_dd:.1f}%*\n"
+        f"Total Trades: *{total_trades}*\n"
+        f"Avg Trades/Day: *{avg_trades_day:.2f}*\n\n"
+        "✅ _This audit was generated using historical 15m candle data for the core 19 tokens._"
     )
     
     if card_path and os.path.exists(card_path):
-        with open(card_path, "rb") as photo:
-            await update.message.reply_photo(photo=photo, caption=msg, parse_mode="Markdown")
+        with open(card_path, 'rb') as photo:
+            await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, parse_mode="Markdown")
     else:
         await update.message.reply_text(msg, parse_mode="Markdown")
+
+async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user):
+    """Runs a 3-year backtest for a specific user's risk and symbols."""
+    chat_id = user['chat_id']
+    risk = user['risk_pct']
+    syms = user['enabled_symbols']
+    
+    status_msg = await context.bot.send_message(
+        chat_id=chat_id, 
+        text=f"🔄 *Re-calculating your personalized 3-Year Audit...*\n\nSettings: `{risk:.2f}% Risk` | `{len(syms)} Tokens`",
+        parse_mode="Markdown"
+    )
+    
+    try:
+        # Run the audit engine (this takes ~5-10s)
+        res = run_custom_audit(risk, syms)
+        if not res:
+            await status_msg.edit_text("❌ Personal audit failed. Check settings.")
+            return
+
+        # Calculate avg trades/day (3 years = 1095 days)
+        avg_t_day = res['total_trades'] / 1095
+        period_text = "May 2023 - May 2026"
+        
+        card_path = media_gen.generate_audit_card(
+            res['pnl_pct'], res['win_rate'], res['max_dd'], 
+            res['total_trades'], avg_t_day, period_text
+        )
+        
+        msg = (
+            "🎯 *Your Personalized 3-Year Audit*\n\n"
+            f"Risk: `{risk:.2f}%` | Symbols: `{len(syms)}/19`\n\n"
+            f"3-Year PnL: *{res['pnl_pct']:+.1f}%*\n"
+            f"Win Rate: *{res['win_rate']:.1f}%*\n"
+            f"Max Drawdown: *{res['max_dd']:.1f}%*\n"
+            f"Total Trades: *{res['total_trades']}*"
+        )
+        
+        if card_path and os.path.exists(card_path):
+            await context.bot.send_photo(chat_id=chat_id, photo=open(card_path, 'rb'), caption=msg, parse_mode="Markdown")
+            await status_msg.delete()
+        else:
+            await status_msg.edit_text(msg, parse_mode="Markdown")
+            
+    except Exception as e:
+        logger.error(f"Personal audit error: {e}")
+        await status_msg.edit_text(f"❌ Error during simulation: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Quick reply buttons for daily monitoring
@@ -134,8 +186,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 database.update_user_preference(chat_id, "risk_pct", val)
                 context.user_data.pop('setting_risk', None)
                 await update.message.reply_text(f"✅ Risk updated to *{val:.2f}%*", parse_mode="Markdown")
-                # Show settings again
+                # Trigger Audit
                 user = database.get_user(chat_id)
+                asyncio.create_task(trigger_personalized_audit(update, context, user))
+                # Show settings again
                 msg, reply_markup = get_settings_ui(user)
                 await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
             else:
@@ -571,7 +625,10 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             current_syms.append(sym_to_toggle)
         database.update_user_preference(chat_id, "enabled_symbols", current_syms)
         await query.answer(f"✅ Updated {sym_to_toggle}")
-        await show_symbol_menu(query, database.get_user(chat_id))
+        # Trigger Audit (in background)
+        user = database.get_user(chat_id)
+        asyncio.create_task(trigger_personalized_audit(update, context, user))
+        await show_symbol_menu(query, user)
         return
 
     elif query.data == "back_to_settings":
