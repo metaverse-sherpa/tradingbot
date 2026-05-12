@@ -33,12 +33,13 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     win_rate = 60.0
     max_dd = 18.8
     total_trades = 880
+    avg_trades_day = 0.80
     period_text = "May 2023 - May 2026"
     
     await update.message.reply_text("📊 Generating Verified 3-Year Audit Report...")
     
     # Generate the visual card
-    card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, period_text)
+    card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text)
     
     msg = (
         "🏔️ *Cyber-Sherpa: 3-Year Strategy Audit*\n"
@@ -46,7 +47,8 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📈 *Total Return*: `{pnl_pct:+.1f}%`\n"
         "💰 *Growth*: `$10,000` ➡️ `$67,622`\n"
         f"🎯 *Win Rate*: `{win_rate:.1f}%` ({total_trades} trades)\n"
-        f"🛡️ *Max Drawdown*: `{max_dd:.1f}%` (Low Risk)\n\n"
+        f"🛡️ *Max Drawdown*: `{max_dd:.1f}%` (Low Risk)\n"
+        f"🔄 *Avg Trades/Day*: `{avg_trades_day:.2f}`\n\n"
         "_*Verified across 19 symbols using 3 years of 15m historical data._"
     )
     

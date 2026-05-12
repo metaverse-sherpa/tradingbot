@@ -171,7 +171,7 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     
     return save_path
 
-def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, period_text):
+def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text):
     """
     Generates a professional 3-year performance audit certificate.
     """
@@ -224,9 +224,10 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, period_text):
     draw_text_shadow((margin_x, base_img.height - 450), f"TOTAL PNL: {pnl_pct:+.1f}%", font=font_massive, fill=color_neon)
     
     # 3. Stats Block
-    draw_text_shadow((margin_x, base_img.height - 280), f"Verified Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 220), f"Max Drawdown: {max_dd:.1f}%", font=font_sub, fill=(255, 100, 100, 255))
-    draw_text_shadow((margin_x, base_img.height - 160), f"Total Trades Audited: {total_trades}", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 310), f"Verified Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 260), f"Max Drawdown: {max_dd:.1f}%", font=font_sub, fill=(255, 100, 100, 255))
+    draw_text_shadow((margin_x, base_img.height - 210), f"Total Trades Audited: {total_trades}", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 160), f"Avg Trades/Day: {avg_trades_day:.2f}", font=font_sub, fill=color_white)
     
     handle_text = "@metaversesherpa_trading_bot"
     w_h = draw.textlength(handle_text, font=font_handle)
