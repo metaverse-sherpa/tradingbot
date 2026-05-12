@@ -157,9 +157,13 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['setup_step'] = 1
     
     warning_text = (
-        "🔒 *Secure Setup Process*\n\n"
-        "You are about to link your Blofin exchange account. For your safety, ensure the API keys you provide have **Trade** permissions but absolutely **NO Withdrawal** permissions.\n\n"
-        "To begin, please paste your **Blofin API Key**:"
+        "🏔️ *Cyber-Sherpa API Setup*\n\n"
+        "To link your Blofin account, please follow these steps:\n\n"
+        "1️⃣ Log in to **Blofin.com** -> API Management.\n"
+        "2️⃣ Create a new API Key (Set a name and passphrase).\n"
+        "3️⃣ Enable **'Read'** and **'Trade'** permissions.\n"
+        "4️⃣ (Optional) Whitelist the VPS IP for max security.\n\n"
+        "Once ready, please paste your **Blofin API Key** below:"
     )
     await update.message.reply_text(warning_text, parse_mode="Markdown")
 
@@ -774,6 +778,11 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• /strategy - Swap brains. Switch between different trading algorithms.\n"
         "• /stop - Emergency brake. Pauses the trading engine for your account.\n"
         "• /resume - Green light. Restarts the automated engine.\n\n"
+        
+        "🔑 *Blofin API Setup Guide*\n"
+        "1. Go to **API Management** on Blofin.\n"
+        "2. Create Key with **'Read'** & **'Trade'** permissions.\n"
+        "3. Use the passphrase you set during creation.\n\n"
         
         "🤝 *Support*\n"
         "• /contact - Reach out to @metaverse\\_sherpa for questions or ideas.\n\n"
