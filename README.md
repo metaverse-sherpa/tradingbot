@@ -44,23 +44,5 @@ Follow these steps each time you push new code to Github:
 
 ---
 
-## 📈 Live Performance (All-Time)
-<!-- PERFORMANCE_START -->
-| Total Trades | Wins | Losses | Win Rate | Total PnL (%) |
-| :--- | :--- | :--- | :--- | :--- |
-| 12 | 11 | 4 | 73.3% | +4.24% |
-
-**Last Updated:** 2026-05-12 07:40 UTC
-<!-- PERFORMANCE_END -->
-
-<!-- DATA_STORAGE_START
-STARTING_EQUITY: 200.1733321
-ALL_TIME_OPENED: 12
-ALL_TIME_WINS: 11
-ALL_TIME_LOSSES: 4
-ALL_TIME_CUMULATIVE_PNL: 8.477543328
-LAST_FETCH_TIMESTAMP: 1778571639308
-DATA_STORAGE_END -->
-
 ## ⚠️ Disclaimer
 Trading cryptocurrency involves significant risk. This bot is provided for educational purposes. Always start with **Dry Run** mode to verify behavior before committing real capital.

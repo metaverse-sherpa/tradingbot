@@ -2,9 +2,9 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
 import gc
 
-# Path to your official logo - Looking for logo.png in the project root
+# Path to your official logo - Looking for it in the images/ folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGO_PATH = os.path.join(BASE_DIR, "logo.png")
+LOGO_PATH = os.path.join(BASE_DIR, "images", "metaverse-bot-logo.png")
 
 def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id=""):
     """
