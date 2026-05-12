@@ -7,3 +7,4 @@ python-telegram-bot
 cryptography
 matplotlib
 mplfinance
+Pillow

@@ -24,7 +24,7 @@ If setting up a new `e2-micro` instance, follow these essential steps:
     ```
 2.  **Install Dependencies**:
     ```bash
-    sudo apt update && sudo apt install -y python3-pip python3-venv git libfontconfig1
+    sudo apt update && sudo apt install -y python3-pip python3-venv git libfontconfig1 fonts-dejavu-core
     ```
 3.  **Setup Service (Systemd)**:
     Create `/etc/systemd/system/tradingbot.service` to keep the bot running 24/7.
