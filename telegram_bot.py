@@ -762,22 +762,36 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Welcome! Here is a guide to everything your bot can do:\n\n"
         
         "📊 *Trading & Performance*\n"
-        "• /stats - Your dashboard. Shows Overall PnL, Daily PnL (last 24h), and Win Rate (including live trades).\n"
-        "• /opentrades - Visual check. Fetches all live positions and generates *1H Candlestick Charts* with TP/SL zones.\n"
+        "• /stats - Your dashboard. Shows Overall PnL, Daily PnL (last 24h), and Win Rate.\n"
+        "• /opentrades - Visual check. Fetches all live positions and generates charts.\n"
         "• /list - History. Shows your last 10 closed trades directly from the exchange.\n\n"
         
         "💰 *Account Management*\n"
-        "• /balance - Check your wallet. Shows available USDT and *Total Account Value* (Cash + Margin + PnL).\n"
+        "• /balance - Check your wallet. Shows available USDT and Total Value.\n"
         "• /setup - The engine room. Connect or update your Blofin API keys securely.\n\n"
         
         "🎯 *Control & Strategy*\n"
-        "• /strategy - Swap brains. Switch between different trading algorithms (e.g., Mean Reversion).\n"
+        "• /strategy - Swap brains. Switch between different trading algorithms.\n"
         "• /stop - Emergency brake. Pauses the trading engine for your account.\n"
         "• /resume - Green light. Restarts the automated engine.\n\n"
+        
+        "🤝 *Support*\n"
+        "• /contact - Reach out to @metaverse_sherpa for questions or ideas.\n\n"
         
         "_Need more help? Just tap any command to try it out!_"
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
+
+async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Provides contact info for the Sherpa."""
+    msg = (
+        "🏔️ *Contact the Sherpa*\n\n"
+        "Have questions, feedback, or a new strategy idea? Reach out directly to the project lead:\n\n"
+        "👤 *Lead:* @metaverse_sherpa\n"
+        "📢 *Community:* @metaversesherpa_trading_bot\n\n"
+        "We are constantly refining the Cyber-Sherpa engine and value your input!"
+    )
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 async def stop_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     database.set_active(update.message.chat_id, False)
@@ -934,6 +948,7 @@ async def post_init(application: ApplicationBuilder):
         ("help", "❓ Get help & command guide"),
         ("settings", "⚙️ Bot settings & privacy"),
         ("docs", "📖 View user manual & tutorials"),
+        ("contact", "🤝 Contact @metaverse_sherpa"),
         ("reset", "🔄 Reconfigure API keys"),
     ])
     # This automatically starts the background engine when the Telegram bot boots up
@@ -960,6 +975,7 @@ def main():
     app.add_handler(CommandHandler("backtest", backtest))
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("strategy", strategy_command))
+    app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
     app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
