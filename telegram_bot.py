@@ -92,10 +92,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         success_text = (
             "🎉 *Setup Complete!*\n\n"
             "Your credentials have been encrypted with military-grade symmetric encryption and stored safely. The trading engine will pick up your account on its next 5-minute cycle.\n\n"
-            "Commands:\n"
-            "📊 /stats - View your performance\n"
-            "🔴 /stop - Pause trading\n"
-            "🟢 /resume - Resume trading"
+            "Quick Commands:\n"
+            "🛰 /opentrades - View live positions\n"
+            "📜 /list - See recent trade history\n"
+            "📊 /stats - Check your performance\n"
+            "❓ /help - View the command guide"
         )
         await update.message.reply_text(success_text, parse_mode="Markdown")
 
