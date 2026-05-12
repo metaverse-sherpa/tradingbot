@@ -19,6 +19,11 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Silence chatty libraries to save disk space on VPS
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
+logging.getLogger("ccxt.blofin").setLevel(logging.WARNING)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Quick reply buttons for daily monitoring
     keyboard = [['/opentrades', '/list', '/balance', '/stats'], ['/strategy', '/docs', '/setup']]

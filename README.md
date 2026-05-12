@@ -68,6 +68,10 @@ Follow these steps each time you push new code to Github:
     sudo systemctl restart tradingbot
     ```
 3.  **Logs**: Monitor live activity with `journalctl -u tradingbot -f`
+4.  **Disk Safety**: Limit system logs to 500MB to prevent disk bloat:
+    ```bash
+    sudo journalctl --vacuum-size=500M
+    ```
 
 ---
 
