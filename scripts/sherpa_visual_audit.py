@@ -71,12 +71,15 @@ def prepare_indicators(df, cfg):
         "index": df.index,
     }
 
-def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin"):
+def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", start_balance=10000.0):
     """
     Performs a visual backtest and returns (stats, chart_path)
     """
+    is_master = False
     if enabled_symbols is None:
         enabled_symbols = list(SYMBOL_CONFIGS.keys())
+        if risk_val_pct == 1.5:
+            is_master = True
         
     datasets = {}
     for name in enabled_symbols:
@@ -103,8 +106,8 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin"):
         aligned[name] = arr
 
     states = {name: {"in_trade": False, "side": 0, "sl": 0.0, "tp": 0.0, "size": 0.0, "risk_amt": 0.0, "wins": 0, "losses": 0} for name in datasets}
-    equity = START_CASH; equity_history = [(common_idx[0], equity)]
-    max_eq = START_CASH; drawdowns = [(common_idx[0], 0.0)]
+    equity = start_balance; equity_history = [(common_idx[0], equity)]
+    max_eq = start_balance; drawdowns = [(common_idx[0], 0.0)]
     max_dd_val = 0.0
 
     for i in range(EMA_PERIOD, n_bars - 1):
@@ -167,7 +170,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin"):
     
     # Add Start/End Labels
     start_date, end_date = df_eq.index[0], df_eq.index[-1]
-    ax1.annotate(f"${START_CASH:,.0f}", (start_date, START_CASH), textcoords="offset points", xytext=(-10,10), ha='center', color='white', fontweight='bold')
+    ax1.annotate(f"${start_balance:,.0f}", (start_date, start_balance), textcoords="offset points", xytext=(-10,10), ha='center', color='white', fontweight='bold')
     ax1.annotate(f"${equity:,.0f}", (end_date, equity), textcoords="offset points", xytext=(-10,10), ha='center', color='cyan', fontweight='bold')
 
     ax1.set_title(f"Metaverse Sherpa: 3-Year Equity Trail ({risk_val_pct}% Risk)", color="white", fontsize=16, pad=20)
@@ -184,8 +187,13 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin"):
     
     fig.patch.set_facecolor("#121212")
     plt.tight_layout()
-    chart_name = f"audit_{user_id}_{int(time.time())}.png"
-    chart_path = os.path.join(RESULTS_DIR, chart_name)
+    
+    if is_master and user_id == "admin":
+        chart_path = os.path.join(RESULTS_DIR, "master_audit.png")
+    else:
+        chart_name = f"audit_{user_id}_{int(time.time())}.png"
+        chart_path = os.path.join(RESULTS_DIR, chart_name)
+        
     plt.savefig(chart_path, dpi=150, facecolor="#121212")
     plt.close() # Important for bot memory
     
@@ -193,7 +201,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin"):
     win_rate = (sum(st["wins"] for st in states.values()) / total_trades * 100) if total_trades else 0
     
     stats = {
-        "pnl_pct": (equity - START_CASH) / START_CASH * 100,
+        "pnl_pct": (equity - start_balance) / start_balance * 100,
         "final_equity": equity,
         "max_dd": max_dd_val,
         "total_trades": total_trades,

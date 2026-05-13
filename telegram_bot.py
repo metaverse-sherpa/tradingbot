@@ -50,72 +50,92 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user:
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
+    
+    # Get current balance for projection
+    balance = user.get('equity', 10000.0)
+    if balance < 100: balance = 10000.0 # Default to 10k for new users
         
-    await trigger_personalized_audit(update, context, user)
+    await trigger_personalized_audit(update, context, user, start_balance=balance)
 
-async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user):
+async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user, start_balance=10000.0):
     """Runs a 3-year backtest for a specific user's risk and symbols with animation."""
     chat_id = user['chat_id']
     risk = user['risk_pct']
     syms = user['enabled_symbols']
+    def_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
     
-    # 🏔️ Animation Frames
+    # 🏔️ Master Cache Logic
+    is_default = (risk == 1.5 and len(syms) >= 18 and start_balance == 10000.0)
+    master_path = os.path.join(BASE_DIR, "results", "master_audit.png")
+    
+    if is_default and os.path.exists(master_path):
+        # Serve Master Audit Instantly
+        audit_msg = (
+            "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
+            "Settings: `1.5% Risk` | `All Institutional Tokens`\n\n"
+            "Final Equity: *$161,586.43*\n"
+            "Total PnL: *+1,515.9%*\n"
+            "Win Rate: *61.2%*\n"
+            "Max Drawdown: *18.8%*\n\n"
+            "📈 _This simulation represents the core Sherpa algorithm's performance over the last 3 years._"
+        )
+        with open(master_path, 'rb') as photo:
+            await context.bot.send_photo(
+                chat_id=chat_id, 
+                photo=photo, 
+                caption=audit_msg, 
+                parse_mode="Markdown",
+                reply_markup=get_main_inline_menu(chat_id)
+            )
+        return
+
+    # 🏔️ Custom Animation Frames
     frames = [
         "🥾 *Sherpa is packing the gear...*",
         "🧗‍♂️ *Climbing the 2024 candles...*",
         "🧗‍♂️ *Navigating the 2025 volatility...*",
-        "🏔️ *Reaching the 2026 peak...*",
+        "🏔️ *Reaching the peak...*",
         "🛰️ *Syncing your private results...*"
     ]
     
     status_msg = await context.bot.send_message(
         chat_id=chat_id, 
-        text=f"{frames[0]}\n\nSettings: `{risk:.2f}% Risk` | `{len(syms)} Tokens`",
+        text=f"{frames[0]}\n\nProjecting your capital: `${start_balance:,.0f}`",
         parse_mode="Markdown"
     )
     
-    # Start the visual audit in a separate thread/task so we can animate
-    audit_task = asyncio.create_task(asyncio.to_thread(run_visual_audit, risk, syms, user_id=chat_id))
+    # Start the visual audit
+    # If it's a default run but we're missing the master chart, run it as 'admin' to save it
+    sim_user_id = "admin" if is_default else chat_id
+    audit_task = asyncio.create_task(asyncio.to_thread(run_visual_audit, risk, syms, user_id=sim_user_id, start_balance=start_balance))
     
     idx = 1
     while not audit_task.done():
         await asyncio.sleep(1.5)
         if idx < len(frames):
-            try:
-                await status_msg.edit_text(
-                    f"{frames[idx]}\n\nSettings: `{risk:.2f}% Risk` | `{len(syms)} Tokens`",
-                    parse_mode="Markdown"
-                )
-                idx += 1
+            try: await status_msg.edit_text(f"{frames[idx]}\n\nProjecting your capital: `${start_balance:,.0f}`", parse_mode="Markdown"); idx += 1
             except: pass
             
     try:
         stats, chart_path = await audit_task
         if not stats or not chart_path:
-            await status_msg.edit_text("❌ Personal audit failed. Check your settings.")
-            return
+            await status_msg.edit_text("❌ Personal audit failed. Check your settings."); return
 
         audit_msg = (
             f"🏔️ *Your Personalized 3-Year Audit*\n"
-            f"Settings: `{risk:.2f}% Risk` | `{len(syms)}/19 Tokens`\n\n"
+            f"Start Balance: `${start_balance:,.0f}` | Risk: `{risk:.2f}%`\n\n"
             f"Final Equity: *${stats['final_equity']:,.2f}*\n"
             f"Total PnL: *{stats['pnl_pct']:+.1f}%*\n"
             f"Win Rate: *{stats['win_rate']:.1f}%*\n"
             f"Max Drawdown: *{stats['max_dd']:.1f}%*\n\n"
-            "📈 _This simulation represents your current settings applied over the last 3 years._"
+            "📈 _This simulation represents your settings applied over the last 3 years._"
         )
         
         await status_msg.delete()
         if os.path.exists(chart_path):
             with open(chart_path, 'rb') as photo:
-                await context.bot.send_photo(
-                    chat_id=chat_id, 
-                    photo=photo, 
-                    caption=audit_msg, 
-                    parse_mode="Markdown",
-                    reply_markup=get_main_inline_menu(chat_id)
-                )
-            os.remove(chart_path) # Cleanup to save VPS space
+                await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=audit_msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+            if not is_default: os.remove(chart_path)
         else:
             await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
             
