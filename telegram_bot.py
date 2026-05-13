@@ -140,23 +140,27 @@ def get_main_keyboard():
         ['/opentrades', '/list'],
         ['/stats', '/help']
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
+
+def get_main_inline_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("🛰️ Open Trades", callback_data="opentrades_menu"),
+            InlineKeyboardButton("📜 History", callback_data="history_menu")
+        ],
+        [
+            InlineKeyboardButton("📊 Stats", callback_data="stats_menu"),
+            InlineKeyboardButton("❓ Help", callback_data="help_menu")
+        ]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    reply_markup = get_main_keyboard()
-    
     await update.message.reply_text(
         "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
-        "This bot allows multiple users to trade using their own Blofin API keys.\n\n"
-        "Commands:\n"
-        "1. /setup - Configure your API keys (AES encrypted)\n"
-        "2. /stats - View your individual PnL and trade counts\n"
-        "3. /opentrades - Check live positions and Target ROE\n"
-        "4. /list - View your recent trade history\n"
-        "5. /backtest - View 3-year verified strategy audit\n"
-        "6. /stop - Pause the bot for your account\n"
-        "7. /resume - Resume trading",
-        reply_markup=reply_markup
+        "Tap /setup to begin or use the menu below to monitor your account.",
+        reply_markup=get_main_keyboard(),
+        parse_mode="Markdown"
     )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -670,6 +674,22 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await balance_command(update, context)
         return
+    elif query.data == "opentrades_menu":
+        await query.answer()
+        await open_trades(update, context)
+        return
+    elif query.data == "history_menu":
+        await query.answer()
+        await list_trades(update, context)
+        return
+    elif query.data == "stats_menu":
+        await query.answer()
+        await stats(update, context)
+        return
+    elif query.data == "help_menu":
+        await query.answer()
+        await docs(update, context)
+        return
 
     if query.data == "toggle_privacy":
         new_val = not user['hide_dollars']
@@ -910,7 +930,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Total Account Value: *${total_value:.2f}* USDT\n\n"
             "_Total Value = Available + Margin + PnL_"
         )
-        await target.reply_text(msg, parse_mode="Markdown")
+        await target.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu())
         
     except Exception as e:
         await target.reply_text(f"❌ Error fetching balance: {e}")
