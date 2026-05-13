@@ -152,7 +152,7 @@ def get_user(chat_id):
             "premium_expiry": row[16] or 0,
             "referral_count": row[17] or 0,
             "has_open_positions": bool(row[18]),
-            "chat_id": chat_id,
+            "telegram_chat_id": chat_id,
             "undercover_mode": row[19] if len(row) > 19 else 0
         }
     return None
