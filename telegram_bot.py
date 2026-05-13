@@ -599,36 +599,39 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.error(f"Chart generation failed for {sym}: {e}")
 
+            # 4. Calculate Dollar Targets for Summary
+            target_pnl_dollars = 0
+            if tp_price > 0:
+                target_pnl_dollars = initial_margin * (target_roe / 100)
+            
+            # Format for MarkdownV2
+            upnl_v2 = f"{upnl:+.2f}".replace(".", "\\.").replace("-", "\\-")
+            target_pnl_v2 = f"{abs(target_pnl_dollars):.2f}".replace(".", "\\.")
+            roe_v2 = f"{roe:+.2f}".replace(".", "\\.").replace("-", "\\-")
+            t_roe_v2 = target_roe_str.replace(".", "\\.").replace("+", "").replace("-", "\\-")
+            
+            t_suffix = f" of ||${target_pnl_v2}|| ({t_roe_v2}) Target" if target_roe_str != "N/A" else ""
+            
+            caption = (
+                f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym.replace('-', '\\-').replace('_', '\\_')} ({side.upper()})*\n"
+                f"Entry: `{str(entry).replace('.', '\\.')}`\n"
+                f"TP: `{str(tp_price).replace('.', '\\.')}` | SL: `{str(sl_price).replace('.', '\\.')}`\n"
+                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\){t_suffix}"
+            )
+
             if chart_path and os.path.exists(chart_path):
-                # Prepare Share Button (Compressed to stay under 64-byte Telegram limit)
-                # Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
-                # Using short prefixes and rounded numbers to save space
+                # Prepare Share Button
                 s_side = "l" if side.lower() == "long" else "s"
                 callback_data = f"sh_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
                 keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
-                target_suffix = f" of {target_roe_str.replace('+', '')}" if target_roe_str != "N/A" else ""
-                
-                caption = (
-                    f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
-                    f"Entry: `{entry:.8f}`\n"
-                    f"TP: `{tp_price:.8f}` | SL: `{sl_price:.8f}`\n"
-                    f"PnL: *{roe:+.2f}%{target_suffix}*"
-                )
-                
                 with open(chart_path, 'rb') as photo:
-                    await update.effective_message.reply_photo(
-photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
+                    await update.effective_message.reply_photo(photo, caption=caption, parse_mode="MarkdownV2", reply_markup=reply_markup)
                 os.remove(chart_path) # Cleanup
             else:
-                target_suffix = f" of {target_roe_str.replace('+', '')}" if target_roe_str != "N/A" else ""
-                msg = (
-                    f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym} ({side.upper()})*\n"
-                    f"Entry: `{entry:.8f}`\n"
-                    f"PnL: *{roe:+.2f}%{target_suffix}*"
-                )
-                await update.effective_message.reply_text(msg, parse_mode="Markdown")
+                # Fallback for no chart
+                await update.effective_message.reply_text(caption, parse_mode="MarkdownV2")
         
         # 4. Finally send the footer once
         await update.effective_message.reply_text("🛰️ *Sherpa Command Center*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
