@@ -954,14 +954,35 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bot_username = (await context.bot.get_me()).username
         ref_link = f"https://t.me/{bot_username}?start=ref_{chat_id}"
         
+        # Context-Aware Viral Message
+        is_pnl_card = data.startswith("sh_")
+        is_profit = False
+        if is_pnl_card:
+            # Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
+            roe = float(data.split("_")[3])
+            side = "long" if data.split("_")[2] == "l" else "short"
+            is_profit = roe >= 0
+            if is_profit:
+                headline = "🚀 *Just crushed another trade with the Cyber-Sherpa!* 🏔️"
+            else:
+                if side == "long":
+                    headline = "📈 *Currently in Drawdown, but optimistic it will bounce back because we buy the dip!*"
+                else:
+                    headline = "📉 *Temporary squeeze in progress, but the Sherpa knows the top is near. Patience is key!*"
+        else:
+            # Overall Stats
+            overall = float(data.split("_")[1])
+            is_profit = overall >= 0
+            headline = "🏔️ *Climbing to new heights with the Cyber-Sherpa!*" if is_profit else "🧗‍♂️ *Navigating the market peaks. The Sherpa never misses a trail!*"
+
         viral_caption = (
-            "🚀 *Just crushed another trade with the Cyber-Sherpa!* 🏔️\n\n"
+            f"{headline}\n\n"
             "Join the elite circle of automated traders. Tap below to copy my invite link and start your 5-day trial:\n\n"
             f"`{ref_link}`"
         )
         
         # Create a pre-filled Telegram share URL
-        share_text = f"🚀 I just crushed another trade with the Cyber-Sherpa! 🏔️\n\nJoin the elite circle of automated traders. Start your 5-day trial here:\n{ref_link}"
+        share_text = f"{headline.replace('*', '')}\n\nJoin the elite circle of automated traders. Start your 5-day trial here:\n{ref_link}"
         import urllib.parse
         encoded_text = urllib.parse.quote(share_text)
         share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={encoded_text}"
