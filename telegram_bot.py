@@ -1002,10 +1002,14 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("🔙 Close Console", callback_data="close_admin")]
     ]
     
-    if update.callback_query:
-        await update.callback_query.edit_message_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
-    else:
-        await update.message.reply_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+    try:
+        if update.callback_query:
+            await update.callback_query.edit_message_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+        else:
+            await update.message.reply_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+    except Exception as e:
+        if "Message is not modified" not in str(e):
+            logger.error(f"Error updating admin dashboard: {e}")
 
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await show_admin_dashboard(update, context)
