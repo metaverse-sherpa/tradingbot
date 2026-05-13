@@ -167,7 +167,7 @@ def place_order(exchange, symbol, signal, equity, risk_pct=None):
         return None
 
 def run():
-    log.info("═"*60 + "\n  Multi-Exchange Cyber-Sherpa Engine \n" + "═"*60)
+    log.info("═"*60 + "\n  Multi-Exchange Metaverse Sherpa Engine \n" + "═"*60)
     import database
     active_users = database.get_all_active_users()
     if not active_users:

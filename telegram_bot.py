@@ -59,7 +59,7 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text, bot_username=bot_username)
     
     msg = (
-        "📈 *Cyber-Sherpa 3-Year Portfolio Audit*\n\n"
+        "📈 *Metaverse Sherpa 3-Year Portfolio Audit*\n\n"
         f"Period: `{period_text}`\n"
         f"Total PnL: *{pnl_pct:+.1f}%*\n"
         f"Win Rate: *{win_rate:.1f}%*\n"
@@ -254,7 +254,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.effective_message.reply_text(
         "🌍 *Select Your Exchange*\n\n"
-        "Which exchange would you like to link to the Cyber-Sherpa?",
+        "Which exchange would you like to link to the Metaverse Sherpa?",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
@@ -508,7 +508,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
             # Add Share Button directly under this trade
-            cb_data = f"sh_{t['symbol']}_{t['side']}_{roe_pct:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
+            cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_pct:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
             markup = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Share This Result", callback_data=cb_data)]])
             
             await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
@@ -637,7 +637,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if chart_path and os.path.exists(chart_path):
                 # Prepare Share Button
                 s_side = "l" if side.lower() == "long" else "s"
-                callback_data = f"sh_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
+                callback_data = f"sha_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
                 keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
@@ -697,7 +697,7 @@ def get_settings_ui(user):
     syms = user.get('enabled_symbols', [])
     
     msg = (
-        f"⚙️ *Cyber-Sherpa Settings*\n\n"
+        f"⚙️ *Metaverse Sherpa Settings*\n\n"
         f"Status: *{bot_status}*\n"
         f"Strategy: *{user['strategy']}*\n"
         f"Risk Level: *{risk_val:.2f}%*\n"
@@ -1002,9 +1002,12 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         card_path = media_gen.generate_stats_card(overall, daily, wr, total, user_id=chat_id, bot_username=bot_username)
         share_label = "performance summary"
         
-    elif data.startswith("sh_"): # SHARE TRADE
+    elif data.startswith("sh_") or data.startswith("sha_") or data.startswith("shc_"): # SHARE TRADE
         # Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
         parts = data.split("_")
+        is_active = data.startswith("sha_")
+        is_closed = data.startswith("shc_")
+        
         sym = parts[1]
         side = "long" if parts[2] == "l" else "short"
         roe, entry, mark, pnl = float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
@@ -1023,25 +1026,30 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ref_link = f"https://t.me/{bot_username}?start=ref_{chat_id}"
         
         # Context-Aware Viral Message
-        is_pnl_card = data.startswith("sh_")
-        is_profit = False
-        if is_pnl_card:
-            # Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
-            roe = float(data.split("_")[3])
-            side = "long" if data.split("_")[2] == "l" else "short"
+        is_trade_card = data.startswith("sh_") or data.startswith("sha_") or data.startswith("shc_")
+        if is_trade_card:
+            parts = data.split("_")
+            is_active = data.startswith("sha_")
+            roe = float(parts[3])
             is_profit = roe >= 0
-            if is_profit:
-                headline = "🚀 *Just crushed another trade with the Cyber-Sherpa!* 🏔️"
-            else:
-                if side == "long":
-                    headline = "📈 *Currently in Drawdown, but optimistic it will bounce back because we buy the dip!*"
+            
+            if not is_active:
+                # Closed trades or generic legacy
+                if is_profit:
+                    headline = "🚀 *Just crushed another trade with the Metaverse Sherpa Bot!* 🏔️"
                 else:
-                    headline = "📉 *Temporary squeeze in progress, but the Sherpa knows the top is near. Patience is key!*"
+                    headline = "🏔️ *Navigating the market peaks. The Sherpa never misses a trail!*"
+            else:
+                # ACTIVE trades - High Integrity messaging
+                if is_profit:
+                    headline = "🛰️ *Another promising looking trade with the Metaverse Sherpa Bot!* 🏔️"
+                else:
+                    headline = "📈 *Currently in drawdown, but looking promising because we buy the dip with Metaverse Sherpa Bot!* 🏔️"
         else:
             # Overall Stats
             overall = float(data.split("_")[1])
             is_profit = overall >= 0
-            headline = "🏔️ *Climbing to new heights with the Cyber-Sherpa!*" if is_profit else "🧗‍♂️ *Navigating the market peaks. The Sherpa never misses a trail!*"
+            headline = "🏔️ *Climbing to new heights with the Metaverse Sherpa Bot!*" if is_profit else "🧗‍♂️ *Navigating the market peaks. The Sherpa never misses a trail!*"
 
         viral_caption = (
             f"{headline}\n\n"
@@ -1070,7 +1078,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         
         # Update the original message to let them know it's ready below
-        feedback_msg = f"✅ *Share card generated for {share_label}!*\n\nScroll down to the bottom of the chat to see your Cyber-Sherpa card. 👇"
+        feedback_msg = f"✅ *Share card generated for {share_label}!*\n\nScroll down to the bottom of the chat to see your Metaverse Sherpa card. 👇"
         
         try:
             if query.message.caption:
@@ -1125,7 +1133,7 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Have questions, feedback, or a new strategy idea? Reach out directly to the project lead:\n\n"
         "👤 *Lead:* @metaverse\\_sherpa\n"
         "📢 *Community:* [Join Here](https://t.me/+2pYhCm5BOoI0Mjkx)\n\n"
-        "We are constantly refining the Cyber-Sherpa engine and value your input!"
+        "We are constantly refining the Metaverse Sherpa engine and value your input!"
     )
     await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
 
