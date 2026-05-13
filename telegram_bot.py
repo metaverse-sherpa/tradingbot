@@ -982,6 +982,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
 
     admin_status = "🕵️‍♂️ Undercover" if user.get('undercover_mode') else "👑 Overlord"
     
+    last_sync = time.strftime('%H:%M:%S')
     admin_msg = (
         "👑 *Sherpa Overlord Mission Control*\n\n"
         f"Identity Status: *{admin_status}*\n\n"
@@ -992,7 +993,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         "💰 *Treasury (USDT TRC-20)*\n"
         f"• Master Wallet: `{master_wallet}`\n"
         f"• Live Balance: *{balance}*\n\n"
-        "🏔️ _The trail is under your command._"
+        f"🕒 _Last Sync: {last_sync}_"
     )
     
     kb = [
@@ -1054,9 +1055,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "toggle_undercover":
         if chat_id != ADMIN_CHAT_ID: return
+        await query.answer("🔄 Toggling Identity...")
         database.toggle_undercover(chat_id)
         await show_admin_dashboard(update, context)
-        await query.answer("Identity Toggled!")
         return
 
     if query.data == "premium_menu":
