@@ -486,17 +486,17 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         await status_msg.delete()
         
-        # Institutional Table Header
+        # Institutional ASCII Table (Guaranteed alignment on all devices)
         history_text = "📜 *Metaverse Sherpa History*\n\n"
         history_text += "```\n"
-        history_text += "┌────┬──────┬───────┬────────────┐\n"
-        history_text += "│ #  │ Sym  │ ROE%  │ Date/Time  │\n"
-        history_text += "├────┼──────┼───────┼────────────┤\n"
+        history_text += "+----+------+-------+-------+\n"
+        history_text += "| #  | Sym  | ROE%  | Date  |\n"
+        history_text += "+----+------+-------+-------+\n"
         
         buttons = []
         for i, t in enumerate(last_10):
             import datetime
-            dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
+            dt = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d')
             
             # Calculate ROE
             try:
@@ -507,16 +507,16 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except: roe_val = 0
             
             sym_short = t['symbol'].split("/")[0][:4]
-            roe_str = f"{roe_val:>+5.1f}%"
+            roe_str = f"{roe_val:>+5.1f}" # Fixed width 5
             
-            # Add to monospace table (Perfect Alignment)
-            history_text += f"│ {i+1:<2} │ {sym_short:<4} │ {roe_str} │ {dt_raw} │\n"
+            # Add to ASCII table (Perfect Alignment)
+            history_text += f"| {i+1:<2} | {sym_short:<4} | {roe_str} | {dt:<5} |\n"
             
             # Create button data
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
             buttons.append(InlineKeyboardButton(f"{i+1}", callback_data=cb_data))
             
-        history_text += "└────┴──────┴───────┴────────────┘\n"
+        history_text += "+----+------+-------+-------+\n"
         history_text += "```\n"
         
         # Grid of buttons (5 per row)
