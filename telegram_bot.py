@@ -32,6 +32,15 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 logging.getLogger("ccxt.blofin").setLevel(logging.WARNING)
 
+def escape_md_v2(text):
+    """Escapes all reserved characters for Telegram MarkdownV2."""
+    if not text: return ""
+    # Characters that must be escaped in MarkdownV2
+    reserved = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    for char in reserved:
+        text = str(text).replace(char, f"\\{char}")
+    return text
+
 async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends the 3-year verified audit report and card."""
     chat_id = update.effective_chat.id
@@ -604,17 +613,17 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if tp_price > 0:
                 target_pnl_dollars = initial_margin * (target_roe / 100)
             
-            # Format for MarkdownV2
-            upnl_v2 = f"{upnl:+.2f}".replace(".", "\\.").replace("-", "\\-")
-            target_pnl_v2 = f"{abs(target_pnl_dollars):.2f}".replace(".", "\\.")
-            roe_v2 = f"{roe:+.2f}".replace(".", "\\.").replace("-", "\\-")
-            t_roe_v2 = target_roe_str.replace(".", "\\.").replace("+", "").replace("-", "\\-")
+            # Format for MarkdownV2 using helper
+            upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
+            target_pnl_v2 = escape_md_v2(f"{abs(target_pnl_dollars):.2f}")
+            roe_v2 = escape_md_v2(f"{roe:+.2f}")
+            t_roe_v2 = escape_md_v2(target_roe_str.replace("+", ""))
             
-            # Pre-escape values to avoid backslashes in f-strings
-            sym_v2 = sym.replace('-', '\\-').replace('_', '\\_')
-            entry_v2 = str(entry).replace('.', '\\.')
-            tp_v2 = str(tp_price).replace('.', '\\.')
-            sl_v2 = str(sl_price).replace('.', '\\.')
+            # Pre-escape static values
+            sym_v2 = escape_md_v2(sym)
+            entry_v2 = escape_md_v2(entry)
+            tp_v2 = escape_md_v2(tp_price)
+            sl_v2 = escape_md_v2(sl_price)
             
             t_suffix = f" of ||${target_pnl_v2}|| \\({t_roe_v2}\\) Target" if target_roe_str != "N/A" else ""
             
@@ -1159,9 +1168,9 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 total_value += (margin + upnl)
         except: pass
         
-        # Format numbers with commas and escape for MarkdownV2
-        free_str = f"{free:,.2f}".replace(".", "\\.")
-        total_str = f"{total_value:,.2f}".replace(".", "\\.")
+        # Format numbers with commas and escape for MarkdownV2 using helper
+        free_str = escape_md_v2(f"{free:,.2f}")
+        total_str = escape_md_v2(f"{total_value:,.2f}")
         
         msg = (
             "💰 *Your Account Balance*\n\n"
