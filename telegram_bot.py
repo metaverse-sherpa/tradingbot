@@ -816,6 +816,9 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 
+def get_settings_ui(user):
+    privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
+    bot_status = "🟢 ACTIVE" if user['is_active'] else "🔴 PAUSED"
     risk_val = user.get('risk_pct', 1.5)
     syms = user.get('enabled_symbols', [])
     wallet_val = user.get('source_wallet')
@@ -1002,6 +1005,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
 
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"Admin command triggered by chat_id: {update.effective_chat.id}")
     await show_admin_dashboard(update, context)
 
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
