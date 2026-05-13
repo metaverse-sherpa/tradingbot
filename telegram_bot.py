@@ -225,11 +225,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
 
-    # 2. Automated 3-Year Performance Visual (Only for NEW users)
-    if is_new_user:
-        await backtest(update, context)
-    else:
-        await update.effective_message.reply_text("🏔️ *Welcome back, Sherpa!*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+    # 2. Automated 3-Year Performance Visual (Zero-latency Master Cache)
+    await backtest(update, context)
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
