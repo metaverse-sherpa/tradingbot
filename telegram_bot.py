@@ -512,10 +512,10 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
             status_icon = "🚀" if t['net_pnl'] > 0 else "❌"
             
-            # Add to audit-style narrative (Premium Card Layout)
+            # Add to audit-style narrative (Premium Card Layout with Dynamic Icons)
             history_text += (
                 f"{i+1}\. *{sym_v2}* {dir_icon} \| _{dt}_\n"
-                f"💰 PnL: ||{pnl_val_v2}|| \(*{roe_v2}*\) {status_icon}\n"
+                f"{status_icon} PnL: ||{pnl_val_v2}|| \(*{roe_v2}*\)\n"
                 f"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
             )
             
