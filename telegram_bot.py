@@ -196,7 +196,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
         "Tap /setup to begin or use the dashboard below to monitor your account.",
-        reply_markup=InlineKeyboardMarkup(get_nav_buttons()),
+        reply_markup=get_main_inline_menu(chat_id),
         parse_mode="Markdown"
     )
 
@@ -375,7 +375,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
     keyboard = [
         [InlineKeyboardButton("📸 Share Performance Card", callback_data=cb_data)],
-        *get_nav_buttons()
+        *get_nav_buttons(user.get('has_open_positions', False))
     ]
     
     await update.effective_message.reply_text(
@@ -573,7 +573,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 callback_data = f"sh_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
                 keyboard = [
                     [InlineKeyboardButton("Share 📸", callback_data=callback_data)],
-                    *get_nav_buttons()
+                    *get_nav_buttons(True) # We are inside open_trades loop, so we know there are active trades
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
@@ -1133,7 +1133,7 @@ async def trading_engine(application):
                                         chart_file = charting.generate_trade_chart(res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
                                         
                                         # Add Nav Buttons to the Signal
-                                        keyboard = get_nav_buttons()
+                                        keyboard = get_nav_buttons(True) # This is a new trade notification, so they definitely have positions
                                         
                                         await application.bot.send_photo(
                                             chat_id=chat_id, 
