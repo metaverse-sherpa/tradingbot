@@ -630,7 +630,11 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == "set_strat_mean":
         database.update_user_strategy(query.message.chat.id, "Mean Reversion Scalper")
-        await query.edit_message_text("✅ Strategy set to: *Mean Reversion Scalper*", parse_mode="Markdown")
+        await query.edit_message_text(
+            "✅ Strategy set to: *Mean Reversion Scalper*", 
+            parse_mode="Markdown",
+            reply_markup=get_main_inline_menu(query.message.chat.id)
+        )
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 

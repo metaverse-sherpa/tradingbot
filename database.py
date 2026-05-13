@@ -320,3 +320,11 @@ def update_position_status(chat_id, has_active):
     c.execute("UPDATE Users SET has_open_positions = ? WHERE telegram_chat_id = ?", (1 if has_active else 0, chat_id))
     conn.commit()
     conn.close()
+
+def update_user_strategy(chat_id, strategy_name):
+    """Updates the user's active trading strategy."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET strategy = ? WHERE telegram_chat_id = ?", (strategy_name, chat_id))
+    conn.commit()
+    conn.close()
