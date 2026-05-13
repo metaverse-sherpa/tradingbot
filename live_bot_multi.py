@@ -202,7 +202,22 @@ def run():
             
             if signal:
                 for user in active_users:
-                    if symbol.split("/")[0] not in user.get('enabled_symbols', []):
+                    # 💎 Institutional Gating
+                    is_prem = database.is_premium(user)
+                    sym_name = symbol.split("/")[0]
+                    
+                    # 🥈 Standard Tier Limits
+                    if not is_prem:
+                        # 1. Basket Limit: Only top 5 "Safe" symbols
+                        if sym_name not in ["BTC", "ETH", "SOL", "XRP", "BNB"]:
+                            continue
+                        # 2. Risk Limit: Force 1%
+                        risk_val = 0.01
+                    else:
+                        # 💎 Premium Tier: Full settings
+                        risk_val = user.get('risk_pct', 0.015)
+
+                    if sym_name not in user.get('enabled_symbols', []):
                         continue
                     
                     try:
@@ -212,7 +227,7 @@ def run():
                         # Check existing positions
                         pos = ex.fetch_positions([norm_sym])
                         if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                            place_order(ex, norm_sym, signal, user['equity'], risk_pct=user.get('risk_pct'))
+                            place_order(ex, norm_sym, signal, user['equity'], risk_pct=risk_val)
                     except Exception as ue:
                         log.error("User %s error on %s: %s", user['chat_id'], symbol, ue)
                         

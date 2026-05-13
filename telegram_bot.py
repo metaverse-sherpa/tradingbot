@@ -25,6 +25,13 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ADMIN_CHAT_ID = 1567788633  # Metaverse Sherpa Lead
 
+def get_master_wallet():
+    """Retrieves the master wallet from database config."""
+    return database.get_config('master_usdt_wallet', "YOUR_MASTER_TRON_ADDRESS_HERE")
+
+# --- Institutional Revenue Constants ---
+MASTER_USDT_WALLET = "YOUR_MASTER_TRON_ADDRESS_HERE" # TODO: USER - Replace with your actual TRC-20 address
+
 # Setup Logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -102,7 +109,8 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
                 "The chart above reveals the *Institutional Wealth Gap*.\n\n"
                 "📊 *Free Tier (White)*: +64.5% PnL\n"
                 "💎 *Premium Tier (Neon)*: +1,514.9% PnL\n\n"
-                "Institutional access unlocks full compounding power and the complete 'Sherpa Basket' to capture 8x more opportunities.\n\n"
+                "Unlock **23x more profit potential** for just **$20/mo**.\n"
+                "Institutional access unlocks full compounding power and the complete 'Sherpa Basket'.\n\n"
                 "Refer 3 friends or subscribe to unlock!"
             )
             
@@ -213,7 +221,7 @@ def get_nav_buttons(has_active_trades=False):
         ],
         [
             InlineKeyboardButton("❓ Help", callback_data="help_menu"),
-            InlineKeyboardButton("🤝 Contact", callback_data="contact_menu")
+            InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
         ]
     ]
     if has_active_trades:
@@ -256,14 +264,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             referrer_id = int(context.args[0].split("_")[1])
             if referrer_id != chat_id:
-                database.set_referrer(chat_id, referrer_id)
+                # Always ensure the recruit is initialized in DB first
+                database.upsert_user(chat_id, "", "", "", "blofin")
+                
+                # Link and check for bonus
+                reward_granted = database.set_referrer(chat_id, referrer_id)
+                
                 # Notify Referrer
                 try:
-                    await context.bot.send_message(
-                        chat_id=referrer_id,
-                        text="🎉 *New Referral!* Someone just joined using your link. You'll earn bonus days when they finish setup!",
-                        parse_mode="Markdown"
-                    )
+                    if reward_granted:
+                        await context.bot.send_message(
+                            chat_id=referrer_id,
+                            text=(
+                                "🎉 *INSTITUTIONAL MILESTONE REACHED!*\n\n"
+                                "You've successfully recruited 3 new members to the trail. Your **Premium Institutional Access** has been activated for 30 days!\n\n"
+                                "🏔️ _The Sherpa honors your leadership._"
+                            ),
+                            parse_mode="Markdown"
+                        )
+                    else:
+                        stats = database.get_referral_stats(referrer_id)
+                        await context.bot.send_message(
+                            chat_id=referrer_id,
+                            text=f"🤝 *New Institutional Recruit!*\nSomeone just joined via your link. Progress: *{stats % 3}/3* toward your next Premium month!",
+                            parse_mode="Markdown"
+                        )
                 except: pass
         except: pass
 
@@ -301,8 +326,47 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    text = update.effective_message.text
+    text = update.effective_message.text.strip()
     
+    # --- 1. Handle Institutional Wallet Setup ---
+    if context.user_data.get('setting_wallet'):
+        # Basic TRON (TRC-20) Validation: Starts with T, length 34
+        if text.startswith('T') and len(text) == 34:
+            database.update_user_wallet(chat_id, text)
+            context.user_data['setting_wallet'] = False
+            await update.effective_message.reply_text(
+                f"✅ *Institutional Wallet Linked!*\n\n"
+                f"Your source wallet: `{text}`\n\n"
+                "Your future subscription payments will now be verified automatically via blockchain audit.",
+                parse_mode="Markdown"
+            )
+            return
+        else:
+            await update.effective_message.reply_text(
+                "❌ *Invalid TRC-20 Address*\n\n"
+                "Institutional USDT (TRC-20) addresses must start with 'T' and be 34 characters long.\n"
+                "Please check your address and try again.",
+                parse_mode="Markdown"
+            )
+            return
+
+    # --- 2. Handle Admin Master Wallet Setup ---
+    if context.user_data.get('setting_admin_wallet') and chat_id == ADMIN_CHAT_ID:
+        if text.startswith('T') and len(text) == 34:
+            database.update_config('master_usdt_wallet', text)
+            context.user_data['setting_admin_wallet'] = False
+            await update.effective_message.reply_text(
+                f"👑 *Overlord: Treasury Updated!*\n\n"
+                f"New Master Wallet: `{text}`\n\n"
+                "All institutional upgrades will now be directed to this address.",
+                parse_mode="Markdown"
+            )
+            await show_admin_dashboard(update, context)
+            return
+        else:
+            await update.effective_message.reply_text("❌ Invalid TRC-20 address for Treasury. Must start with 'T' and be 34 chars.")
+            return
+
     step = context.user_data.get('setup_step', 0)
     
     if step == 1:
@@ -752,31 +816,47 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 
-def get_settings_ui(user):
-    privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
-    bot_status = "🟢 ACTIVE" if user['is_active'] else "🔴 PAUSED"
     risk_val = user.get('risk_pct', 1.5)
     syms = user.get('enabled_symbols', [])
+    wallet_val = user.get('source_wallet')
+    wallet_display = f"{wallet_val[:6]}...{wallet_val[-4:]}" if wallet_val else "(Not Set)"
+    
+    is_premium = database.is_premium(user)
+    tier_display = "💎 Premium (Institutional)" if is_premium else "🥈 Standard"
+    
+    expiry_msg = ""
+    if is_premium:
+        days_left = database.get_premium_days_left(user)
+        expiry_date = time.strftime('%Y-%m-%d', time.localtime(user['premium_expiry']))
+        expiry_msg = f"Expires: *{expiry_date}* ({days_left} days left)\n"
     
     msg = (
         f"⚙️ *Metaverse Sherpa Settings*\n\n"
         f"Status: *{bot_status}*\n"
+        f"Tier: *{tier_display}*\n"
+        f"{expiry_msg}"
         f"Strategy: *{user['strategy']}*\n"
         f"Risk Level: *{risk_val:.2f}%*\n"
         f"Active Symbols: *{len(syms)}/19*\n"
-        f"Dollar PnL: *{privacy_status}*\n\n"
+        f"Dollar PnL: *{privacy_status}*\n"
+        f"Source Wallet: `{wallet_display}`\n\n"
         f"Handle: @metaversesherpa_trading_bot\n"
     )
-    
-    is_premium = database.is_premium(user)
     
     keyboard = [
         [InlineKeyboardButton(f"⚖️ Set Risk % {'🔒' if not is_premium else ''}", callback_data="set_risk"),
          InlineKeyboardButton(f"🛰 Symbols {'🔒' if not is_premium else ''}", callback_data="manage_symbols")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
-        [InlineKeyboardButton("🤝 My Referral Link", callback_data="referral_menu")],
     ]
+    
+    if is_premium:
+        keyboard.append([InlineKeyboardButton("🔄 Renew Institutional Access", callback_data="premium_menu")])
+    else:
+        keyboard.append([InlineKeyboardButton("🤝 My Referral Link", callback_data="referral_menu")])
+        keyboard.append([InlineKeyboardButton("💎 Go Premium ($20/mo)", callback_data="premium_menu")])
+    
+    keyboard.append([InlineKeyboardButton("👛 Set/Change Wallet", callback_data="prompt_set_wallet")])
     
     if user['is_active']:
         keyboard.append([InlineKeyboardButton("🔴 Stop Trading", callback_data="toggle_active")])
@@ -798,12 +878,239 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg, reply_markup = get_settings_ui(user)
     await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
 
+async def show_refer_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Unified helper to show the Institutional Recruitment Dashboard."""
+    chat_id = update.effective_chat.id
+    bot_username = (await context.bot.get_me()).username
+    stats = database.get_referral_stats(chat_id)
+    
+    invite_link = f"https://t.me/{bot_username}?start=ref_{chat_id}"
+    
+    refer_msg = (
+        "🏔️ *Institutional Recruitment Dashboard*\n\n"
+        "Expand the trail and unlock the **23x Wealth Gap** for free!\n\n"
+        f"📊 *Your Status:* `{stats}` Recruits\n"
+        f"📈 *Next Reward:* `{3 - (stats % 3)}` more for **30 Days Premium**\n\n"
+        "🔗 *Your Institutional Invite Link:*\n"
+        f"`{invite_link}`\n\n"
+        "💡 _Every 3 recruits who join the trail instantly unlocks 30 days of full 'Sherpa Basket' access._"
+    )
+    
+    kb = [[InlineKeyboardButton("📱 Share Invite Link", url=f"https://t.me/share/url?url={invite_link}&text=Unlock%20the%20Institutional%20Wealth%20Gap%20with%20the%20Metaverse%20Sherpa%20Trading%20Bot!%20🏔️")]]
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(refer_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+    else:
+        await update.message.reply_text(refer_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+
+async def refer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await show_refer_dashboard(update, context)
+
+async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Shows the Institutional Premium Upgrade dashboard."""
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    if not user: return
+    
+    wallet_val = user.get('source_wallet')
+    is_premium = database.is_premium(user)
+    
+    if not wallet_val:
+        await update.effective_message.reply_text(
+            "⚠️ *Source Wallet Required*\n\n"
+            "To unlock Institutional access, you must first set your **Source Wallet Address** so the Sherpa can verify your payment.\n\n"
+            "Tap the button below to link your wallet first.",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("👛 Set Wallet", callback_data="prompt_set_wallet")]])
+        )
+        return
+
+    premium_msg = (
+        "💎 *Go Institutional: Unlock the Wealth Gap*\n\n"
+        "Unlock full compounding power, the complete 'Sherpa Basket', and institutional-grade risk management.\n\n"
+        "💳 *Subscription Fee:* **$20 USDT / 30 Days**\n\n"
+        "📥 *Transfer To (TRC-20):*\n"
+        f"`{get_master_wallet()}`\n\n"
+        f"🕵️‍♂️ *Monitoring From:* `{wallet_val}`\n\n"
+        "⚠️ _Ensure you send via the TRON (TRC-20) network. Activation is automated and takes ~1-3 minutes after on-chain confirmation._"
+    )
+    
+    kb = [
+        [InlineKeyboardButton("✅ I've Sent the Funds", callback_data="check_payment")],
+        [InlineKeyboardButton("👛 Change Source Wallet", callback_data="prompt_set_wallet")],
+        [InlineKeyboardButton("🔙 Back to Settings", callback_data="settings_menu")]
+    ]
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(premium_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+    else:
+        await update.effective_message.reply_text(premium_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+
+async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gated dashboard for the Sherpa Overlord."""
+    chat_id = update.effective_chat.id
+    if chat_id != ADMIN_CHAT_ID: return
+    
+    stats = database.get_platform_stats()
+    master_wallet = get_master_wallet()
+    
+    # Query Wallet Balance via TronScan
+    balance = "???"
+    try:
+        import requests
+        url = f"https://apilist.tronscan.org/api/account?address={master_wallet}"
+        resp = requests.get(url, timeout=5)
+        data = resp.json()
+        # Find USDT in TRC-20 tokens
+        trc20_tokens = data.get('trc20token_balances', [])
+        for token in trc20_tokens:
+            if token.get('symbol') == 'USDT':
+                balance = f"${float(token.get('balance')) / 10**float(token.get('decimals')):,.2f}"
+                break
+    except: pass
+
+    admin_msg = (
+        "👑 *Sherpa Overlord Mission Control*\n\n"
+        "📊 *Platform Analytics*\n"
+        f"• Total Users: `{stats['total_users']}`\n"
+        f"• Total Referrals: `{stats['total_referrals']}`\n"
+        f"• Active Premium: `{stats['premium_users']}`\n\n"
+        "💰 *Treasury (USDT TRC-20)*\n"
+        f"• Master Wallet: `{master_wallet}`\n"
+        f"• Live Balance: *{balance}*\n\n"
+        "🏔️ _The trail is under your command._"
+    )
+    
+    kb = [
+        [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
+        [InlineKeyboardButton("📜 View Audit Trail (TronScan)", url=f"https://tronscan.org/#/address/{master_wallet}")],
+        [InlineKeyboardButton("🔙 Close Console", callback_data="close_admin")]
+    ]
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+    else:
+        await update.message.reply_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await show_admin_dashboard(update, context)
+
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
-    if query.data.startswith("setex_"):
+    if query.data == "refer_menu":
+        await show_refer_dashboard(update, context)
+        await query.answer()
+        return
+    
+    if query.data == "prompt_set_wallet":
+        context.user_data['setting_wallet'] = True
+        await query.message.reply_text(
+            "👛 *Institutional Wallet Setup*\n\n"
+            "Please send your **USDT (TRC-20) Address** below.\n\n"
+            "This address will be used to automatically verify your subscription payments and enable frictionless future renewals.",
+            parse_mode="Markdown"
+        )
+        await query.answer()
+        return
+
+    if query.data == "prompt_admin_wallet":
+        if chat_id != ADMIN_CHAT_ID: return
+        context.user_data['setting_admin_wallet'] = True
+        await query.message.reply_text(
+            "👑 *Overlord: Update Treasury Address*\n\n"
+            "Please send the new **Master USDT (TRC-20) Address** below.\n\n"
+            "⚠️ _This will instantly update the destination for all new institutional upgrades._",
+            parse_mode="Markdown"
+        )
+        await query.answer()
+        return
+
+    if query.data == "close_admin":
+        await query.message.delete()
+        await query.answer()
+        return
+
+    if query.data == "premium_menu":
+        await show_premium_menu(update, context)
+        await query.answer()
+        return
+
+    if query.data == "check_payment":
+        await query.answer("🔎 Auditing Blockchain...")
+        # 1. Get user and their source wallet
+        user = database.get_user(chat_id)
+        source_wallet = user.get('source_wallet')
+        
+        if not source_wallet:
+            await query.message.reply_text("❌ No source wallet linked. Please set your wallet first.")
+            return
+            
+        await query.message.reply_text("🔎 *Auditing Blockchain for your transfer...*\n\nThis usually takes 1-3 minutes. Please wait and click again if activation is not instant.", parse_mode="Markdown")
+        
+        # 2. Query TronScan API
+        import requests
+        url = "https://apilist.tronscan.org/api/token_trc20/transfers"
+        params = {
+            "limit": 20,
+            "start": 0,
+            "direction": 1, # Incoming to MASTER
+            "address": get_master_wallet(),
+            "relatedAddress": source_wallet
+        }
+        
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            data = resp.json()
+            transfers = data.get('token_transfers', [])
+            
+            found = False
+            for tx in transfers:
+                # TRC-20 USDT contract: TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
+                if tx.get('token_address') == 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t':
+                    amount = float(tx.get('quant')) / 10**6
+                    # Check for exactly $20 (allow a small range just in case of fees)
+                    if 19.5 <= amount <= 20.5:
+                        found = True
+                        break
+            
+            if found:
+                database.add_premium_days(chat_id, 30)
+                
+                # 👑 Notify Overlord of Revenue
+                try:
+                    user_info = f"@{update.effective_user.username}" if update.effective_user.username else f"ID: `{chat_id}`"
+                    await context.bot.send_message(
+                        chat_id=ADMIN_CHAT_ID,
+                        text=f"💰 *INSTITUTIONAL REVENUE CONFIRMED!*\n\nUser: {user_info}\nAmount: *$20.00 USDT*\n\n📈 _The treasury is growing._",
+                        parse_mode="Markdown"
+                    )
+                except: pass
+
+                await query.message.reply_text(
+                    "🎉 *INSTITUTIONAL ACCESS UNLOCKED!*\n\n"
+                    "Your payment has been verified on-chain. You now have **30 Days of Premium Access**.\n\n"
+                    "🏔️ _Welcome to the 23x Wealth Gap._",
+                    parse_mode="Markdown"
+                )
+                # Show settings again to confirm
+                msg, markup = get_settings_ui(database.get_user(chat_id))
+                await query.message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
+            else:
+                await query.message.reply_text(
+                    "❌ *No matching transfer found yet.*\n\n"
+                    "On-chain confirmation can take a few minutes. Please wait and try again shortly.\n\n"
+                    f"ℹ️ _Looking for $20 USDT from_ `{source_wallet}` _to_ `{get_master_wallet()}`",
+                    parse_mode="Markdown"
+                )
+                
+        except Exception as e:
+            logger.error(f"Error checking payment: {e}")
+            await query.message.reply_text("⚠️ _Blockchain audit engine is busy. Please try again in 60 seconds._")
+        
+        return
         exchange_id = query.data.split("_")[1]
         context.user_data['exchange_id'] = exchange_id
         context.user_data['setup_step'] = 1
@@ -1388,13 +1695,16 @@ async def post_init(application: ApplicationBuilder):
 def main():
     # Ensure database table exists
     database.init_db()
-    
+
     # Initialize Bot Application with the post_init hook
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
     
     # Register Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("settings", settings_command))
+    app.add_handler(CommandHandler("refer", refer_command))
+    app.add_handler(CommandHandler("premium", show_premium_menu))
+    app.add_handler(CommandHandler("admin", admin_command))
     app.add_handler(CommandHandler("privacy", privacy_command))
     app.add_handler(CommandHandler("docs", docs))
     app.add_handler(CommandHandler("help", docs))

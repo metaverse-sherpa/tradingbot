@@ -63,7 +63,8 @@ def init_db():
                   total_trades_opened INTEGER DEFAULT 0,
                   cumulative_pnl REAL DEFAULT 0.0,
                   last_fetch_timestamp INTEGER DEFAULT 0,
-                  strategy TEXT DEFAULT 'Mean Reversion Scalper')''')
+                  strategy TEXT DEFAULT 'Mean Reversion Scalper',
+                  source_wallet TEXT)''')
     
     # Ensure columns exist for older databases
     try: c.execute("ALTER TABLE Users ADD COLUMN exchange_id TEXT DEFAULT 'blofin'")
@@ -90,6 +91,15 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN history_cache TEXT")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN source_wallet TEXT")
+    except: pass
+    
+    # 💎 Institutional Config Table
+    c.execute('''CREATE TABLE IF NOT EXISTS Config
+                 (key TEXT PRIMARY KEY, value TEXT)''')
+    
+    # Set default master wallet if not exists
+    c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('master_usdt_wallet', 'YOUR_MASTER_TRON_ADDRESS_HERE')")
     
     conn.commit()
     conn.close()
@@ -282,18 +292,25 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
 
 def set_referrer(chat_id, referrer_id):
     """Links a new user to a referrer and increments the referrer's count."""
-    if chat_id == referrer_id: return # No self-referral
+    if chat_id == referrer_id: return False # No self-referral
     
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     # Check if user already has a referrer
     c.execute("SELECT referred_by FROM Users WHERE telegram_chat_id = ?", (chat_id,))
     row = c.fetchone()
+    
+    reward_granted = False
+    # If user exists and doesn't have a referrer yet
     if row and row[0] is None:
         c.execute("UPDATE Users SET referred_by = ? WHERE telegram_chat_id = ?", (referrer_id, chat_id))
         c.execute("UPDATE Users SET referral_count = referral_count + 1 WHERE telegram_chat_id = ?", (referrer_id,))
-    conn.commit()
+        conn.commit()
+        # Check for reward
+        reward_granted = check_and_award_referral_bonus(referrer_id)
+    
     conn.close()
+    return reward_granted
 
 def add_premium_days(chat_id, days):
     """Extends a user's premium status by X days."""
@@ -318,6 +335,22 @@ def get_referral_stats(chat_id):
     row = c.fetchone()
     conn.close()
     return row[0] if row else 0
+
+def update_user_wallet(chat_id, wallet_address):
+    """Updates the user's source wallet address for payment verification."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET source_wallet = ? WHERE telegram_chat_id = ?", (wallet_address, chat_id))
+    conn.commit()
+    conn.close()
+
+def check_and_award_referral_bonus(referrer_id):
+    """Awards 30 days of premium for every 3 referrals."""
+    count = get_referral_stats(referrer_id)
+    if count > 0 and count % 3 == 0:
+        add_premium_days(referrer_id, 30)
+        return True # Reward granted
+    return False
 
 def update_position_status(chat_id, has_active):
     """Updates the has_open_positions flag in the database."""
@@ -364,3 +397,43 @@ def get_premium_days_left(user):
     now = time.time()
     if expiry <= now: return 0
     return int((expiry - now) / 86400)
+
+# --- Administrative Controls ---
+
+def get_config(key, default=None):
+    """Retrieves a global configuration value."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT value FROM Config WHERE key = ?", (key,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else default
+
+def update_config(key, value):
+    """Updates a global configuration value."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO Config (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()
+
+def get_platform_stats():
+    """Returns high-level platform analytics for the admin."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    c.execute("SELECT COUNT(*) FROM Users")
+    total_users = c.fetchone()[0]
+    
+    c.execute("SELECT SUM(referral_count) FROM Users")
+    total_referrals = c.fetchone()[0] or 0
+    
+    c.execute("SELECT COUNT(*) FROM Users WHERE premium_expiry > ?", (time.time(),))
+    premium_users = c.fetchone()[0]
+    
+    conn.close()
+    return {
+        "total_users": total_users,
+        "total_referrals": total_referrals,
+        "premium_users": premium_users
+    }
