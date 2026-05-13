@@ -1,26 +1,26 @@
 import requests
 import json
 
-address = "TUhiPWBBrJKV7cyrnSawZ7JUdLN8Qcg6u3"
-# Official USDT Contract on TRON
-usdt_contract = "TR7NHqjehp3u3M11K2xv39zSQqyvssF6t"
-url = f"https://apilist.tronscan.org/api/account/token_balance?address={address}&token={usdt_contract}"
+# CORRECTED CASING: Lowercase 'b' in PWBbr
+address = "TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3"
+url = f"https://apilist.tronscan.org/api/account?address={address}"
 print(f"Querying: {url}")
 
 try:
     resp = requests.get(url, timeout=10)
     data = resp.json()
-    print(f"RAW DATA: {json.dumps(data, indent=2)}")
     
-    # TronScan token_balance endpoint returns a list
-    if isinstance(data, list) and len(data) > 0:
-        token = data[0]
-        balance = token.get('balance', '0')
-        decimals = token.get('decimals', 6)
-        final_balance = float(balance) / 10**float(decimals)
-        print(f">>> SUCCESS: USDT Balance is ${final_balance:,.2f}")
-    else:
-        print(">>> INFO: No USDT balance found (Wallet is likely empty).")
+    trc20_tokens = data.get('trc20token_balances', [])
+    print(f"Found {len(trc20_tokens)} TRC-20 tokens.")
+    
+    for token in trc20_tokens:
+        symbol = token.get('symbol')
+        balance = token.get('balance')
+        decimals = token.get('decimals')
+        
+        if symbol == 'USDT':
+            final_balance = float(balance) / 10**float(decimals)
+            print(f"\n>>> SUCCESS: USDT Balance is ${final_balance:,.2f}")
 
 except Exception as e:
     print(f">>> ERROR: {e}")

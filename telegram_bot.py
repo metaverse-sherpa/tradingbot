@@ -27,10 +27,10 @@ ADMIN_CHAT_ID = 1567788633  # Metaverse Sherpa Lead
 
 def get_master_wallet():
     """Retrieves the master wallet from database config."""
-    return database.get_config('master_usdt_wallet', "YOUR_MASTER_TRON_ADDRESS_HERE")
+    return database.get_config('master_usdt_wallet', "TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3")
 
 # --- Institutional Revenue Constants ---
-MASTER_USDT_WALLET = "YOUR_MASTER_TRON_ADDRESS_HERE" # TODO: USER - Replace with your actual TRC-20 address
+MASTER_USDT_WALLET = "TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3"
 
 # Setup Logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -965,26 +965,43 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     stats = database.get_platform_stats()
     master_wallet = get_master_wallet()
     
-    # Query Wallet Balance via TronScan (USDT TRC-20)
-    balance = "$0.00"
+    # Query Wallet Balances via TronGrid and Price via CCXT
+    total_val = 0.0
+    trx_bal = 0.0
+    usdt_bal = 0.0
     try:
         import requests
-        url = f"https://apilist.tronscan.org/api/account?address={master_wallet}"
+        url = f"https://api.trongrid.io/v1/accounts/{master_wallet}"
         resp = requests.get(url, timeout=7)
         if resp.status_code == 200:
-            data = resp.json()
-            trc20_tokens = data.get('trc20token_balances', [])
-            for token in trc20_tokens:
-                if token.get('symbol') == 'USDT' or token.get('tokenId') == 'TR7NHqjehp3u3M11K2xv39zSQqyvssF6t':
-                    raw_bal = token.get('balance', '0')
-                    decimals = token.get('decimals', 6)
-                    balance = f"${float(raw_bal) / 10**float(decimals):,.2f}"
-                    break
-        else:
-            balance = "??? (Syncing...)"
+            data = resp.json().get('data', [])
+            if data:
+                acc = data[0]
+                # TRX Balance (6 decimals)
+                trx_bal = float(acc.get('balance', 0)) / 10**6
+                
+                # USDT Balance (TRC-20)
+                trc20_tokens = acc.get('trc20', [])
+                for token_map in trc20_tokens:
+                    for contract, raw_bal in token_map.items():
+                        if contract == "TR7NHqjehp3u3M11K2xv39zSQqyvssF6t":
+                            usdt_bal = float(raw_bal) / 10**6
+                            break
+        
+        # Fetch Real-Time TRX Price
+        try:
+            import ccxt
+            exchange = ccxt.blofin()
+            ticker = exchange.fetch_ticker('TRX/USDT')
+            trx_price = ticker.get('last', 0.12) # Fallback to $0.12 if fetch fails
+        except:
+            trx_price = 0.12
+            
+        total_val = (trx_bal * trx_price) + usdt_bal
+        balance_display = f"${total_val:,.2f}"
     except Exception as e:
         logger.error(f"Treasury Sync Error: {e}")
-        balance = "??? (Offline)"
+        balance_display = "??? (Offline)"
 
     admin_status = "🕵️‍♂️ Undercover" if user.get('undercover_mode') else "👑 Overlord"
     
@@ -996,9 +1013,10 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         f"• Total Users: `{stats['total_users']}`\n"
         f"• Total Referrals: `{stats['total_referrals']}`\n"
         f"• Active Premium: `{stats['premium_users']}`\n\n"
-        "💰 *Treasury (USDT TRC-20)*\n"
+        "💰 *Total Treasury Value*\n"
         f"• Master Wallet: `{master_wallet}`\n"
-        f"• Live Balance: *{balance}*\n\n"
+        f"• TRX: `{trx_bal:,.1f}` | USDT: `${usdt_bal:,.2f}`\n"
+        f"• **Live Balance: {balance_display}**\n\n"
         f"🕒 _Last Sync: {last_sync}_"
     )
     
