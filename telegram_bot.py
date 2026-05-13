@@ -825,8 +825,8 @@ def get_settings_ui(user):
     wallet_display = f"{wallet_val[:6]}...{wallet_val[-4:]}" if wallet_val else "(Not Set)"
     
     is_premium = database.is_premium(user)
-    is_admin = (user.get('chat_id') == ADMIN_CHAT_ID)
-    logger.info(f"UI BUILD: chat_id={user.get('chat_id')} | is_admin={is_admin} | undercover={user.get('undercover_mode')}")
+    is_admin = (user.get('telegram_chat_id') == ADMIN_CHAT_ID)
+    logger.info(f"UI BUILD: chat_id={user.get('telegram_chat_id')} | is_admin={is_admin} | undercover={user.get('undercover_mode')}")
     
     tier_display = "👑 Sherpa Overlord (Permanent)" if is_admin else ("💎 Premium (Institutional)" if is_premium else "🥈 Standard")
     

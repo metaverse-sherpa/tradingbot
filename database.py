@@ -403,7 +403,7 @@ def toggle_undercover(chat_id):
     c.execute("""
         UPDATE Users 
         SET undercover_mode = CASE WHEN undercover_mode = 1 THEN 0 ELSE 1 END 
-        WHERE chat_id = ?
+        WHERE telegram_chat_id = ?
     """, (chat_id,))
     conn.commit()
     conn.close()
