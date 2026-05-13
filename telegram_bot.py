@@ -64,12 +64,12 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         "🏔️ *Metaverse Sherpa: Institutional Wealth Gap*\n"
         "Comparison: `Free (1% Risk)` vs `Premium (1.5% Risk)`\n\n"
         "📊 *Standard Tier (Safe)*\n"
-        "• PnL: *+107.1%* | Sharpe: *5.40*\n"
+        "• PnL: *+64.5%* | Sharpe: *5.40*\n"
         "• Assets: 5 Institutional Tokens\n\n"
         "💎 *Premium Tier (Institutional)*\n"
         "• PnL: *+1,514.9%* | Sharpe: *4.83*\n"
         "• Assets: 19+ 'Sherpa Basket' Tokens\n\n"
-        "📈 _Institutional access delivers a **15x profit multiplier** by capturing 8x more compounding opportunities with full 'Sherpa Basket' coverage._"
+        "📈 _Institutional access delivers a **23x profit multiplier** by capturing 8x more compounding opportunities with full 'Sherpa Basket' coverage._"
     )
     
     if os.path.exists(master_path):
@@ -100,8 +100,8 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             premium_msg = (
                 "🔒 *Premium Feature: Personal Projections*\n\n"
                 "The chart above reveals the *Institutional Wealth Gap*.\n\n"
-                "📊 *Free Tier (White)*: 1% Risk | 5 Tokens\n"
-                "💎 *Premium Tier (Neon)*: 1.5%+ Risk | 19 Tokens\n\n"
+                "📊 *Free Tier (White)*: +64.5% PnL\n"
+                "💎 *Premium Tier (Neon)*: +1,514.9% PnL\n\n"
                 "Institutional access unlocks full compounding power and the complete 'Sherpa Basket' to capture 8x more opportunities.\n\n"
                 "Refer 3 friends or subscribe to unlock!"
             )
