@@ -8,3 +8,4 @@ cryptography
 matplotlib
 mplfinance
 Pillow
+qrcode[pil]

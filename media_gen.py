@@ -1,10 +1,37 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
 import gc
+import qrcode
 
 # Path to your official logo - Looking for it in the images/ folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, "images", "metaverse-bot-logo.png")
+
+def add_qr_code(base_img, link, size=180):
+    """
+    Generates a QR code for the link and overlays it onto the base image.
+    """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(link)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+    qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
+    
+    # Create a small white border for the QR code to make it pop
+    border_size = 5
+    bg = Image.new("RGBA", (size + border_size*2, size + border_size*2), (255, 255, 255, 255))
+    bg.paste(qr_img, (border_size, border_size), qr_img)
+    
+    # Paste onto bottom right with some margin
+    pos = (base_img.width - bg.width - 40, base_img.height - bg.height - 40)
+    base_img.paste(bg, pos, bg)
+    return base_img
 
 def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id="", bot_username="metaversesherpa_trading_bot"):
     """
@@ -39,7 +66,7 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
         font_main = find_font(60)
         font_sub = find_font(40)
         font_massive = find_font(140)
-        font_handle = find_font(30)
+        font_handle = find_font(25)
     except:
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
@@ -69,26 +96,29 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
         pnl_text = f"+${pnl_usdt:,.2f} USDT" if pnl_usdt >= 0 else f"-${abs(pnl_usdt):,.2f} USDT"
         draw_text_shadow((margin_x, base_img.height - 80), pnl_text, font=font_sub, fill=color_white)
     
-    # 5. Referral Link
-    ref_link = f"t.me/{bot_username}?start=ref_{user_id}" if user_id else f"@{bot_username}"
-    w_h = draw.textlength(ref_link, font=font_handle)
-    draw.text((base_img.width - w_h - 20, base_img.height - 50), ref_link, font=font_handle, fill=(255, 255, 255, 180))
+    # 5. Referral QR and Link
+    ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
+    
+    # Add QR code to bottom right
+    combined = add_qr_code(combined, ref_link, size=160)
+    
+    # Add "Scan to Join" label above QR
+    draw_combined = ImageDraw.Draw(combined)
+    label = "SCAN TO JOIN"
+    lw = draw_combined.textlength(label, font=font_handle)
+    draw_combined.text((combined.width - lw - 40, combined.height - 240), label, font=font_handle, fill=(255, 255, 255, 220))
+    
     save_filename = f"pnl_card_{user_id}_{clean_sym.replace('/', '_')}.png"
     save_path = os.path.join("pnl_cards", save_filename)
     
-    # Save as JPEG with optimized quality to save RAM/Space
     rgb_final = combined.convert("RGB")
     rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
     
-    # CRITICAL: Close all image objects to release RAM
-    base_img.close()
-    overlay.close()
-    combined.close()
-    rgb_final.close()
-    gc.collect() # Force garbage collection
+    base_img.close(); overlay.close(); combined.close(); rgb_final.close()
+    gc.collect()
     
     return save_path
 
@@ -107,14 +137,12 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     draw = ImageDraw.Draw(overlay)
     
     try:
-        # Standard paths for Linux (Ubuntu) and Mac
         font_paths = [
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
             "/System/Library/Fonts/Helvetica.ttc",
             "Arial"
         ]
-        
         def find_font(size):
             for path in font_paths:
                 try: return ImageFont.truetype(path, size)
@@ -124,7 +152,7 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
         font_main = find_font(60)
         font_sub = find_font(45)
         font_massive = find_font(100)
-        font_handle = find_font(30)
+        font_handle = find_font(25)
     except:
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
@@ -138,37 +166,31 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     margin_x = 50
     margin_y = 50
     
-    # 1. Header (Top Left)
     draw_text_shadow((margin_x, margin_y), "TRADING PERFORMANCE", font=font_main, fill=color_white)
-    
-    # 2. Overall PnL (Massive, Bottom Left for better contrast)
     draw_text_shadow((margin_x, base_img.height - 380), f"Overall: {overall_pnl:+.2f}%", font=font_massive, fill=color_neon)
-    
-    # 3. Stats Block (Stacked above Handle)
     draw_text_shadow((margin_x, base_img.height - 240), f"Daily PnL: {daily_pnl:+.2f}%", font=font_sub, fill=color_white)
     draw_text_shadow((margin_x, base_img.height - 180), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
     draw_text_shadow((margin_x, base_img.height - 120), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
     
-    # 4. Referral Link
-    ref_link = f"t.me/{bot_username}?start=ref_{user_id}" if user_id else f"@{bot_username}"
-    w_h = draw.textlength(ref_link, font=font_handle)
-    draw.text((base_img.width - w_h - 20, base_img.height - 50), ref_link, font=font_handle, fill=(255, 255, 255, 180))
+    ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
+    combined = add_qr_code(combined, ref_link, size=160)
+    
+    draw_combined = ImageDraw.Draw(combined)
+    label = "SCAN TO JOIN"
+    lw = draw_combined.textlength(label, font=font_handle)
+    draw_combined.text((combined.width - lw - 40, combined.height - 240), label, font=font_handle, fill=(255, 255, 255, 220))
+    
     save_filename = f"stats_card_{user_id}.png"
     save_path = os.path.join("pnl_cards", save_filename)
     
-    # Save as JPEG with optimized quality to save RAM/Space
     rgb_final = combined.convert("RGB")
     rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
     
-    # CRITICAL: Close all image objects to release RAM
-    base_img.close()
-    overlay.close()
-    combined.close()
-    rgb_final.close()
-    gc.collect() # Force garbage collection
+    base_img.close(); overlay.close(); combined.close(); rgb_final.close()
+    gc.collect()
     
     return save_path
 
@@ -193,7 +215,6 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
             "/System/Library/Fonts/Helvetica.ttc",
             "Arial"
         ]
-        
         def find_font(size):
             for path in font_paths:
                 try: return ImageFont.truetype(path, size)
@@ -203,7 +224,7 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
         font_main = find_font(50)
         font_sub = find_font(35)
         font_massive = find_font(70)
-        font_handle = find_font(30)
+        font_handle = find_font(25)
     except:
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
@@ -217,27 +238,26 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     margin_x = 50
     margin_y = 50
     
-    # 1. Header
     draw_text_shadow((margin_x, margin_y), "3-YEAR PERFORMANCE AUDIT", font=font_main, fill=color_white)
     draw_text_shadow((margin_x, margin_y + 80), period_text, font=font_sub, fill=(200, 200, 200, 255))
-    
-    # 2. Massive PnL
     draw_text_shadow((margin_x, base_img.height - 450), f"TOTAL PNL: {pnl_pct:+.1f}%", font=font_massive, fill=color_neon)
-    
-    # 3. Stats Block
     draw_text_shadow((margin_x, base_img.height - 310), f"Verified Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
     draw_text_shadow((margin_x, base_img.height - 260), f"Max Drawdown: {max_dd:.1f}%", font=font_sub, fill=(255, 100, 100, 255))
     draw_text_shadow((margin_x, base_img.height - 210), f"Total Trades Audited: {total_trades}", font=font_sub, fill=color_white)
     draw_text_shadow((margin_x, base_img.height - 160), f"Avg Trades/Day: {avg_trades_day:.2f}", font=font_sub, fill=color_white)
     
-    handle_text = f"@{bot_username}"
-    w_h = draw.textlength(handle_text, font=font_handle)
-    draw.text((base_img.width - w_h - 20, base_img.height - 50), handle_text, font=font_handle, fill=(255, 255, 255, 180))
+    ref_link = f"https://t.me/{bot_username}"
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
-    save_path = os.path.join("pnl_cards", "portfolio_audit_card.png")
+    combined = add_qr_code(combined, ref_link, size=160)
     
+    draw_combined = ImageDraw.Draw(combined)
+    label = "SCAN TO JOIN"
+    lw = draw_combined.textlength(label, font=font_handle)
+    draw_combined.text((combined.width - lw - 40, combined.height - 240), label, font=font_handle, fill=(255, 255, 255, 220))
+    
+    save_path = os.path.join("pnl_cards", "portfolio_audit_card.png")
     rgb_final = combined.convert("RGB")
     rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
     
