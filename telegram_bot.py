@@ -22,6 +22,7 @@ from audit_3yr_portfolio import run_custom_audit
 # Load environment variables
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+ADMIN_CHAT_ID = 1567788633  # Metaverse Sherpa Lead
 
 # Setup Logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -178,6 +179,25 @@ def get_main_inline_menu(chat_id=None):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     bot_username = (await context.bot.get_me()).username
+    
+    # 🏔️ Sherpa Admin Alert: Notify on new member arrival
+    is_new = database.get_user(chat_id) is None
+    if is_new:
+        try:
+            full_name = update.effective_user.full_name
+            username = f"@{update.effective_user.username}" if update.effective_user.username else "No Username"
+            ref_info = f" (Referrer: `{context.args[0].split('_')[1]}`)" if context.args and context.args[0].startswith("ref_") else ""
+            
+            admin_msg = (
+                "👤 *New Sherpa Member!*\n\n"
+                f"Name: `{full_name}`\n"
+                f"User: {username}\n"
+                f"ID: `{chat_id}`{ref_info}\n\n"
+                "📈 _The trail is expanding..._"
+            )
+            await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_msg, parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"Error sending admin notification: {e}")
     
     # --- 1. Handle Referral Deep Linking ---
     if context.args and context.args[0].startswith("ref_"):
