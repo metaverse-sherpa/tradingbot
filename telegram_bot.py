@@ -937,7 +937,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if card_path and os.path.exists(card_path):
         with open(card_path, 'rb') as photo:
-            await context.bot.send_photo(chat_id=chat_id, photo=photo)
+            await context.bot.send_photo(chat_id=chat_id, photo=photo, reply_markup=get_main_inline_menu(chat_id))
         
         # Update the original message to let them know it's ready below
         feedback_msg = f"✅ *Share card generated for {share_label}!*\n\nScroll down to the bottom of the chat to see your Cyber-Sherpa card. 👇"
