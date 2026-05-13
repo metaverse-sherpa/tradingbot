@@ -1085,7 +1085,7 @@ def main():
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
