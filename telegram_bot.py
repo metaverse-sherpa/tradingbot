@@ -134,11 +134,16 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
     except Exception as e:
         logger.error(f"Personal audit error: {e}")
         await status_msg.edit_text(f"❌ Error during simulation: {e}")
+        
+def get_main_keyboard():
+    keyboard = [
+        ['/opentrades', '/list'],
+        ['/stats', '/help']
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Quick reply buttons for daily monitoring
-    keyboard = [['/opentrades', '/list', '/balance', '/stats'], ['/backtest', '/strategy', '/docs', '/setup']]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    reply_markup = get_main_keyboard()
     
     await update.message.reply_text(
         "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
@@ -214,6 +219,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "The Sherpa is now tracking your account. Trading will begin on the next engine cycle.\n\n"
             "Tap the button below to verify your connection and check your trading funds.", 
             reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+        
+        # Also send the persistent footer keyboard
+        await update.message.reply_text(
+            "🛰️ *Main Menu Activated*",
+            reply_markup=get_main_keyboard(),
             parse_mode="Markdown"
         )
 
