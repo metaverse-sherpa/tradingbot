@@ -46,7 +46,8 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.effective_message.reply_text("📊 Generating Verified 3-Year Audit Report...")
     
-    card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text)
+    bot_username = (await context.bot.get_me()).username
+    card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text, bot_username=bot_username)
     
     msg = (
         "📈 *Cyber-Sherpa 3-Year Portfolio Audit*\n\n"
@@ -111,9 +112,11 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         avg_t_day = res['total_trades'] / 1095
         period_text = "May 2023 - May 2026"
         
+        bot_username = (await context.bot.get_me()).username
         card_path = media_gen.generate_audit_card(
             res['pnl_pct'], res['win_rate'], res['max_dd'], 
-            res['total_trades'], avg_t_day, period_text
+            res['total_trades'], avg_t_day, period_text,
+            bot_username=bot_username
         )
         
         msg = (
@@ -927,7 +930,8 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Format: shs_{overall}_{daily}_{wr}_{total}
         parts = data.split("_")
         overall, daily, wr, total = float(parts[1]), float(parts[2]), float(parts[3]), int(parts[4])
-        card_path = media_gen.generate_stats_card(overall, daily, wr, total, user_id=chat_id)
+        bot_username = (await context.bot.get_me()).username
+        card_path = media_gen.generate_stats_card(overall, daily, wr, total, user_id=chat_id, bot_username=bot_username)
         share_label = "performance summary"
         
     elif data.startswith("sh_"): # SHARE TRADE
@@ -936,11 +940,13 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sym = parts[1]
         side = "long" if parts[2] == "l" else "short"
         roe, entry, mark, pnl = float(parts[3]), float(parts[4]), float(parts[5]), float(parts[6])
+        bot_username = (await context.bot.get_me()).username
         card_path = media_gen.generate_pnl_card(
             sym, side, roe, entry, mark, 
             hide_dollars=user['hide_dollars'] if user else True, 
             pnl_usdt=pnl,
-            user_id=chat_id
+            user_id=chat_id,
+            bot_username=bot_username
         )
         share_label = f"trade results for {sym}"
     

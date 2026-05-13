@@ -6,7 +6,7 @@ import gc
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, "images", "metaverse-bot-logo.png")
 
-def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id=""):
+def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id="", bot_username="metaversesherpa_trading_bot"):
     """
     Generates a professional PnL card using the brand logo as the background.
     """
@@ -69,9 +69,10 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
         pnl_text = f"+${pnl_usdt:,.2f} USDT" if pnl_usdt >= 0 else f"-${abs(pnl_usdt):,.2f} USDT"
         draw_text_shadow((margin_x, base_img.height - 80), pnl_text, font=font_sub, fill=color_white)
     
-    handle_text = "@metaversesherpa_trading_bot"
-    w_h = draw.textlength(handle_text, font=font_handle)
-    draw.text((base_img.width - w_h - 20, base_img.height - 50), handle_text, font=font_handle, fill=(255, 255, 255, 180))
+    # 5. Referral Link
+    ref_link = f"t.me/{bot_username}?start=ref_{user_id}" if user_id else f"@{bot_username}"
+    w_h = draw.textlength(ref_link, font=font_handle)
+    draw.text((base_img.width - w_h - 20, base_img.height - 50), ref_link, font=font_handle, fill=(255, 255, 255, 180))
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
@@ -91,7 +92,7 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     
     return save_path
 
-def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=""):
+def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id="", bot_username="metaversesherpa_trading_bot"):
     """
     Generates a professional performance summary card.
     """
@@ -148,10 +149,10 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     draw_text_shadow((margin_x, base_img.height - 180), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
     draw_text_shadow((margin_x, base_img.height - 120), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
     
-    # 4. Handle
-    handle_text = "@metaversesherpa_trading_bot"
-    w_h = draw.textlength(handle_text, font=font_handle)
-    draw.text((base_img.width - w_h - 20, base_img.height - 50), handle_text, font=font_handle, fill=(255, 255, 255, 180))
+    # 4. Referral Link
+    ref_link = f"t.me/{bot_username}?start=ref_{user_id}" if user_id else f"@{bot_username}"
+    w_h = draw.textlength(ref_link, font=font_handle)
+    draw.text((base_img.width - w_h - 20, base_img.height - 50), ref_link, font=font_handle, fill=(255, 255, 255, 180))
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
@@ -171,7 +172,7 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     
     return save_path
 
-def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text):
+def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text, bot_username="metaversesherpa_trading_bot"):
     """
     Generates a professional 3-year performance audit certificate.
     """
@@ -229,7 +230,7 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     draw_text_shadow((margin_x, base_img.height - 210), f"Total Trades Audited: {total_trades}", font=font_sub, fill=color_white)
     draw_text_shadow((margin_x, base_img.height - 160), f"Avg Trades/Day: {avg_trades_day:.2f}", font=font_sub, fill=color_white)
     
-    handle_text = "@metaversesherpa_trading_bot"
+    handle_text = f"@{bot_username}"
     w_h = draw.textlength(handle_text, font=font_handle)
     draw.text((base_img.width - w_h - 20, base_img.height - 50), handle_text, font=font_handle, fill=(255, 255, 255, 180))
     
