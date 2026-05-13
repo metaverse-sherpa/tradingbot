@@ -127,7 +127,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', eq
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, history_cache FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -153,7 +153,7 @@ def get_user(chat_id):
             "referral_count": row[17] or 0,
             "has_open_positions": bool(row[18]),
             "chat_id": chat_id,
-            "history_cache": row[19] if len(row) > 19 else None
+            "undercover_mode": row[19] if len(row) > 19 else 0
         }
     return None
 
