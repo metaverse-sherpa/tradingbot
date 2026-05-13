@@ -610,12 +610,18 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             roe_v2 = f"{roe:+.2f}".replace(".", "\\.").replace("-", "\\-")
             t_roe_v2 = target_roe_str.replace(".", "\\.").replace("+", "").replace("-", "\\-")
             
+            # Pre-escape values to avoid backslashes in f-strings
+            sym_v2 = sym.replace('-', '\\-').replace('_', '\\_')
+            entry_v2 = str(entry).replace('.', '\\.')
+            tp_v2 = str(tp_price).replace('.', '\\.')
+            sl_v2 = str(sl_price).replace('.', '\\.')
+            
             t_suffix = f" of ||${target_pnl_v2}|| ({t_roe_v2}) Target" if target_roe_str != "N/A" else ""
             
             caption = (
-                f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym.replace('-', '\\-').replace('_', '\\_')} ({side.upper()})*\n"
-                f"Entry: `{str(entry).replace('.', '\\.')}`\n"
-                f"TP: `{str(tp_price).replace('.', '\\.')}` | SL: `{str(sl_price).replace('.', '\\.')}`\n"
+                f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} ({side.upper()})*\n"
+                f"Entry: `{entry_v2}`\n"
+                f"TP: `{tp_v2}` | SL: `{sl_v2}`\n"
                 f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\){t_suffix}"
             )
 
