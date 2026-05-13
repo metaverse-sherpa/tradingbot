@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from datetime import datetime
+import time
 
 # ---------------------------------------------------------------------------
 # Sherpa Visual Audit Settings
