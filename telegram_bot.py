@@ -616,10 +616,10 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tp_v2 = str(tp_price).replace('.', '\\.')
             sl_v2 = str(sl_price).replace('.', '\\.')
             
-            t_suffix = f" of ||${target_pnl_v2}|| ({t_roe_v2}) Target" if target_roe_str != "N/A" else ""
+            t_suffix = f" of ||${target_pnl_v2}|| \\({t_roe_v2}\\) Target" if target_roe_str != "N/A" else ""
             
             caption = (
-                f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} ({side.upper()})*\n"
+                f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
                 f"Entry: `{entry_v2}`\n"
                 f"TP: `{tp_v2}` | SL: `{sl_v2}`\n"
                 f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\){t_suffix}"
