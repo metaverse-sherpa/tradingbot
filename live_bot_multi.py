@@ -130,7 +130,21 @@ def place_order(exchange, symbol, signal, equity, risk_pct=None):
         max_leverage_size = (equity * LEVERAGE) / (lp * contract_size)
         size = round(min(float(raw_size), float(max_market), float(max_leverage_size)), 3)
         if size <= 0: return None
-        log.info("🔔 SIGNAL on %s: BUY | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, lp, sl, tp)
+
+        # Risk Check: Liquidation vs Stop Loss
+        # Conservative Estimation: Entry * (1 - 1/Lev + 1% Maint. Margin)
+        if signal["side"] == "buy":
+            est_liq = lp * (1 - (1 / LEVERAGE) + 0.01)
+            if sl <= est_liq:
+                log.warning("⚠️ RISK ALERT: %s Long SL (%.4f) is beyond estimated Liq (%.4f). Skipping.", symbol, sl, est_liq)
+                return None
+        else: # Short
+            est_liq = lp * (1 + (1 / LEVERAGE) - 0.01)
+            if sl >= est_liq:
+                log.warning("⚠️ RISK ALERT: %s Short SL (%.4f) is beyond estimated Liq (%.4f). Skipping.", symbol, sl, est_liq)
+                return None
+
+        log.info("🔔 SIGNAL on %s: %s | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, signal["side"].upper(), lp, sl, tp)
         if DRY_RUN: return None
         # 3-Order Combo for Fragmented Exchanges (Binance/MEXC)
         if exchange.id in ['binance', 'mexc']:

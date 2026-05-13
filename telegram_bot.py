@@ -10,6 +10,8 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboard
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from telegram.error import BadRequest
 import database
+import charting
+import time
 import sys
 
 # Add scripts directory to path for imports
@@ -980,7 +982,23 @@ async def trading_engine(application):
                                         f"TP: `{res['tp']:.8f}`\n"
                                         f"SL: `{res['sl']:.8f}`"
                                     )
-                                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                                    # Generate and send chart
+                                    try:
+                                        ohlcv = user_ex.fetch_ohlcv(symbol, timeframe='15m', limit=100)
+                                        df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+                                        side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
+                                        open_ts = int(time.time() * 1000)
+                                        chart_file = charting.generate_trade_chart(res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
+                                        
+                                        await application.bot.send_photo(
+                                            chat_id=chat_id, 
+                                            photo=open(chart_file, 'rb'),
+                                            caption=msg,
+                                            parse_mode="Markdown"
+                                        )
+                                    except Exception as chart_err:
+                                        logger.error(f"Chart generation failed: {chart_err}")
+                                        await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
                     except Exception as e:
                         logger.error(f"Error for user {user.get('chat_id')}: {e}")
             
