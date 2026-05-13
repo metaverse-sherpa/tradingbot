@@ -417,7 +417,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Add Share Stats button
     cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
     keyboard = [
-        [InlineKeyboardButton("📸 Share Performance Card", callback_data=cb_data)],
+        [InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)],
         *get_nav_buttons(user.get('has_open_positions', False))
     ]
     
@@ -516,7 +516,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Add Share Button directly under this trade
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
-            markup = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Share This Result", callback_data=cb_data)]])
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)]])
             
             await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="MarkdownV2")
             await asyncio.sleep(0.2) # Small delay to keep order
@@ -645,7 +645,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Prepare Share Button
                 s_side = "l" if side.lower() == "long" else "s"
                 callback_data = f"sha_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
-                keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
+                keyboard = [[InlineKeyboardButton("Share & Earn 📸", callback_data=callback_data)]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 with open(chart_path, 'rb') as photo:
