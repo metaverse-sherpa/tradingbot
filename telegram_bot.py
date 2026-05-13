@@ -135,15 +135,9 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         logger.error(f"Personal audit error: {e}")
         await status_msg.edit_text(f"❌ Error during simulation: {e}")
         
-def get_main_keyboard():
-    keyboard = [
-        ['/opentrades', '/list'],
-        ['/stats', '/help']
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
-
-def get_main_inline_menu():
-    keyboard = [
+def get_nav_buttons():
+    """Returns a standardized 2x2 grid of inline navigation buttons."""
+    return [
         [
             InlineKeyboardButton("🛰️ Open Trades", callback_data="opentrades_menu"),
             InlineKeyboardButton("📜 History", callback_data="history_menu")
@@ -153,13 +147,15 @@ def get_main_inline_menu():
             InlineKeyboardButton("❓ Help", callback_data="help_menu")
         ]
     ]
-    return InlineKeyboardMarkup(keyboard)
+
+def get_main_inline_menu():
+    return InlineKeyboardMarkup(get_nav_buttons())
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
-        "Tap /setup to begin or use the menu below to monitor your account.",
-        reply_markup=get_main_keyboard(),
+        "Tap /setup to begin or use the dashboard below to monitor your account.",
+        reply_markup=InlineKeyboardMarkup(get_nav_buttons()),
         parse_mode="Markdown"
     )
 
@@ -226,10 +222,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
         
-        # Also send the persistent footer keyboard
+        # Also send the persistent footer dashboard
         await update.message.reply_text(
             "🛰️ *Main Menu Activated*",
-            reply_markup=get_main_keyboard(),
+            reply_markup=get_main_inline_menu(),
             parse_mode="Markdown"
         )
 
@@ -336,7 +332,10 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Add Share Stats button
     cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
-    keyboard = [[InlineKeyboardButton("📸 Share Performance Card", callback_data=cb_data)]]
+    keyboard = [
+        [InlineKeyboardButton("📸 Share Performance Card", callback_data=cb_data)],
+        *get_nav_buttons()
+    ]
     
     await update.message.reply_text(
         msg, 
@@ -431,6 +430,8 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
             await asyncio.sleep(0.2) # Small delay to keep order
             
+        await update.message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(), parse_mode="Markdown")
+            
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
         await update.message.reply_text(f"❌ Error fetching trade history: {e}")
@@ -460,7 +461,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
         
         if not active:
-            await update.message.reply_text("You have no open trades at the moment.")
+            await update.message.reply_text("You have no open trades at the moment.", reply_markup=get_main_inline_menu())
             return
             
         await update.message.reply_text(f"🛰 *Active Positions Found: {len(active)}*\nGenerating charts...")
@@ -524,7 +525,10 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Using short prefixes and rounded numbers to save space
                 s_side = "l" if side.lower() == "long" else "s"
                 callback_data = f"sh_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
-                keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
+                keyboard = [
+                    [InlineKeyboardButton("Share 📸", callback_data=callback_data)],
+                    *get_nav_buttons()
+                ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 target_suffix = f" of {target_roe_str.replace('+', '')}" if target_roe_str != "N/A" else ""
@@ -546,7 +550,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"Entry: `{entry:.8f}`\n"
                     f"PnL: *{roe:+.2f}%{target_suffix}*"
                 )
-                await update.message.reply_text(msg, parse_mode="Markdown")
+                await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu())
         
     except Exception as e:
         await update.message.reply_text(f"❌ Error fetching positions: {e}")
@@ -1022,10 +1026,14 @@ async def trading_engine(application):
                                         open_ts = int(time.time() * 1000)
                                         chart_file = charting.generate_trade_chart(res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
                                         
+                                        # Add Nav Buttons to the Signal
+                                        keyboard = get_nav_buttons()
+                                        
                                         await application.bot.send_photo(
                                             chat_id=chat_id, 
                                             photo=open(chart_file, 'rb'),
                                             caption=msg,
+                                            reply_markup=InlineKeyboardMarkup(keyboard),
                                             parse_mode="Markdown"
                                         )
                                     except Exception as chart_err:
