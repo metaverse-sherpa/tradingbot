@@ -1104,15 +1104,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         
-        # Update the original message to let them know it's ready below
-        feedback_msg = f"✅ *Share card generated for {share_label}!*\n\nScroll down to the bottom of the chat to see your Metaverse Sherpa card. 👇"
-        
-        try:
-            if query.message.caption:
-                await query.edit_message_caption(caption=feedback_msg, parse_mode="Markdown")
-            else:
-                await query.edit_message_text(feedback_msg, parse_mode="Markdown")
-        except: pass # Ignore redundant updates
+        # No need to edit the original message - keep the history dashboard intact
         
         # Cleanup
         os.remove(card_path)
