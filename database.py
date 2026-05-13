@@ -93,6 +93,8 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN source_wallet TEXT")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN undercover_mode BOOLEAN DEFAULT 0")
+    except: pass
     
     # 💎 Institutional Config Table
     c.execute('''CREATE TABLE IF NOT EXISTS Config
@@ -386,9 +388,20 @@ def clear_history_cache(chat_id):
     conn.close()
 
 def is_premium(user):
-    """Returns True if the user has an active premium subscription."""
+    """Returns True if the user has an active premium subscription or is the Admin."""
     if not user: return False
+    # 👑 Overlord Privilege (Suspended in Undercover Mode)
+    if user.get('telegram_chat_id') == 1567788633 and not user.get('undercover_mode'):
+        return True
     return user.get('premium_expiry', 0) > time.time()
+
+def toggle_undercover(chat_id):
+    """Toggles the undercover mode for the founder."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET undercover_mode = 1 - undercover_mode WHERE telegram_chat_id = ?", (chat_id,))
+    conn.commit()
+    conn.close()
 
 def get_premium_days_left(user):
     """Returns the number of days remaining in the user's premium subscription."""

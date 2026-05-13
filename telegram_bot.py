@@ -822,10 +822,12 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wallet_display = f"{wallet_val[:6]}...{wallet_val[-4:]}" if wallet_val else "(Not Set)"
     
     is_premium = database.is_premium(user)
-    tier_display = "💎 Premium (Institutional)" if is_premium else "🥈 Standard"
+    is_admin = (user.get('telegram_chat_id') == ADMIN_CHAT_ID)
+    
+    tier_display = "👑 Founder (Permanent)" if is_admin else ("💎 Premium (Institutional)" if is_premium else "🥈 Standard")
     
     expiry_msg = ""
-    if is_premium:
+    if is_premium and not is_admin:
         days_left = database.get_premium_days_left(user)
         expiry_date = time.strftime('%Y-%m-%d', time.localtime(user['premium_expiry']))
         expiry_msg = f"Expires: *{expiry_date}* ({days_left} days left)\n"
@@ -850,7 +852,10 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
     ]
     
-    if is_premium:
+    if is_admin:
+        # Overlord has no need for renewal buttons
+        pass
+    elif is_premium:
         keyboard.append([InlineKeyboardButton("🔄 Renew Institutional Access", callback_data="premium_menu")])
     else:
         keyboard.append([InlineKeyboardButton("🤝 My Referral Link", callback_data="referral_menu")])
@@ -969,8 +974,11 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
                 break
     except: pass
 
+    admin_status = "🕵️‍♂️ Undercover" if user.get('undercover_mode') else "👑 Overlord"
+    
     admin_msg = (
         "👑 *Sherpa Overlord Mission Control*\n\n"
+        f"Identity Status: *{admin_status}*\n\n"
         "📊 *Platform Analytics*\n"
         f"• Total Users: `{stats['total_users']}`\n"
         f"• Total Referrals: `{stats['total_referrals']}`\n"
@@ -982,6 +990,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     )
     
     kb = [
+        [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
         [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
         [InlineKeyboardButton("📜 View Audit Trail (TronScan)", url=f"https://tronscan.org/#/address/{master_wallet}")],
         [InlineKeyboardButton("🔙 Close Console", callback_data="close_admin")]
@@ -1031,6 +1040,13 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "close_admin":
         await query.message.delete()
         await query.answer()
+        return
+
+    if query.data == "toggle_undercover":
+        if chat_id != ADMIN_CHAT_ID: return
+        database.toggle_undercover(chat_id)
+        await show_admin_dashboard(update, context)
+        await query.answer("Identity Toggled!")
         return
 
     if query.data == "premium_menu":
