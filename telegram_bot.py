@@ -519,15 +519,15 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
             )
             
-            # Create button data
+            # Create contextual button data (e.g., 1-TAO)
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
-            buttons.append(InlineKeyboardButton(f"{i+1}", callback_data=cb_data))
+            buttons.append(InlineKeyboardButton(f"{i+1}-{sym_v2}", callback_data=cb_data))
             
-        history_text += "\n*Tap a number below to Share & Earn 📸*"
+        history_text += "\n*Tap a button below to Share & Earn 📸*"
         
-        # Grid of buttons (5 per row)
-        grid = [buttons[i:i + 5] for i in range(0, len(buttons), 5)]
-        grid.append([InlineKeyboardButton("🛰️ Main Menu", callback_data="menu_main")])
+        # Grid of buttons (2 per row for legibility with text)
+        grid = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+        grid.extend(get_nav_buttons(user.get('has_open_positions', False)))
         
         await update.effective_message.reply_text(
             history_text, 
