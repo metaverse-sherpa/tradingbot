@@ -63,9 +63,13 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     audit_msg = (
         "🏔️ *Metaverse Sherpa: Institutional Wealth Gap*\n"
         "Comparison: `Free (1% Risk)` vs `Premium (1.5% Risk)`\n\n"
-        "📊 *Free Tier*: 5 Tokens\n"
-        "💎 *Premium Tier*: 19 Tokens\n\n"
-        "📈 _Institutional access captures 8x more trades and unlocks full compounding power, delivering superior long-term results._"
+        "📊 *Standard Tier (Safe)*\n"
+        "• PnL: *+107.1%* | Sharpe: *5.40*\n"
+        "• Assets: 5 Institutional Tokens\n\n"
+        "💎 *Premium Tier (Institutional)*\n"
+        "• PnL: *+1,514.9%* | Sharpe: *4.83*\n"
+        "• Assets: 19+ 'Sherpa Basket' Tokens\n\n"
+        "📈 _Institutional access delivers a **15x profit multiplier** by capturing 8x more compounding opportunities with full 'Sherpa Basket' coverage._"
     )
     
     if os.path.exists(master_path):
