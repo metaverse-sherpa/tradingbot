@@ -1058,23 +1058,29 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             is_profit = overall >= 0
             headline = "🏔️ *Climbing to new heights with the Metaverse Sherpa Bot!*" if is_profit else "🧗‍♂️ *Navigating the market peaks. The Sherpa never misses a trail!*"
 
-        viral_caption = (
-            f"{headline}\n\n"
-            "Join the elite circle of automated traders. Tap below to copy my invite link and start your 5-day trial:\n\n"
-            f"`{ref_link}`"
-        )
-        
-        # Create a pre-filled Telegram share URL
-        share_text = f"{headline.replace('*', '')}\n\nJoin the elite circle of automated traders. Start your 5-day trial here:\n{ref_link}"
-        import urllib.parse
-        encoded_text = urllib.parse.quote(share_text)
-        share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={encoded_text}"
-        
-        keyboard = [
-            [InlineKeyboardButton("🚀 Forward to Friend", url=share_url)],
-            *get_nav_buttons(user.get('has_open_positions', False))
-        ]
-        
+        # Conditional Viral Payload (Only show referral links/buttons for profit)
+        if is_profit:
+            viral_caption = (
+                f"{headline}\n\n"
+                "Join the elite circle of automated traders. Tap below to copy my invite link and start your 5-day trial:\n\n"
+                f"`{ref_link}`"
+            )
+            
+            # Create a pre-filled Telegram share URL
+            share_text = f"{headline.replace('*', '')}\n\nJoin the elite circle of automated traders. Start your 5-day trial here:\n{ref_link}"
+            import urllib.parse
+            encoded_text = urllib.parse.quote(share_text)
+            share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={encoded_text}"
+            
+            keyboard = [
+                [InlineKeyboardButton("🚀 Forward to Friend", url=share_url)],
+                *get_nav_buttons(user.get('has_open_positions', False))
+            ]
+        else:
+            # For losses, keep it humble and private (No referral link or share button)
+            viral_caption = headline
+            keyboard = get_nav_buttons(user.get('has_open_positions', False))
+            
         with open(card_path, 'rb') as photo:
             await context.bot.send_photo(
                 chat_id=chat_id, 
