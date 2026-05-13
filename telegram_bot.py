@@ -18,6 +18,7 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, "scripts"))
 from audit_3yr_portfolio import run_custom_audit
+from sherpa_visual_audit import run_visual_audit
 
 # Load environment variables
 load_dotenv()
@@ -43,38 +44,14 @@ def escape_md_v2(text):
     return text
 
 async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends the 3-year verified audit report and card."""
+    """Triggers the personalized visual 3-year audit for the user."""
     chat_id = update.effective_chat.id
-    
-    # Audit stats from the recent run
-    pnl_pct = 576.2
-    win_rate = 60.0
-    max_dd = 18.8
-    total_trades = 880
-    avg_trades_day = 0.80
-    period_text = "May 2023 - May 2026"
-    
-    await update.effective_message.reply_text("📊 Generating Verified 3-Year Audit Report...")
-    
-    bot_username = (await context.bot.get_me()).username
-    card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text, bot_username=bot_username)
-    
-    msg = (
-        "📈 *Metaverse Sherpa 3-Year Portfolio Audit*\n\n"
-        f"Period: `{period_text}`\n"
-        f"Total PnL: *{pnl_pct:+.1f}%*\n"
-        f"Win Rate: *{win_rate:.1f}%*\n"
-        f"Max Drawdown: *{max_dd:.1f}%*\n"
-        f"Total Trades: *{total_trades}*\n"
-        f"Avg Trades/Day: *{avg_trades_day:.2f}*\n\n"
-        "✅ _This audit was generated using historical 15m candle data for the core 19 tokens._"
-    )
-    
-    if card_path and os.path.exists(card_path):
-        with open(card_path, 'rb') as photo:
-            await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, parse_mode="Markdown")
-    else:
-        await update.effective_message.reply_text(msg, parse_mode="Markdown")
+    user = database.get_user(chat_id)
+    if not user:
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
+        return
+        
+    await trigger_personalized_audit(update, context, user)
 
 async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user):
     """Runs a 3-year backtest for a specific user's risk and symbols with animation."""
@@ -97,8 +74,8 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         parse_mode="Markdown"
     )
     
-    # Start the audit in a separate thread/task so we can animate
-    audit_task = asyncio.create_task(asyncio.to_thread(run_custom_audit, risk, syms))
+    # Start the visual audit in a separate thread/task so we can animate
+    audit_task = asyncio.create_task(asyncio.to_thread(run_visual_audit, risk, syms, user_id=chat_id))
     
     idx = 1
     while not audit_task.done():
@@ -113,36 +90,34 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             except: pass
             
     try:
-        res = await audit_task
-        if not res:
-            await status_msg.edit_text("❌ Personal audit failed. Check settings.")
+        stats, chart_path = await audit_task
+        if not stats or not chart_path:
+            await status_msg.edit_text("❌ Personal audit failed. Check your settings.")
             return
 
-        # Calculate avg trades/day (3 years = 1095 days)
-        avg_t_day = res['total_trades'] / 1095
-        period_text = "May 2023 - May 2026"
-        
-        bot_username = (await context.bot.get_me()).username
-        card_path = media_gen.generate_audit_card(
-            res['pnl_pct'], res['win_rate'], res['max_dd'], 
-            res['total_trades'], avg_t_day, period_text,
-            bot_username=bot_username
+        audit_msg = (
+            f"🏔️ *Your Personalized 3-Year Audit*\n"
+            f"Settings: `{risk:.2f}% Risk` | `{len(syms)}/19 Tokens`\n\n"
+            f"Final Equity: *${stats['final_equity']:,.2f}*\n"
+            f"Total PnL: *{stats['pnl_pct']:+.1f}%*\n"
+            f"Win Rate: *{stats['win_rate']:.1f}%*\n"
+            f"Max Drawdown: *{stats['max_dd']:.1f}%*\n\n"
+            "📈 _This simulation represents your current settings applied over the last 3 years._"
         )
         
-        msg = (
-            "🎯 *Your Personalized 3-Year Audit*\n\n"
-            f"Risk: `{risk:.2f}%` | Symbols: `{len(syms)}/19`\n\n"
-            f"3-Year PnL: *{res['pnl_pct']:+.1f}%*\n"
-            f"Win Rate: *{res['win_rate']:.1f}%*\n"
-            f"Max Drawdown: *{res['max_dd']:.1f}%*\n"
-            f"Total Trades: *{res['total_trades']}*"
-        )
-        
-        if card_path and os.path.exists(card_path):
-            await context.bot.send_photo(chat_id=chat_id, photo=open(card_path, 'rb'), caption=msg, parse_mode="Markdown")
-            await status_msg.delete()
+        await status_msg.delete()
+        if os.path.exists(chart_path):
+            with open(chart_path, 'rb') as photo:
+                await context.bot.send_photo(
+                    chat_id=chat_id, 
+                    photo=photo, 
+                    caption=audit_msg, 
+                    parse_mode="Markdown",
+                    reply_markup=get_main_inline_menu(chat_id)
+                )
+            os.remove(chart_path) # Cleanup to save VPS space
         else:
-            await status_msg.edit_text(msg, parse_mode="Markdown")
+            await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
             
     except Exception as e:
         logger.error(f"Personal audit error: {e}")
@@ -228,40 +203,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
 
-    # 2. Automated 3-Year Performance Proof
-    # Stats for the card
-    pnl_pct, win_rate, max_dd, total_trades, avg_trades_day = 576.2, 60.0, 18.8, 880, 0.80
-    period_text = "May 2023 - May 2026"
-    
-    card_path = media_gen.generate_audit_card(
-        pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text, 
-        bot_username=bot_username
-    )
-    
-    audit_msg = (
-        "📈 *Verified 3-Year Performance Audit*\n"
-        "_(Historical Backtest: 19 Tokens | 15m Timeframe)_\n\n"
-        f"Total PnL: *{pnl_pct:+.1f}%*\n"
-        f"Win Rate: *{win_rate:.1f}%*\n"
-        f"Max Drawdown: *{max_dd:.1f}%*\n\n"
-        "Tap the dashboard below to begin your journey."
-    )
-    
-    if card_path and os.path.exists(card_path):
-        with open(card_path, 'rb') as photo:
-            await context.bot.send_photo(
-                chat_id=chat_id, 
-                photo=photo, 
-                caption=audit_msg, 
-                parse_mode="Markdown",
-                reply_markup=get_main_inline_menu(chat_id)
-            )
-    else:
-        await update.effective_message.reply_text(
-            audit_msg, 
-            reply_markup=get_main_inline_menu(chat_id), 
-            parse_mode="Markdown"
-        )
+    # 2. Automated 3-Year Performance Visual
+    await backtest(update, context)
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -935,6 +878,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         keyboard = [
+            [InlineKeyboardButton("🏔️ Preview My Performance", callback_data="backtest_menu")],
             [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk")],
             [InlineKeyboardButton("Mean Reversion Scalper (Active)", callback_data="set_strat_mean")],
             [InlineKeyboardButton("🚧 Crypto Chart Patterns (Soon)", callback_data="set_strat_soon")],
