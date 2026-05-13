@@ -158,10 +158,17 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
                 st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
                 equity -= fill * st["size"] * COMMISSION
 
-    # --- Plotting ---
+    # --- Calculations ---
     df_eq = pd.DataFrame(equity_history, columns=["date", "equity"]).set_index("date")
     df_dd = pd.DataFrame(drawdowns, columns=["date", "drawdown"]).set_index("date")
     
+    # Annualized Sharpe Ratio
+    daily_returns = df_eq["equity"].resample('D').last().pct_change().dropna()
+    if len(daily_returns) > 1:
+        sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(365)
+    else:
+        sharpe = 0.0
+
     # Institutional 75/25 Layout
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]})
     
@@ -176,6 +183,9 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     ax1.set_title(f"Metaverse Sherpa: 3-Year Equity Trail ({risk_val_pct}% Risk)", color="white", fontsize=16, pad=20)
     ax1.set_ylabel("Account Equity ($)", color="white")
     ax1.grid(True, alpha=0.15); ax1.set_facecolor("#121212"); ax1.tick_params(colors="white")
+    
+    # Add Sharpe Metric Box
+    ax1.text(0.02, 0.90, f"Sharpe Ratio: {sharpe:.2f}", transform=ax1.transAxes, color='cyan', fontweight='bold', fontsize=12, bbox=dict(facecolor='#1A1A1A', alpha=0.8, edgecolor='cyan'))
 
     # Drawdown Chart (The Valleys - Compressed for Authority)
     ax2.fill_between(df_dd.index, df_dd["drawdown"], 0, color="red", alpha=0.2)
@@ -205,7 +215,8 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
         "final_equity": equity,
         "max_dd": max_dd_val,
         "total_trades": total_trades,
-        "win_rate": win_rate
+        "win_rate": win_rate,
+        "sharpe": sharpe
     }
     return stats, chart_path
 

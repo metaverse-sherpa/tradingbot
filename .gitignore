@@ -27,5 +27,6 @@ venv/
 !images/*.jpeg
 pnl_cards/
 results/
+!results/master_audit.png
 bot_users.db
 
