@@ -510,10 +510,10 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             dir_icon = "📈" if t['side'] == "l" else "📉"
             roe_v2 = escape_md_v2(f"{roe_val:+.1f}%")
             pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
+            status_icon = "🚀" if t['net_pnl'] > 0 else "❌"
             
-            # Add to table-style narrative
-            emoji = number_emojis[i] if i < len(number_emojis) else f"{i+1}."
-            history_text += f"{emoji} *{sym_v2}* \| {dir_icon} \| *{roe_v2}* \| ||{pnl_val_v2}|| \| _{dt}_\n"
+            # Add to timeline-style narrative
+            history_text += f"{i+1}. _{dt}_: *{sym_v2}* {dir_icon} PnL: ||{pnl_val_v2}|| (*{roe_v2}*) {status_icon}\n"
             
             # Create button data
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
