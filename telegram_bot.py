@@ -135,9 +135,9 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         logger.error(f"Personal audit error: {e}")
         await status_msg.edit_text(f"❌ Error during simulation: {e}")
         
-def get_nav_buttons():
-    """Returns a standardized 3x2 grid of inline navigation buttons."""
-    return [
+def get_nav_buttons(has_active_trades=False):
+    """Returns a standardized grid of inline navigation buttons, dynamically adding Panic Exit if trades are open."""
+    kb = [
         [
             InlineKeyboardButton("🛰️ Active Trades", callback_data="opentrades_menu"),
             InlineKeyboardButton("📜 History", callback_data="history_menu")
@@ -151,9 +151,17 @@ def get_nav_buttons():
             InlineKeyboardButton("🤝 Contact", callback_data="contact_menu")
         ]
     ]
+    if has_active_trades:
+        kb.append([InlineKeyboardButton("🚨 PANIC EXIT (ALL)", callback_data="confirm_panic")])
+    return kb
 
-def get_main_inline_menu():
-    return InlineKeyboardMarkup(get_nav_buttons())
+def get_main_inline_menu(chat_id=None):
+    has_active = False
+    if chat_id:
+        user = database.get_user(chat_id)
+        if user:
+            has_active = user.get('has_open_positions', False)
+    return InlineKeyboardMarkup(get_nav_buttons(has_active))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -258,7 +266,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Also send the persistent footer dashboard
         await update.effective_message.reply_text(
             "🛰️ *Main Menu Activated*",
-            reply_markup=get_main_inline_menu(),
+            reply_markup=get_main_inline_menu(chat_id),
             parse_mode="Markdown"
         )
 
@@ -463,7 +471,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
             await asyncio.sleep(0.2) # Small delay to keep order
             
-        await update.effective_message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
             
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
@@ -495,17 +503,12 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
         
         if not active:
-            await update.effective_message.reply_text("You have no active trades at the moment.", reply_markup=get_main_inline_menu())
+            await update.effective_message.reply_text("You have no active trades at the moment.", reply_markup=get_main_inline_menu(chat_id))
             return
             
-        # Panic Button UI
-        panic_kb = [
-            [InlineKeyboardButton("🚨 PANIC EXIT (All)", callback_data="confirm_panic")],
-            *get_nav_buttons()
-        ]
         await update.effective_message.reply_text(
             f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...",
-            reply_markup=InlineKeyboardMarkup(panic_kb),
+            reply_markup=get_main_inline_menu(chat_id),
             parse_mode="Markdown"
         )
 
@@ -594,7 +597,7 @@ photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
                     f"Entry: `{entry:.8f}`\n"
                     f"PnL: *{roe:+.2f}%{target_suffix}*"
                 )
-                await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu())
+                await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
         
     except Exception as e:
         await update.effective_message.reply_text(f"❌ Error fetching positions: {e}")
@@ -661,7 +664,7 @@ def get_settings_ui(user):
         keyboard.append([InlineKeyboardButton("🟢 Resume Trading", callback_data="toggle_active")])
         
     # Append the universal navigation footer
-    keyboard.extend(get_nav_buttons())
+    keyboard.extend(get_nav_buttons(user.get('has_open_positions', False)))
     
     return msg, InlineKeyboardMarkup(keyboard)
 
@@ -794,7 +797,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Force stop the bot for this user after panic exit
         database.set_active(chat_id, False)
         
-        await query.edit_message_text(msg, reply_markup=get_main_inline_menu(), parse_mode="Markdown")
+        await query.edit_message_text(msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
         return
 
     if query.data == "toggle_privacy":
@@ -814,7 +817,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
             [InlineKeyboardButton("🚧 Coming Soon...", callback_data="set_strat_soon")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
-            *get_nav_buttons()
+            *get_nav_buttons(user.get('has_open_positions', False))
         ]
         await query.edit_message_text("🎯 *Select Trading Strategy*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         return
@@ -824,7 +827,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['setting_risk'] = True
         keyboard = [
             [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
-            *get_nav_buttons()
+            *get_nav_buttons(user.get('has_open_positions', False))
         ]
         await query.edit_message_text(
             "⚖️ *Set Risk Percentage*\n\n"
@@ -883,7 +886,7 @@ async def show_symbol_menu(query, user):
             row = []
     if row: keyboard.append(row)
     keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
-    keyboard.extend(get_nav_buttons())
+    keyboard.extend(get_nav_buttons(user.get('has_open_positions', False)))
     
     await query.edit_message_text(
         "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account.",
@@ -981,7 +984,7 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         "_Need more help? Just tap any command to try it out!_"
     )
-    await update.effective_message.reply_text(help_text, parse_mode="Markdown", reply_markup=get_main_inline_menu())
+    await update.effective_message.reply_text(help_text, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
 
 async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Provides contact info for the Sherpa."""
@@ -992,15 +995,15 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📢 *Community:* [Join Here](https://t.me/+2pYhCm5BOoI0Mjkx)\n\n"
         "We are constantly refining the Cyber-Sherpa engine and value your input!"
     )
-    await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu())
+    await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
 
 async def stop_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     database.set_active(update.effective_message.chat_id, False)
-    await update.effective_message.reply_text("🔴 Trading is now paused for your account. The engine will skip you.", reply_markup=get_main_inline_menu())
+    await update.effective_message.reply_text("🔴 Trading is now paused for your account. The engine will skip you.", reply_markup=get_main_inline_menu(chat_id))
 
 async def resume_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     database.set_active(update.effective_message.chat_id, True)
-    await update.effective_message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.", reply_markup=get_main_inline_menu())
+    await update.effective_message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.", reply_markup=get_main_inline_menu(chat_id))
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -1037,7 +1040,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Total Account Value: *${total_value:.2f}* USDT\n\n"
             "_Total Value = Available + Margin + PnL_"
         )
-        await target.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu())
+        await target.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
         
     except Exception as e:
         await target.reply_text(f"❌ Error fetching balance: {e}")

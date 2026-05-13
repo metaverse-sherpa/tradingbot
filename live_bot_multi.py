@@ -177,6 +177,18 @@ def run():
     # Use a shared public exchange for market data to save rate limits
     market_data_ex = ccxt.blofin() 
     market_data_ex.load_markets()
+    
+    # 🕵️ Sync Position Status for all users first
+    for user in active_users:
+        try:
+            ex = get_exchange_client(user)
+            # Fetch all open positions to update the "Panic Button" status
+            pos = ex.fetch_positions()
+            has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
+            database.update_position_status(user['chat_id'], has_active)
+        except Exception as e:
+            log.error("Position sync failed for %s: %s", user['chat_id'], e)
+
     errors = []
 
     for symbol in SYMBOLS:

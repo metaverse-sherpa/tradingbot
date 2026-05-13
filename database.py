@@ -86,6 +86,8 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN referral_count INTEGER DEFAULT 0")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN has_open_positions BOOLEAN DEFAULT 0")
+    except: pass
     
     conn.commit()
     conn.close()
@@ -111,7 +113,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', eq
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -135,6 +137,7 @@ def get_user(chat_id):
             "referred_by": row[15],
             "premium_expiry": row[16] or 0,
             "referral_count": row[17] or 0,
+            "has_open_positions": bool(row[18]),
             "chat_id": chat_id
         }
     return None
@@ -300,3 +303,11 @@ def get_referral_stats(chat_id):
     row = c.fetchone()
     conn.close()
     return row[0] if row else 0
+
+def update_position_status(chat_id, has_active):
+    """Updates the has_open_positions flag in the database."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET has_open_positions = ? WHERE telegram_chat_id = ?", (1 if has_active else 0, chat_id))
+    conn.commit()
+    conn.close()
