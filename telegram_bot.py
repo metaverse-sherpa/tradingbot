@@ -1083,7 +1083,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if chat_id != ADMIN_CHAT_ID: 
             logger.warning(f"UNAUTHORIZED TOGGLE ATTEMPT: {chat_id}")
             return
-        database.toggle_undercover_mode(chat_id)
+        database.toggle_undercover(chat_id)
         new_state = database.get_user(chat_id).get('undercover_mode')
         logger.info(f"IDENTITY TOGGLED: chat_id={chat_id} | New Undercover State={new_state}")
         await query.answer("🔄 Identity Toggled!")
