@@ -351,3 +351,16 @@ def clear_history_cache(chat_id):
     c.execute("UPDATE Users SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
     conn.commit()
     conn.close()
+
+def is_premium(user):
+    """Returns True if the user has an active premium subscription."""
+    if not user: return False
+    return user.get('premium_expiry', 0) > time.time()
+
+def get_premium_days_left(user):
+    """Returns the number of days remaining in the user's premium subscription."""
+    if not user: return 0
+    expiry = user.get('premium_expiry', 0)
+    now = time.time()
+    if expiry <= now: return 0
+    return int((expiry - now) / 86400)

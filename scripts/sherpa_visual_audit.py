@@ -220,7 +220,116 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     }
     return stats, chart_path
 
+def generate_comparison_chart():
+    """Generates a high-impact comparison chart between Standard and Institutional tiers."""
+    # 1. Run Standard (5 tokens)
+    std_stats, _ = run_visual_audit(1.5, ["BTC","ETH","SOL","DOGE","ADA"], user_id="tmp_std")
+    # Reset for Institutional
+    plt.close('all')
+    
+    # 2. Run Institutional (All tokens)
+    inst_stats, _ = run_visual_audit(1.5, None, user_id="tmp_inst")
+    plt.close('all')
+    
+    if not std_stats or not inst_stats: return None
+    
+    # We need to run them again or extract the history. 
+    # For simplicity and clean plotting, let's re-run them inside a dedicated plot
+    enabled_std = ["BTC","ETH","SOL","DOGE","ADA"]
+    enabled_inst = list(SYMBOL_CONFIGS.keys())
+    
+    # Re-run logic for plotting
+    def get_equity_curve(syms):
+        datasets = {}
+        for name in syms:
+            path = os.path.join(CSV_DIR, f"cache_{name}_15m.csv")
+            if not os.path.exists(path): continue
+            df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
+            datasets[name] = prepare_indicators(df, SYMBOL_CONFIGS[name])
+        
+        all_indices = [v["index"] for v in datasets.values()]
+        common_idx = all_indices[0]
+        for idx in all_indices[1:]: common_idx = common_idx.union(idx)
+        common_idx = common_idx.sort_values()
+        
+        aligned = {}
+        for name, d in datasets.items():
+            pos = d["index"].get_indexer(common_idx)
+            valid = pos >= 0
+            aligned[name] = {k: np.where(valid, d[k][np.where(valid, pos, 0)], np.nan) for k in ["close","high","low","ema","rsi","atr","adx","bb_top","bb_bot"]}
+
+        states = {name: {"in_trade": False, "side": 0, "sl": 0.0, "tp": 0.0, "size": 0.0, "risk_amt": 0.0, "wins": 0, "losses": 0} for name in datasets}
+        equity = START_CASH; history = [(common_idx[0], equity)]
+        for i in range(EMA_PERIOD, len(common_idx) - 1):
+            for name, d in aligned.items():
+                st = states[name]; cfg = SYMBOL_CONFIGS[name]
+                if st["in_trade"]:
+                    hi, lo, ex = d["high"][i], d["low"][i], d["close"][i]
+                    if np.isnan(hi): continue
+                    hit_sl = hit_tp = False
+                    if st["side"] == 1:
+                        if lo <= st["sl"]: hit_sl = True; ex = st["sl"]
+                        elif hi >= st["tp"]: hit_tp = True; ex = st["tp"]
+                    else:
+                        if hi >= st["sl"]: hit_sl = True; ex = st["sl"]
+                        elif lo <= st["tp"]: hit_tp = True; ex = st["tp"]
+                    if hit_sl or hit_tp:
+                        pnl = st["risk_amt"] * cfg["rr"] if hit_tp else -st["risk_amt"]
+                        equity += pnl - ex * st["size"] * COMMISSION
+                        st["in_trade"] = False; history.append((common_idx[i], equity))
+                else:
+                    close, ema_v, bb_top, bb_bot = d["close"][i], d["ema"][i], d["bb_top"][i], d["bb_bot"][i]
+                    if any(np.isnan(v) for v in [close, ema_v, bb_bot]): continue
+                    if cfg["adx"] > 0 and d["adx"][i] < cfg["adx"]: continue
+                    if close > ema_v and close < bb_bot and d["rsi"][i] < cfg["rsi"]:
+                        fill = close * (1 + SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
+                        st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * (RISK_PER_TRADE), "in_trade": True})
+                        st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * st["size"] * COMMISSION
+                    elif not cfg.get("long_only") and close < ema_v and close > bb_top and d["rsi"][i] > (100 - cfg["rsi"]):
+                        fill = close * (1 - SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
+                        st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * (RISK_PER_TRADE), "in_trade": True})
+                        st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * st["size"] * COMMISSION
+        return pd.DataFrame(history, columns=["date", "equity"]).set_index("date")
+
+    df_std = get_equity_curve(enabled_std)
+    df_inst = get_equity_curve(enabled_inst)
+    
+    # --- Plotting ---
+    plt.figure(figsize=(12, 8), facecolor="#121212")
+    ax = plt.gca()
+    ax.set_facecolor("#121212")
+    
+    # Plot Premium (Neon Green)
+    plt.plot(df_inst.index, df_inst["equity"], color="#39FF14", linewidth=3, label=f"Premium (Sharpe: {inst_stats['sharpe']:.2f})")
+    # Plot Free (White)
+    plt.plot(df_std.index, df_std["equity"], color="white", linewidth=2, alpha=0.8, label=f"Free (Sharpe: {std_stats['sharpe']:.2f})")
+    
+    # End Labels (Multi-line for clarity)
+    last_date = df_inst.index[-1]
+    inst_gain = (inst_stats['final_equity'] - START_CASH) / START_CASH * 100
+    std_gain = (std_stats['final_equity'] - START_CASH) / START_CASH * 100
+    
+    plt.annotate(f"Premium: ${inst_stats['final_equity']:,.0f}\n(+{inst_gain:,.0f}%)", 
+                 (last_date, inst_stats['final_equity']), textcoords="offset points", xytext=(10,0), va='center', color="#39FF14", fontweight='bold')
+    plt.annotate(f"Free: ${std_stats['final_equity']:,.0f}\n(+{std_gain:,.0f}%)", 
+                 (last_date, std_stats['final_equity']), textcoords="offset points", xytext=(10,0), va='center', color="white", fontweight='bold')
+    
+    # Give room for labels
+    plt.xlim(df_inst.index[0], df_inst.index[-1] + pd.Timedelta(days=120))
+    
+    plt.title("Metaverse Sherpa: Standard vs Premium Performance", color="white", fontsize=18, pad=30)
+    plt.ylabel("Account Equity ($)", color="white")
+    plt.grid(True, alpha=0.1)
+    plt.tick_params(colors="white")
+    plt.legend(facecolor="#1A1A1A", labelcolor="white", loc='upper left')
+    
+    save_path = os.path.join(RESULTS_DIR, "upsell_comparison.png")
+    plt.savefig(save_path, dpi=150, facecolor="#121212")
+    plt.close()
+    return save_path
+
 if __name__ == "__main__":
     import time
     s, p = run_visual_audit(1.5)
     if s: print(f"Audit Complete! Final Equity: ${s['final_equity']:,.2f}")
+    # generate_comparison_chart() # Manual trigger if needed

@@ -28,5 +28,7 @@ venv/
 pnl_cards/
 results/
 !results/master_audit.png
+!results/free_master_audit.png
+!results/upsell_comparison.png
 bot_users.db
 

@@ -57,15 +57,66 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     await trigger_personalized_audit(update, context, user, start_balance=balance)
 
+async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id):
+    """Sends the institutional-grade 3-year master audit comparison instantly."""
+    master_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "upsell_comparison.png")
+    audit_msg = (
+        "🏔️ *Metaverse Sherpa: Institutional Wealth Gap*\n"
+        "Comparison: `Free (5 Tokens)` vs `Premium (19 Tokens)`\n\n"
+        "📊 *Free Tier*: +107% PnL\n"
+        "💎 *Premium Tier*: +1,514% PnL\n\n"
+        "📈 _Institutional access captures 8x more trades, delivering superior compounding and resilience over the long term._"
+    )
+    
+    if os.path.exists(master_path):
+        with open(master_path, 'rb') as photo:
+            await context.bot.send_photo(
+                chat_id=chat_id, 
+                photo=photo, 
+                caption=audit_msg, 
+                parse_mode="Markdown",
+                reply_markup=get_main_inline_menu(chat_id)
+            )
+    else:
+        await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown")
+
 async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user, start_balance=10000.0):
     """Runs a 3-year backtest for a specific user's risk and symbols with animation."""
     chat_id = user['chat_id']
     risk = user['risk_pct']
     syms = user['enabled_symbols']
     def_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
-    
     # 🏔️ Master Cache Logic
     is_default = (risk == 1.5 and len(syms) >= 18 and start_balance == 10000.0)
+    
+    if not is_default:
+        # 💎 Premium Gate with Killer Comparison Visual
+        if not database.is_premium(user):
+            upsell_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "upsell_comparison.png")
+            premium_msg = (
+                "🔒 *Premium Feature: Personal Projections*\n\n"
+                "The chart above reveals the *Institutional Wealth Gap*.\n\n"
+                "📊 *Free Tier (White)*: +107% PnL\n"
+                "💎 *Premium Tier (Neon)*: +1,514% PnL\n\n"
+                "Premium access unlocks the full 'Sherpa Basket' (19 tokens) to capture 8x more compounding opportunities.\n\n"
+                "Refer 3 friends or subscribe to unlock!"
+            )
+            
+            if os.path.exists(upsell_path):
+                with open(upsell_path, 'rb') as photo:
+                    await context.bot.send_photo(
+                        chat_id=chat_id, 
+                        photo=photo, 
+                        caption=premium_msg, 
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("🤝 Refer 3 & Get 30 Days Free", callback_data="referral_menu")],
+                            [InlineKeyboardButton("💎 Go Premium", callback_data="go_premium")]
+                        ])
+                    )
+            else:
+                await context.bot.send_message(chat_id=chat_id, text=premium_msg, parse_mode="Markdown")
+            return
     master_path = os.path.join(BASE_DIR, "results", "master_audit.png")
     
     if is_default and os.path.exists(master_path):
@@ -226,34 +277,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
 
     # 2. Institutional Master Audit (Strictly Static Hook)
-    master_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "master_audit.png")
-    audit_msg = (
-        "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
-        "Settings: `1.5% Risk` | `All Institutional Tokens`\n\n"
-        "Final Equity: *$161,486.23*\n"
-        "Total PnL: *+1,514.9%*\n"
-        "Sharpe Ratio: *4.83*\n"
-        "Win Rate: *61.2%*\n"
-        "Max Drawdown: *18.8%*\n\n"
-        "📈 _This simulation represents the core Sherpa algorithm's performance over the last 3 years._"
-    )
-    
-    if os.path.exists(master_path):
-        with open(master_path, 'rb') as photo:
-            await context.bot.send_photo(
-                chat_id=chat_id, 
-                photo=photo, 
-                caption=audit_msg, 
-                parse_mode="Markdown",
-                reply_markup=get_main_inline_menu(chat_id)
-            )
-    else:
-        # If master is missing (syncing), just show menu to keep it fast
-        await update.effective_message.reply_text(
-            "🏔️ *Strategy Engine Ready*\nTap /setup to begin or use the menu below.",
-            reply_markup=get_main_inline_menu(chat_id),
-            parse_mode="Markdown"
-        )
+    await send_master_audit(update, context, chat_id)
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -740,9 +764,11 @@ def get_settings_ui(user):
         f"Handle: @metaversesherpa_trading_bot\n"
     )
     
+    is_premium = database.is_premium(user)
+    
     keyboard = [
-        [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk"),
-         InlineKeyboardButton("🛰 Symbols", callback_data="manage_symbols")],
+        [InlineKeyboardButton(f"⚖️ Set Risk % {'🔒' if not is_premium else ''}", callback_data="set_risk"),
+         InlineKeyboardButton(f"🛰 Symbols {'🔒' if not is_premium else ''}", callback_data="manage_symbols")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
         [InlineKeyboardButton("🤝 My Referral Link", callback_data="referral_menu")],
@@ -952,6 +978,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
+        return
+
+    elif query.data == "compare_institutional":
+        await query.answer("🏔️ Loading Institutional Power baseline...")
+        await send_master_audit(update, context, chat_id)
         return
 
     elif query.data == "manage_symbols":
