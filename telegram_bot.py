@@ -527,6 +527,11 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Grid of buttons (2 per row for legibility with text)
         grid = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+        
+        # Add a spacer row before navigation
+        grid.append([InlineKeyboardButton(" ", callback_data="none")])
+        
+        # Add navigation footer
         grid.extend(get_nav_buttons(user.get('has_open_positions', False)))
         
         await update.effective_message.reply_text(
