@@ -621,6 +621,9 @@ def get_settings_ui(user):
     else:
         keyboard.append([InlineKeyboardButton("🟢 Resume Trading", callback_data="toggle_active")])
         
+    # Append the universal navigation footer
+    keyboard.extend(get_nav_buttons())
+    
     return msg, InlineKeyboardMarkup(keyboard)
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -722,11 +725,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "strategy_menu":
         await query.answer()
-        # Strategy selection buttons
         keyboard = [
             [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
             [InlineKeyboardButton("🚧 Coming Soon...", callback_data="set_strat_soon")],
-            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
+            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
+            *get_nav_buttons()
         ]
         await query.edit_message_text("🎯 *Select Trading Strategy*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         return
@@ -734,12 +737,16 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "set_risk":
         await query.answer()
         context.user_data['setting_risk'] = True
+        keyboard = [
+            [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
+            *get_nav_buttons()
+        ]
         await query.edit_message_text(
             "⚖️ *Set Risk Percentage*\n\n"
             "Please type your preferred risk-per-trade as a number (e.g., `1.5` or `2.0`).\n\n"
             "This percentage of your equity will be risked on every trade based on the SL distance.\n\n"
             "_Current: " + f"{user['risk_pct']:.2f}%_",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")]]),
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
         return
@@ -791,6 +798,7 @@ async def show_symbol_menu(query, user):
             row = []
     if row: keyboard.append(row)
     keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
+    keyboard.extend(get_nav_buttons())
     
     await query.edit_message_text(
         "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account.",
