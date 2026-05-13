@@ -226,7 +226,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
 
     # 2. Institutional Master Audit (Strictly Static Hook)
-    master_path = os.path.join(BASE_DIR, "results", "master_audit.png")
+    master_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "master_audit.png")
     audit_msg = (
         "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
         "Settings: `1.5% Risk` | `All Institutional Tokens`\n\n"
