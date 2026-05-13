@@ -489,7 +489,8 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         for t in last_10:
             import datetime
-            dt = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
+            dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
+            dt = escape_md_v2(dt_raw)
             icon = "🚀" if t['net_pnl'] > 0 else "❌"
             
             # Calculate ROE (Estimate based on position size)
@@ -498,20 +499,26 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 contract_size = float(market.get('contractSize', 1))
                 # ROE = (PnL / Margin). We assume 20x for the visual card if not specified.
                 initial_margin = (t['price'] * t['amount'] * contract_size) / 20
-                roe_pct = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
-            except: roe_pct = 0
+                roe_val = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
+            except: roe_val = 0
+            
+            # Escape for MarkdownV2
+            sym_v2 = escape_md_v2(t['symbol'])
+            side_v2 = escape_md_v2(t['side_display'])
+            pnl_v2 = escape_md_v2(f"{t['net_pnl']:.2f}")
+            roe_v2 = escape_md_v2(f"{roe_val:+.2f}")
             
             msg = (
-                f"{icon} *{t['side_display']}* ({dt})\n"
-                f"Symbol: `{t['symbol']}`\n"
-                f"PnL: *${t['net_pnl']:.2f}* ({roe_pct:+.2f}%)\n"
+                f"{icon} *{side_v2}* \\({dt}\\)\n"
+                f"Symbol: `{sym_v2}`\n"
+                f"PnL: ||*${pnl_v2}*|| USDT \\({roe_v2}%\\)\n"
             )
             
             # Add Share Button directly under this trade
-            cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_pct:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
+            cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
             markup = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Share This Result", callback_data=cb_data)]])
             
-            await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
+            await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="MarkdownV2")
             await asyncio.sleep(0.2) # Small delay to keep order
             
         await update.effective_message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
@@ -1044,7 +1051,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if is_profit:
                     headline = "🛰️ *Another promising looking trade with the Metaverse Sherpa Bot!* 🏔️"
                 else:
-                    headline = "📈 *Currently in drawdown, but looking promising because we buy the dip with Metaverse Sherpa Bot!* 🏔️"
+                    headline = "📈 *Currently in drawdown, but looking promising because we buy the dip with the Metaverse Sherpa Bot!* 🏔️"
         else:
             # Overall Stats
             overall = float(data.split("_")[1])
