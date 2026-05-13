@@ -1150,13 +1150,17 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 total_value += (margin + upnl)
         except: pass
         
+        # Format numbers with commas and escape for MarkdownV2
+        free_str = f"{free:,.2f}".replace(".", "\\.")
+        total_str = f"{total_value:,.2f}".replace(".", "\\.")
+        
         msg = (
             "💰 *Your Account Balance*\n\n"
-            f"Available Cash: *${free:.2f}* USDT\n"
-            f"Total Account Value: *${total_value:.2f}* USDT\n\n"
-            "_Total Value = Available + Margin + PnL_"
+            f"Available Cash: ||*${free_str}*|| USDT\n"
+            f"Total Account Value: ||*${total_str}*|| USDT\n\n"
+            "_Total Value \\= Available \\+ Margin \\+ PnL_"
         )
-        await target.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+        await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
         
     except Exception as e:
         await target.reply_text(f"❌ Error fetching balance: {e}")
