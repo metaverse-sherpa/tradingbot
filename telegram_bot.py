@@ -766,11 +766,16 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (
             "🤝 *Sherpa Referral Program*\n\n"
             "Grow the community and earn **Free Premium Days**!\n\n"
-            f"Your Link: `{ref_link}`\n\n"
+            "Your Link (Tap to Copy):\n"
+            f"`{ref_link}`\n\n"
             f"Total Referrals: *{count}*\n\n"
             "Share this link with your friends. For every friend who sets up their API keys, you both get **5 bonus days** of unlimited usage!"
         )
-        await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]]), parse_mode="Markdown")
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
+            *get_nav_buttons(user.get('has_open_positions', False))
+        ]
+        await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         return
 
     elif query.data == "confirm_panic":
@@ -940,8 +945,23 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         share_label = f"trade results for {sym}"
     
     if card_path and os.path.exists(card_path):
+        bot_username = (await context.bot.get_me()).username
+        ref_link = f"https://t.me/{bot_username}?start=ref_{chat_id}"
+        
+        viral_caption = (
+            "🚀 *Just crushed another trade with the Cyber-Sherpa!* 🏔️\n\n"
+            "Join the elite circle of automated traders. Tap below to copy my invite link and start your 5-day trial:\n\n"
+            f"`{ref_link}`"
+        )
+        
         with open(card_path, 'rb') as photo:
-            await context.bot.send_photo(chat_id=chat_id, photo=photo, reply_markup=get_main_inline_menu(chat_id))
+            await context.bot.send_photo(
+                chat_id=chat_id, 
+                photo=photo, 
+                caption=viral_caption,
+                parse_mode="Markdown",
+                reply_markup=get_main_inline_menu(chat_id)
+            )
         
         # Update the original message to let them know it's ready below
         feedback_msg = f"✅ *Share card generated for {share_label}!*\n\nScroll down to the bottom of the chat to see your Cyber-Sherpa card. 👇"
