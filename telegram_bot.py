@@ -434,6 +434,15 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
+    # 🏔️ Sherpa Cache: Check for instant local results first
+    if user.get('history_cache'):
+        try:
+            import json
+            last_10 = json.loads(user['history_cache'])
+            await render_history_dashboard(update, context, last_10, chat_id, user)
+            return
+        except: pass
+
     status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
     
     try:
@@ -449,13 +458,10 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 trades = user_ex.fetch_my_trades(norm_sym, limit=50)
                 for t in trades:
                     info = t.get("info", {})
-                    # PnL Reconstruction logic for different exchanges
                     gross_pnl = 0
                     if user_ex.id == 'blofin':
                         gross_pnl = float(info.get("fillPnl") or 0)
                     else:
-                        # For Binance/MEXC, we might need more complex matching. 
-                        # Simple fallback: look for 'realizedPnl' field if it exists in raw info
                         gross_pnl = float(info.get("realizedPnl") or 0)
                         
                     if gross_pnl != 0:
@@ -465,6 +471,14 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         side_raw = t.get('side', 'buy').lower()
                         is_long = (side_raw == 'sell')
                         
+                        # Calculate ROE
+                        try:
+                            market = user_ex.market(sym)
+                            contract_size = float(market.get('contractSize', 1))
+                            initial_margin = (t['price'] * t['amount'] * contract_size) / 20
+                            roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                        except: roe_val = 0
+
                         all_closed.append({
                             "symbol": sym,
                             "timestamp": t['timestamp'],
@@ -472,73 +486,63 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             "price": t['price'],
                             "amount": t['amount'],
                             "side": "l" if is_long else "s",
-                            "side_display": "LONG" if is_long else "SHORT"
+                            "roe_val": roe_val
                         })
             except: pass
                  
-        # Sort by timestamp descending
         all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
         last_10 = all_closed[:10]
         
         if not last_10:
-            await status_msg.edit_text("No recently closed trades found in your Blofin account.")
+            await status_msg.edit_text("No recently closed trades found in your account.")
             return
             
+        # Lock into Sherpa Cache
+        database.set_history_cache(chat_id, last_10)
+        
         await status_msg.delete()
-        
-        history_text = "📜 *Metaverse Sherpa History*\n\n"
-        buttons = []
-        
-        # Use number emojis for the list
-        number_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-        
-        for i, t in enumerate(last_10):
-            import datetime
-            dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
-            dt = escape_md_v2(dt_raw)
+        await render_history_dashboard(update, context, last_10, chat_id, user)
             
-            # Calculate ROE
-            try:
-                market = user_ex.market(t['symbol'])
-                contract_size = float(market.get('contractSize', 1))
-                initial_margin = (t['price'] * t['amount'] * contract_size) / 20
-                roe_val = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
-            except: roe_val = 0
-            
-            # Compact Escape for MarkdownV2
-            sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
-            dir_icon = "📈" if t['side'] == "l" else "📉"
-            roe_v2 = escape_md_v2(f"{roe_val:+.1f}%")
-            pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
-            status_icon = "🚀" if t['net_pnl'] > 0 else "❌"
-            
-            # Add to audit-style narrative (Premium Card Layout with Dynamic Icons)
-            history_text += (
-                f"{i+1}\. *{sym_v2}* {dir_icon} \| _{dt}_\n"
-                f"{status_icon} PnL: ||{pnl_val_v2}|| \(*{roe_v2}*\)\n"
-                f"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
-            )
-            
-            # Create contextual button data (e.g., 1-TAO)
-            cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
-            buttons.append(InlineKeyboardButton(f"{i+1}-{sym_v2}", callback_data=cb_data))
-            
-        history_text += "\n*Tap a button below to Share & Earn 📸*"
+    except Exception as e:
+        logger.error(f"Error fetching history: {e}")
+        await update.effective_message.reply_text(f"❌ Error fetching trade history: {e}")
+
+async def render_history_dashboard(update, context, last_10, chat_id, user):
+    """Renders the final sexy history message from trade data."""
+    history_text = "📜 *Metaverse Sherpa History*\n\n"
+    buttons = []
+    
+    for i, t in enumerate(last_10):
+        import datetime
+        dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
+        dt = escape_md_v2(dt_raw)
         
-        # Grid of buttons (2 per row for legibility with text)
-        grid = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+        sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
+        dir_icon = "📈" if t['side'] == "l" else "📉"
+        roe_v2 = escape_md_v2(f"{t['roe_val']:+.1f}%")
+        pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
+        status_icon = "🚀" if t['net_pnl'] > 0 else "❌"
         
-        # Add a spacer row before navigation
-        grid.append([InlineKeyboardButton(" ", callback_data="none")])
-        
-        # Add navigation footer
-        grid.extend(get_nav_buttons(user.get('has_open_positions', False)))
-        
-        await update.effective_message.reply_text(
-            history_text, 
-            reply_markup=InlineKeyboardMarkup(grid),
-            parse_mode="MarkdownV2"
+        history_text += (
+            f"{i+1}\. *{sym_v2}* {dir_icon} \| _{dt}_\n"
+            f"{status_icon} PnL: ||{pnl_val_v2}|| \(*{roe_v2}*\)\n"
+            f"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
         )
+        
+        cb_data = f"shc_{t['symbol']}_{t['side']}_{t['roe_val']:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
+        buttons.append(InlineKeyboardButton(f"{i+1}-{sym_v2}", callback_data=cb_data))
+        
+    history_text += "\n*Tap a button below to Share & Earn 📸*"
+    
+    grid = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+    grid.append([InlineKeyboardButton(" ", callback_data="none")])
+    grid.extend(get_nav_buttons(user.get('has_open_positions', False)))
+    
+    await update.effective_message.reply_text(
+        history_text, 
+        reply_markup=InlineKeyboardMarkup(grid),
+        parse_mode="MarkdownV2"
+    )
             
     except Exception as e:
         logger.error(f"Error fetching history: {e}")

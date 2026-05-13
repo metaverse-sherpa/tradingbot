@@ -88,6 +88,8 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN has_open_positions BOOLEAN DEFAULT 0")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN history_cache TEXT")
+    except: pass
     
     conn.commit()
     conn.close()
@@ -113,7 +115,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', eq
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, history_cache FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -138,7 +140,8 @@ def get_user(chat_id):
             "premium_expiry": row[16] or 0,
             "referral_count": row[17] or 0,
             "has_open_positions": bool(row[18]),
-            "chat_id": chat_id
+            "chat_id": chat_id,
+            "history_cache": row[19] if len(row) > 19 else None
         }
     return None
 
@@ -250,6 +253,9 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
                     })
         except: pass
         
+    if new_closed:
+        clear_history_cache(chat_id)
+        
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     # Update DB
     conn = sqlite3.connect(DB_PATH)
@@ -326,5 +332,22 @@ def update_user_strategy(chat_id, strategy_name):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("UPDATE Users SET strategy = ? WHERE telegram_chat_id = ?", (strategy_name, chat_id))
+    conn.commit()
+    conn.close()
+
+def set_history_cache(chat_id, trades):
+    """Stores the last 10 trades as a JSON blob."""
+    import json
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET history_cache = ? WHERE telegram_chat_id = ?", (json.dumps(trades), chat_id))
+    conn.commit()
+    conn.close()
+
+def clear_history_cache(chat_id):
+    """Clears the trade history cache."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
     conn.commit()
     conn.close()
