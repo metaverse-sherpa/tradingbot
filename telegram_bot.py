@@ -143,7 +143,7 @@ def get_nav_buttons(has_active_trades=False):
             InlineKeyboardButton("📜 History", callback_data="history_menu")
         ],
         [
-            InlineKeyboardButton("📊 Stats", callback_data="stats_menu"),
+            InlineKeyboardButton("📊 Your Stats", callback_data="stats_menu"),
             InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
         ],
         [
@@ -954,13 +954,24 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"`{ref_link}`"
         )
         
+        # Create a pre-filled Telegram share URL
+        share_text = f"🚀 I just crushed another trade with the Cyber-Sherpa! 🏔️\n\nJoin the elite circle of automated traders. Start your 5-day trial here:\n{ref_link}"
+        import urllib.parse
+        encoded_text = urllib.parse.quote(share_text)
+        share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={encoded_text}"
+        
+        keyboard = [
+            [InlineKeyboardButton("🚀 Forward to Friend", url=share_url)],
+            *get_nav_buttons(user.get('has_open_positions', False))
+        ]
+        
         with open(card_path, 'rb') as photo:
             await context.bot.send_photo(
                 chat_id=chat_id, 
                 photo=photo, 
                 caption=viral_caption,
                 parse_mode="Markdown",
-                reply_markup=get_main_inline_menu(chat_id)
+                reply_markup=InlineKeyboardMarkup(keyboard)
             )
         
         # Update the original message to let them know it's ready below
