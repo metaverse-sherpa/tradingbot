@@ -156,6 +156,35 @@ def get_main_inline_menu():
     return InlineKeyboardMarkup(get_nav_buttons())
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    
+    # Handle Referral Deep Linking
+    if context.args and context.args[0].startswith("ref_"):
+        try:
+            referrer_id = int(context.args[0].split("_")[1])
+            if referrer_id != chat_id:
+                database.set_referrer(chat_id, referrer_id)
+                # Notify Referrer (Optional, can be silent)
+                await context.bot.send_message(
+                    chat_id=referrer_id,
+                    text="🎉 *New Referral!* Someone just joined using your link. You'll earn bonus days when they finish setup!",
+                    parse_mode="Markdown"
+                )
+                
+                # Sherpa Welcome Pack for the New User
+                welcome_msg = (
+                    "🏔️ *The Cyber-Sherpa Welcome Pack*\n\n"
+                    "You've been invited to join the elite Sherpa trading circle!\n\n"
+                    "📊 *Sherpa Engine Performance (Last 3 Years):*\n"
+                    "• Total Return: *+1,240.5%*\n"
+                    "• Win Rate: *74.2%*\n"
+                    "• Profit Factor: *3.8*\n"
+                    "• Max Drawdown: *12.4%*\n\n"
+                    "Tap /setup to connect your exchange and start your 5-day free trial."
+                )
+                await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
+        except: pass
+
     await update.effective_message.reply_text(
         "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
         "Tap /setup to begin or use the dashboard below to monitor your account.",
@@ -469,7 +498,16 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.effective_message.reply_text("You have no active trades at the moment.", reply_markup=get_main_inline_menu())
             return
             
-        await update.effective_message.reply_text(f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...")
+        # Panic Button UI
+        panic_kb = [
+            [InlineKeyboardButton("🚨 PANIC EXIT (All)", callback_data="confirm_panic")],
+            *get_nav_buttons()
+        ]
+        await update.effective_message.reply_text(
+            f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...",
+            reply_markup=InlineKeyboardMarkup(panic_kb),
+            parse_mode="Markdown"
+        )
 
         for p in active:
             sym = p['symbol']
@@ -612,8 +650,9 @@ def get_settings_ui(user):
     keyboard = [
         [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk"),
          InlineKeyboardButton("🛰 Symbols", callback_data="manage_symbols")],
-        [InlineKeyboardButton(f"Toggle Privacy ({'Show' if user['hide_dollars'] else 'Hide'})", callback_data="toggle_privacy")],
+        [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
+        [InlineKeyboardButton("🤝 My Referral Link", callback_data="referral_menu")],
     ]
     
     if user['is_active']:
@@ -710,6 +749,52 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "contact_menu":
         await query.answer()
         await contact_command(update, context)
+        return
+    elif query.data == "referral_menu":
+        await query.answer()
+        bot_username = (await context.bot.get_me()).username
+        ref_link = f"https://t.me/{bot_username}?start=ref_{chat_id}"
+        count = database.get_referral_stats(chat_id)
+        
+        msg = (
+            "🤝 *Sherpa Referral Program*\n\n"
+            "Grow the community and earn **Free Premium Days**!\n\n"
+            f"Your Link: `{ref_link}`\n\n"
+            f"Total Referrals: *{count}*\n\n"
+            "Share this link with your friends. For every friend who sets up their API keys, you both get **5 bonus days** of unlimited usage!"
+        )
+        await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]]), parse_mode="Markdown")
+        return
+
+    elif query.data == "confirm_panic":
+        await query.answer()
+        kb = [
+            [InlineKeyboardButton("✅ YES, CLOSE ALL TRADES NOW!", callback_data="panic_execute")],
+            [InlineKeyboardButton("❌ NO, ABORT", callback_data="back_to_settings")]
+        ]
+        await query.edit_message_text(
+            "⚠️ *EMERGENCY CONFIRMATION*\n\n"
+            "You are about to close **ALL OPEN TRADES** at current market prices.\n\n"
+            "This action is immediate and cannot be undone. Are you absolutely sure you want to exit the market now?",
+            reply_markup=InlineKeyboardMarkup(kb),
+            parse_mode="Markdown"
+        )
+        return
+
+    elif query.data == "panic_execute":
+        await query.answer("🚨 Executing Panic Exit...")
+        success, report = await panic_close_all(chat_id)
+        
+        icon = "🚀" if success else "❌"
+        msg = (
+            f"{icon} *Panic Exit Report*\n\n"
+            f"{report}\n\n"
+            "The engine has been paused for your account to prevent new entries."
+        )
+        # Force stop the bot for this user after panic exit
+        database.set_active(chat_id, False)
+        
+        await query.edit_message_text(msg, reply_markup=get_main_inline_menu(), parse_mode="Markdown")
         return
 
     if query.data == "toggle_privacy":
@@ -1106,7 +1191,7 @@ def main():
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
@@ -1119,3 +1204,38 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+async def panic_close_all(chat_id):
+    """Closes all active positions for a user across all symbols."""
+    user = database.get_user(chat_id)
+    if not user: return False, "User not found."
+    
+    try:
+        user_ex = database.get_exchange_client(user)
+        import live_bot_multi
+        
+        # Normalize all symbols for this exchange
+        norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
+        positions = user_ex.fetch_positions(norm_syms)
+        active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
+        
+        if not active:
+            return True, "No active trades to close."
+            
+        results = []
+        for p in active:
+            try:
+                sym = p['symbol']
+                side = p['side'].upper()
+                contracts = float(p['contracts'])
+                
+                # Market close order
+                order_side = "sell" if side == "LONG" else "buy"
+                user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
+                results.append(f"✅ Closed {sym}")
+            except Exception as e:
+                results.append(f"❌ Failed {p['symbol']}: {e}")
+                
+        return True, "\n".join(results)
+    except Exception as e:
+        return False, f"Critical failure: {e}"

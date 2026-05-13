@@ -80,6 +80,12 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN enabled_symbols TEXT")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN referred_by INTEGER")
+    except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN premium_expiry INTEGER DEFAULT 0")
+    except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN referral_count INTEGER DEFAULT 0")
+    except: pass
     
     conn.commit()
     conn.close()
@@ -105,7 +111,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', eq
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -126,6 +132,9 @@ def get_user(chat_id):
             "risk_pct": row[12] if row[12] is not None else 1.5,
             "enabled_symbols": (row[13] if row[13] else def_syms).split(","),
             "exchange_id": row[14] or 'blofin',
+            "referred_by": row[15],
+            "premium_expiry": row[16] or 0,
+            "referral_count": row[17] or 0,
             "chat_id": chat_id
         }
     return None
@@ -252,3 +261,42 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
             reply_markup=markup,
             parse_mode="Markdown"
         ))
+
+def set_referrer(chat_id, referrer_id):
+    """Links a new user to a referrer and increments the referrer's count."""
+    if chat_id == referrer_id: return # No self-referral
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # Check if user already has a referrer
+    c.execute("SELECT referred_by FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+    row = c.fetchone()
+    if row and row[0] is None:
+        c.execute("UPDATE Users SET referred_by = ? WHERE telegram_chat_id = ?", (referrer_id, chat_id))
+        c.execute("UPDATE Users SET referral_count = referral_count + 1 WHERE telegram_chat_id = ?", (referrer_id,))
+    conn.commit()
+    conn.close()
+
+def add_premium_days(chat_id, days):
+    """Extends a user's premium status by X days."""
+    user = get_user(chat_id)
+    if not user: return
+    
+    now = int(time.time())
+    current_expiry = max(user['premium_expiry'], now)
+    new_expiry = current_expiry + (days * 86400)
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?", (new_expiry, chat_id))
+    conn.commit()
+    conn.close()
+
+def get_referral_stats(chat_id):
+    """Returns the total number of referrals for a user."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT referral_count FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else 0
