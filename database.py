@@ -194,6 +194,15 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
     now_ts = int(time.time() * 1000)
     
     import live_bot_multi
+    
+    # 🕵️ Smart UI: Sync Position Status
+    try:
+        positions = exchange.fetch_positions()
+        has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in positions)
+        # We'll update this in the DB at the end of the function with the other stats
+    except:
+        has_active = False
+
     new_closed = []
     
     for sym in live_bot_multi.SYMBOLS:
@@ -245,8 +254,8 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
     # Update DB
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''UPDATE Users SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ?, starting_equity = ?
-                 WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, now_ts, equity, chat_id))
+    c.execute('''UPDATE Users SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ?, starting_equity = ?, has_open_positions = ?
+                 WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, now_ts, equity, 1 if has_active else 0, chat_id))
     conn.commit()
     conn.close()
     
