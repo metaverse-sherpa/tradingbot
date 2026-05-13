@@ -959,6 +959,9 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     chat_id = update.effective_chat.id
     if chat_id != ADMIN_CHAT_ID: return
     
+    user = database.get_user(chat_id)
+    if not user: return
+
     stats = database.get_platform_stats()
     master_wallet = get_master_wallet()
     
