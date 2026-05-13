@@ -139,7 +139,7 @@ def get_nav_buttons():
     """Returns a standardized 2x2 grid of inline navigation buttons."""
     return [
         [
-            InlineKeyboardButton("🛰️ Open Trades", callback_data="opentrades_menu"),
+            InlineKeyboardButton("🛰️ Active Trades", callback_data="opentrades_menu"),
             InlineKeyboardButton("📜 History", callback_data="history_menu")
         ],
         [
@@ -248,13 +248,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Invalid number. Please enter a value like `1.5`.")
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
-        await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
     
-    await update.message.reply_text("📊 Calculating your performance stats...")
+    await update.effective_message.reply_text("📊 Calculating your performance stats...")
 
     # Calculate Daily PnL from Exchange (Realized + Unrealized)
     realized_daily_pnl = 0.0
@@ -344,13 +344,13 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
-        await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
-    status_msg = await update.message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
+    status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
     
     try:
         user_ex = database.get_exchange_client(user)
@@ -440,12 +440,13 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Error fetching trades: {e}")
 
 async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = database.get_user(update.message.chat_id)
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
     if not user:
-        await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
-    await update.message.reply_text("🔍 Checking your live positions on the exchange...")
+    await update.effective_message.reply_text("🔍 Checking your active trades on the exchange...")
     
     try:
         user_ex = database.get_exchange_client(user)
@@ -461,10 +462,10 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
         
         if not active:
-            await update.message.reply_text("You have no open trades at the moment.", reply_markup=get_main_inline_menu())
+            await update.effective_message.reply_text("You have no active trades at the moment.", reply_markup=get_main_inline_menu())
             return
             
-        await update.message.reply_text(f"🛰 *Active Positions Found: {len(active)}*\nGenerating charts...")
+        await update.effective_message.reply_text(f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...")
 
         for p in active:
             sym = p['symbol']
@@ -896,12 +897,8 @@ async def resume_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.")
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message:
-        chat_id = update.message.chat_id
-        target = update.message
-    else:
-        chat_id = update.callback_query.from_user.id
-        target = update.callback_query.message
+    chat_id = update.effective_chat.id
+    target = update.effective_message
         
     user_data = database.get_user(chat_id)
     
