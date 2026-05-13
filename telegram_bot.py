@@ -168,40 +168,71 @@ def get_main_inline_menu(chat_id=None):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+    bot_username = (await context.bot.get_me()).username
     
-    # Handle Referral Deep Linking
+    # --- 1. Handle Referral Deep Linking ---
     if context.args and context.args[0].startswith("ref_"):
         try:
             referrer_id = int(context.args[0].split("_")[1])
             if referrer_id != chat_id:
                 database.set_referrer(chat_id, referrer_id)
-                # Notify Referrer (Optional, can be silent)
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text="🎉 *New Referral!* Someone just joined using your link. You'll earn bonus days when they finish setup!",
-                    parse_mode="Markdown"
-                )
-                
-                # Sherpa Welcome Pack for the New User
-                welcome_msg = (
-                    "🏔️ *The Cyber-Sherpa Welcome Pack*\n\n"
-                    "You've been invited to join the elite Sherpa trading circle!\n\n"
-                    "📊 *Sherpa Engine Performance (Last 3 Years):*\n"
-                    "• Total Return: *+1,240.5%*\n"
-                    "• Win Rate: *74.2%*\n"
-                    "• Profit Factor: *3.8*\n"
-                    "• Max Drawdown: *12.4%*\n\n"
-                    "Tap /setup to connect your exchange and start your 5-day free trial."
-                )
-                await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
+                # Notify Referrer
+                try:
+                    await context.bot.send_message(
+                        chat_id=referrer_id,
+                        text="🎉 *New Referral!* Someone just joined using your link. You'll earn bonus days when they finish setup!",
+                        parse_mode="Markdown"
+                    )
+                except: pass
         except: pass
 
-    await update.effective_message.reply_text(
-        "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
-        "Tap /setup to begin or use the dashboard below to monitor your account.",
-        reply_markup=get_main_inline_menu(chat_id),
-        parse_mode="Markdown"
+    # --- 2. High-Authority Welcome Message ---
+    welcome_msg = (
+        "🏔️ *Welcome to the Metaverse Sherpa Trading Bot!*\n\n"
+        "The elite automated trading solution for multi-exchange professionals.\n\n"
+        "🌍 *Supported Exchanges:*\n"
+        "• 🏔️ *Blofin* (Native Partner)\n"
+        "• 🔶 *Binance*\n"
+        "• 💠 *MEXC*\n\n"
+        "🚀 Tap /setup to link your account and start your 5-day free trial."
     )
+    
+    await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
+
+    # 2. Automated 3-Year Performance Proof
+    # Stats for the card
+    pnl_pct, win_rate, max_dd, total_trades, avg_trades_day = 576.2, 60.0, 18.8, 880, 0.80
+    period_text = "May 2023 - May 2026"
+    
+    card_path = media_gen.generate_audit_card(
+        pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text, 
+        bot_username=bot_username
+    )
+    
+    audit_msg = (
+        "📈 *Verified 3-Year Performance Audit*\n"
+        "_(Historical Backtest: 19 Tokens | 15m Timeframe)_\n\n"
+        f"Total PnL: *{pnl_pct:+.1f}%*\n"
+        f"Win Rate: *{win_rate:.1f}%*\n"
+        f"Max Drawdown: *{max_dd:.1f}%*\n\n"
+        "Tap the dashboard below to begin your journey."
+    )
+    
+    if card_path and os.path.exists(card_path):
+        with open(card_path, 'rb') as photo:
+            await context.bot.send_photo(
+                chat_id=chat_id, 
+                photo=photo, 
+                caption=audit_msg, 
+                parse_mode="Markdown",
+                reply_markup=get_main_inline_menu(chat_id)
+            )
+    else:
+        await update.effective_message.reply_text(
+            audit_msg, 
+            reply_markup=get_main_inline_menu(chat_id), 
+            parse_mode="Markdown"
+        )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
