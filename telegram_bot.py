@@ -508,8 +508,8 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pnl_v2 = escape_md_v2(f"{t['net_pnl']:+.2f}")
             roe_v2 = escape_md_v2(f"{roe_val:+.2f}")
             
-            # EXTREMELY Compact Single-Line UI
-            msg = f"{icon} *{sym_v2}* | {side_short} | ||{pnl_v2}|| \\({roe_v2}%\\) | _{dt}_"
+            # EXTREMELY Compact Single-Line UI (Escaping pipes for MarkdownV2)
+            msg = f"{icon} *{sym_v2}* \| {side_short} \| ||{pnl_v2}|| \\({roe_v2}%\\) \| _{dt}_"
             
             # Add Share Button directly under this trade
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
