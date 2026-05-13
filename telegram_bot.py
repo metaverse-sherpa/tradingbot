@@ -984,10 +984,12 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         "_Need more help? Just tap any command to try it out!_"
     )
+    chat_id = update.effective_chat.id
     await update.effective_message.reply_text(help_text, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
 
 async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Provides contact info for the Sherpa."""
+    chat_id = update.effective_chat.id
     msg = (
         "🏔️ *Contact the Sherpa*\n\n"
         "Have questions, feedback, or a new strategy idea? Reach out directly to the project lead:\n\n"
@@ -998,11 +1000,13 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
 
 async def stop_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    database.set_active(update.effective_message.chat_id, False)
+    chat_id = update.effective_chat.id
+    database.set_active(chat_id, False)
     await update.effective_message.reply_text("🔴 Trading is now paused for your account. The engine will skip you.", reply_markup=get_main_inline_menu(chat_id))
 
 async def resume_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    database.set_active(update.effective_message.chat_id, True)
+    chat_id = update.effective_chat.id
+    database.set_active(chat_id, True)
     await update.effective_message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.", reply_markup=get_main_inline_menu(chat_id))
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
