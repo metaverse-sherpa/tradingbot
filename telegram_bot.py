@@ -965,20 +965,26 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     stats = database.get_platform_stats()
     master_wallet = get_master_wallet()
     
-    # Query Wallet Balance via TronScan
-    balance = "???"
+    # Query Wallet Balance via TronScan (USDT TRC-20)
+    balance = "$0.00"
     try:
         import requests
         url = f"https://apilist.tronscan.org/api/account?address={master_wallet}"
-        resp = requests.get(url, timeout=5)
-        data = resp.json()
-        # Find USDT in TRC-20 tokens
-        trc20_tokens = data.get('trc20token_balances', [])
-        for token in trc20_tokens:
-            if token.get('symbol') == 'USDT':
-                balance = f"${float(token.get('balance')) / 10**float(token.get('decimals')):,.2f}"
-                break
-    except: pass
+        resp = requests.get(url, timeout=7)
+        if resp.status_code == 200:
+            data = resp.json()
+            trc20_tokens = data.get('trc20token_balances', [])
+            for token in trc20_tokens:
+                if token.get('symbol') == 'USDT' or token.get('tokenId') == 'TR7NHqjehp3u3M11K2xv39zSQqyvssF6t':
+                    raw_bal = token.get('balance', '0')
+                    decimals = token.get('decimals', 6)
+                    balance = f"${float(raw_bal) / 10**float(decimals):,.2f}"
+                    break
+        else:
+            balance = "??? (Syncing...)"
+    except Exception as e:
+        logger.error(f"Treasury Sync Error: {e}")
+        balance = "??? (Offline)"
 
     admin_status = "🕵️‍♂️ Undercover" if user.get('undercover_mode') else "👑 Overlord"
     
