@@ -1,7 +1,13 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
 import gc
-import qrcode
+
+try:
+    import qrcode
+    HAS_QR = True
+except ImportError:
+    HAS_QR = False
+    print("⚠️ Warning: 'qrcode' library not found. QR codes will be skipped.")
 
 # Path to your official logo - Looking for it in the images/ folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -11,27 +17,34 @@ def add_qr_code(base_img, link, size=180):
     """
     Generates a QR code for the link and overlays it onto the base image.
     """
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=2,
-    )
-    qr.add_data(link)
-    qr.make(fit=True)
+    if not HAS_QR:
+        return base_img
+        
+    try:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(link)
+        qr.make(fit=True)
 
-    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
-    qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
-    
-    # Create a small white border for the QR code to make it pop
-    border_size = 5
-    bg = Image.new("RGBA", (size + border_size*2, size + border_size*2), (255, 255, 255, 255))
-    bg.paste(qr_img, (border_size, border_size), qr_img)
-    
-    # Paste onto bottom right with some margin
-    pos = (base_img.width - bg.width - 40, base_img.height - bg.height - 40)
-    base_img.paste(bg, pos, bg)
-    return base_img
+        qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+        qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
+        
+        # Create a small white border for the QR code to make it pop
+        border_size = 5
+        bg = Image.new("RGBA", (size + border_size*2, size + border_size*2), (255, 255, 255, 255))
+        bg.paste(qr_img, (border_size, border_size), qr_img)
+        
+        # Paste onto bottom right with some margin
+        pos = (base_img.width - bg.width - 40, base_img.height - bg.height - 40)
+        base_img.paste(bg, pos, bg)
+        return base_img
+    except Exception as e:
+        print(f"⚠️ Error generating QR code: {e}")
+        return base_img
 
 def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id="", bot_username="metaversesherpa_trading_bot"):
     """
