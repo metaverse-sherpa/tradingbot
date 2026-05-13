@@ -1045,7 +1045,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if is_profit:
                     headline = "🚀 *Just crushed another trade with the Metaverse Sherpa Bot!* 🏔️"
                 else:
-                    headline = "🏔️ *Navigating the market peaks. The Sherpa never misses a trail!*"
+                    headline = "🌧️ *Sometimes a trail gets rained out, but there's always another trail to hike. On to the next one!* 🏔️"
             else:
                 # ACTIVE trades - High Integrity messaging
                 if is_profit:
