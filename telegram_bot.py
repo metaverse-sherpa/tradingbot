@@ -337,8 +337,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.effective_message.reply_text(
                 f"✅ *Institutional Wallet Linked!*\n\n"
                 f"Your source wallet: `{text}`\n\n"
-                "Your future subscription payments will now be verified automatically via blockchain audit.",
-                parse_mode="Markdown"
+                "You are now just **one step away** from full Institutional access. Once you upgrade, the Sherpa will automatically audit the blockchain from this wallet to verify your status.\n\n"
+                "Tap below to finalize your climb and unlock the **Sherpa Basket**.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("💎 Go Institutional (Premium)", callback_data="premium_menu")
+                ]])
             )
             return
         else:
