@@ -44,7 +44,7 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     avg_trades_day = 0.80
     period_text = "May 2023 - May 2026"
     
-    await update.message.reply_text("📊 Generating Verified 3-Year Audit Report...")
+    await update.effective_message.reply_text("📊 Generating Verified 3-Year Audit Report...")
     
     card_path = media_gen.generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text)
     
@@ -63,7 +63,7 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(card_path, 'rb') as photo:
             await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, parse_mode="Markdown")
     else:
-        await update.message.reply_text(msg, parse_mode="Markdown")
+        await update.effective_message.reply_text(msg, parse_mode="Markdown")
 
 async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user):
     """Runs a 3-year backtest for a specific user's risk and symbols with animation."""
@@ -152,7 +152,7 @@ def get_main_inline_menu():
     return InlineKeyboardMarkup(get_nav_buttons())
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "👋 Welcome to the Metaverse Sherpa Multi-Tenant Trading Bot!\n\n"
         "Tap /setup to begin or use the dashboard below to monitor your account.",
         reply_markup=InlineKeyboardMarkup(get_nav_buttons()),
@@ -160,7 +160,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.effective_chat.id
     
     keyboard = [
         [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
@@ -168,7 +168,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")]
     ]
     
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "🌍 *Select Your Exchange*\n\n"
         "Which exchange would you like to link to the Cyber-Sherpa?",
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -176,8 +176,8 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    text = update.message.text
+    chat_id = update.effective_chat.id
+    text = update.effective_message.text
     
     step = context.user_data.get('setup_step', 0)
     
@@ -185,21 +185,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['api_key'] = text
         context.user_data['setup_step'] = 2
         # Delete user's message so their key isn't sitting in chat history
-        try: await update.message.delete()
+        try: await update.effective_message.delete()
         except: pass
-        await update.message.reply_text("✅ Key received and wiped from chat history.\n\nNow, please paste your **API Secret**:")
+        await update.effective_message.reply_text("✅ Key received and wiped from chat history.\n\nNow, please paste your **API Secret**:")
         
     elif step == 2:
         context.user_data['api_secret'] = text
         context.user_data['setup_step'] = 3
-        try: await update.message.delete()
+        try: await update.effective_message.delete()
         except: pass
-        await update.message.reply_text("✅ Secret received and wiped.\n\nFinally, please provide your **API Password / Passphrase**:")
+        await update.effective_message.reply_text("✅ Secret received and wiped.\n\nFinally, please provide your **API Password / Passphrase**:")
         
     elif step == 3:
         context.user_data['api_pass'] = text
         context.user_data['api_password'] = text
-        try: await update.message.delete()
+        try: await update.effective_message.delete()
         except: pass
         
         # Save to DB
@@ -214,7 +214,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         context.user_data.clear()
         keyboard = [[InlineKeyboardButton("💰 Check My Balance", callback_data="check_balance_setup")]]
-        await update.message.reply_text(
+        await update.effective_message.reply_text(
             "🎊 *Setup Complete!*\n\n"
             "The Sherpa is now tracking your account. Trading will begin on the next engine cycle.\n\n"
             "Tap the button below to verify your connection and check your trading funds.", 
@@ -223,7 +223,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         # Also send the persistent footer dashboard
-        await update.message.reply_text(
+        await update.effective_message.reply_text(
             "🛰️ *Main Menu Activated*",
             reply_markup=get_main_inline_menu(),
             parse_mode="Markdown"
@@ -235,17 +235,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if 0.01 <= val <= 100.0:
                 database.update_user_preference(chat_id, "risk_pct", val)
                 context.user_data.pop('setting_risk', None)
-                await update.message.reply_text(f"✅ Risk updated to *{val:.2f}%*", parse_mode="Markdown")
+                await update.effective_message.reply_text(f"✅ Risk updated to *{val:.2f}%*", parse_mode="Markdown")
                 # Trigger Audit
                 user = database.get_user(chat_id)
                 asyncio.create_task(trigger_personalized_audit(update, context, user))
                 # Show settings again
                 msg, reply_markup = get_settings_ui(user)
-                await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+                await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
             else:
-                await update.message.reply_text("❌ Please enter a value between 0.01 and 100.")
+                await update.effective_message.reply_text("❌ Please enter a value between 0.01 and 100.")
         except:
-            await update.message.reply_text("❌ Invalid number. Please enter a value like `1.5`.")
+            await update.effective_message.reply_text("❌ Invalid number. Please enter a value like `1.5`.")
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -337,7 +337,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         *get_nav_buttons()
     ]
     
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         msg, 
         reply_markup=InlineKeyboardMarkup(keyboard), 
         parse_mode="Markdown"
@@ -401,7 +401,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         await status_msg.delete()
-        await update.message.reply_text("📜 *Your Last 10 Trades*")
+        await update.effective_message.reply_text("📜 *Your Last 10 Trades*")
         
         for t in last_10:
             import datetime
@@ -427,17 +427,17 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cb_data = f"sh_{t['symbol']}_{t['side']}_{roe_pct:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
             markup = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Share This Result", callback_data=cb_data)]])
             
-            await update.message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
+            await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
             await asyncio.sleep(0.2) # Small delay to keep order
             
-        await update.message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(), parse_mode="Markdown")
+        await update.effective_message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(), parse_mode="Markdown")
             
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
-        await update.message.reply_text(f"❌ Error fetching trade history: {e}")
+        await update.effective_message.reply_text(f"❌ Error fetching trade history: {e}")
         
     except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching trades: {e}")
+        await update.effective_message.reply_text(f"❌ Error fetching trades: {e}")
 
 async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -542,7 +542,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 
                 with open(chart_path, 'rb') as photo:
-                    await update.message.reply_photo(photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
+                    await update.effective_message.reply_photo(
+photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
                 os.remove(chart_path) # Cleanup
             else:
                 target_suffix = f" of {target_roe_str.replace('+', '')}" if target_roe_str != "N/A" else ""
@@ -551,16 +552,16 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"Entry: `{entry:.8f}`\n"
                     f"PnL: *{roe:+.2f}%{target_suffix}*"
                 )
-                await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu())
+                await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu())
         
     except Exception as e:
-        await update.message.reply_text(f"❌ Error fetching positions: {e}")
+        await update.effective_message.reply_text(f"❌ Error fetching positions: {e}")
 
 async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
-        await update.message.reply_text("Please run /setup first.")
+        await update.effective_message.reply_text("Please run /setup first.")
         return
         
     keyboard = [
@@ -570,7 +571,7 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     current = user.get('strategy', 'Mean Reversion Scalper')
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         f"🎯 *Strategy Selection*\n\n"
         f"Your current strategy: *{current}*\n\n"
         f"Choose a strategy for your account:",
@@ -619,14 +620,14 @@ def get_settings_ui(user):
     return msg, InlineKeyboardMarkup(keyboard)
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
-        await update.message.reply_text("You are not set up yet. Tap /setup to begin.")
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
     msg, reply_markup = get_settings_ui(user)
-    await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+    await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -786,12 +787,12 @@ async def show_symbol_menu(query, user):
     )
 
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     new_val = not user['hide_dollars']
     database.update_user_preference(chat_id, "hide_dollars", 1 if new_val else 0)
     status = "HIDDEN 🔒" if new_val else "SHOWN 👁️"
-    await update.message.reply_text(f"✅ Privacy Mode: Dollar amounts are now *{status}*.", parse_mode="Markdown")
+    await update.effective_message.reply_text(f"✅ Privacy Mode: Dollar amounts are now *{status}*.", parse_mode="Markdown")
 
 async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -875,7 +876,7 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         "_Need more help? Just tap any command to try it out!_"
     )
-    await update.message.reply_text(help_text, parse_mode="Markdown")
+    await update.effective_message.reply_text(help_text, parse_mode="Markdown")
 
 async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Provides contact info for the Sherpa."""
@@ -886,15 +887,15 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📢 *Community:* [Join Here](https://t.me/+2pYhCm5BOoI0Mjkx)\n\n"
         "We are constantly refining the Cyber-Sherpa engine and value your input!"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await update.effective_message.reply_text(msg, parse_mode="Markdown")
 
 async def stop_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    database.set_active(update.message.chat_id, False)
-    await update.message.reply_text("🔴 Trading is now paused for your account. The engine will skip you.")
+    database.set_active(update.effective_message.chat_id, False)
+    await update.effective_message.reply_text("🔴 Trading is now paused for your account. The engine will skip you.")
 
 async def resume_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    database.set_active(update.message.chat_id, True)
-    await update.message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.")
+    database.set_active(update.effective_message.chat_id, True)
+    await update.effective_message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.")
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
