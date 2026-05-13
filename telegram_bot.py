@@ -485,13 +485,13 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         await status_msg.delete()
-        await update.effective_message.reply_text("📜 *Your Last 10 Trades*")
+        await update.effective_message.reply_text("📜 *Your Metaverse Sherpa History*")
         
         for t in last_10:
             import datetime
-            dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
+            dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d')
             dt = escape_md_v2(dt_raw)
-            icon = "🚀" if t['net_pnl'] > 0 else "❌"
+            icon = "🟢" if t['net_pnl'] > 0 else "🔴"
             
             # Calculate ROE (Estimate based on position size)
             try:
@@ -502,24 +502,20 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 roe_val = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
             except: roe_val = 0
             
-            # Escape for MarkdownV2
-            sym_v2 = escape_md_v2(t['symbol'])
-            side_v2 = escape_md_v2(t['side_display'])
-            pnl_v2 = escape_md_v2(f"{t['net_pnl']:.2f}")
+            # Compact Escape for MarkdownV2
+            sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
+            side_short = "L" if t['side'] == "l" else "S"
+            pnl_v2 = escape_md_v2(f"{t['net_pnl']:+.2f}")
             roe_v2 = escape_md_v2(f"{roe_val:+.2f}")
             
-            msg = (
-                f"{icon} *{side_v2}* \\({dt}\\)\n"
-                f"Symbol: `{sym_v2}`\n"
-                f"PnL: ||*${pnl_v2}*|| USDT \\({roe_v2}%\\)\n"
-            )
+            # EXTREMELY Compact Single-Line UI
+            msg = f"{icon} *{sym_v2}* | {side_short} | ||{pnl_v2}|| \\({roe_v2}%\\) | _{dt}_"
             
             # Add Share Button directly under this trade
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
-            markup = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)]])
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("Share & Earn 📸", callback_data=cb_data)]])
             
             await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="MarkdownV2")
-            await asyncio.sleep(0.2) # Small delay to keep order
             
         await update.effective_message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
             
