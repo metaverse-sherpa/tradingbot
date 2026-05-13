@@ -485,13 +485,17 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         await status_msg.delete()
-        await update.effective_message.reply_text("📜 *Your Metaverse Sherpa History*")
         
-        for t in last_10:
+        history_text = "📜 *Metaverse Sherpa History*\n\n"
+        buttons = []
+        
+        # Use number emojis for the list
+        number_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+        
+        for i, t in enumerate(last_10):
             import datetime
             dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d')
             dt = escape_md_v2(dt_raw)
-            icon = "🟢" if t['net_pnl'] > 0 else "🔴"
             
             # Calculate ROE (Estimate based on position size)
             try:
@@ -505,19 +509,27 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Compact Escape for MarkdownV2
             sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
             side_short = "L" if t['side'] == "l" else "S"
-            pnl_v2 = escape_md_v2(f"{t['net_pnl']:+.2f}")
-            roe_v2 = escape_md_v2(f"{roe_val:+.2f}")
+            roe_v2 = escape_md_v2(f"{roe_val:+.1f}")
             
-            # EXTREMELY Compact Single-Line UI (Escaping pipes for MarkdownV2)
-            msg = f"{icon} *{sym_v2}* \| {side_short} \| ||{pnl_v2}|| \\({roe_v2}%\\) \| _{dt}_"
+            # Add to table
+            emoji = number_emojis[i] if i < len(number_emojis) else f"{i+1}."
+            history_text += f"{emoji} *{sym_v2}* \| {side_short} \| ||{roe_v2}%|| \| _{dt}_\n"
             
-            # Add Share Button directly under this trade
+            # Create button data for this specific trade
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
-            markup = InlineKeyboardMarkup([[InlineKeyboardButton("Share & Earn 📸", callback_data=cb_data)]])
+            buttons.append(InlineKeyboardButton(f"{i+1}", callback_data=cb_data))
             
-            await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="MarkdownV2")
-            
-        await update.effective_message.reply_text("🛰️ *Main Menu*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+        history_text += "\n*Tap a number below to Share & Earn 📸*"
+        
+        # Grid of buttons (5 per row for compactness)
+        grid = [buttons[i:i + 5] for i in range(0, len(buttons), 5)]
+        grid.append([InlineKeyboardButton("🛰️ Main Menu", callback_data="menu_main")])
+        
+        await update.effective_message.reply_text(
+            history_text, 
+            reply_markup=InlineKeyboardMarkup(grid),
+            parse_mode="MarkdownV2"
+        )
             
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
