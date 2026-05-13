@@ -543,9 +543,6 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         reply_markup=InlineKeyboardMarkup(grid),
         parse_mode="MarkdownV2"
     )
-    except Exception as e:
-        logger.error(f"Error fetching history: {e}")
-        await update.effective_message.reply_text(f"❌ Error fetching trade history: {e}")
 
 async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
