@@ -222,12 +222,12 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
 
 def generate_comparison_chart():
     """Generates a high-impact comparison chart between Standard and Institutional tiers."""
-    # 1. Run Standard (5 tokens)
-    std_stats, _ = run_visual_audit(1.5, ["BTC","ETH","SOL","DOGE","ADA"], user_id="tmp_std")
+    # 1. Run Standard (5 tokens, 1.0% Risk)
+    std_stats, _ = run_visual_audit(1.0, ["BTC","ETH","SOL","DOGE","ADA"], user_id="tmp_std")
     # Reset for Institutional
     plt.close('all')
     
-    # 2. Run Institutional (All tokens)
+    # 2. Run Institutional (All tokens, 1.5% Risk)
     inst_stats, _ = run_visual_audit(1.5, None, user_id="tmp_inst")
     plt.close('all')
     
@@ -239,7 +239,7 @@ def generate_comparison_chart():
     enabled_inst = list(SYMBOL_CONFIGS.keys())
     
     # Re-run logic for plotting
-    def get_equity_curve(syms):
+    def get_equity_curve(syms, risk_val_pct):
         datasets = {}
         for name in syms:
             path = os.path.join(CSV_DIR, f"cache_{name}_15m.csv")
@@ -258,6 +258,7 @@ def generate_comparison_chart():
             valid = pos >= 0
             aligned[name] = {k: np.where(valid, d[k][np.where(valid, pos, 0)], np.nan) for k in ["close","high","low","ema","rsi","atr","adx","bb_top","bb_bot"]}
 
+        risk_val_decimal = risk_val_pct / 100.0
         states = {name: {"in_trade": False, "side": 0, "sl": 0.0, "tp": 0.0, "size": 0.0, "risk_amt": 0.0, "wins": 0, "losses": 0} for name in datasets}
         equity = START_CASH; history = [(common_idx[0], equity)]
         for i in range(EMA_PERIOD, len(common_idx) - 1):
@@ -283,16 +284,16 @@ def generate_comparison_chart():
                     if cfg["adx"] > 0 and d["adx"][i] < cfg["adx"]: continue
                     if close > ema_v and close < bb_bot and d["rsi"][i] < cfg["rsi"]:
                         fill = close * (1 + SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
-                        st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * (RISK_PER_TRADE), "in_trade": True})
+                        st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
                         st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * st["size"] * COMMISSION
                     elif not cfg.get("long_only") and close < ema_v and close > bb_top and d["rsi"][i] > (100 - cfg["rsi"]):
                         fill = close * (1 - SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
-                        st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * (RISK_PER_TRADE), "in_trade": True})
+                        st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
                         st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * st["size"] * COMMISSION
         return pd.DataFrame(history, columns=["date", "equity"]).set_index("date")
 
-    df_std = get_equity_curve(enabled_std)
-    df_inst = get_equity_curve(enabled_inst)
+    df_std = get_equity_curve(enabled_std, 1.0)
+    df_inst = get_equity_curve(enabled_inst, 1.5)
     
     # --- Plotting ---
     plt.figure(figsize=(12, 8), facecolor="#121212")
