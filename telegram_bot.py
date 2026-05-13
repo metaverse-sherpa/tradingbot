@@ -988,14 +988,13 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
                             usdt_bal = float(raw_bal) / 10**6
                             break
         
-        # Fetch Real-Time TRX Price
+        # Fetch Real-Time TRX Price via TronScan (matches your dashboard)
         try:
-            import ccxt
-            exchange = ccxt.blofin()
-            ticker = exchange.fetch_ticker('TRX/USDT')
-            trx_price = ticker.get('last', 0.12) # Fallback to $0.12 if fetch fails
+            price_url = "https://apilist.tronscan.org/api/token/price?token=trx"
+            price_resp = requests.get(price_url, timeout=5)
+            trx_price = float(price_resp.json().get('price', 0.35))
         except:
-            trx_price = 0.12
+            trx_price = 0.35 # Future-proof fallback based on your reality
             
         total_val = (trx_bal * trx_price) + usdt_bal
         balance_display = f"${total_val:,.2f}"
