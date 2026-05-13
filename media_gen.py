@@ -13,7 +13,7 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, "images", "metaverse-bot-logo.png")
 
-def add_qr_code(base_img, link, label="SCAN TO JOIN", font=None, size=180):
+def add_qr_code(base_img, link, size=180):
     """
     Generates a QR code for the link and overlays it onto the base image.
     """
@@ -41,13 +41,6 @@ def add_qr_code(base_img, link, label="SCAN TO JOIN", font=None, size=180):
         # Paste onto bottom right with some margin
         pos = (base_img.width - bg.width - 40, base_img.height - bg.height - 40)
         base_img.paste(bg, pos, bg)
-        
-        # Add label above QR if font is provided
-        if label and font:
-            draw = ImageDraw.Draw(base_img)
-            lw = draw.textlength(label, font=font)
-            draw.text((base_img.width - lw - 40, pos[1] - 40), label, font=font, fill=(255, 255, 255, 220))
-            
         return base_img
     except Exception as e:
         print(f"⚠️ Error generating QR code: {e}")
@@ -123,7 +116,7 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     combined = Image.alpha_composite(base_img, overlay)
     
     # Add QR code to bottom right
-    combined = add_qr_code(combined, ref_link, font=font_handle, size=160)
+    combined = add_qr_code(combined, ref_link, size=160)
     
     save_filename = f"pnl_card_{user_id}_{clean_sym.replace('/', '_')}.png"
     save_path = os.path.join("pnl_cards", save_filename)
@@ -190,7 +183,7 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
-    combined = add_qr_code(combined, ref_link, font=font_handle, size=160)
+    combined = add_qr_code(combined, ref_link, size=160)
     
     save_filename = f"stats_card_{user_id}.png"
     save_path = os.path.join("pnl_cards", save_filename)
@@ -259,7 +252,7 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
-    combined = add_qr_code(combined, ref_link, font=font_handle, size=160)
+    combined = add_qr_code(combined, ref_link, size=160)
     
     save_path = os.path.join("pnl_cards", "portfolio_audit_card.png")
     rgb_final = combined.convert("RGB")
