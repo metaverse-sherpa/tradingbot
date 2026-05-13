@@ -225,7 +225,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
 
-    # 2. Institutional Master Audit (Static Hook)
+    # 2. Institutional Master Audit (Strictly Static Hook)
     master_path = os.path.join(BASE_DIR, "results", "master_audit.png")
     audit_msg = (
         "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
@@ -248,8 +248,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=get_main_inline_menu(chat_id)
             )
     else:
-        # Fallback if master not found - run it once to cache
-        await backtest(update, context)
+        # If master is missing (syncing), just show menu to keep it fast
+        await update.effective_message.reply_text(
+            "🏔️ *Strategy Engine Ready*\nTap /setup to begin or use the menu below.",
+            reply_markup=get_main_inline_menu(chat_id),
+            parse_mode="Markdown"
+        )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
