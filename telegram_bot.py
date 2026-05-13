@@ -571,10 +571,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Using short prefixes and rounded numbers to save space
                 s_side = "l" if side.lower() == "long" else "s"
                 callback_data = f"sh_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
-                keyboard = [
-                    [InlineKeyboardButton("Share 📸", callback_data=callback_data)],
-                    *get_nav_buttons(True) # We are inside open_trades loop, so we know there are active trades
-                ]
+                keyboard = [[InlineKeyboardButton("Share 📸", callback_data=callback_data)]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 target_suffix = f" of {target_roe_str.replace('+', '')}" if target_roe_str != "N/A" else ""
@@ -597,7 +594,10 @@ photo, caption=caption, parse_mode="Markdown", reply_markup=reply_markup)
                     f"Entry: `{entry:.8f}`\n"
                     f"PnL: *{roe:+.2f}%{target_suffix}*"
                 )
-                await update.effective_message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+                await update.effective_message.reply_text(msg, parse_mode="Markdown")
+        
+        # 4. Finally send the footer once
+        await update.effective_message.reply_text("🛰️ *Sherpa Command Center*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
         
     except Exception as e:
         await update.effective_message.reply_text(f"❌ Error fetching positions: {e}")
