@@ -494,7 +494,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         for i, t in enumerate(last_10):
             import datetime
-            dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d')
+            dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
             dt = escape_md_v2(dt_raw)
             
             # Calculate ROE (Estimate based on position size)
@@ -508,12 +508,13 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Compact Escape for MarkdownV2
             sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
-            side_short = "L" if t['side'] == "l" else "S"
-            roe_v2 = escape_md_v2(f"{roe_val:+.1f}")
+            dir_icon = "📈" if t['side'] == "l" else "📉"
+            roe_v2 = escape_md_v2(f"{roe_val:+.1f}%")
+            pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
             
             # Add to table
             emoji = number_emojis[i] if i < len(number_emojis) else f"{i+1}."
-            history_text += f"{emoji} *{sym_v2}* \| {side_short} \| ||{roe_v2}%|| \| _{dt}_\n"
+            history_text += f"{emoji} *{sym_v2}* \| {dir_icon} \| {roe_v2} \| ||{pnl_val_v2}|| \| _{dt}_\n"
             
             # Create button data for this specific trade
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
