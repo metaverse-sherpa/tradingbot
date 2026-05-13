@@ -399,7 +399,12 @@ def toggle_undercover(chat_id):
     """Toggles the undercover mode for the founder."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("UPDATE Users SET undercover_mode = 1 - undercover_mode WHERE telegram_chat_id = ?", (chat_id,))
+    # Robust toggle logic: if 1 then 0, else 1 (handles NULLs)
+    c.execute("""
+        UPDATE Users 
+        SET undercover_mode = CASE WHEN undercover_mode = 1 THEN 0 ELSE 1 END 
+        WHERE chat_id = ?
+    """, (chat_id,))
     conn.commit()
     conn.close()
 
