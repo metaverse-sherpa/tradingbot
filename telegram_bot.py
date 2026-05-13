@@ -827,7 +827,7 @@ def get_settings_ui(user):
     is_premium = database.is_premium(user)
     is_admin = (user.get('telegram_chat_id') == ADMIN_CHAT_ID)
     
-    tier_display = "👑 Founder (Permanent)" if is_admin else ("💎 Premium (Institutional)" if is_premium else "🥈 Standard")
+    tier_display = "👑 Sherpa Overlord (Permanent)" if is_admin else ("💎 Premium (Institutional)" if is_premium else "🥈 Standard")
     
     expiry_msg = ""
     if is_premium and not is_admin:
@@ -1072,14 +1072,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "close_admin":
+        await query.answer("Returning to Main Menu...")
         await query.message.delete()
-        await query.answer()
+        # Call the actual command to send a fresh message with footer
+        await settings_command(update, context)
         return
 
     if query.data == "toggle_undercover":
         if chat_id != ADMIN_CHAT_ID: return
-        await query.answer("🔄 Toggling Identity...")
-        database.toggle_undercover(chat_id)
+        database.toggle_undercover_mode(chat_id)
+        await query.answer("🔄 Identity Toggled!")
+        # Re-render dashboard
         await show_admin_dashboard(update, context)
         return
 
