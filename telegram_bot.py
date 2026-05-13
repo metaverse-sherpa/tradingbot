@@ -486,48 +486,45 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         await status_msg.delete()
         
+        # Institutional Table Header
         history_text = "📜 *Metaverse Sherpa History*\n\n"
+        history_text += "```\n"
+        history_text += "┌────┬──────┬───────┬────────────┐\n"
+        history_text += "│ #  │ Sym  │ ROE%  │ Date/Time  │\n"
+        history_text += "├────┼──────┼───────┼────────────┤\n"
+        
         buttons = []
-        
-        # Use number emojis for the list
-        number_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-        
         for i, t in enumerate(last_10):
             import datetime
             dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
-            dt = escape_md_v2(dt_raw)
             
-            # Calculate ROE (Estimate based on position size)
+            # Calculate ROE
             try:
                 market = user_ex.market(t['symbol'])
                 contract_size = float(market.get('contractSize', 1))
-                # ROE = (PnL / Margin). We assume 20x for the visual card if not specified.
                 initial_margin = (t['price'] * t['amount'] * contract_size) / 20
                 roe_val = (t['net_pnl'] / initial_margin) * 100 if initial_margin > 0 else 0
             except: roe_val = 0
             
-            # Compact Escape for MarkdownV2
-            sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
-            dir_icon = "📈" if t['side'] == "l" else "📉"
-            roe_v2 = escape_md_v2(f"{roe_val:+.1f}%")
-            pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
+            sym_short = t['symbol'].split("/")[0][:4]
+            roe_str = f"{roe_val:>+5.1f}%"
             
-            # Add to table
-            emoji = number_emojis[i] if i < len(number_emojis) else f"{i+1}."
-            history_text += f"{emoji} *{sym_v2}* \| {dir_icon} \| {roe_v2} \| ||{pnl_val_v2}|| \| _{dt}_\n"
+            # Add to monospace table (Perfect Alignment)
+            history_text += f"│ {i+1:<2} │ {sym_short:<4} │ {roe_str} │ {dt_raw} │\n"
             
-            # Create button data for this specific trade
+            # Create button data
             cb_data = f"shc_{t['symbol']}_{t['side']}_{roe_val:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
             buttons.append(InlineKeyboardButton(f"{i+1}", callback_data=cb_data))
             
-        history_text += "\n*Tap a number below to Share & Earn 📸*"
+        history_text += "└────┴──────┴───────┴────────────┘\n"
+        history_text += "```\n"
         
-        # Grid of buttons (5 per row for compactness)
+        # Grid of buttons (5 per row)
         grid = [buttons[i:i + 5] for i in range(0, len(buttons), 5)]
         grid.append([InlineKeyboardButton("🛰️ Main Menu", callback_data="menu_main")])
         
         await update.effective_message.reply_text(
-            history_text, 
+            history_text + "*Tap a number below to Share & Earn 📸*", 
             reply_markup=InlineKeyboardMarkup(grid),
             parse_mode="MarkdownV2"
         )
