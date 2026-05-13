@@ -136,7 +136,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         await status_msg.edit_text(f"❌ Error during simulation: {e}")
         
 def get_nav_buttons():
-    """Returns a standardized 2x2 grid of inline navigation buttons."""
+    """Returns a standardized 3x2 grid of inline navigation buttons."""
     return [
         [
             InlineKeyboardButton("🛰️ Active Trades", callback_data="opentrades_menu"),
@@ -144,7 +144,11 @@ def get_nav_buttons():
         ],
         [
             InlineKeyboardButton("📊 Stats", callback_data="stats_menu"),
-            InlineKeyboardButton("❓ Help", callback_data="help_menu")
+            InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
+        ],
+        [
+            InlineKeyboardButton("❓ Help", callback_data="help_menu"),
+            InlineKeyboardButton("🤝 Contact", callback_data="contact_menu")
         ]
     ]
 
@@ -696,6 +700,14 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await docs(update, context)
         return
+    elif query.data == "settings_menu":
+        await query.answer()
+        await settings_command(update, context)
+        return
+    elif query.data == "contact_menu":
+        await query.answer()
+        await contact_command(update, context)
+        return
 
     if query.data == "toggle_privacy":
         new_val = not user['hide_dollars']
@@ -1086,7 +1098,7 @@ def main():
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
