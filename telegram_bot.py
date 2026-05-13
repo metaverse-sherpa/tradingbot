@@ -829,8 +829,7 @@ def get_settings_ui(user):
     wallet_display = f"{wallet_val[:6]}...{wallet_val[-4:]}" if wallet_val else "(Not Set)"
     
     is_premium = database.is_premium(user)
-    is_admin = (user.get('telegram_chat_id') == ADMIN_CHAT_ID)
-    logger.info(f"UI BUILD: chat_id={user.get('telegram_chat_id')} | is_admin={is_admin} | undercover={user.get('undercover_mode')}")
+    is_admin = (user.get('telegram_chat_id') == ADMIN_CHAT_ID and not user.get('undercover_mode'))
     
     tier_display = "👑 Sherpa Overlord (Permanent)" if is_admin else ("💎 Premium (Institutional)" if is_premium else "🥈 Standard")
     
@@ -1088,8 +1087,6 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.warning(f"UNAUTHORIZED TOGGLE ATTEMPT: {chat_id}")
             return
         database.toggle_undercover(chat_id)
-        new_state = database.get_user(chat_id).get('undercover_mode')
-        logger.info(f"IDENTITY TOGGLED: chat_id={chat_id} | New Undercover State={new_state}")
         await query.answer("🔄 Identity Toggled!")
         # Re-render dashboard
         await show_admin_dashboard(update, context)
@@ -1729,7 +1726,7 @@ async def trading_engine(application):
                                         logger.error(f"Chart generation failed: {chart_err}")
                                         await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
                     except Exception as e:
-                        logger.error(f"Error for user {user.get('chat_id')}: {e}")
+                        logger.error(f"Error for user {user.get('telegram_chat_id')}: {e}")
             
             # Wait 5 minutes before next pass
             await asyncio.sleep(300)
