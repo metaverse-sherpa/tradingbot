@@ -185,9 +185,9 @@ def run():
             # Fetch all open positions to update the "Panic Button" status
             pos = ex.fetch_positions()
             has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
-            database.update_position_status(user['chat_id'], has_active)
+            database.update_position_status(user['telegram_chat_id'], has_active)
         except Exception as e:
-            log.error("Position sync failed for %s: %s", user['chat_id'], e)
+            log.error("Position sync failed for %s: %s", user['telegram_chat_id'], e)
 
     errors = []
 
@@ -229,7 +229,7 @@ def run():
                         if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
                             place_order(ex, norm_sym, signal, user['equity'], risk_pct=risk_val)
                     except Exception as ue:
-                        log.error("User %s error on %s: %s", user['chat_id'], symbol, ue)
+                        log.error("User %s error on %s: %s", user['telegram_chat_id'], symbol, ue)
                         
         except Exception as e:
             log.error("Global signal error for %s: %s", symbol, e)

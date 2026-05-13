@@ -93,7 +93,7 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
 async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user, start_balance=10000.0):
     """Runs a 3-year backtest for a specific user's risk and symbols with animation."""
-    chat_id = user['chat_id']
+    chat_id = user['telegram_chat_id']
     risk = user['risk_pct']
     syms = user['enabled_symbols']
     def_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
@@ -334,14 +334,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text.startswith('T') and len(text) == 34:
             database.update_user_wallet(chat_id, text)
             context.user_data['setting_wallet'] = False
+            
+            # Descriptive Onboarding Step
             await update.effective_message.reply_text(
-                f"✅ *Institutional Wallet Linked!*\n\n"
-                f"Your source wallet: `{text}`\n\n"
-                "You are now just **one step away** from full Institutional access. Once you upgrade, the Sherpa will automatically audit the blockchain from this wallet to verify your status.\n\n"
-                "Tap below to finalize your climb and unlock the **Sherpa Basket**.",
+                "✅ *Institutional Wallet Linked & Verified!*\n\n"
+                "Your identity is now synchronized with the institutional audit engine. You are now ready to cross the **23x Wealth Gap**.\n\n"
+                "🏔️ *The Path to Institutional Access:*\n"
+                "1️⃣ **Transfer $20 USDT** via the TRON (TRC-20) network to the Master Treasury.\n"
+                "2️⃣ **Blockchain Audit**: The Sherpa's engine will automatically detect your transfer from your linked wallet.\n"
+                "3️⃣ **Full Unlock**: Your account will instantly gain access to the complete 'Sherpa Basket' and professional risk controls.\n\n"
+                "Tap below to view the Treasury Address and finalize your upgrade.",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("💎 Go Institutional (Premium)", callback_data="premium_menu")
+                    InlineKeyboardButton("💎 Finalize Institutional Upgrade", callback_data="premium_menu")
                 ]])
             )
             return
@@ -938,19 +943,28 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     premium_msg = (
-        "💎 *Go Institutional: Unlock the Wealth Gap*\n\n"
-        "Unlock full compounding power, the complete 'Sherpa Basket', and institutional-grade risk management.\n\n"
-        "💳 *Subscription Fee:* **$20 USDT / 30 Days**\n\n"
-        "📥 *Transfer To (TRC-20):*\n"
+        "💎 *Go Institutional: Unlock the 23x Wealth Gap*\n\n"
+        "Unlock the full power of the Metaverse Sherpa engine. Moving from Standard to Institutional tier grants you access to professional-grade tools used by elite traders:\n\n"
+        "🏔️ *Institutional Tier Benefits:*\n"
+        "• **The Full Sherpa Basket**: Trade all 19+ premium symbols (Standard is limited to top 5).\n"
+        "• **Advanced Risk Control**: Set custom risk-per-trade percentages.\n"
+        "• **Priority Execution**: Your trades are prioritized in the engine's background loop.\n"
+        "• **Zero Friction**: Automated on-chain audits keep your access active.\n\n"
+        "💳 *Institutional Access Fee:* **$20 USDT / 30 Days**\n\n"
+        "📥 *The Step-by-Step Upgrade Path:*\n"
+        "1. **Copy the Treasury Address** below (Tap to copy).\n"
+        "2. **Send exactly $20 USDT** via the **TRON (TRC-20)** network.\n"
+        "3. **Tap 'Audit My Payment'** below once sent.\n\n"
+        "🏛️ *Master Treasury Address (TRC-20):*\n"
         f"`{get_master_wallet()}`\n\n"
-        f"🕵️‍♂️ *Monitoring From:* `{wallet_val}`\n\n"
-        "⚠️ _Ensure you send via the TRON (TRC-20) network. Activation is automated and takes ~1-3 minutes after on-chain confirmation._"
+        f"🕵️‍♂️ *Verifying Transfer From:* `{wallet_val}`\n\n"
+        "⚠️ _Note: Activation is fully automated. The Sherpa's audit engine will scan the blockchain for your transaction and unlock your access within 1-3 minutes of on-chain confirmation._"
     )
     
     kb = [
-        [InlineKeyboardButton("✅ I've Sent the Funds", callback_data="check_payment")],
-        [InlineKeyboardButton("👛 Change Source Wallet", callback_data="prompt_set_wallet")],
-        [InlineKeyboardButton("🔙 Back to Settings", callback_data="settings_menu")]
+        [InlineKeyboardButton("🔎 Audit My Payment & Unlock", callback_data="check_payment")],
+        [InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")],
+        [InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")]
     ]
     
     if update.callback_query:
@@ -1088,7 +1102,6 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         database.toggle_undercover(chat_id)
         await query.answer("🔄 Identity Toggled!")
-        # Re-render dashboard
         await show_admin_dashboard(update, context)
         return
 
@@ -1664,7 +1677,7 @@ async def trading_engine(application):
                 # Execute for all users in this group
                 for user in users:
                     try:
-                        chat_id = user['chat_id']
+                        chat_id = user['telegram_chat_id']
                         user_ex = ccxt.blofin({
                             "apiKey": user['api_key'],
                             "secret": user['api_secret'],
