@@ -203,7 +203,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• 🏔️ *Blofin* (Native Partner)\n"
         "• 🔶 *Binance*\n"
         "• 💠 *MEXC*\n\n"
-        "🚀 Tap /setup to link your account and start your 5-day free trial."
+        "🏆 Tap /setup to link your account and start your 5-day free trial."
     )
     
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
@@ -521,7 +521,7 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         dir_icon = "📈" if t['side'] == "l" else "📉"
         roe_v2 = escape_md_v2(f"{t['roe_val']:+.1f}%")
         pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
-        status_icon = "🚀" if t['net_pnl'] > 0 else "❌"
+        status_icon = "🏆" if t['net_pnl'] > 0 else "❌"
         
         history_text += (
             f"{i+1}\. *{sym_v2}* {dir_icon} \| _{dt}_\n"
@@ -529,8 +529,9 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
             f"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
         )
         
+        win_icon = " 🏆" if t['net_pnl'] > 0 else ""
         cb_data = f"shc_{t['symbol']}_{t['side']}_{t['roe_val']:.2f}_{t['price']:.4f}_{t['price']:.4f}_{t['net_pnl']:.2f}"
-        buttons.append(InlineKeyboardButton(f"{i+1}-{sym_v2}", callback_data=cb_data))
+        buttons.append(InlineKeyboardButton(f"{i+1}-{sym_v2}{win_icon}", callback_data=cb_data))
         
     history_text += "\n*Tap a button below to Share & Earn 📸*"
     
@@ -870,7 +871,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("🚨 Executing Panic Exit...")
         success, report = await panic_close_all(chat_id)
         
-        icon = "🚀" if success else "❌"
+        icon = "🏆" if success else "❌"
         msg = (
             f"{icon} *Panic Exit Report*\n\n"
             f"{report}\n\n"
@@ -1057,7 +1058,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not is_active:
                 # Closed trades or generic legacy
                 if is_profit:
-                    headline = "🚀 *Just crushed another trade with the Metaverse Sherpa Bot!* 🏔️"
+                    headline = "🏆 *Just crushed another trade with the Metaverse Sherpa Bot!* 🏔️"
                 else:
                     headline = "🌧️ *Sometimes a trail gets rained out, but there's always another trail to hike. On to the next one!* 🏔️"
             else:
@@ -1087,7 +1088,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={encoded_text}"
             
             keyboard = [
-                [InlineKeyboardButton("🚀 Forward to Friend", url=share_url)],
+                [InlineKeyboardButton("🏆 Forward to Friend", url=share_url)],
                 *get_nav_buttons(user.get('has_open_positions', False))
             ]
         else:
@@ -1282,7 +1283,7 @@ async def trading_engine(application):
                                 if res:
                                     database.increment_opened(chat_id)
                                     msg = (
-                                        f"🚀 *{strat_name}* SIGNAL!\n\n"
+                                        f"🏆 *{strat_name}* SIGNAL!\n\n"
                                         f"Symbol: *{res['symbol']}*\n"
                                         f"Risk: `{user_risk:.2f}%`\n"
                                         f"Entry: `{res['entry']:.8f}`\n"

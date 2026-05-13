@@ -239,7 +239,7 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
                     share_data = None
                     if net_pnl > 0:
                         wins += 1
-                        header = "🚀 *Trade Won!*"
+                        header = "🏆 *Trade Won!*"
                         # sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
                         side_code = "l" # assume long for notification if side is missing from raw info
                         share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
