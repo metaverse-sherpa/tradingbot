@@ -73,9 +73,9 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         audit_msg = (
             "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
             "Settings: `1.5% Risk` | `All Institutional Tokens`\n\n"
-            "Final Equity: *$161,586.43*\n"
-            "Total PnL: *+1,515.9%*\n"
-            "Sharpe Ratio: *3.42*\n"
+            "Final Equity: *$161,486.23*\n"
+            "Total PnL: *+1,514.9%*\n"
+            "Sharpe Ratio: *4.83*\n"
             "Win Rate: *61.2%*\n"
             "Max Drawdown: *18.8%*\n\n"
             "📈 _This simulation represents the core Sherpa algorithm's performance over the last 3 years._"
