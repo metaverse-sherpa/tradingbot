@@ -856,13 +856,32 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "strategy_menu":
         await query.answer()
+        risk_val = user.get('risk_pct', 1.5)
+        
+        strategy_overview = (
+            "🎯 *Strategy Selection & Overview*\n\n"
+            "🛡️ *Engine: Mean Reversion Scalper*\n"
+            "This strategy uses Bollinger Band volatility expansion/contraction to identify overextended price moves. It enters 'reversion' trades to capture the snap-back to the mean.\n\n"
+            "📊 *Core Parameters:*\n"
+            "• *Target R:R*: 1:1.5 or better\n"
+            "• *Risk Per Trade*: User-defined (% of equity)\n"
+            "• *Logic*: Auto-calculates position size based on SL distance.\n\n"
+            "📈 *3-Year Performance Proof:*\n"
+            "• Total PnL: *+576.2%*\n"
+            "• Win Rate: *60.0%*\n"
+            "• Max Drawdown: *18.8%*\n\n"
+            f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
+            "Select a strategy or adjust your risk below:"
+        )
+        
         keyboard = [
-            [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
-            [InlineKeyboardButton("🚧 Coming Soon...", callback_data="set_strat_soon")],
+            [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk")],
+            [InlineKeyboardButton("Mean Reversion Scalper (Active)", callback_data="set_strat_mean")],
+            [InlineKeyboardButton("🚧 Crypto Chart Patterns (Soon)", callback_data="set_strat_soon")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))
         ]
-        await query.edit_message_text("🎯 *Select Trading Strategy*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await query.edit_message_text(strategy_overview, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         return
 
     elif query.data == "set_risk":
