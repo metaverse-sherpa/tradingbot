@@ -262,45 +262,46 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
             for t in trades:
                 if t['timestamp'] <= last_ts: continue
                 
-                info = t.get("info", {})
-                # PnL Reconstruction
-                gross_pnl = 0
-                if exchange.id == 'blofin':
-                    gross_pnl = float(info.get("fillPnl") or 0)
-                else:
-                    # Binance/MEXC/Bybit
-                    gross_pnl = float(info.get("realizedPnl") or 0)
-                
-                if gross_pnl != 0:
-                    fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                    net_pnl = gross_pnl - (fee * 2)
-                    
-                    try:
-                        market = exchange.market(norm_sym)
-                        contract_size = float(market.get('contractSize', 1))
-                        initial_margin = (float(t['price']) * float(t['amount']) * contract_size) / 20
-                        roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                    except:
-                        roe_pct = 0
-                    
-                    cum_pnl += net_pnl
-                    share_data = None
-                    if net_pnl > 0:
-                        wins += 1
-                        header = "🏆 *Trade Won!*"
-                        # assume long for notification if side is missing from raw info
-                        side_code = "l"
-                        share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
+                try:
+                    info = t.get("info", {})
+                    # PnL Reconstruction
+                    gross_pnl = 0
+                    if exchange.id == 'blofin':
+                        gross_pnl = float(info.get("fillPnl") or 0)
                     else:
-                        losses += 1
-                        header = "❌ *Trade Lost*"
+                        # Binance/MEXC/Bybit
+                        gross_pnl = float(info.get("realizedPnl") or 0)
+                    
+                    if gross_pnl != 0:
+                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                        net_pnl = gross_pnl - (fee * 2)
                         
-                    new_closed.append({
-                        "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
-                        "share_data": share_data
-                    })
+                        try:
+                            market = exchange.market(norm_sym)
+                            contract_size = float(market.get('contractSize', 1))
+                            initial_margin = (float(t['price']) * float(t['amount']) * contract_size) / 20
+                            roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                        except:
+                            roe_pct = 0
+                        
+                        cum_pnl += net_pnl
+                        share_data = None
+                        if net_pnl > 0:
+                            wins += 1
+                            header = "🏆 *Trade Won!*"
+                            # assume long for notification if side is missing from raw info
+                            side_code = "l"
+                            share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
+                        else:
+                            losses += 1
+                            header = "❌ *Trade Lost*"
+                            
+                        new_closed.append({
+                            "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
+                            "share_data": share_data
+                        })
                 except Exception as e:
-                    logger.error(f"Error processing trade {t['id']}: {e}")
+                    logger.error(f"Error processing trade {t.get('id', 'unknown')}: {e}")
         
     if new_closed:
         clear_history_cache(chat_id)
