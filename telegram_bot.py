@@ -364,6 +364,26 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Clears all states and returns to the appropriate menu."""
+    chat_id = update.effective_chat.id
+    context.user_data.pop('setting_wallet', None)
+    context.user_data.pop('setting_admin_wallet', None)
+    context.user_data.pop('admin_broadcasting', None)
+    context.user_data.pop('setting_risk', None)
+    context.user_data.pop('setup_step', None)
+    
+    await update.effective_message.reply_text("🛑 *Action Cancelled.*", parse_mode="Markdown")
+    
+    if chat_id == ADMIN_CHAT_ID:
+        await show_admin_dashboard(update, context)
+    else:
+        await update.effective_message.reply_text(
+            "🛰️ *Main Menu Activated*",
+            reply_markup=get_main_inline_menu(chat_id),
+            parse_mode="Markdown"
+        )
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     text = update.effective_message.text.strip()
@@ -481,26 +501,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
         return
-
-async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Clears all states and returns to the appropriate menu."""
-    chat_id = update.effective_chat.id
-    context.user_data.pop('setting_wallet', None)
-    context.user_data.pop('setting_admin_wallet', None)
-    context.user_data.pop('admin_broadcasting', None)
-    context.user_data.pop('setting_risk', None)
-    context.user_data.pop('setup_step', None)
-    
-    await update.effective_message.reply_text("🛑 *Action Cancelled.*", parse_mode="Markdown")
-    
-    if chat_id == ADMIN_CHAT_ID:
-        await show_admin_dashboard(update, context)
-    else:
-        await update.effective_message.reply_text(
-            "🛰️ *Main Menu Activated*",
-            reply_markup=get_main_inline_menu(chat_id),
-            parse_mode="Markdown"
-        )
 
     elif context.user_data.get('setting_risk'):
         try:
