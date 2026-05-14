@@ -820,20 +820,6 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
             target_pnl_v2 = escape_md_v2(f"{abs(target_pnl_dollars):.2f}")
             roe_v2 = escape_md_v2(f"{roe:+.2f}")
-            t_roe_v2 = escape_md_v2(target_roe_str.replace("+", ""))
-            
-            # Pre-escape static values
-            sym_v2 = escape_md_v2(sym)
-            entry_v2 = escape_md_v2(entry)
-            tp_v2 = escape_md_v2(tp_price)
-            sl_v2 = escape_md_v2(sl_price)
-            
-            t_suffix = f" of ||${target_pnl_v2}|| \\({t_roe_v2}\\) Target" if target_roe_str != "N/A" else ""
-            
-            caption = (
-                f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
-                f"Entry: `{entry_v2}`\n"
-                f"TP: `{tp_v2}` \\| SL: `{sl_v2}`\n"
                 f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\){t_suffix}"
             )
 
@@ -1589,6 +1575,34 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+    elif query.data.startswith("confirm_close_"):
+        sym = query.data.replace("confirm_close_", "")
+        await query.answer()
+        kb = [
+            [InlineKeyboardButton(f"✅ YES, CLOSE {sym} NOW!", callback_data=f"execute_close_{sym}")],
+            [InlineKeyboardButton("❌ NO, ABORT", callback_data="opentrades_menu")]
+        ]
+        await query.edit_message_text(
+            f"⚠️ *INSTITUTIONAL CONFIRMATION REQUIRED*\n\n"
+            f"Are you sure you want to Market Close your *{sym}* position?\n\n"
+            "This will instantly exit the trade at current market price.",
+            reply_markup=InlineKeyboardMarkup(kb),
+            parse_mode="Markdown"
+        )
+        return
+
+    elif query.data.startswith("execute_close_"):
+        sym = query.data.replace("execute_close_", "")
+        await query.answer(f"🛑 Closing {sym}...")
+        
+        success, result = await close_single_position(chat_id, sym)
+        icon = "✅" if success else "❌"
+        await query.message.reply_text(f"{icon} *Tactical Close:* {result}", parse_mode="Markdown")
+        
+        # Refresh open trades
+        await open_trades(update, context)
+        return
+
     elif query.data == "back_to_settings":
         context.user_data.pop('setting_risk', None)
         await query.answer()
@@ -1998,7 +2012,7 @@ def main():
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
@@ -2011,6 +2025,31 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+async def close_single_position(chat_id, sym):
+    """Tactically closes a single position for a user."""
+    user = database.get_user(chat_id)
+    if not user: return False, "User not found."
+    
+    try:
+        user_ex = database.get_exchange_client(user)
+        # Fetch the specific position
+        positions = user_ex.fetch_positions([sym])
+        pos = next((p for p in positions if float(p.get("contracts", 0) or 0) != 0), None)
+        
+        if not pos:
+            return False, f"No active position found for {sym}."
+            
+        side = pos['side'].upper()
+        contracts = float(pos['contracts'])
+        
+        # Market close order
+        order_side = "sell" if side == "LONG" else "buy"
+        user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
+        
+        return True, f"Market Closed {sym} position."
+    except Exception as e:
+        return False, f"Failed to close {sym}: {e}"
 
 async def panic_close_all(chat_id):
     """Closes all active positions for a user across all symbols."""
