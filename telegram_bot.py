@@ -1077,6 +1077,26 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
+    if query.data == "apply_symbol_audit":
+        await query.answer("🏔️ Applying Institutional Settings...")
+        try:
+            # Trigger single definitive audit
+            user = database.get_user(chat_id)
+            user_equity = user.get('equity', 10000.0)
+            logger.info(f"Triggering personalized audit for user {chat_id} with equity {user_equity}")
+            
+            # Fire and forget the audit task
+            asyncio.create_task(trigger_personalized_audit(update, context, user, start_balance=user_equity))
+            
+            # IMMEDIATELY return to main settings so UI doesn't hang
+            msg, reply_markup = get_settings_ui(user)
+            await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+            return
+        except Exception as e:
+            logger.error(f"Failed to apply symbol settings for {chat_id}: {e}")
+            await query.edit_message_text(f"❌ Error applying settings: {e}\n\nPlease try again or contact the Sherpa.", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+            return
+
     if query.data == "refer_menu":
         await show_refer_dashboard(update, context)
         await query.answer()
@@ -1329,16 +1349,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
         return
 
-    if query.data == "apply_symbol_audit":
-        await query.answer("🏔️ Applying Institutional Settings...")
-        # Trigger single definitive audit
-        user = database.get_user(chat_id)
-        user_equity = user.get('equity', 10000.0)
-        asyncio.create_task(trigger_personalized_audit(update, context, user, start_balance=user_equity))
-        # Return to main settings
-        msg, reply_markup = get_settings_ui(user)
-        await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
-        return
+
 
     elif query.data == "toggle_privacy":
         new_val = not user['hide_dollars']
@@ -1834,7 +1845,7 @@ def main():
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
