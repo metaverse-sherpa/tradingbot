@@ -247,91 +247,91 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
     
     try:
         # 🕵️ Smart UI: Sync Position Status
-    try:
-        positions = exchange.fetch_positions()
-        has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in positions)
-        # We'll update this in the DB at the end of the function with the other stats
-    except:
-        has_active = False
-
-    new_closed = []
-    
-    for sym in live_bot_multi.SYMBOLS:
         try:
-            norm_sym = normalize_symbol(sym, exchange.id)
-            trades = exchange.fetch_my_trades(norm_sym, last_ts)
-            for t in trades:
-                if t['timestamp'] <= last_ts: continue
-                
-                try:
-                    info = t.get("info", {})
-                    # PnL Reconstruction
-                    gross_pnl = 0
-                    if exchange.id == 'blofin':
-                        gross_pnl = float(info.get("fillPnl") or 0)
-                    else:
-                        # Binance/MEXC/Bybit
-                        gross_pnl = float(info.get("realizedPnl") or 0)
+            positions = exchange.fetch_positions()
+            has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in positions)
+            # We'll update this in the DB at the end of the function with the other stats
+        except:
+            has_active = False
+
+        new_closed = []
+        
+        for sym in live_bot_multi.SYMBOLS:
+            try:
+                norm_sym = normalize_symbol(sym, exchange.id)
+                trades = exchange.fetch_my_trades(norm_sym, last_ts)
+                for t in trades:
+                    if t['timestamp'] <= last_ts: continue
                     
-                    if gross_pnl != 0:
-                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                        net_pnl = gross_pnl - (fee * 2)
-                        
-                        try:
-                            market = exchange.market(norm_sym)
-                            contract_size = float(market.get('contractSize', 1))
-                            initial_margin = (float(t['price']) * float(t['amount']) * contract_size) / 20
-                            roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                        except:
-                            roe_pct = 0
-                        
-                        cum_pnl += net_pnl
-                        share_data = None
-                        if net_pnl > 0:
-                            wins += 1
-                            header = "🏆 *Trade Won!*"
-                            # assume long for notification if side is missing from raw info
-                            side_code = "l"
-                            share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
+                    try:
+                        info = t.get("info", {})
+                        # PnL Reconstruction
+                        gross_pnl = 0
+                        if exchange.id == 'blofin':
+                            gross_pnl = float(info.get("fillPnl") or 0)
                         else:
-                            losses += 1
-                            header = "❌ *Trade Lost*"
+                            # Binance/MEXC/Bybit
+                            gross_pnl = float(info.get("realizedPnl") or 0)
+                        
+                        if gross_pnl != 0:
+                            fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                            net_pnl = gross_pnl - (fee * 2)
                             
-                        new_closed.append({
-                            "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
-                            "share_data": share_data
-                        })
-                except Exception as e:
-                    logger.error(f"Error processing trade {t.get('id', 'unknown')}: {e}")
-        except Exception as e:
-            logger.error(f"Error fetching trades for {sym}: {e}")
+                            try:
+                                market = exchange.market(norm_sym)
+                                contract_size = float(market.get('contractSize', 1))
+                                initial_margin = (float(t['price']) * float(t['amount']) * contract_size) / 20
+                                roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                            except:
+                                roe_pct = 0
+                            
+                            cum_pnl += net_pnl
+                            share_data = None
+                            if net_pnl > 0:
+                                wins += 1
+                                header = "🏆 *Trade Won!*"
+                                # assume long for notification if side is missing from raw info
+                                side_code = "l"
+                                share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
+                            else:
+                                losses += 1
+                                header = "❌ *Trade Lost*"
+                                
+                            new_closed.append({
+                                "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
+                                "share_data": share_data
+                            })
+                    except Exception as e:
+                        logger.error(f"Error processing trade {t.get('id', 'unknown')}: {e}")
+            except Exception as e:
+                logger.error(f"Error fetching trades for {sym}: {e}")
+            
+        if new_closed:
+            clear_history_cache(chat_id)
+            
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        # Update DB
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('''UPDATE Users SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ?, starting_equity = ?, has_open_positions = ?
+                     WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, now_ts, equity, 1 if has_active else 0, chat_id))
+        conn.commit()
+        conn.close()
         
-    if new_closed:
-        clear_history_cache(chat_id)
-        
-    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    # Update DB
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''UPDATE Users SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ?, starting_equity = ?, has_open_positions = ?
-                 WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, now_ts, equity, 1 if has_active else 0, chat_id))
-    conn.commit()
-    conn.close()
-    
-    # Notify User
-    import asyncio
-    for nc in new_closed:
-        markup = None
-        if nc.get("share_data"):
-            btn = InlineKeyboardButton("📸 Share Result", callback_data=nc["share_data"])
-            markup = InlineKeyboardMarkup([[btn]])
-        
-        asyncio.create_task(application.bot.send_message(
-            chat_id=chat_id, 
-            text=nc['msg'], 
-            reply_markup=markup,
-            parse_mode="Markdown"
-        ))
+        # Notify User
+        import asyncio
+        for nc in new_closed:
+            markup = None
+            if nc.get("share_data"):
+                btn = InlineKeyboardButton("📸 Share Result", callback_data=nc["share_data"])
+                markup = InlineKeyboardMarkup([[btn]])
+            
+            asyncio.create_task(application.bot.send_message(
+                chat_id=chat_id, 
+                text=nc['msg'], 
+                reply_markup=markup,
+                parse_mode="Markdown"
+            ))
     except Exception as e:
         logger.error(f"Critical error in sync_trades_from_exchange for {chat_id}: {e}")
 
