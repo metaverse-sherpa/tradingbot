@@ -302,6 +302,8 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
                         })
                 except Exception as e:
                     logger.error(f"Error processing trade {t.get('id', 'unknown')}: {e}")
+        except Exception as e:
+            logger.error(f"Error fetching trades for {sym}: {e}")
         
     if new_closed:
         clear_history_cache(chat_id)
@@ -323,12 +325,12 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
             btn = InlineKeyboardButton("📸 Share Result", callback_data=nc["share_data"])
             markup = InlineKeyboardMarkup([[btn]])
         
-            asyncio.create_task(application.bot.send_message(
-                chat_id=chat_id, 
-                text=nc['msg'], 
-                reply_markup=markup,
-                parse_mode="Markdown"
-            ))
+        asyncio.create_task(application.bot.send_message(
+            chat_id=chat_id, 
+            text=nc['msg'], 
+            reply_markup=markup,
+            parse_mode="Markdown"
+        ))
     except Exception as e:
         logger.error(f"Critical error in sync_trades_from_exchange for {chat_id}: {e}")
 
