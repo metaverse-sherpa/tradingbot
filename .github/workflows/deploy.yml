@@ -16,7 +16,14 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
+            echo "🕵️‍♂️ Starting Institutional Deployment..."
             cd /home/gilesasp/tradingbot
+            
+            echo "📥 Fetching latest code..."
             git pull origin main
+            
+            echo "🔄 Restarting Sherpa Engine..."
             sudo systemctl restart tradingbot
-            echo "🚀 Deployment Successful. Bot is restarting..."
+            
+            echo "✅ Deployment Successful. Verification marker: 2026-05-14 10:02"
