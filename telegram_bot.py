@@ -181,7 +181,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             except: pass
             
     try:
-        stats, chart_path = await audit_task
+        stats, chart_path, df_eq = await audit_task
         if not stats or not chart_path:
             await status_msg.edit_text("❌ Personal audit failed. Check your settings."); return
 
@@ -435,7 +435,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.effective_message.reply_text(f"✅ Risk updated to *{val:.2f}%*", parse_mode="Markdown")
                 # Trigger Audit
                 user = database.get_user(chat_id)
-                asyncio.create_task(trigger_personalized_audit(update, context, user))
+                user_equity = user.get('equity', 10000.0)
+                asyncio.create_task(trigger_personalized_audit(update, context, user, start_balance=user_equity))
                 # Show settings again
                 msg, reply_markup = get_settings_ui(user)
                 await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
@@ -1393,7 +1394,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"✅ Updated {sym_to_toggle}")
         # Trigger Audit (in background)
         user = database.get_user(chat_id)
-        asyncio.create_task(trigger_personalized_audit(update, context, user))
+        user_equity = user.get('equity', 10000.0)
+        asyncio.create_task(trigger_personalized_audit(update, context, user, start_balance=user_equity))
         await show_symbol_menu(query, user)
         return
 

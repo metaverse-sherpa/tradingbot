@@ -163,7 +163,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     df_dd = pd.DataFrame(drawdowns, columns=["date", "drawdown"]).set_index("date")
     
     # Annualized Sharpe Ratio
-    daily_returns = df_eq["equity"].resample('D').last().pct_change().dropna()
+    daily_returns = df_eq["equity"].resample('D').last().pct_change(fill_method=None).dropna()
     if len(daily_returns) > 1:
         sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(365)
     else:
