@@ -240,7 +240,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         logger.error(f"Personal audit error: {e}")
         await status_msg.edit_text(f"❌ Error during simulation: {e}")
         
-def get_nav_buttons(has_active_trades=False):
+def get_nav_buttons(has_active_trades=False, is_admin=False):
     """Returns a standardized grid of inline navigation buttons, dynamically adding Panic Exit if trades are open."""
     kb = [
         [
@@ -256,17 +256,22 @@ def get_nav_buttons(has_active_trades=False):
             InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
         ]
     ]
+    if is_admin:
+        kb.append([InlineKeyboardButton("👑 Admin Console", callback_data="admin_command")])
+    
     if has_active_trades:
         kb.append([InlineKeyboardButton("🚨 PANIC EXIT (ALL)", callback_data="confirm_panic")])
     return kb
 
 def get_main_inline_menu(chat_id=None):
     has_active = False
+    is_admin = False
     if chat_id:
         user = database.get_user(chat_id)
         if user:
             has_active = user.get('has_open_positions', False)
-    return InlineKeyboardMarkup(get_nav_buttons(has_active))
+            is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+    return InlineKeyboardMarkup(get_nav_buttons(has_active, is_admin))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -621,10 +626,11 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg += f"Closed Trades: *{total_closed}*\n"
     
     # Add Share Stats button
+    is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
     cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
     keyboard = [
         [InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)],
-        *get_nav_buttons(user.get('has_open_positions', False))
+        *get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
     ]
     
     await update.effective_message.reply_text(
@@ -741,9 +747,10 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         
     history_text += "\n*Tap a button below to Share & Earn 📸*"
     
+    is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
     grid = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     grid.append([InlineKeyboardButton(" ", callback_data="none")])
-    grid.extend(get_nav_buttons(user.get('has_open_positions', False)))
+    grid.extend(get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin))
     
     await update.effective_message.reply_text(
         history_text, 
@@ -962,7 +969,7 @@ def get_settings_ui(user):
         keyboard.append([InlineKeyboardButton("🟢 Resume Trading", callback_data="toggle_active")])
         
     # Append the universal navigation footer
-    keyboard.extend(get_nav_buttons(user.get('has_open_positions', False)))
+    keyboard.extend(get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin))
     
     return msg, InlineKeyboardMarkup(keyboard)
 
@@ -1619,7 +1626,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['setting_risk'] = True
         keyboard = [
             [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
-            *get_nav_buttons(user.get('has_open_positions', False))
+            *get_nav_buttons(user.get('has_open_positions', False), is_admin=(chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode')))
         ]
         await query.edit_message_text(
             "⚖️ *Set Risk Percentage*\n\n"
@@ -1714,7 +1721,8 @@ async def show_symbol_menu(query, user):
     keyboard.append([InlineKeyboardButton("🚀 Apply & Run Audit", callback_data="apply_symbol_audit")])
     keyboard.append([InlineKeyboardButton("───────────────", callback_data="none")])
     keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
-    keyboard.extend(get_nav_buttons(user.get('has_open_positions', False)))
+    is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+    keyboard.extend(get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin))
     
     await query.edit_message_text(
         "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account.",
@@ -1820,7 +1828,8 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             # For losses, keep it humble and private (No referral link or share button)
             viral_caption = headline
-            keyboard = get_nav_buttons(user.get('has_open_positions', False))
+            is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+            keyboard = get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
             
         with open(card_path, 'rb') as photo:
             await context.bot.send_photo(
@@ -2032,7 +2041,7 @@ async def trading_engine(application):
                                         chart_file = charting.generate_trade_chart(res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
                                         
                                         # Add Nav Buttons to the Signal
-                                        keyboard = get_nav_buttons(True) # This is a new trade notification, so they definitely have positions
+                                        keyboard = get_nav_buttons(True, is_admin=(target_id == ADMIN_CHAT_ID)) # System notifications, usually no undercover needed for bot itself
                                         
                                         await application.bot.send_photo(
                                             chat_id=chat_id, 
