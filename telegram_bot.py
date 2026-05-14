@@ -339,7 +339,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Get **$5 off** your monthly subscription for every peer you refer that activates Institutional Access!\n\n"
         "🛰️ *Live Dashboard*\n"
         "Check your balance, monitor live/closed trades, and generate **Shareable PnL Cards** to show off your progress to the trail.\n\n"
-        "🏆 Tap /setup to link your account and start your climb."
+        "🏆 Tap /setup to link your account and start your climb.\n\n"
+        "⚠️ *Disclaimer:* _Automated trading carries significant risk. The Metaverse Sherpa is a tool for professional-grade execution and is **not financial advice**. Past performance does not guarantee future results. Trade at your own risk._"
     )
     
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
@@ -1784,7 +1785,8 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🤝 *Support*\n"
         "• /contact - Reach out to @metaverse\\_sherpa for questions or ideas.\n\n"
         
-        "_Need more help? Just tap any command to try it out!_"
+        "_Need more help? Just tap any command to try it out!_\n\n"
+        "⚠️ *Disclaimer:* _Automated trading carries significant risk. The Metaverse Sherpa is a tool for professional-grade execution and is **not financial advice**. Past performance does not guarantee future results. Trade at your own risk._"
     )
     chat_id = update.effective_chat.id
     await update.effective_message.reply_text(help_text, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
@@ -1897,7 +1899,8 @@ async def trading_engine(application):
                         chat_id = user['telegram_chat_id']
                         # Last-mile credential check
                         if not user.get('api_key'):
-                            logger.warning(f"Skipping user {chat_id}: No API key configured.")
+                            # Silence noise for users without API keys
+                            pass
                             continue
 
                         user_ex = ccxt.blofin({
