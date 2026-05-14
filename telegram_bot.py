@@ -296,8 +296,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             referrer_id = int(context.args[0].split("_")[1])
             if referrer_id != chat_id:
-                # Always ensure the recruit is initialized in DB first
-                database.upsert_user(chat_id, "", "", "", "blofin", is_active=False)
+            # Always ensure the recruit is initialized in DB first
+            full_name = update.effective_user.full_name
+            username = f"@{update.effective_user.username}" if update.effective_user.username else None
+            database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
                 
                 # Link and check for bonus
                 reward_granted = database.set_referrer(chat_id, referrer_id)
@@ -496,6 +498,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.effective_message.reply_text("❌ Please enter a value between 0.01 and 100.")
         except:
             await update.effective_message.reply_text("❌ Invalid number. Please enter a value like `1.5`.")
+    elif context.user_data.get('admin_broadcasting'):
+        context.user_data.pop('admin_broadcasting', None)
+        text = update.message.text
+        users = database.get_all_users()
+        count = 0
+        for u in users:
+            target_id = u['telegram_chat_id']
+            try:
+                await context.bot.send_message(chat_id=target_id, text=text, parse_mode="Markdown")
+                count += 1
+            except Exception as e:
+                logger.warning(f"Failed broadcast to {target_id}: {e}")
+        await update.message.reply_text(f"📢 Broadcast sent to {count} users.")
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -1101,6 +1116,9 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     )
     
     kb = [
+        [InlineKeyboardButton("📊 User & Referral Audit", callback_data="admin_user_audit")],
+        [InlineKeyboardButton("📢 Broadcast Message", callback_data="admin_broadcast_prompt")],
+        [InlineKeyboardButton("🔍 View Live VPS Logs", callback_data="view_logs")],
         [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
         [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
         [InlineKeyboardButton("📜 View Audit Trail (TronScan)", url=f"https://tronscan.org/#/address/{master_wallet}")],
@@ -1151,6 +1169,39 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("💎 *INSTITUTIONAL ACCESS ACTIVATED!*\nSuccessfully used $20.00 in referral credits.", parse_mode="Markdown")
         msg, rm = get_settings_ui(user)
         await query.edit_message_text(msg, reply_markup=rm, parse_mode="Markdown")
+        return
+
+    if query.data == "admin_user_audit":
+        if chat_id != ADMIN_CHAT_ID: return
+        await query.answer("📊 Generating Audit...")
+        report = database.get_detailed_user_report()
+        
+        msg = "🏔️ *Sherpa Institutional User Audit*\n\n"
+        for u in report:
+            tier = "💎 Paid" if u['is_premium'] else "🥈 Free"
+            name = u.get('full_name') or "Unknown"
+            uname = f" ({u['username']})" if u.get('username') else ""
+            status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
+            msg += f"• `{u['telegram_chat_id']}` | *{name}*{uname}\n  Status: {status} | Tier: {tier}\n  Recruits: {u['referral_count']}\n\n"
+        
+        # Split message if too long
+        if len(msg) > 4000:
+            parts = [msg[i:i+4000] for i in range(0, len(msg), 4000)]
+            for p in parts: await context.bot.send_message(chat_id=chat_id, text=p, parse_mode="Markdown")
+        else:
+            await query.message.reply_text(msg, parse_mode="Markdown")
+        return
+
+    if query.data == "admin_broadcast_prompt":
+        if chat_id != ADMIN_CHAT_ID: return
+        context.user_data['admin_broadcasting'] = True
+        await query.message.reply_text(
+            "📢 *Institutional Broadcast Mode*\n\n"
+            "Please type the message you would like to send to **ALL** users. "
+            "You can use Markdown for formatting.\n\n"
+            "Tap /cancel to abort.",
+            parse_mode="Markdown"
+        )
         return
 
     if query.data == "apply_symbol_audit":

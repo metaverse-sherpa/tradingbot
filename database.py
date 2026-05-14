@@ -99,6 +99,10 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN referral_credits REAL DEFAULT 0.0")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN full_name TEXT")
+    except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN username TEXT")
+    except: pass
     
     # 💎 Institutional Config Table
     c.execute('''CREATE TABLE IF NOT EXISTS Config
@@ -110,28 +114,28 @@ def init_db():
     conn.commit()
     conn.close()
 
-def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', equity=0.0, is_active=False):
+def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=False, full_name=None, username=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # Default symbols
-    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
-    c.execute('''INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id, starting_equity, is_active, enabled_symbols)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(telegram_chat_id) DO UPDATE SET
-                 blofin_api_key=excluded.blofin_api_key,
-                 blofin_api_secret=excluded.blofin_api_secret,
-                 blofin_api_password=excluded.blofin_api_password,
-                 exchange_id=excluded.exchange_id,
-                 starting_equity=excluded.starting_equity,
-                 is_active=excluded.is_active''',
-               (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, equity, is_active, def_syms))
+    c.execute('SELECT 1 FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    if c.fetchone():
+        c.execute('''
+            UPDATE Users 
+            SET blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, exchange_id = ?, is_active = ?, full_name = ?, username = ?
+            WHERE telegram_chat_id = ?
+        ''', (encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username, chat_id))
+    else:
+        c.execute('''
+            INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id, is_active, full_name, username)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username))
     conn.commit()
     conn.close()
 
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -160,7 +164,9 @@ def get_user(chat_id):
             "undercover_mode": row[19] if len(row) > 19 else 0,
             "source_wallet": row[20] if len(row) > 20 else None,
             "last_audit_stats": row[21] if len(row) > 21 else None,
-            "referral_credits": row[22] if len(row) > 22 else 0.0
+            "referral_credits": row[22] if len(row) > 22 else 0.0,
+            "full_name": row[23] if len(row) > 23 else None,
+            "username": row[24] if len(row) > 24 else None
         }
     return None
 
@@ -484,3 +490,49 @@ def get_platform_stats():
         "total_referrals": total_referrals,
         "premium_users": premium_users
     }
+def get_detailed_user_report():
+    """Returns a list of all users with their institutional status and referral info."""
+    conn = sqlite3.connect(DB_PATH)
+    # Return as list of dicts for easier formatting
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('''
+        SELECT 
+            telegram_chat_id,
+            premium_expiry,
+            referral_count,
+            referred_by,
+            is_active,
+            full_name,
+            username
+        FROM Users
+    ''')
+    rows = c.fetchall()
+    conn.close()
+    
+    report = []
+    now = time.time()
+    for r in rows:
+        item = dict(r)
+        item['is_premium'] = r['premium_expiry'] > now
+        report.append(item)
+    return report
+
+def get_all_users():
+    """Returns all unique users for global reports."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM Users")
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_all_broadcast_targets():
+    """Returns all unique chat IDs for global announcements."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT telegram_chat_id FROM Users")
+    rows = c.fetchall()
+    conn.close()
+    return [r[0] for r in rows]
