@@ -1169,15 +1169,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = "🏔️ *Sherpa Institutional User Audit*\n\n"
         for u in report:
             tier = "💎 Paid" if u['is_premium'] else "🥈 Free"
-            name = u.get('full_name') or "Unknown"
-            uname = f" ({u['username']})" if u.get('username') else ""
+            name = escape_md_v2(u.get('full_name') or "Unknown")
+            uname = escape_md_v2(f" (@{u['username']})") if u.get('username') else ""
             
             # 🕵️‍♂️ Last-Mile Identity Fetch (if Unknown)
             if name == "Unknown":
                 try:
                     member = await context.bot.get_chat_member(chat_id=u['telegram_chat_id'], user_id=u['telegram_chat_id'])
-                    name = member.user.full_name
-                    uname = f" (@{member.user.username})" if member.user.username else ""
+                    name = escape_md_v2(member.user.full_name)
+                    uname = escape_md_v2(f" (@{member.user.username})") if member.user.username else ""
                 except: pass
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
@@ -1187,8 +1187,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if u.get('recruit_list'):
                 msg += "  *Recruits:* \n"
                 for rec in u['recruit_list']:
-                    r_name = rec.get('full_name') or "Unknown"
-                    r_uname = f" (@{rec['username']})" if rec.get('username') else ""
+                    r_name = escape_md_v2(rec.get('full_name') or "Unknown")
+                    r_uname = escape_md_v2(f" (@{rec['username']})") if rec.get('username') else ""
                     msg += f"  └─ {r_name}{r_uname} (`{rec['telegram_chat_id']}`)\n"
             else:
                 msg += "  *Recruits:* None\n"
@@ -1197,9 +1197,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Split message if too long
         if len(msg) > 4000:
             parts = [msg[i:i+4000] for i in range(0, len(msg), 4000)]
-            for p in parts: await context.bot.send_message(chat_id=chat_id, text=p, parse_mode="Markdown")
+            for p in parts: await context.bot.send_message(chat_id=chat_id, text=p, parse_mode="MarkdownV2")
         else:
-            await query.message.reply_text(msg, parse_mode="Markdown")
+            await query.message.reply_text(msg, parse_mode="MarkdownV2")
         return
 
     if query.data == "admin_broadcast_prompt":
