@@ -936,6 +936,7 @@ def get_settings_ui(user):
         f"Active Symbols: *{len(syms)}/19*\n"
         f"Dollar PnL: *{privacy_status}*\n"
         f"Source Wallet: `{wallet_display}`\n"
+        f"Last Deploy: *2026-05-14 10:02*\n"
     )
     
     keyboard = [
