@@ -315,29 +315,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 referrer_id = int(arg.split("_")[1])
                 if referrer_id != chat_id:
-                # Always ensure the recruit is initialized in DB first
-                full_name = update.effective_user.full_name
-                username = f"@{update.effective_user.username}" if update.effective_user.username else None
-                database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
-                
-                # Link and check for bonus
-                reward_granted = database.set_referrer(chat_id, referrer_id)
-                
-                # Notify Referrer
-                try:
-                    if reward_granted:
-                        await context.bot.send_message(
-                            chat_id=referrer_id,
-                            text=(
-                                "🎉 *INSTITUTIONAL MILESTONE REACHED!*\n\n"
-                                "You've successfully recruited 3 new members to the trail. Your **Premium Institutional Access** has been activated for 30 days!\n\n"
-                                "🏔️ _The Sherpa honors your leadership._"
-                            ),
-                            parse_mode="Markdown"
-                        )
-                    else:
-                        stats = database.get_referral_stats(referrer_id)
-                        await context.bot.send_message(
+                    # Always ensure the recruit is initialized in DB first
+                    full_name = update.effective_user.full_name
+                    username = f"@{update.effective_user.username}" if update.effective_user.username else None
+                    database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
+                    
+                    # Link and check for bonus
+                    reward_granted = database.set_referrer(chat_id, referrer_id)
+                    
+                    # Notify Referrer
+                    try:
+                        if reward_granted:
+                            await context.bot.send_message(
+                                chat_id=referrer_id,
+                                text=(
+                                    "🎉 *INSTITUTIONAL MILESTONE REACHED!*\n\n"
+                                    "You've successfully recruited 3 new members to the trail. Your **Premium Institutional Access** has been activated for 30 days!\n\n"
+                                    "🏔️ _The Sherpa honors your leadership._"
+                                ),
+                                parse_mode="Markdown"
+                            )
+                        else:
+                            stats = database.get_referral_stats(referrer_id)
+                            await context.bot.send_message(
                             chat_id=referrer_id,
                             text=f"🤝 *New Institutional Recruit!*\nSomeone just joined via your link. Progress: *{stats % 3}/3* toward your next Premium month!",
                             parse_mode="Markdown"
