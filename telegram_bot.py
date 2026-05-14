@@ -373,11 +373,12 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop('setting_risk', None)
     context.user_data.pop('setup_step', None)
     
-    await update.effective_message.reply_text("🛑 *Action Cancelled.*", parse_mode="Markdown")
-    
     if chat_id == ADMIN_CHAT_ID:
-        await show_admin_dashboard(update, context)
+        footer = "\n\n───────────────────\n👑 *Sherpa Overlord Mission Control*"
+        footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
+        await update.effective_message.reply_text(f"🛑 *Action Cancelled.*{footer}", parse_mode="Markdown", reply_markup=footer_kb)
     else:
+        await update.effective_message.reply_text("🛑 *Action Cancelled.*", parse_mode="Markdown")
         await update.effective_message.reply_text(
             "🛰️ *Main Menu Activated*",
             reply_markup=get_main_inline_menu(chat_id),
@@ -532,8 +533,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 count += 1
             except Exception as e:
                 logger.warning(f"Failed broadcast to {target_id}: {e}")
-        await update.message.reply_text(f"📢 Broadcast sent to {count} users.")
-        await show_admin_dashboard(update, context)
+        footer = "\n\n───────────────────\n👑 *Sherpa Overlord Mission Control*"
+        footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
+        await update.message.reply_text(f"📢 Broadcast sent to {count} users.{footer}", parse_mode="Markdown", reply_markup=footer_kb)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -1062,6 +1064,18 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.effective_message.reply_text(premium_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
 
+def get_admin_keyboard(master_wallet):
+    """Definitive High-Authority Command Buttons."""
+    return [
+        [InlineKeyboardButton("📊 User & Referral Audit", callback_data="admin_user_audit")],
+        [InlineKeyboardButton("📢 Broadcast Message", callback_data="admin_broadcast_prompt")],
+        [InlineKeyboardButton("🔍 View Live VPS Logs", callback_data="view_logs")],
+        [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
+        [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
+        [InlineKeyboardButton("📜 View Audit Trail (TronScan)", url=f"https://tronscan.org/#/address/{master_wallet}")],
+        [InlineKeyboardButton("🔙 Close Console", callback_data="close_admin")]
+    ]
+
 async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gated dashboard for the Sherpa Overlord."""
     chat_id = update.effective_chat.id
@@ -1127,15 +1141,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         f"🕒 _Last Sync: {last_sync}_"
     )
     
-    kb = [
-        [InlineKeyboardButton("📊 User & Referral Audit", callback_data="admin_user_audit")],
-        [InlineKeyboardButton("📢 Broadcast Message", callback_data="admin_broadcast_prompt")],
-        [InlineKeyboardButton("🔍 View Live VPS Logs", callback_data="view_logs")],
-        [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
-        [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
-        [InlineKeyboardButton("📜 View Audit Trail (TronScan)", url=f"https://tronscan.org/#/address/{master_wallet}")],
-        [InlineKeyboardButton("🔙 Close Console", callback_data="close_admin")]
-    ]
+    kb = get_admin_keyboard(master_wallet)
     
     try:
         if update.callback_query:
@@ -1217,14 +1223,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg += "\n"
         
         # Split message if too long
+        # 👑 UX Persistence: Append Divider and Command Center to the LAST part
+        footer = "\n\n───────────────────\n👑 *Sherpa Overlord Mission Control*"
+        footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
+        
         if len(msg) > 4000:
             parts = [msg[i:i+4000] for i in range(0, len(msg), 4000)]
-            for p in parts: await context.bot.send_message(chat_id=chat_id, text=p, parse_mode="MarkdownV2")
+            for i, p in enumerate(parts):
+                if i == len(parts) - 1:
+                    await context.bot.send_message(chat_id=chat_id, text=p + footer, parse_mode="MarkdownV2", reply_markup=footer_kb)
+                else:
+                    await context.bot.send_message(chat_id=chat_id, text=p, parse_mode="MarkdownV2")
         else:
-            await query.message.reply_text(msg, parse_mode="MarkdownV2")
+            await query.message.reply_text(msg + footer, parse_mode="MarkdownV2", reply_markup=footer_kb)
         
-        # 👑 UX Persistence: Re-show the Command Center
-        await show_admin_dashboard(update, context)
         return
 
     if query.data == "admin_broadcast_prompt":
@@ -1249,14 +1261,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not logs: logs = "No recent logs found."
             
             # Format and send
+            footer = "\n\n───────────────────\n👑 *Sherpa Overlord Mission Control*"
+            footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
+            
             msg = "📋 *Live VPS Logs (Last 40 Lines)*\n\n"
             msg += f"```\n{logs[-4000:]}\n```" # Telegram char limit
-            await query.message.reply_text(msg, parse_mode="Markdown")
+            await query.message.reply_text(msg + footer, parse_mode="Markdown", reply_markup=footer_kb)
         except Exception as e:
             await query.message.reply_text(f"❌ Failed to fetch logs: {e}")
         
-        # 👑 UX Persistence: Re-show the Command Center
-        await show_admin_dashboard(update, context)
         return
 
     if query.data == "apply_symbol_audit":
