@@ -936,7 +936,6 @@ def get_settings_ui(user):
         f"Active Symbols: *{len(syms)}/19*\n"
         f"Dollar PnL: *{privacy_status}*\n"
         f"Source Wallet: `{wallet_display}`\n"
-        f"Last Deploy: *2026-05-14 10:02*\n"
     )
     
     keyboard = [
@@ -1133,7 +1132,8 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         "📊 *Platform Analytics*\n"
         f"• Total Users: `{stats['total_users']}`\n"
         f"• Total Referrals: `{stats['total_referrals']}`\n"
-        f"• Active Premium: `{stats['premium_users']}`\n\n"
+        f"• Active Premium: `{stats['premium_users']}`\n"
+        f"• Last Deploy: *2026-05-14 10:08*\n\n"
         "💰 *Total Treasury Value*\n"
         f"• Master Wallet: `{master_wallet}`\n"
         f"• TRX: `{trx_bal:,.1f}` | USDT: `${usdt_bal:,.2f}`\n"
