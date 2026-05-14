@@ -245,7 +245,8 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
     
     import live_bot_multi
     
-    # 🕵️ Smart UI: Sync Position Status
+    try:
+        # 🕵️ Smart UI: Sync Position Status
     try:
         positions = exchange.fetch_positions()
         has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in positions)
