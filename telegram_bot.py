@@ -479,6 +479,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🛰️ *Main Menu Activated*",
             reply_markup=get_main_inline_menu(chat_id),
             parse_mode="Markdown"
+        )
         return
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
