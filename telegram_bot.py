@@ -588,7 +588,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Target: `{safe_id}`\n"
                 f"Gift Code: `{safe_code}`\n\n"
                 f"{safe_desc}\n"
-                f"{safe_url}"
+                f"`{safe_url}`"
             )
             
             if target_username and not target_id:
