@@ -338,12 +338,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         else:
                             stats = database.get_referral_stats(referrer_id)
                             await context.bot.send_message(
-                            chat_id=referrer_id,
-                            text=f"🤝 *New Institutional Recruit!*\nSomeone just joined via your link. Progress: *{stats % 3}/3* toward your next Premium month!",
-                            parse_mode="Markdown"
-                        )
-                except: pass
-        except: pass
+                                chat_id=referrer_id,
+                                text=f"🤝 *New Institutional Recruit!*\nSomeone just joined via your link. Progress: *{stats % 3}/3* toward your next Premium month!",
+                                parse_mode="Markdown"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error sending referral notification: {e}")
+        except Exception as e:
+            logger.error(f"Error in deep-link processing: {e}")
 
     # --- 2. High-Authority Welcome Message ---
     welcome_msg = (
