@@ -602,3 +602,13 @@ def redeem_gift_code(chat_id, code):
     conn.commit()
     conn.close()
     return True, f"✅ Success! You have been granted {days} days of Premium Institutional access."
+def get_chat_id_by_username(username):
+    """Resolves a @username to a telegram_chat_id from the database."""
+    # Strip @ if present
+    username = username.lstrip('@')
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT telegram_chat_id FROM Users WHERE username = ? OR full_name LIKE ?', (username, f"%{username}%"))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None
