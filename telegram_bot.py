@@ -935,8 +935,7 @@ def get_settings_ui(user):
         f"Risk Level: *{risk_val:.2f}%*\n"
         f"Active Symbols: *{len(syms)}/19*\n"
         f"Dollar PnL: *{privacy_status}*\n"
-        f"Source Wallet: `{wallet_display}`\n\n"
-        f"Handle: @metaversesherpa_trading_bot\n"
+        f"Source Wallet: `{wallet_display}`\n"
     )
     
     keyboard = [
