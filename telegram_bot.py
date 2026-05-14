@@ -192,31 +192,34 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             try: last_stats = json.loads(user['last_audit_stats'])
             except: pass
             
-        def get_delta(current, last, is_pct=True, is_dd=False):
+        def get_delta(current, last, is_pct=True, is_dd=False, is_dollar=False):
             if not last: return ""
             diff = current - last
-            if abs(diff) < 0.01: return " (—)"
+            if abs(diff) < 0.001: return " (—)"
             
-            # Institutional Logic: Is it better or worse?
-            is_better = (diff > 0 if not is_dd else diff < 0)
-            status_icon = "✅" if is_better else "⚠️"
             trend_icon = "⬆️" if diff > 0 else "⬇️"
-            sign = "+" if diff > 0 else ""
-            unit = "%" if is_pct else ""
+            sign = "+" if diff > 0 else "-"
+            val = abs(diff)
             
-            return f" {status_icon} ({trend_icon} {sign}{diff:.1f}{unit})"
+            if is_dollar:
+                return f" ({trend_icon} {sign}${val:,.0f})"
+            elif is_pct:
+                return f" ({trend_icon} {sign}{val:.1f}%)"
+            else:
+                return f" ({trend_icon} {sign}{val:.2f})"
 
         pnl_delta = get_delta(stats['pnl_pct'], last_stats.get('pnl_pct')) if last_stats else ""
         win_delta = get_delta(stats['win_rate'], last_stats.get('win_rate')) if last_stats else ""
         dd_delta = get_delta(stats['max_dd'], last_stats.get('max_dd'), is_dd=True) if last_stats else ""
-        equity_delta = get_delta(stats['final_equity'], last_stats.get('final_equity'), is_pct=False) if last_stats else ""
+        equity_delta = get_delta(stats['final_equity'], last_stats.get('final_equity'), is_pct=False, is_dollar=True) if last_stats else ""
+        sharpe_delta = get_delta(stats['sharpe'], last_stats.get('sharpe'), is_pct=False) if last_stats else ""
 
         audit_msg = (
             f"🏔️ *Your Personalized 3-Year Audit*\n"
             f"Start Balance: `${start_balance:,.0f}` | Risk: `{risk:.2f}%`\n\n"
             f"Final Equity: *${stats['final_equity']:,.2f}*{equity_delta}\n"
             f"Total PnL: *{stats['pnl_pct']:+.1f}%*{pnl_delta}\n"
-            f"Sharpe Ratio: *{stats['sharpe']:.2f}*\n"
+            f"Sharpe Ratio: *{stats['sharpe']:.2f}*{sharpe_delta}\n"
             f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
             f"Max Drawdown: *{stats['max_dd']:.1f}%*{dd_delta}\n\n"
             "📈 _This simulation represents your settings applied over the last 3 years._"
