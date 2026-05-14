@@ -1235,6 +1235,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(msg, reply_markup=rm, parse_mode="Markdown")
         return
 
+    if query.data == "admin_command":
+        if chat_id != ADMIN_CHAT_ID: return
+        await admin_command(update, context)
+        return
+
     if query.data == "admin_user_audit":
         if chat_id != ADMIN_CHAT_ID: return
         await query.answer("📊 Generating Audit...")
