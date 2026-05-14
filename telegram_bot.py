@@ -249,11 +249,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ref_info = f" (Referrer: `{context.args[0].split('_')[1]}`)" if context.args and context.args[0].startswith("ref_") else ""
             
             admin_msg = (
-                "👤 *New Sherpa Member!*\n\n"
+                "🏔️ *New Sherpa Scout Spotted!*\n\n"
                 f"Name: `{full_name}`\n"
                 f"User: {username}\n"
                 f"ID: `{chat_id}`{ref_info}\n\n"
-                "📈 _The trail is expanding..._"
+                "📈 _A new recruit has joined the trail. Awaiting setup..._"
             )
             await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_msg, parse_mode="Markdown")
         except Exception as e:
@@ -265,7 +265,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             referrer_id = int(context.args[0].split("_")[1])
             if referrer_id != chat_id:
                 # Always ensure the recruit is initialized in DB first
-                database.upsert_user(chat_id, "", "", "", "blofin")
+                database.upsert_user(chat_id, "", "", "", "blofin", is_active=False)
                 
                 # Link and check for bonus
                 reward_granted = database.set_referrer(chat_id, referrer_id)
@@ -399,15 +399,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try: await update.effective_message.delete()
         except: pass
         
-        # Save to DB
+        # Save to DB and Activate
         database.upsert_user(
             chat_id, 
             context.user_data['api_key'],
             context.user_data['api_secret'],
             context.user_data['api_password'],
             exchange_id=context.user_data.get('exchange_id', 'blofin'),
-            equity=0.0 # Starting equity will be fetched by engine
+            equity=0.0,
+            is_active=True
         )
+        
+        # 💎 Stage 2 Admin Alert: Institutional Activation
+        try:
+            user_info = update.effective_user
+            full_name = user_info.full_name
+            username = f"@{user_info.username}" if user_info.username else "No Username"
+            act_msg = (
+                "💎 *Institutional Access Activated!*\n\n"
+                f"User: `{full_name}` ({username})\n"
+                f"ID: `{chat_id}`\n\n"
+                "🚀 _Member has configured API and is now LIVE in the engine._"
+            )
+            await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=act_msg, parse_mode="Markdown")
+        except: pass
         
         context.user_data.clear()
         keyboard = [[InlineKeyboardButton("💰 Check My Balance", callback_data="check_balance_setup")]]
@@ -1689,6 +1704,11 @@ async def trading_engine(application):
                 for user in users:
                     try:
                         chat_id = user['telegram_chat_id']
+                        # Last-mile credential check
+                        if not user.get('api_key'):
+                            logger.warning(f"Skipping user {chat_id}: No API key configured.")
+                            continue
+
                         user_ex = ccxt.blofin({
                             "apiKey": user['api_key'],
                             "secret": user['api_secret'],

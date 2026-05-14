@@ -106,7 +106,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', equity=0.0):
+def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', equity=0.0, is_active=False):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     # Default symbols
@@ -120,7 +120,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', eq
                  exchange_id=excluded.exchange_id,
                  starting_equity=excluded.starting_equity,
                  is_active=excluded.is_active''',
-               (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, equity, True, def_syms))
+               (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, equity, is_active, def_syms))
     conn.commit()
     conn.close()
 
@@ -161,7 +161,7 @@ def get_user(chat_id):
 def get_all_active_users():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT telegram_chat_id FROM Users WHERE is_active = 1')
+    c.execute('SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND blofin_api_key IS NOT NULL AND blofin_api_key != ""')
     chat_ids = [row[0] for row in c.fetchall()]
     conn.close()
     return [get_user(cid) for cid in chat_ids]
