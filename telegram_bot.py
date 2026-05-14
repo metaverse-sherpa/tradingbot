@@ -344,8 +344,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             )
                     except Exception as e:
                         logger.error(f"Error sending referral notification: {e}")
-        except Exception as e:
-            logger.error(f"Error in deep-link processing: {e}")
+            except Exception as e:
+                logger.error(f"Error in deep-link processing: {e}")
 
     # --- 2. High-Authority Welcome Message ---
     welcome_msg = (
