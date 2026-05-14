@@ -548,16 +548,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target_id = int(text)
             code = database.create_gift_code(target_id)
             bot_username = (await context.bot.get_me()).username
+            
+            # 🏔️ Sherpa Escaping: Definitive MarkdownV2 character handling
+            from telegram.helpers import escape_markdown
+            safe_id = escape_markdown(str(target_id), version=2)
+            safe_code = escape_markdown(code, version=2)
             gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
             
+            # Escape EVERYTHING that isn't inside a code block
+            safe_header = escape_markdown("🎁 Institutional Gift Generated", version=2)
+            safe_desc = escape_markdown("Forward this link to the user to grant them 30 Days of Premium Access:", version=2)
+            safe_url = escape_markdown(gift_url, version=2)
+            
             msg = (
-                "🎁 *Institutional Gift Generated*\n\n"
-                f"Target User ID: `{target_id}`\n"
-                f"Gift Code: `{code}`\n\n"
-                f"Forward this link to the user to grant them **30 Days of Premium Access**:\n"
-                f"{gift_url}"
+                f"{safe_header}\n\n"
+                f"Target User ID: `{safe_id}`\n"
+                f"Gift Code: `{safe_code}`\n\n"
+                f"{safe_desc}\n"
+                f"{safe_url}"
             )
-            await update.message.reply_text(msg, parse_mode="Markdown")
+            await update.message.reply_text(msg, parse_mode="MarkdownV2")
         except ValueError:
             await update.message.reply_text("❌ Invalid Chat ID. Please enter a numerical ID.")
         except Exception as e:
@@ -1317,23 +1327,25 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "view_logs":
         if chat_id != ADMIN_CHAT_ID: return
-        await query.answer("🔍 Fetching VPS Logs...")
+        await query.answer("🔍 Fetching Mission Logs...")
         try:
             import subprocess
-            result = subprocess.check_output(["journalctl", "-u", "tradingbot", "-n", "40"], stderr=subprocess.STDOUT)
-            logs = result.decode("utf-8")
-            if not logs: logs = "No recent logs found."
+            from telegram.helpers import escape_markdown
+            # Get last 50 lines of journalctl for better visibility
+            logs = subprocess.check_output(["journalctl", "-u", "tradingbot", "-n", "50", "--no-pager"], text=True)
+            safe_logs = escape_markdown(logs, version=2)
             
-            # Format and send
-            footer = "\n\n───────────────────\n👑 *Sherpa Overlord Mission Control*"
-            footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
+            kb = [[InlineKeyboardButton("🔄 Refresh Logs", callback_data="view_logs")],
+                  [InlineKeyboardButton("🔙 Back to Admin", callback_data="admin_command")]]
             
-            msg = "📋 *Live VPS Logs (Last 40 Lines)*\n\n"
-            msg += f"```\n{logs[-4000:]}\n```" # Telegram char limit
-            await query.message.reply_text(msg + footer, parse_mode="Markdown", reply_markup=footer_kb)
+            msg = f"📋 *Sherpa Operational Logs* \(Last 50 Lines\)\n\n```\n{safe_logs}\n```"
+            
+            if query.message.text and "Operational Logs" in query.message.text:
+                await query.edit_message_text(msg, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+            else:
+                await query.message.reply_text(msg, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
         except Exception as e:
             await query.message.reply_text(f"❌ Failed to fetch logs: {e}")
-        
         return
 
     if query.data == "apply_symbol_audit":
@@ -2163,7 +2175,7 @@ def main():
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CommandHandler("cancel", cancel_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
