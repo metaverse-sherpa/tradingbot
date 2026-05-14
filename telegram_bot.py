@@ -1119,6 +1119,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not source_wallet:
             await query.message.reply_text("❌ No source wallet linked. Please set your wallet first.")
             return
+
+        # 👑 Admin-Only Self-Audit Security
+        if source_wallet == get_master_wallet() and chat_id != ADMIN_CHAT_ID:
+            await query.message.reply_text(
+                "❌ *Invalid Source Wallet*\n\n"
+                "You cannot use the Master Treasury address as your source wallet. Please link your personal USDT (TRC-20) address in Settings.",
+                parse_mode="Markdown"
+            )
+            return
             
         await query.message.reply_text("🔎 *Auditing Blockchain for your transfer...*\n\nThis usually takes 1-3 minutes. Please wait and click again if activation is not instant.", parse_mode="Markdown")
         
@@ -1141,7 +1150,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             found = False
             for tx in transfers:
                 # TRC-20 USDT contract: TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
-                if tx.get('token_address') == 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t':
+                if tx.get('contract_address') == 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t':
                     amount = float(tx.get('quant')) / 10**6
                     # Check for exactly $20 (allow a small range just in case of fees)
                     if 19.5 <= amount <= 20.5:
