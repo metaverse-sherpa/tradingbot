@@ -301,7 +301,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         arg = context.args[0]
         if arg.startswith("gift_"):
             code = arg.split("_")[1]
-            success, msg = database.redeem_gift_code(chat_id, code)
+            current_uname = update.effective_user.username
+            success, msg = database.redeem_gift_code(chat_id, code, current_username=current_uname)
             await update.effective_message.reply_text(msg, parse_mode="Markdown")
             if success:
                 # Refresh view
@@ -547,30 +548,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             target_input = text
             target_id = None
+            target_username = None
             is_universal = False
             
             # Resolve username if provided
             if target_input.startswith('@') or not target_input.isdigit():
                 target_id = database.get_chat_id_by_username(target_input)
                 if not target_id:
-                    is_universal = True
-                    # We will still generate the gift, but it will be "Universal"
+                    target_username = target_input.lstrip('@')
+                    is_universal = False # It's NOT universal anymore, it's tied to a name!
             else:
                 target_id = int(target_input)
 
-            code = database.create_gift_code(target_id)
+            code = database.create_gift_code(target_id, target_username)
             bot_username = (await context.bot.get_me()).username
             
             # 🏔️ Sherpa Escaping: Definitive MarkdownV2 character handling
             from telegram.helpers import escape_markdown
-            safe_id = escape_markdown(str(target_id) if target_id else "ANY (Universal)", version=2)
+            if target_id:
+                display_target = str(target_id)
+            elif target_username:
+                display_target = f"@{target_username} (Reserved)"
+            else:
+                display_target = "ANY (Universal)"
+                
+            safe_id = escape_markdown(display_target, version=2)
             safe_code = escape_markdown(code, version=2)
             gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
             
             # Escape EVERYTHING for the Admin message
-            header_txt = "🎁 Universal Gift Link Generated" if is_universal else "🎁 Targeted Gift Generated"
+            header_txt = "🎁 Reserved Gift Generated" if target_username else "🎁 Targeted Gift Generated"
             safe_header = escape_markdown(header_txt, version=2)
-            desc_txt = "Forward this link manually (User not in DB):" if is_universal else "Forward this link (or wait for auto-notify):"
+            desc_txt = f"Forward this link to @{target_username} (Identity locked):" if target_username else "Forward this link (or wait for auto-notify):"
             safe_desc = escape_markdown(desc_txt, version=2)
             safe_url = escape_markdown(gift_url, version=2)
             
@@ -582,13 +591,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{safe_url}"
             )
             
-            if is_universal:
-                msg += escape_markdown("\n\n⚠️ Note: Since this user is not in the database, I cannot notify them automatically. You must send them this link manually.", version=2)
+            if target_username and not target_id:
+                msg += escape_markdown("\n\n⚠️ Note: This user is not in the DB yet, but this link is LOCKED to their username. Only they can redeem it.", version=2)
             
             await update.message.reply_text(msg, parse_mode="MarkdownV2")
 
-            # 🎁 Direct Notification (Only if targeted)
-            if not is_universal and target_id:
+            # 🎁 Direct Notification (Only if already in DB)
+            if target_id:
                 try:
                     user_msg = (
                         "🎁 *Institutional Gift Received!*\n\n"

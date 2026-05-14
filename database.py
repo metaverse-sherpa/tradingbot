@@ -112,9 +112,14 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS GiftCodes
                  (code TEXT PRIMARY KEY, 
                   target_chat_id INTEGER, 
+                  target_username TEXT,
                   expiry_days INTEGER DEFAULT 30, 
                   is_used BOOLEAN DEFAULT 0,
                   created_at INTEGER)''')
+    
+    # 🩹 Migration: Ensure target_username column exists
+    try: c.execute("ALTER TABLE GiftCodes ADD COLUMN target_username TEXT")
+    except: pass
     
     # Set default master wallet if not exists
     c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('master_usdt_wallet', 'YOUR_MASTER_TRON_ADDRESS_HERE')")
@@ -557,38 +562,48 @@ def get_all_broadcast_targets():
     rows = c.fetchall()
     conn.close()
     return [r[0] for r in rows]
-def create_gift_code(target_chat_id, days=30):
-    """Generates a unique, high-authority gift code tied to a user."""
+def create_gift_code(target_chat_id=None, target_username=None, days=30):
+    """Generates a unique gift code tied to an ID or a proactive username claim."""
     import secrets
     import string
+    # Clean username
+    if target_username:
+        target_username = target_username.lstrip('@')
+        
     code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(12))
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('INSERT INTO GiftCodes (code, target_chat_id, expiry_days, is_used, created_at) VALUES (?, ?, ?, 0, ?)', 
-              (code, target_chat_id, days, int(time.time())))
+    c.execute('INSERT INTO GiftCodes (code, target_chat_id, target_username, expiry_days, is_used, created_at) VALUES (?, ?, ?, ?, 0, ?)', 
+              (code, target_chat_id, target_username, days, int(time.time())))
     conn.commit()
     conn.close()
     return code
 
-def redeem_gift_code(chat_id, code):
+def redeem_gift_code(chat_id, code, current_username=None):
     """Activates a gift code and grants institutional premium power."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT target_chat_id, expiry_days, is_used FROM GiftCodes WHERE code = ?', (code,))
+    c.execute('SELECT target_chat_id, target_username, expiry_days, is_used FROM GiftCodes WHERE code = ?', (code,))
     row = c.fetchone()
     if not row:
         conn.close()
         return False, "❌ Invalid gift code."
     
-    target_id, days, is_used = row
+    target_id, target_username, days, is_used = row
     if is_used:
         conn.close()
         return False, "❌ This code has already been redeemed."
     
+    # Validation Logic
     if target_id and int(target_id) != int(chat_id):
         conn.close()
         return False, "❌ This code is tied to a different user ID."
     
+    if target_username:
+        clean_current = current_username.lstrip('@') if current_username else None
+        if target_username.lower() != (clean_current.lower() if clean_current else ""):
+            conn.close()
+            return False, f"❌ This code is reserved for @{target_username}."    
     # Grant premium
     current_time = int(time.time())
     c.execute('SELECT premium_expiry FROM Users WHERE telegram_chat_id = ?', (chat_id,))
