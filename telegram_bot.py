@@ -546,13 +546,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.pop('admin_gifting', None)
         try:
             target_input = text
+            target_id = None
+            is_universal = False
+            
             # Resolve username if provided
             if target_input.startswith('@') or not target_input.isdigit():
                 target_id = database.get_chat_id_by_username(target_input)
                 if not target_id:
-                    await update.message.reply_text(f"❌ User `{target_input}` not found in Sherpa database. They must start the bot first to be registered.")
-                    await show_admin_dashboard(update, context)
-                    return
+                    is_universal = True
+                    # We will still generate the gift, but it will be "Universal"
             else:
                 target_id = int(target_input)
 
@@ -561,36 +563,43 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # 🏔️ Sherpa Escaping: Definitive MarkdownV2 character handling
             from telegram.helpers import escape_markdown
-            safe_id = escape_markdown(str(target_id), version=2)
+            safe_id = escape_markdown(str(target_id) if target_id else "ANY (Universal)", version=2)
             safe_code = escape_markdown(code, version=2)
             gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
             
             # Escape EVERYTHING for the Admin message
-            safe_header = escape_markdown("🎁 Institutional Gift Generated", version=2)
-            safe_desc = escape_markdown("Forward this link to the user (or wait for auto-notify):", version=2)
+            header_txt = "🎁 Universal Gift Link Generated" if is_universal else "🎁 Targeted Gift Generated"
+            safe_header = escape_markdown(header_txt, version=2)
+            desc_txt = "Forward this link manually (User not in DB):" if is_universal else "Forward this link (or wait for auto-notify):"
+            safe_desc = escape_markdown(desc_txt, version=2)
             safe_url = escape_markdown(gift_url, version=2)
             
             msg = (
                 f"{safe_header}\n\n"
-                f"Target User ID: `{safe_id}`\n"
+                f"Target: `{safe_id}`\n"
                 f"Gift Code: `{safe_code}`\n\n"
                 f"{safe_desc}\n"
                 f"{safe_url}"
             )
+            
+            if is_universal:
+                msg += escape_markdown("\n\n⚠️ Note: Since this user is not in the database, I cannot notify them automatically. You must send them this link manually.", version=2)
+            
             await update.message.reply_text(msg, parse_mode="MarkdownV2")
 
-            # 🎁 Direct Notification to User
-            try:
-                user_msg = (
-                    "🎁 *Institutional Gift Received!*\n\n"
-                    "The Sherpa Overlord has granted you **30 Days of Premium Institutional Access**.\n\n"
-                    "Tap the link below to activate your account and unlock the full Sherpa Basket:\n\n"
-                    f"{gift_url}"
-                )
-                await context.bot.send_message(chat_id=target_id, text=user_msg, parse_mode="Markdown")
-                await update.message.reply_text(f"✅ User `{target_id}` has been notified directly.")
-            except Exception as notify_err:
-                await update.message.reply_text(f"⚠️ Gift generated, but could not notify user directly: {notify_err}")
+            # 🎁 Direct Notification (Only if targeted)
+            if not is_universal and target_id:
+                try:
+                    user_msg = (
+                        "🎁 *Institutional Gift Received!*\n\n"
+                        "The Sherpa Overlord has granted you **30 Days of Premium Institutional Access**.\n\n"
+                        "Tap the link below to activate your account and unlock the full Sherpa Basket:\n\n"
+                        f"{gift_url}"
+                    )
+                    await context.bot.send_message(chat_id=target_id, text=user_msg, parse_mode="Markdown")
+                    await update.message.reply_text(f"✅ User `{target_id}` has been notified directly.")
+                except Exception as notify_err:
+                    await update.message.reply_text(f"⚠️ Gift generated, but could not notify user directly: {notify_err}")
 
         except ValueError:
             await update.message.reply_text("❌ Invalid Input. Please enter a numerical ID or @username.")
