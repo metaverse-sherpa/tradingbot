@@ -108,6 +108,14 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS Config
                  (key TEXT PRIMARY KEY, value TEXT)''')
     
+    # 🎁 Gift Codes Table
+    c.execute('''CREATE TABLE IF NOT EXISTS GiftCodes
+                 (code TEXT PRIMARY KEY, 
+                  target_chat_id INTEGER, 
+                  expiry_days INTEGER DEFAULT 30, 
+                  is_used BOOLEAN DEFAULT 0,
+                  created_at INTEGER)''')
+    
     # Set default master wallet if not exists
     c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('master_usdt_wallet', 'YOUR_MASTER_TRON_ADDRESS_HERE')")
     
@@ -549,3 +557,48 @@ def get_all_broadcast_targets():
     rows = c.fetchall()
     conn.close()
     return [r[0] for r in rows]
+def create_gift_code(target_chat_id, days=30):
+    """Generates a unique, high-authority gift code tied to a user."""
+    import secrets
+    import string
+    code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(12))
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('INSERT INTO GiftCodes (code, target_chat_id, expiry_days, is_used, created_at) VALUES (?, ?, ?, 0, ?)', 
+              (code, target_chat_id, days, int(time.time())))
+    conn.commit()
+    conn.close()
+    return code
+
+def redeem_gift_code(chat_id, code):
+    """Activates a gift code and grants institutional premium power."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT target_chat_id, expiry_days, is_used FROM GiftCodes WHERE code = ?', (code,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return False, "❌ Invalid gift code."
+    
+    target_id, days, is_used = row
+    if is_used:
+        conn.close()
+        return False, "❌ This code has already been redeemed."
+    
+    if target_id and int(target_id) != int(chat_id):
+        conn.close()
+        return False, "❌ This code is tied to a different user ID."
+    
+    # Grant premium
+    current_time = int(time.time())
+    c.execute('SELECT premium_expiry FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    u_row = c.fetchone()
+    current_expiry = u_row[0] if u_row else 0
+    
+    new_expiry = max(current_expiry, current_time) + (days * 86400)
+    c.execute('UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?', (new_expiry, chat_id))
+    c.execute('UPDATE GiftCodes SET is_used = 1 WHERE code = ?', (code,))
+    
+    conn.commit()
+    conn.close()
+    return True, f"✅ Success! You have been granted {days} days of Premium Institutional access."

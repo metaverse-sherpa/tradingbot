@@ -296,11 +296,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             logger.error(f"Error sending admin notification: {e}")
     
-    # --- 1. Handle Referral Deep Linking ---
-    if context.args and context.args[0].startswith("ref_"):
-        try:
-            referrer_id = int(context.args[0].split("_")[1])
-            if referrer_id != chat_id:
+    # --- 1. Handle Deep Linking ---
+    if context.args:
+        arg = context.args[0]
+        if arg.startswith("gift_"):
+            code = arg.split("_")[1]
+            success, msg = database.redeem_gift_code(chat_id, code)
+            await update.effective_message.reply_text(msg, parse_mode="Markdown")
+            if success:
+                # Refresh view
+                await update.effective_message.reply_text(
+                    "💎 *Institutional Access Activated!*\n\nYour dashboard has been upgraded.",
+                    reply_markup=get_main_inline_menu(chat_id),
+                    parse_mode="Markdown"
+                )
+                return
+        elif arg.startswith("ref_"):
+            try:
+                referrer_id = int(arg.split("_")[1])
+                if referrer_id != chat_id:
                 # Always ensure the recruit is initialized in DB first
                 full_name = update.effective_user.full_name
                 username = f"@{update.effective_user.username}" if update.effective_user.username else None
@@ -526,6 +540,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.effective_message.reply_text("❌ Please enter a value between 0.01 and 100.")
         except:
             await update.effective_message.reply_text("❌ Invalid number. Please enter a value like `1.5`.")
+    elif context.user_data.get('admin_gifting'):
+        context.user_data.pop('admin_gifting', None)
+        try:
+            target_id = int(text)
+            code = database.create_gift_code(target_id)
+            bot_username = (await context.bot.get_me()).username
+            gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
+            
+            msg = (
+                "🎁 *Institutional Gift Generated*\n\n"
+                f"Target User ID: `{target_id}`\n"
+                f"Gift Code: `{code}`\n\n"
+                f"Forward this link to the user to grant them **30 Days of Premium Access**:\n"
+                f"{gift_url}"
+            )
+            await update.message.reply_text(msg, parse_mode="Markdown")
+        except ValueError:
+            await update.message.reply_text("❌ Invalid Chat ID. Please enter a numerical ID.")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Failed to generate gift: {e}")
+        
+        await show_admin_dashboard(update, context)
+        return
+
     elif context.user_data.get('admin_broadcasting'):
         context.user_data.pop('admin_broadcasting', None)
         text = update.message.text
@@ -1074,6 +1112,7 @@ def get_admin_keyboard(master_wallet):
     """Definitive High-Authority Command Buttons."""
     return [
         [InlineKeyboardButton("📊 User & Referral Audit", callback_data="admin_user_audit")],
+        [InlineKeyboardButton("🎁 Gift Premium Access", callback_data="admin_gift_prompt")],
         [InlineKeyboardButton("📢 Broadcast Message", callback_data="admin_broadcast_prompt")],
         [InlineKeyboardButton("🔍 View Live VPS Logs", callback_data="view_logs")],
         [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
@@ -1253,6 +1292,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📢 *Institutional Broadcast Mode*\n\n"
             "Please type the message you would like to send to **ALL** users. "
             "You can use Markdown for formatting.\n\n"
+            "Tap /cancel to abort.",
+            parse_mode="Markdown"
+        )
+        return
+
+    if query.data == "admin_gift_prompt":
+        context.user_data['admin_gifting'] = True
+        await query.message.reply_text(
+            "🎁 *Institutional Gifting Center*\n\n"
+            "Please enter the **Telegram Chat ID** of the user you wish to gift a free month of Premium access to.\n\n"
+            "You can find this ID in the 'User & Referral Audit' report.\n\n"
             "Tap /cancel to abort.",
             parse_mode="Markdown"
         )
