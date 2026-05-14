@@ -1181,7 +1181,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except: pass
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
-            msg += f"• `{u['telegram_chat_id']}` | *{name}*{uname}\n  Status: {status} | Tier: {tier}\n"
+            msg += f"• `{u['telegram_chat_id']}` \| *{name}*{uname}\n  Status: {status} \| Tier: {tier}\n"
             
             # 🤝 Display Referral Tree
             if u.get('recruit_list'):
@@ -1189,7 +1189,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for rec in u['recruit_list']:
                     r_name = escape_md_v2(rec.get('full_name') or "Unknown")
                     r_uname = escape_md_v2(f" (@{rec['username']})") if rec.get('username') else ""
-                    msg += f"  └─ {r_name}{r_uname} (`{rec['telegram_chat_id']}`)\n"
+                    msg += f"  └\─ {r_name}{r_uname} \(`{rec['telegram_chat_id']}`\)\n"
             else:
                 msg += "  *Recruits:* None\n"
             msg += "\n"
