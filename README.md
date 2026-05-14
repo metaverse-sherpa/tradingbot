@@ -79,6 +79,7 @@ Follow these steps each time you push new code to Github:
 
 ## 🛠️ Troubleshooting & Environment
 
+
 ### ⚠️ PATH Warnings
 If you see a warning like `WARNING: The script ... is installed in ... which is not on PATH`, **don't worry.** This is normal and doesn't affect the bot. It just means the optional command-line tools aren't in your system's shortcut list. The bot code itself will work perfectly.
 
