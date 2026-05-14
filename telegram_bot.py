@@ -5,6 +5,7 @@ import ccxt
 import pandas as pd
 import live_bot_multi
 import media_gen
+import json
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
@@ -185,16 +186,44 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         if not stats or not chart_path:
             await status_msg.edit_text("❌ Personal audit failed. Check your settings."); return
 
+        # 🏔️ Institutional Delta Engine: Compare with Last Audit
+        last_stats = None
+        if user.get('last_audit_stats'):
+            try: last_stats = json.loads(user['last_audit_stats'])
+            except: pass
+            
+        def get_delta(current, last, is_pct=True, is_dd=False):
+            if not last: return ""
+            diff = current - last
+            if abs(diff) < 0.01: return " (—)"
+            
+            # Institutional Logic: Is it better or worse?
+            is_better = (diff > 0 if not is_dd else diff < 0)
+            status_icon = "✅" if is_better else "⚠️"
+            trend_icon = "⬆️" if diff > 0 else "⬇️"
+            sign = "+" if diff > 0 else ""
+            unit = "%" if is_pct else ""
+            
+            return f" {status_icon} ({trend_icon} {sign}{diff:.1f}{unit})"
+
+        pnl_delta = get_delta(stats['pnl_pct'], last_stats.get('pnl_pct')) if last_stats else ""
+        win_delta = get_delta(stats['win_rate'], last_stats.get('win_rate')) if last_stats else ""
+        dd_delta = get_delta(stats['max_dd'], last_stats.get('max_dd'), is_dd=True) if last_stats else ""
+        equity_delta = get_delta(stats['final_equity'], last_stats.get('final_equity'), is_pct=False) if last_stats else ""
+
         audit_msg = (
             f"🏔️ *Your Personalized 3-Year Audit*\n"
             f"Start Balance: `${start_balance:,.0f}` | Risk: `{risk:.2f}%`\n\n"
-            f"Final Equity: *${stats['final_equity']:,.2f}*\n"
-            f"Total PnL: *{stats['pnl_pct']:+.1f}%*\n"
+            f"Final Equity: *${stats['final_equity']:,.2f}*{equity_delta}\n"
+            f"Total PnL: *{stats['pnl_pct']:+.1f}%*{pnl_delta}\n"
             f"Sharpe Ratio: *{stats['sharpe']:.2f}*\n"
-            f"Win Rate: *{stats['win_rate']:.1f}%*\n"
-            f"Max Drawdown: *{stats['max_dd']:.1f}%*\n\n"
+            f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
+            f"Max Drawdown: *{stats['max_dd']:.1f}%*{dd_delta}\n\n"
             "📈 _This simulation represents your settings applied over the last 3 years._"
         )
+        
+        # 💎 Institutional Memory: Update Last Audit Cache
+        database.update_last_audit(chat_id, stats)
         
         await status_msg.delete()
         if os.path.exists(chart_path):
