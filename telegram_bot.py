@@ -296,10 +296,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             referrer_id = int(context.args[0].split("_")[1])
             if referrer_id != chat_id:
-            # Always ensure the recruit is initialized in DB first
-            full_name = update.effective_user.full_name
-            username = f"@{update.effective_user.username}" if update.effective_user.username else None
-            database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
+                # Always ensure the recruit is initialized in DB first
+                full_name = update.effective_user.full_name
+                username = f"@{update.effective_user.username}" if update.effective_user.username else None
+                database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
                 
                 # Link and check for bonus
                 reward_granted = database.set_referrer(chat_id, referrer_id)
