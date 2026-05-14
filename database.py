@@ -280,15 +280,16 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
                         contract_size = float(market.get('contractSize', 1))
                         initial_margin = (float(t['price']) * float(t['amount']) * contract_size) / 20
                         roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                    except: roe_pct = 0
+                    except:
+                        roe_pct = 0
                     
                     cum_pnl += net_pnl
                     share_data = None
                     if net_pnl > 0:
                         wins += 1
                         header = "🏆 *Trade Won!*"
-                        # sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
-                        side_code = "l" # assume long for notification if side is missing from raw info
+                        # assume long for notification if side is missing from raw info
+                        side_code = "l"
                         share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
                     else:
                         losses += 1
@@ -298,7 +299,8 @@ def update_user_stats_from_engine(chat_id, equity, exchange, application):
                         "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
                         "share_data": share_data
                     })
-        except: pass
+                except Exception as e:
+                    logger.error(f"Error processing trade {t['id']}: {e}")
         
     if new_closed:
         clear_history_cache(chat_id)
@@ -515,6 +517,12 @@ def get_detailed_user_report():
     for r in rows:
         item = dict(r)
         item['is_premium'] = r['premium_expiry'] > now
+        
+        # 🤝 Map Recruits (Fetch their names/IDs)
+        c.execute("SELECT full_name, username, telegram_chat_id FROM Users WHERE referred_by = ?", (r['telegram_chat_id'],))
+        recruits = c.fetchall()
+        item['recruit_list'] = [dict(rec) for rec in recruits]
+        
         report.append(item)
     return report
 

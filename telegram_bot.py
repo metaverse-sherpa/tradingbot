@@ -1171,8 +1171,28 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tier = "💎 Paid" if u['is_premium'] else "🥈 Free"
             name = u.get('full_name') or "Unknown"
             uname = f" ({u['username']})" if u.get('username') else ""
+            
+            # 🕵️‍♂️ Last-Mile Identity Fetch (if Unknown)
+            if name == "Unknown":
+                try:
+                    member = await context.bot.get_chat_member(chat_id=u['telegram_chat_id'], user_id=u['telegram_chat_id'])
+                    name = member.user.full_name
+                    uname = f" (@{member.user.username})" if member.user.username else ""
+                except: pass
+
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
-            msg += f"• `{u['telegram_chat_id']}` | *{name}*{uname}\n  Status: {status} | Tier: {tier}\n  Recruits: {u['referral_count']}\n\n"
+            msg += f"• `{u['telegram_chat_id']}` | *{name}*{uname}\n  Status: {status} | Tier: {tier}\n"
+            
+            # 🤝 Display Referral Tree
+            if u.get('recruit_list'):
+                msg += "  *Recruits:* \n"
+                for rec in u['recruit_list']:
+                    r_name = rec.get('full_name') or "Unknown"
+                    r_uname = f" (@{rec['username']})" if rec.get('username') else ""
+                    msg += f"  └─ {r_name}{r_uname} (`{rec['telegram_chat_id']}`)\n"
+            else:
+                msg += "  *Recruits:* None\n"
+            msg += "\n"
         
         # Split message if too long
         if len(msg) > 4000:
