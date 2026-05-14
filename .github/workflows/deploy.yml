@@ -20,8 +20,9 @@ jobs:
             echo "🕵️‍♂️ Starting Institutional Deployment..."
             cd /home/gilesasp/tradingbot
             
-            echo "📥 Fetching latest code..."
-            git pull origin main
+            echo "📥 Synchronizing with GitHub HEAD (Hard Reset)..."
+            git fetch origin main
+            git reset --hard origin/main
             
             echo "🔄 Restarting Sherpa Engine..."
             sudo systemctl restart tradingbot
