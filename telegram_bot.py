@@ -1407,11 +1407,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             current_syms.append(sym_to_toggle)
         database.update_user_preference(chat_id, "enabled_symbols", current_syms)
         await query.answer(f"✅ Updated {sym_to_toggle}")
-        # Trigger Audit (in background)
+        # Re-show menu (Silent, no audit)
+        user = database.get_user(chat_id)
+        await show_symbol_menu(query, user)
+        return
+
+    elif query.data == "apply_symbol_audit":
+        await query.answer("🏔️ Applying Institutional Settings...")
+        # Trigger single definitive audit
         user = database.get_user(chat_id)
         user_equity = user.get('equity', 10000.0)
         asyncio.create_task(trigger_personalized_audit(update, context, user, start_balance=user_equity))
-        await show_symbol_menu(query, user)
+        # Return to main settings
+        msg, reply_markup = get_settings_ui(user)
+        await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
         return
 
     elif query.data == "back_to_settings":
@@ -1440,6 +1449,7 @@ async def show_symbol_menu(query, user):
             keyboard.append(row)
             row = []
     if row: keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("🚀 Apply & Run Audit", callback_data="apply_symbol_audit")])
     keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
     keyboard.extend(get_nav_buttons(user.get('has_open_positions', False)))
     
