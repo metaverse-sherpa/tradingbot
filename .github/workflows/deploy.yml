@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Institutional Deploy via SSH
+      - name: Institutional Deploy via SSH to GCP
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_IP }}
