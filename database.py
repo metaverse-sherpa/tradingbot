@@ -97,6 +97,8 @@ def init_db():
     except: pass
     try: c.execute("ALTER TABLE Users ADD COLUMN last_audit_stats TEXT")
     except: pass
+    try: c.execute("ALTER TABLE Users ADD COLUMN referral_credits REAL DEFAULT 0.0")
+    except: pass
     
     # 💎 Institutional Config Table
     c.execute('''CREATE TABLE IF NOT EXISTS Config
@@ -129,7 +131,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id='blofin', eq
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+    c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits FROM Users WHERE telegram_chat_id = ?', (chat_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -157,7 +159,8 @@ def get_user(chat_id):
             "telegram_chat_id": chat_id,
             "undercover_mode": row[19] if len(row) > 19 else 0,
             "source_wallet": row[20] if len(row) > 20 else None,
-            "last_audit_stats": row[21] if len(row) > 21 else None
+            "last_audit_stats": row[21] if len(row) > 21 else None,
+            "referral_credits": row[22] if len(row) > 22 else 0.0
         }
     return None
 
@@ -166,6 +169,20 @@ def update_last_audit(chat_id, stats_dict):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("UPDATE Users SET last_audit_stats = ? WHERE telegram_chat_id = ?", (json.dumps(stats_dict), chat_id))
+    conn.commit()
+    conn.close()
+
+def add_referral_credit(chat_id, amount=5.0):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET referral_credits = referral_credits + ? WHERE telegram_chat_id = ?", (amount, chat_id))
+    conn.commit()
+    conn.close()
+
+def consume_referral_credits(chat_id, amount):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE Users SET referral_credits = MAX(0, referral_credits - ?) WHERE telegram_chat_id = ?", (amount, chat_id))
     conn.commit()
     conn.close()
 

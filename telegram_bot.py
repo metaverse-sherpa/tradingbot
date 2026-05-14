@@ -70,14 +70,14 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     master_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "upsell_comparison.png")
     audit_msg = (
         "🏔️ *Metaverse Sherpa: Institutional Wealth Gap*\n"
-        "Comparison: `Free (1% Risk)` vs `Premium (1.5% Risk)`\n\n"
-        "📊 *Standard Tier (Safe)*\n"
+        "Comparison: `Standard (1% Risk)` vs `Institutional (Premium)`\n\n"
+        "📊 *Standard Tier (Always Free)*\n"
         "• PnL: *+64.5%* | Sharpe: *5.40*\n"
-        "• Assets: 5 Institutional Tokens\n\n"
-        "💎 *Premium Tier (Institutional)*\n"
+        "• Assets: 5 Core Institutional Tokens\n\n"
+        "💎 *Institutional Tier (Premium Access)*\n"
         "• PnL: *+1,514.9%* | Sharpe: *4.83*\n"
-        "• Assets: 19+ 'Sherpa Basket' Tokens\n\n"
-        "📈 _Institutional access delivers a **23x profit multiplier** by capturing 8x more compounding opportunities with full 'Sherpa Basket' coverage._"
+        "• Assets: Full 20+ 'Sherpa Basket' Tokens\n\n"
+        "📈 _Institutional access delivers a **23x profit multiplier** by unlocking the full 20-token basket and taking advantage of **Advanced Dynamic Compounding**._"
     )
     
     if os.path.exists(master_path):
@@ -327,12 +327,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- 2. High-Authority Welcome Message ---
     welcome_msg = (
         "🏔️ *Welcome to the Metaverse Sherpa Trading Bot!*\n\n"
-        "The elite automated trading solution for multi-exchange professionals.\n\n"
-        "🌍 *Supported Exchanges:*\n"
-        "• 🏔️ *Blofin* (Native Partner)\n"
-        "• 🔶 *Binance*\n"
-        "• 💠 *MEXC*\n\n"
-        "🏆 Tap /setup to link your account and start your 5-day free trial."
+        "The elite automated trading solution for institutional-grade multi-exchange professionals.\n\n"
+        "🛡️ *Security & Control*\n"
+        "Your exchange API credentials are **fully encrypted** and isolated from all other identities. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit, but you can close any position directly on your exchange at any time.\n\n"
+        "📊 *Standard vs. Institutional Access*\n"
+        "• **Standard (Always Free)**: Monitor 5 core crypto tokens with a capped 1% risk per trade.\n"
+        "• **Institutional (Premium)**: Unlock the full 'Sherpa Basket' of 20+ tokens, custom risk management, and advanced compounding. Just **$20/month** (USDT), essentially paying for itself once the engine starts climbing for you.\n\n"
+        "🤝 *Growth Rewards*\n"
+        "Get **$5 off** your monthly subscription for every peer you refer that activates Institutional Access!\n\n"
+        "🛰️ *Live Dashboard*\n"
+        "Check your balance, monitor live/closed trades, and generate **Shareable PnL Cards** to show off your progress to the trail.\n\n"
+        "🏆 Tap /setup to link your account and start your climb."
     )
     
     await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
@@ -990,6 +995,12 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    credits = user.get('referral_credits', 0.0)
+    final_price = max(0.0, 20.0 - credits)
+    
+    credit_msg = f"💰 *Available Credit:* `${credits:.2f}`\n" if credits > 0 else ""
+    price_msg = f"💳 *Institutional Access Fee:* ~~[ $20 ]~~ **${final_price:.2f} USDT** / 30 Days\n" if credits > 0 else f"💳 *Institutional Access Fee:* **$20 USDT / 30 Days**\n"
+
     premium_msg = (
         "💎 *Go Institutional: Unlock the 23x Wealth Gap*\n\n"
         "Unlock the full power of the Metaverse Sherpa engine. Moving from Standard to Institutional tier grants you access to professional-grade tools used by elite traders:\n\n"
@@ -998,10 +1009,11 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• **Advanced Risk Control**: Set custom risk-per-trade percentages.\n"
         "• **Priority Execution**: Your trades are prioritized in the engine's background loop.\n"
         "• **Zero Friction**: Automated on-chain audits keep your access active.\n\n"
-        "💳 *Institutional Access Fee:* **$20 USDT / 30 Days**\n\n"
+        f"{credit_msg}"
+        f"{price_msg}\n"
         "📥 *The Step-by-Step Upgrade Path:*\n"
         "1. **Copy the Treasury Address** below (Tap to copy).\n"
-        "2. **Send exactly $20 USDT** via the **TRON (TRC-20)** network.\n"
+        f"2. **Send exactly ${final_price:.2f} USDT** via the **TRON (TRC-20)** network.\n"
         "3. **Tap 'Audit My Payment'** below once sent.\n\n"
         "🏛️ *Master Treasury Address (TRC-20):*\n"
         f"`{get_master_wallet()}`\n\n"
@@ -1009,11 +1021,14 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚠️ _Note: Activation is fully automated. The Sherpa's audit engine will scan the blockchain for your transaction and unlock your access within 1-3 minutes of on-chain confirmation._"
     )
     
-    kb = [
-        [InlineKeyboardButton("🔎 Audit My Payment & Unlock", callback_data="check_payment")],
-        [InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")],
-        [InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")]
-    ]
+    kb = []
+    if final_price == 0:
+        kb.append([InlineKeyboardButton("🚀 Activate with Credits", callback_data="activate_with_credits")])
+    else:
+        kb.append([InlineKeyboardButton("🔎 Audit My Payment & Unlock", callback_data="check_payment")])
+    
+    kb.append([InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")])
+    kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
     
     if update.callback_query:
         await update.callback_query.edit_message_text(premium_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
@@ -1109,6 +1124,35 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
+    if query.data == "activate_with_credits":
+        user = database.get_user(chat_id)
+        credits = user.get('referral_credits', 0.0)
+        if credits < 20.0:
+            await query.answer("❌ Insufficient credits.", show_alert=True)
+            return
+            
+        await query.answer("🚀 Activating with Credits...")
+        database.consume_referral_credits(chat_id, 20.0)
+        database.add_premium_days(chat_id, 30)
+        database.set_active(chat_id, True)
+        
+        # 🤝 Referral Reward: Grant $5 to the person who referred THIS user
+        referrer_id = user.get('referred_by')
+        if referrer_id:
+            database.add_referral_credit(referrer_id, 5.0)
+            try:
+                await context.bot.send_message(
+                    chat_id=referrer_id,
+                    text="💰 *Institutional Referral Reward!*\nOne of your recruits just activated Premium Access. You've earned a **$5.00 Credit** on your next month!",
+                    parse_mode="Markdown"
+                )
+            except: pass
+
+        await query.message.reply_text("💎 *INSTITUTIONAL ACCESS ACTIVATED!*\nSuccessfully used $20.00 in referral credits.", parse_mode="Markdown")
+        msg, rm = get_settings_ui(user)
+        await query.edit_message_text(msg, reply_markup=rm, parse_mode="Markdown")
+        return
+
     if query.data == "apply_symbol_audit":
         await query.answer("🏔️ Applying Institutional Settings...")
         try:
@@ -1215,33 +1259,59 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data = resp.json()
             transfers = data.get('token_transfers', [])
             
+            # Calculate required amount based on credits
+            credits = user.get('referral_credits', 0.0)
+            required_price = max(0.1, 20.0 - credits) # Min $0.1 for blockchain audit
+            
             found = False
             for tx in transfers:
                 # TRC-20 USDT contract: TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
                 if tx.get('contract_address') == 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t':
                     amount = float(tx.get('quant')) / 10**6
-                    # Check for exactly $20 (allow a small range just in case of fees)
-                    if 19.5 <= amount <= 20.5:
+                    # Check for required price (allow a small range just in case of fees)
+                    if (required_price - 0.5) <= amount <= (required_price + 0.5):
                         found = True
                         break
             
             if found:
+                # Activate!
                 database.add_premium_days(chat_id, 30)
+                database.set_active(chat_id, True)
+                
+                # Consume Credits used
+                if credits > 0:
+                    database.consume_referral_credits(chat_id, 20.0)
+                
+                # 🤝 Referral Reward: Grant $5 to the person who referred THIS user
+                referrer_id = user.get('referred_by')
+                if referrer_id:
+                    database.add_referral_credit(referrer_id, 5.0)
+                    try:
+                        await context.bot.send_message(
+                            chat_id=referrer_id,
+                            text="💰 *Institutional Referral Reward!*\nOne of your recruits just activated Premium Access. You've earned a **$5.00 Credit** on your next month!",
+                            parse_mode="Markdown"
+                        )
+                    except: pass
                 
                 # 👑 Notify Overlord of Revenue
                 try:
                     user_info = f"@{update.effective_user.username}" if update.effective_user.username else f"ID: `{chat_id}`"
                     await context.bot.send_message(
                         chat_id=ADMIN_CHAT_ID,
-                        text=f"💰 *INSTITUTIONAL REVENUE CONFIRMED!*\n\nUser: {user_info}\nAmount: *$20.00 USDT*\n\n📈 _The treasury is growing._",
+                        text=f"💰 *INSTITUTIONAL REVENUE CONFIRMED!*\n\nUser: {user_info}\nRequired: *${required_price:.2f} USDT*\n\n📈 _The treasury is growing._",
                         parse_mode="Markdown"
                     )
                 except: pass
 
                 await query.message.reply_text(
-                    "🎉 *INSTITUTIONAL ACCESS UNLOCKED!*\n\n"
-                    "Your payment has been verified on-chain. You now have **30 Days of Premium Access**.\n\n"
-                    "🏔️ _Welcome to the 23x Wealth Gap._",
+                    "💎 *INSTITUTIONAL ACCESS ACTIVATED!*\n\n"
+                    "Congratulations. Your account has been upgraded to the Institutional Tier for **30 days**.\n\n"
+                    "🏔️ *Power Unlocked:*\n"
+                    "• Full 19+ Symbol Basket enabled.\n"
+                    "• Custom Risk Management enabled.\n"
+                    "• Priority Background Processing enabled.\n\n"
+                    "The Sherpa engine is now live on your account. Happy climbing!",
                     parse_mode="Markdown"
                 )
                 # Show settings again to confirm
