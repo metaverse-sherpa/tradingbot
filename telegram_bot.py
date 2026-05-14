@@ -599,13 +599,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # 🎁 Direct Notification (Only if already in DB)
             if target_id:
                 try:
+                    from telegram.helpers import escape_markdown
+                    # Escape all text components for MarkdownV2
+                    safe_gift_header = escape_markdown("🎁 Institutional Gift Received!", version=2)
+                    safe_gift_desc1 = escape_markdown("The Sherpa Overlord has granted you 30 Days of Premium Institutional Access.", version=2)
+                    safe_gift_desc2 = escape_markdown("Tap the link below to activate your account and unlock the full Sherpa Basket:", version=2)
+                    safe_gift_url = escape_markdown(gift_url, version=2)
+
                     user_msg = (
-                        "🎁 *Institutional Gift Received!*\n\n"
-                        "The Sherpa Overlord has granted you **30 Days of Premium Institutional Access**.\n\n"
-                        "Tap the link below to activate your account and unlock the full Sherpa Basket:\n\n"
-                        f"{gift_url}"
+                        f"*{safe_gift_header}*\n\n"
+                        f"{safe_gift_desc1}\n\n"
+                        f"{safe_gift_desc2}\n\n"
+                        f"{safe_gift_url}"
                     )
-                    await context.bot.send_message(chat_id=target_id, text=user_msg, parse_mode="Markdown")
+                    await context.bot.send_message(chat_id=target_id, text=user_msg, parse_mode="MarkdownV2")
                     await update.message.reply_text(f"✅ User `{target_id}` has been notified directly.")
                 except Exception as notify_err:
                     await update.message.reply_text(f"⚠️ Gift generated, but could not notify user directly: {notify_err}")
