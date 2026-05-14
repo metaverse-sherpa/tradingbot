@@ -51,6 +51,29 @@ def escape_md_v2(text):
         text = str(text).replace(char, f"\\{char}")
     return text
 
+async def safe_edit_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, reply_markup: InlineKeyboardMarkup = None, parse_mode: str = "Markdown"):
+    """Surgically edits a message or sends a fresh one if media conflict exists."""
+    query = update.callback_query
+    if not query:
+        return await update.effective_message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    
+    try:
+        # 🕵️ Attempt sleak inline update
+        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except Exception as e:
+        error_str = str(e)
+        if "Message is not modified" in error_str:
+            return
+        
+        # 🏔️ Fallback: If it's a photo message or other edit conflict, send fresh
+        try:
+            await query.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+            # Try to clean up the orphaned photo menu
+            try: await query.message.delete()
+            except: pass
+        except Exception as e2:
+            logger.error(f"SafeEdit Fatal Error: {e2}")
+
 async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Triggers the personalized visual 3-year audit for the user."""
     chat_id = update.effective_chat.id
@@ -1005,11 +1028,7 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == "set_strat_mean":
         database.update_user_strategy(query.message.chat.id, "Mean Reversion Scalper")
-        await query.edit_message_text(
-            "✅ Strategy set to: *Mean Reversion Scalper*", 
-            parse_mode="Markdown",
-            reply_markup=get_main_inline_menu(query.message.chat.id)
-        )
+        await safe_edit_text(update, context, "✅ Strategy set to: *Mean Reversion Scalper*", reply_markup=get_main_inline_menu(query.message.chat.id))
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 
@@ -1101,11 +1120,7 @@ async def show_refer_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     )
     
     kb = [[InlineKeyboardButton("📱 Share Invite Link", url=f"https://t.me/share/url?url={invite_link}&text=Unlock%20the%20Institutional%20Wealth%20Gap%20with%20the%20Metaverse%20Sherpa%20Trading%20Bot!%20🏔️")]]
-    
-    if update.callback_query:
-        await update.callback_query.edit_message_text(refer_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
-    else:
-        await update.message.reply_text(refer_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+    await safe_edit_text(update, context, refer_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 async def refer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await show_refer_dashboard(update, context)
@@ -1163,11 +1178,7 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     kb.append([InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")])
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
-    
-    if update.callback_query:
-        await update.callback_query.edit_message_text(premium_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
-    else:
-        await update.effective_message.reply_text(premium_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+    await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 def get_admin_keyboard(master_wallet):
     """Definitive High-Authority Command Buttons."""
@@ -1249,15 +1260,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     )
     
     kb = get_admin_keyboard(master_wallet)
-    
-    try:
-        if update.callback_query:
-            await update.callback_query.edit_message_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
-        else:
-            await update.message.reply_text(admin_msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
-    except Exception as e:
-        if "Message is not modified" not in str(e):
-            logger.error(f"Error updating admin dashboard: {e}")
+    await safe_edit_text(update, context, admin_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await show_admin_dashboard(update, context)
@@ -1293,7 +1296,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.message.reply_text("💎 *INSTITUTIONAL ACCESS ACTIVATED!*\nSuccessfully used $20.00 in referral credits.", parse_mode="Markdown")
         msg, rm = get_settings_ui(user)
-        await query.edit_message_text(msg, reply_markup=rm, parse_mode="Markdown")
+        await safe_edit_text(update, context, msg, reply_markup=rm)
         return
 
     if query.data == "admin_command":
@@ -1390,7 +1393,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg = f"📋 *Sherpa Operational Logs* \(Last 50 Lines\)\n\n```\n{safe_logs}\n```"
             
             if query.message.text and "Operational Logs" in query.message.text:
-                await query.edit_message_text(msg, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode="MarkdownV2")
             else:
                 await query.message.reply_text(msg, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
         except Exception as e:
@@ -1410,11 +1413,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # IMMEDIATELY return to main settings so UI doesn't hang
             msg, reply_markup = get_settings_ui(user)
-            await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+            await safe_edit_text(update, context, msg, reply_markup=reply_markup)
             return
         except Exception as e:
             logger.error(f"Failed to apply symbol settings for {chat_id}: {e}")
-            await query.edit_message_text(f"❌ Error applying settings: {e}\n\nPlease try again or contact the Sherpa.", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+            await safe_edit_text(update, context, f"❌ Error applying settings: {e}\n\nPlease try again or contact the Sherpa.", reply_markup=get_main_inline_menu(chat_id))
             return
 
     if query.data == "refer_menu":
@@ -1607,7 +1610,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Please paste your **Blofin API Key** below:"
             )
             
-        await query.edit_message_text(guide, parse_mode="Markdown")
+        await safe_edit_text(update, context, guide)
         return
 
     if not user:
@@ -1661,7 +1664,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))
         ]
-        await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     elif query.data == "confirm_panic":
@@ -1670,12 +1673,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("✅ YES, CLOSE ALL TRADES NOW!", callback_data="panic_execute")],
             [InlineKeyboardButton("❌ NO, ABORT", callback_data="back_to_settings")]
         ]
-        await query.edit_message_text(
+        await safe_edit_text(
+            update, context,
             "⚠️ *EMERGENCY CONFIRMATION*\n\n"
             "You are about to close **ALL OPEN TRADES** at current market prices.\n\n"
             "This action is immediate and cannot be undone. Are you absolutely sure you want to exit the market now?",
-            reply_markup=InlineKeyboardMarkup(kb),
-            parse_mode="Markdown"
+            reply_markup=InlineKeyboardMarkup(kb)
         )
         return
 
@@ -1692,7 +1695,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Force stop the bot for this user after panic exit
         database.set_active(chat_id, False)
         
-        await query.edit_message_text(msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+        await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
         return
 
 
@@ -1736,7 +1739,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))
         ]
-        await query.edit_message_text(strategy_overview, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await safe_edit_text(update, context, strategy_overview, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     elif query.data == "set_risk":
@@ -1746,13 +1749,13 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False), is_admin=(chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode')))
         ]
-        await query.edit_message_text(
+        await safe_edit_text(
+            update, context,
             "⚖️ *Set Risk Percentage*\n\n"
             "Please type your preferred risk-per-trade as a number (e.g., `1.5` or `2.0`).\n\n"
             "This percentage of your equity will be risked on every trade based on the SL distance.\n\n"
             "_Current: " + f"{user['risk_pct']:.2f}%_",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown"
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
 
@@ -1763,7 +1766,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "manage_symbols":
         await query.answer()
-        await show_symbol_menu(query, user)
+        await show_symbol_menu(update, context, user)
         return
 
     elif query.data.startswith("tsym_"): # TOGGLE SYMBOL
@@ -1777,7 +1780,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"✅ Updated {sym_to_toggle}")
         # Re-show menu (Silent, no audit)
         user = database.get_user(chat_id)
-        await show_symbol_menu(query, user)
+        await show_symbol_menu(update, context, user)
         return
 
 
@@ -1789,12 +1792,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton(f"✅ YES, CLOSE {sym} NOW!", callback_data=f"execute_close_{sym}")],
             [InlineKeyboardButton("❌ NO, ABORT", callback_data="opentrades_menu")]
         ]
-        await query.edit_message_text(
+        await safe_edit_text(
+            update, context,
             f"⚠️ *INSTITUTIONAL CONFIRMATION REQUIRED*\n\n"
             f"Are you sure you want to Market Close your *{sym}* position?\n\n"
             "This will instantly exit the trade at current market price.",
-            reply_markup=InlineKeyboardMarkup(kb),
-            parse_mode="Markdown"
+            reply_markup=InlineKeyboardMarkup(kb)
         )
         return
 
@@ -1817,13 +1820,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Refresh and show settings UI
     user = database.get_user(chat_id)
     msg, reply_markup = get_settings_ui(user)
-    try:
-        await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
-    except BadRequest as e:
-        if "Message is not modified" not in str(e):
-            raise e
+    await safe_edit_text(update, context, msg, reply_markup=reply_markup)
 
-async def show_symbol_menu(query, user):
+async def show_symbol_menu(update, context, user):
+    query = update.callback_query
+    chat_id = user['telegram_chat_id']
     all_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
     enabled = user['enabled_symbols']
     
@@ -1842,10 +1843,10 @@ async def show_symbol_menu(query, user):
     is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
     keyboard.extend(get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin))
     
-    await query.edit_message_text(
+    await safe_edit_text(
+        update, context,
         "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1948,7 +1949,6 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             viral_caption = headline
             is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
             keyboard = get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
-            
         with open(card_path, 'rb') as photo:
             await context.bot.send_photo(
                 chat_id=chat_id, 
