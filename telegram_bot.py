@@ -479,6 +479,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🛰️ *Main Menu Activated*",
             reply_markup=get_main_inline_menu(chat_id),
             parse_mode="Markdown"
+        return
+
+async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Clears all states and returns to the appropriate menu."""
+    chat_id = update.effective_chat.id
+    context.user_data.pop('setting_wallet', None)
+    context.user_data.pop('setting_admin_wallet', None)
+    context.user_data.pop('admin_broadcasting', None)
+    context.user_data.pop('setting_risk', None)
+    context.user_data.pop('setup_step', None)
+    
+    await update.effective_message.reply_text("🛑 *Action Cancelled.*", parse_mode="Markdown")
+    
+    if chat_id == ADMIN_CHAT_ID:
+        await show_admin_dashboard(update, context)
+    else:
+        await update.effective_message.reply_text(
+            "🛰️ *Main Menu Activated*",
+            reply_markup=get_main_inline_menu(chat_id),
+            parse_mode="Markdown"
         )
 
     elif context.user_data.get('setting_risk'):
@@ -512,6 +532,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.warning(f"Failed broadcast to {target_id}: {e}")
         await update.message.reply_text(f"📢 Broadcast sent to {count} users.")
+        await show_admin_dashboard(update, context)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -1200,6 +1221,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for p in parts: await context.bot.send_message(chat_id=chat_id, text=p, parse_mode="MarkdownV2")
         else:
             await query.message.reply_text(msg, parse_mode="MarkdownV2")
+        
+        # 👑 UX Persistence: Re-show the Command Center
+        await show_admin_dashboard(update, context)
         return
 
     if query.data == "admin_broadcast_prompt":
@@ -1229,6 +1253,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(msg, parse_mode="Markdown")
         except Exception as e:
             await query.message.reply_text(f"❌ Failed to fetch logs: {e}")
+        
+        # 👑 UX Persistence: Re-show the Command Center
+        await show_admin_dashboard(update, context)
         return
 
     if query.data == "apply_symbol_audit":
@@ -2054,6 +2081,7 @@ def main():
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CommandHandler("contact", contact_command))
+    app.add_handler(CommandHandler("cancel", cancel_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
     app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
