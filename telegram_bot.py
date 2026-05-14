@@ -1194,6 +1194,23 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    if query.data == "view_logs":
+        if chat_id != ADMIN_CHAT_ID: return
+        await query.answer("🔍 Fetching VPS Logs...")
+        try:
+            import subprocess
+            result = subprocess.check_output(["journalctl", "-u", "tradingbot", "-n", "40"], stderr=subprocess.STDOUT)
+            logs = result.decode("utf-8")
+            if not logs: logs = "No recent logs found."
+            
+            # Format and send
+            msg = "📋 *Live VPS Logs (Last 40 Lines)*\n\n"
+            msg += f"```\n{logs[-4000:]}\n```" # Telegram char limit
+            await query.message.reply_text(msg, parse_mode="Markdown")
+        except Exception as e:
+            await query.message.reply_text(f"❌ Failed to fetch logs: {e}")
+        return
+
     if query.data == "apply_symbol_audit":
         await query.answer("🏔️ Applying Institutional Settings...")
         try:
@@ -2018,7 +2035,7 @@ def main():
     app.add_handler(CommandHandler("strategy", strategy_command))
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
