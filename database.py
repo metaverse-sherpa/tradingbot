@@ -516,8 +516,6 @@ def get_detailed_user_report():
         FROM Users
     ''')
     rows = c.fetchall()
-    conn.close()
-    
     report = []
     now = time.time()
     for r in rows:
@@ -530,6 +528,7 @@ def get_detailed_user_report():
         item['recruit_list'] = [dict(rec) for rec in recruits]
         
         report.append(item)
+    conn.close()
     return report
 
 def get_all_users():
