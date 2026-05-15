@@ -2186,8 +2186,9 @@ async def trading_engine(application):
                                 res = live_bot_multi.place_order(user_ex, symbol, sig, equity, risk_pct=user_risk)
                                 if res:
                                     database.increment_opened(chat_id)
+                                    side_icon = "📈" if sig['side'] == 'buy' else "📉"
                                     msg = (
-                                        f"🏆 *{strat_name}* SIGNAL!\n\n"
+                                        f"{side_icon} *{strat_name}* SIGNAL!\n\n"
                                         f"Symbol: *{res['symbol']}*\n"
                                         f"Risk: `{user_risk:.2f}%`\n"
                                         f"Entry: `{res['entry']:.8f}`\n"
@@ -2203,15 +2204,17 @@ async def trading_engine(application):
                                         chart_file = charting.generate_trade_chart(res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
                                         
                                         # Add Nav Buttons to the Signal
-                                        keyboard = get_nav_buttons(True, is_admin=(target_id == ADMIN_CHAT_ID)) # System notifications, usually no undercover needed for bot itself
+                                        is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+                                        keyboard = get_nav_buttons(True, is_admin=is_admin)
                                         
-                                        await application.bot.send_photo(
-                                            chat_id=chat_id, 
-                                            photo=open(chart_file, 'rb'),
-                                            caption=msg,
-                                            reply_markup=InlineKeyboardMarkup(keyboard),
-                                            parse_mode="Markdown"
-                                        )
+                                        with open(chart_file, 'rb') as photo:
+                                            await application.bot.send_photo(
+                                                chat_id=chat_id, 
+                                                photo=photo,
+                                                caption=msg,
+                                                reply_markup=InlineKeyboardMarkup(keyboard),
+                                                parse_mode="Markdown"
+                                            )
                                     except Exception as chart_err:
                                         logger.error(f"Chart generation failed: {chart_err}")
                                         await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
