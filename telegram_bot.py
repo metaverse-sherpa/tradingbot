@@ -1297,6 +1297,14 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     chat_id = query.from_user.id
+    
+    # 🏔️ Passive Identity Refresh
+    try:
+        full_name = query.from_user.full_name
+        username = query.from_user.username
+        database.sync_user_metadata(chat_id, full_name, username)
+    except: pass
+
     user = database.get_user(chat_id)
     
     if query.data == "activate_with_credits":
@@ -1382,7 +1390,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except: pass
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
-            msg += f"• `{u['telegram_chat_id']}` \| *{name}*{uname}\n  Status: {status} \| Tier: {tier}\n"
+            # 🏢 Human-Friendly Formatting: "Mindaugas (@Bumeris77)"
+            display_identity = f"{name}{uname}"
+            msg += f"• `{u['telegram_chat_id']}` \| *{display_identity}*\n  Status: {status} \| Tier: {tier}\n"
             
             # 🤝 Display Referral Tree
             if u.get('recruit_list'):

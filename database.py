@@ -145,6 +145,17 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
     conn.commit()
     conn.close()
 
+def sync_user_metadata(chat_id, full_name, username):
+    """Refreshes the user's Telegram identity in the database."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # Clean username: Strip @ if present in raw data, then re-add for consistent storage
+    if username:
+        username = f"@{username.lstrip('@')}"
+    c.execute('UPDATE Users SET full_name = ?, username = ? WHERE telegram_chat_id = ?', (full_name, username, chat_id))
+    conn.commit()
+    conn.close()
+
 def get_user(chat_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
