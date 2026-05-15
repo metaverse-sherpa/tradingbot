@@ -914,7 +914,6 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         await update.effective_message.reply_text(
             f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...",
-            reply_markup=get_main_inline_menu(chat_id),
             parse_mode="Markdown"
         )
 
