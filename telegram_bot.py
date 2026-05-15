@@ -812,9 +812,9 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         status_icon = "🏆" if t['net_pnl'] > 0 else "❌"
         
         history_text += (
-            f"{i+1}\. *{sym_v2}* {dir_icon} \| _{dt}_\n"
-            f"{status_icon} PnL: ||{pnl_val_v2}|| \(*{roe_v2}*\)\n"
-            f"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
+            rf"{i+1}\. *{sym_v2}* {dir_icon} \| _{dt}_\n"
+            rf"{status_icon} PnL: ||{pnl_val_v2}|| \(*{roe_v2}*\)\n"
+            rf"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
         )
         
         win_icon = " 🏆" if t['net_pnl'] > 0 else ""
@@ -936,31 +936,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Error checking open trades: {e}")
         await update.effective_message.reply_text(f"❌ Error fetching positions: {e}")
-            )
-
-            if chart_path and os.path.exists(chart_path):
-                # Prepare Share Button
-                s_side = "l" if side.lower() == "long" else "s"
-                callback_data = f"sha_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
-                close_callback = f"confirm_close_{sym}"
-                keyboard = [
-                    [InlineKeyboardButton("Share & Earn 📸", callback_data=callback_data)],
-                    [InlineKeyboardButton("🚨 Close Trade", callback_data=close_callback)]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                with open(chart_path, 'rb') as photo:
-                    await update.effective_message.reply_photo(photo, caption=caption, parse_mode="MarkdownV2", reply_markup=reply_markup)
-                os.remove(chart_path) # Cleanup
-            else:
-                # Fallback for no chart
-                await update.effective_message.reply_text(caption, parse_mode="MarkdownV2")
-        
         # 4. Finally send the footer once
         await update.effective_message.reply_text("🛰️ *Sherpa Command Center*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
-        
-    except Exception as e:
-        await update.effective_message.reply_text(f"❌ Error fetching positions: {e}")
 
 async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -1349,7 +1326,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except: pass
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
-            msg += f"• `{u['telegram_chat_id']}` \| *{name}*{uname}\n  Status: {status} \| Tier: {tier}\n"
+            msg += rf"• `{u['telegram_chat_id']}` \| *{name}*{uname}\n  Status: {status} \| Tier: {tier}\n"
             
             # 🤝 Display Referral Tree
             if u.get('recruit_list'):
@@ -1357,7 +1334,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for rec in u['recruit_list']:
                     r_name = escape_md_v2(rec.get('full_name') or "Unknown")
                     r_uname = escape_md_v2(f" (@{rec['username']})") if rec.get('username') else ""
-                    msg += f"  └\─ {r_name}{r_uname} \(`{rec['telegram_chat_id']}`\)\n"
+                    msg += rf"  └\─ {r_name}{r_uname} \(`{rec['telegram_chat_id']}`\)\n"
             else:
                 msg += "  *Recruits:* None\n"
             msg += "\n"
@@ -1415,7 +1392,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             kb = [[InlineKeyboardButton("🔄 Refresh Logs", callback_data="view_logs")],
                   [InlineKeyboardButton("🔙 Back to Admin", callback_data="admin_command")]]
             
-            msg = f"📋 *Sherpa Operational Logs* \(Last 50 Lines\)\n\n```\n{safe_logs}\n```"
+            msg = rf"📋 *Sherpa Operational Logs* \(Last 50 Lines\)\n\n```\n{safe_logs}\n```"
             
             if query.message.text and "Operational Logs" in query.message.text:
                 await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode="MarkdownV2")
