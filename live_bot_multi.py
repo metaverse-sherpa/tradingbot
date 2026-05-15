@@ -131,34 +131,39 @@ def place_order(exchange, symbol, signal, equity, risk_pct=None):
         size = round(min(float(raw_size), float(max_market), float(max_leverage_size)), 3)
         if size <= 0: return None
 
+        # 🛡️ FORCED LEVERAGE SYNC
+        try:
+            exchange.set_leverage(LEVERAGE, symbol)
+        except Exception as le:
+            log.warning("⚠️ Leverage set failed for %s: %s. Continuing with caution.", symbol, le)
+
         # Risk Check: Liquidation vs Stop Loss
-        # Conservative Estimation: Entry * (1 - 1/Lev + 1% Maint. Margin)
+        # Institutional Buffer: Entry * (1 - 1/Lev + 2.5% Safety Margin)
+        liq_buffer = (1 / LEVERAGE) - 0.025 
         if signal["side"] == "buy":
-            est_liq = lp * (1 - (1 / LEVERAGE) + 0.01)
+            est_liq = lp * (1 - liq_buffer)
             if sl <= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Long SL (%.4f) is beyond estimated Liq (%.4f). Skipping.", symbol, sl, est_liq)
+                log.warning("⚠️ RISK ALERT: %s Long SL (%.4f) is beyond safety Liq (%.4f). Skipping.", symbol, sl, est_liq)
                 return None
         else: # Short
-            est_liq = lp * (1 + (1 / LEVERAGE) - 0.01)
+            est_liq = lp * (1 + liq_buffer)
             if sl >= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Short SL (%.4f) is beyond estimated Liq (%.4f). Skipping.", symbol, sl, est_liq)
+                log.warning("⚠️ RISK ALERT: %s Short SL (%.4f) is beyond safety Liq (%.4f). Skipping.", symbol, sl, est_liq)
                 return None
 
         log.info("🔔 SIGNAL on %s: %s | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, signal["side"].upper(), lp, sl, tp)
         if DRY_RUN: return None
-        # 3-Order Combo for Fragmented Exchanges (Binance/MEXC)
-        if exchange.id in ['binance', 'mexc']:
-            # 1. Place Entry
-            order = exchange.create_order(symbol, "market", "buy", size)
-            # 2. Place SL (STOP_MARKET)
-            exchange.create_order(symbol, "stop_market", "sell", size, params={"stopPrice": sl, "reduceOnly": True})
-            # 3. Place TP (TAKE_PROFIT_MARKET)
-            exchange.create_order(symbol, "take_profit_market", "sell", size, params={"stopPrice": tp, "reduceOnly": True})
-        else:
-            # Integrated exchanges like Blofin
-            limit_price = lp * 1.01
-            params = {"marginMode": "isolated", "positionSide": "net", "stopLoss": {"triggerPrice": sl}, "takeProfit": {"triggerPrice": tp}}
-            exchange.create_order(symbol, "limit", "buy", size, limit_price, params=params)
+
+        # Integrated exchanges like Blofin
+        limit_price = lp * 1.01 if signal["side"] == "buy" else lp * 0.99
+        order_side = "buy" if signal["side"] == "buy" else "sell"
+        params = {
+            "marginMode": "isolated", 
+            "positionSide": "net", 
+            "stopLoss": {"triggerPrice": sl}, 
+            "takeProfit": {"triggerPrice": tp}
+        }
+        exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
             
         log.info("✅ Order placed for %s on %s", symbol, exchange.id)
         return {"symbol": symbol.split("/")[0], "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
