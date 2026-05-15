@@ -370,6 +370,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         logger.error(f"Error sending referral notification: {e}")
             except Exception as e:
                 logger.error(f"Error in deep-link processing: {e}")
+        elif arg == "guide_blofin":
+            pdf_path = os.path.join(BASE_DIR, "tutorials", "MetaverseSherpa Blofin API Setup.pdf")
+            if os.path.exists(pdf_path):
+                with open(pdf_path, 'rb') as doc:
+                    await context.bot.send_document(
+                        chat_id=chat_id,
+                        document=doc,
+                        caption="🏔️ *Blofin API Setup Guide*\nRequested via deep-link. Follow these steps to link your account securely.",
+                        parse_mode="Markdown"
+                    )
 
     # --- 2. High-Authority Welcome Message ---
     welcome_msg = (
