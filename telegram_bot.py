@@ -371,32 +371,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.error(f"Error in deep-link processing: {e}")
 
-    # --- 2. High-Authority Welcome Message ---
+    # --- 2. Deliver the Mission Briefing (PDF Guide) Instantly ---
+    pdf_path = os.path.join(BASE_DIR, "tutorials", "MetaverseSherpa Blofin API Setup.pdf")
+    if os.path.exists(pdf_path):
+        with open(pdf_path, 'rb') as doc:
+            await context.bot.send_document(
+                chat_id=chat_id,
+                document=doc,
+                caption="🏔️ *Welcome Scout!*\nAttached is your official **Blofin API Setup Guide**. Tap it to download and follow the instructions to link your account.",
+                parse_mode="Markdown"
+            )
+
+    # --- 3. High-Authority Welcome Message ---
     welcome_msg = (
-        "🏔️ *Welcome to the Metaverse Sherpa Trading Bot!*\n\n"
+        "🏔️ *Metaverse Sherpa Trading Bot*\n\n"
         "The elite automated trading solution for institutional-grade professionals. We currently support **Blofin**, **Binance**, and **MEXC**.\n\n"
-        "📖 *Getting Started:*\n"
-        "Tap the button below to download the official Blofin API Setup Guide directly to your device.\n\n"
         "🛡️ *Security & Control*\n"
-        "Your exchange API credentials are **fully encrypted** and isolated from all other identities. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit, but you can close any position directly on your exchange at any time.\n\n"
-        "📊 *Standard vs. Institutional Access*\n"
-        "• **Standard (Always Free)**: Monitor 5 core crypto tokens with a capped 1% risk per trade.\n"
-        "• **Institutional (Premium)**: Unlock the full 'Sherpa Basket' of 20+ tokens, custom risk management, and advanced compounding. Just **$20/month** (USDT), essentially paying for itself once the engine starts climbing for you.\n\n"
-        "🤝 *Growth Rewards*\n"
-        "Get **$5 off** your monthly subscription for every peer you refer that activates Institutional Access!\n\n"
-        "🛰️ *Live Dashboard*\n"
-        "Check your balance, monitor live/closed trades, and generate **Shareable PnL Cards** to show off your progress to the trail.\n\n"
-        "🏆 Tap /setup to link your account and start your climb.\n\n"
-        "⚠️ *Disclaimer:* _Automated trading carries significant risk. The Metaverse Sherpa is a tool for professional-grade execution and is **not financial advice**. Past performance does not guarantee future results. Trade at your own risk._"
+        "Your exchange API credentials are **fully encrypted** and isolated. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit.\n\n"
+        "📊 *Access Tiers*\n"
+        "• **Standard (Free)**: 5 core tokens | 1% risk.\n"
+        "• **Institutional (Premium)**: 20+ tokens | Custom risk. **$20/mo**.\n\n"
+        "🏆 Tap /setup to link your account and start your climb."
     )
     
-    await update.effective_message.reply_text(
-        welcome_msg, 
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]])
-    )
+    await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
 
-    # 2. Institutional Master Audit (Strictly Static Hook)
+    # 4. Institutional Master Audit (Strictly Static Hook)
     await send_master_audit(update, context, chat_id)
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2019,7 +2019,21 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚠️ *Disclaimer:* _Automated trading carries significant risk. The Metaverse Sherpa is a tool for professional-grade execution and is **not financial advice**. Past performance does not guarantee future results. Trade at your own risk._"
     )
     chat_id = update.effective_chat.id
-    await update.effective_message.reply_text(help_text, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+    await update.effective_message.reply_text(help_text, parse_mode="Markdown")
+    
+    # Send PDF Documentation
+    pdf_path = os.path.join(BASE_DIR, "tutorials", "MetaverseSherpa Blofin API Setup.pdf")
+    if os.path.exists(pdf_path):
+        with open(pdf_path, 'rb') as doc:
+            await context.bot.send_document(
+                chat_id=chat_id,
+                document=doc,
+                caption="📖 *Official Blofin Setup Guide (PDF)*",
+                parse_mode="Markdown",
+                reply_markup=get_main_inline_menu(chat_id)
+            )
+    else:
+        await update.effective_message.reply_text("🛰️ *Main Menu Activated*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
 
 async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Provides contact info for the Sherpa."""
