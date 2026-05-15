@@ -283,7 +283,7 @@ def get_nav_buttons(has_active_trades=False, is_admin=False):
         kb.append([InlineKeyboardButton("👑 Admin Console", callback_data="admin_command")])
     
     if has_active_trades:
-        kb.append([InlineKeyboardButton("🚨 PANIC EXIT (ALL)", callback_data="confirm_panic")])
+        kb.append([InlineKeyboardButton("🚨 CLOSE ALL TRADES", callback_data="confirm_panic")])
     return kb
 
 def get_main_inline_menu(chat_id=None):
@@ -990,7 +990,11 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Prepare Share Button
                 s_side = "l" if side.lower() == "long" else "s"
                 callback_data = f"sha_{sym}_{s_side}_{roe:.1f}_{entry:.6g}_{mark_price:.6g}_{upnl:.1f}"
-                keyboard = [[InlineKeyboardButton("Share & Earn 📸", callback_data=callback_data)]]
+                close_callback = f"confirm_close_{sym}"
+                keyboard = [
+                    [InlineKeyboardButton("Share & Earn 📸", callback_data=callback_data)],
+                    [InlineKeyboardButton("🚨 Close Trade", callback_data=close_callback)]
+                ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 with open(chart_path, 'rb') as photo:
@@ -1711,22 +1715,54 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         await safe_edit_text(
             update, context,
-            "⚠️ *EMERGENCY CONFIRMATION*\n\n"
+            "⚠️ *CONFIRM CLOSE ALL TRADES*\n\n"
             "You are about to close **ALL OPEN TRADES** at current market prices.\n\n"
-            "This action is immediate and cannot be undone. Are you absolutely sure you want to exit the market now?",
+            "❗ *Strategic Warning:*\n"
+            "By closing early, you may miss out on significant profit potential. Your performance statistics will also deviate from the Sherpa algorithm's official results.\n\n"
+            "Are you absolutely sure you want to exit the market now?",
             reply_markup=InlineKeyboardMarkup(kb)
         )
         return
 
+    elif query.data.startswith("confirm_close_"):
+        sym = query.data.replace("confirm_close_", "")
+        await query.answer()
+        kb = [
+            [InlineKeyboardButton("✅ YES, CLOSE NOW", callback_data=f"execute_close_{sym}")],
+            [InlineKeyboardButton("❌ NO, KEEP OPEN", callback_data="opentrades_menu")]
+        ]
+        warn_msg = (
+            f"⚠️ *CLOSE {sym} CONFIRMATION*\n\n"
+            f"You are about to close your **{sym}** position manually at market price.\n\n"
+            "❗ *Strategic Warning:*\n"
+            "By closing early, you may miss out on significant profit potential. Your performance statistics will also deviate from the Sherpa algorithm's official results.\n\n"
+            "Are you absolutely sure?"
+        )
+        await safe_edit_text(update, context, warn_msg, reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    elif query.data.startswith("execute_close_"):
+        sym = query.data.replace("execute_close_", "")
+        await query.answer(f"🚨 Closing {sym}...")
+        success, report = await close_single_position(chat_id, sym)
+        
+        icon = "✅" if success else "❌"
+        await query.message.reply_text(
+            f"{icon} *Trade Close Report*\n\n{report}",
+            parse_mode="Markdown",
+            reply_markup=get_main_inline_menu(chat_id)
+        )
+        return
+
     elif query.data == "panic_execute":
-        await query.answer("🚨 Executing Panic Exit...")
+        await query.answer("🚨 Executing Market Exit...")
         success, report = await panic_close_all(chat_id)
         
-        icon = "🏆" if success else "❌"
+        icon = "✅" if success else "❌"
         msg = (
-            f"{icon} *Panic Exit Report*\n\n"
+            f"{icon} *Market Exit Report*\n\n"
             f"{report}\n\n"
-            "The engine has been paused for your account to prevent new entries."
+            "The engine has been paused for your account to prevent new entries. Tap /resume when you are ready to restart."
         )
         # Force stop the bot for this user after panic exit
         database.set_active(chat_id, False)
