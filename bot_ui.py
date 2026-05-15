@@ -83,5 +83,5 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("🎁 Generate Gift Code", callback_data="admin_gift_prompt")],
         [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
         [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="toggle_undercover")],
-        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="main_menu")]
+        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="close_admin")]
     ]

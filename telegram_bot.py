@@ -626,10 +626,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     realized_daily_pnl = 0.0
     total_unrealized_pnl = 0.0
     open_positions_count = 0
-    import ccxt
-    import time
-    import live_bot_multi
-    
     try:
         async with ccxt.blofin({
             "apiKey": user['api_key'],
@@ -812,9 +808,9 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         status_icon = "🏆" if t['net_pnl'] > 0 else "❌"
         
         history_text += (
-            rf"{i+1}\. *{sym_v2}* {dir_icon} \| _{dt}_\n"
-            rf"{status_icon} PnL: ||{pnl_val_v2}|| \(*{roe_v2}*\)\n"
-            rf"\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\n"
+            f"{i+1}\\. *{sym_v2}* {dir_icon} \\| _{dt}_\n"
+            f"{status_icon} PnL: ||{pnl_val_v2}|| \\(*{roe_v2}*\\)\n"
+            f"\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n"
         )
         
         win_icon = " 🏆" if t['net_pnl'] > 0 else ""
@@ -1154,16 +1150,24 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
     await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
 
-    return [
-        [InlineKeyboardButton("📊 User & Referral Audit", callback_data="admin_user_audit")],
-        [InlineKeyboardButton("🎁 Gift Premium Access", callback_data="admin_gift_prompt")],
-        [InlineKeyboardButton("📢 Broadcast Message", callback_data="admin_broadcast_prompt")],
-        [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
-        [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
-        [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],
-        [InlineKeyboardButton("📜 View Audit Trail (TronScan)", url=f"https://tronscan.org/#/address/{master_wallet}")],
-        [InlineKeyboardButton("🔙 Close Console", callback_data="close_admin")]
-    ]
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and send a Telegram message to the Super Admin."""
+    logger.error(f"Exception while handling an update: {context.error}")
+    
+    # Send trace to Super Admin
+    import traceback
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_string = "".join(tb_list)
+    
+    err_msg = (
+        f"🚨 *HANDLER CRASH*\n\n"
+        f"Update: `{update}`\n\n"
+        f"*Error:* `{context.error}`\n\n"
+        f"*Traceback:*\n```\n{tb_string[:3500]}\n```"
+    )
+    try:
+        await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=err_msg, parse_mode="Markdown")
+    except: pass
 
 async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gated dashboard for the Sherpa Overlord."""
@@ -1326,7 +1330,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except: pass
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
-            msg += rf"• `{u['telegram_chat_id']}` \| *{name}*{uname}\n  Status: {status} \| Tier: {tier}\n"
+            msg += f"• `{u['telegram_chat_id']}` \\| *{name}*{uname}\n  Status: {status} \\| Tier: {tier}\n"
             
             # 🤝 Display Referral Tree
             if u.get('recruit_list'):
@@ -1334,7 +1338,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for rec in u['recruit_list']:
                     r_name = escape_md_v2(rec.get('full_name') or "Unknown")
                     r_uname = escape_md_v2(f" (@{rec['username']})") if rec.get('username') else ""
-                    msg += rf"  └\─ {r_name}{r_uname} \(`{rec['telegram_chat_id']}`\)\n"
+                    msg += f"  └\\─ {r_name}{r_uname} \\(`{rec['telegram_chat_id']}`\\)\n"
             else:
                 msg += "  *Recruits:* None\n"
             msg += "\n"
@@ -1392,7 +1396,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             kb = [[InlineKeyboardButton("🔄 Refresh Logs", callback_data="view_logs")],
                   [InlineKeyboardButton("🔙 Back to Admin", callback_data="admin_command")]]
             
-            msg = rf"📋 *Sherpa Operational Logs* \(Last 50 Lines\)\n\n```\n{safe_logs}\n```"
+            msg = f"📋 *Sherpa Operational Logs* \\(Last 50 Lines\\)\n\n```\n{safe_logs}\n```"
             
             if query.message.text and "Operational Logs" in query.message.text:
                 await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode="MarkdownV2")
@@ -2301,6 +2305,7 @@ def main():
 
         # Initialize Bot Application with the post_init hook
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+        app.add_error_handler(error_handler)
         
         # Register Commands
         app.add_handler(CommandHandler("start", start))
