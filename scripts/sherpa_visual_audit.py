@@ -222,8 +222,8 @@ def generate_comparison_chart():
     std_stats, _, df_std = run_visual_audit(1.0, ["BTC","ETH","SOL","DOGE","ADA"], user_id="tmp_std")
     plt.close('all')
     
-    # 2. Run Institutional (All tokens, 1.5% Risk)
-    inst_stats, _, df_inst = run_visual_audit(1.5, None, user_id="tmp_inst")
+    # 2. Run Institutional (All tokens, 1.0% Risk)
+    inst_stats, _, df_inst = run_visual_audit(1.0, None, user_id="tmp_inst")
     plt.close('all')
     
     if df_std is None or df_inst is None: return None

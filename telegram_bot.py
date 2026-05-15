@@ -94,14 +94,15 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     master_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "upsell_comparison.png")
     audit_msg = (
         "🏔️ *Metaverse Sherpa: Institutional Wealth Gap*\n"
-        "Comparison: `Standard (1% Risk)` vs `Institutional (Premium)`\n\n"
+        "Comparison: `Standard (5 Tokens)` vs `Institutional (Full 20-Token Basket)`\n"
+        "_Both running at a conservative 1.0% Institutional Risk._\n\n"
         "📊 *Standard Tier (Always Free)*\n"
         "• PnL: *+27.5%* | Sharpe: *3.90*\n"
         "• Assets: 5 Core Institutional Tokens\n\n"
         "💎 *Institutional Tier (Premium Access)*\n"
         "• PnL: *+208.7%* | Sharpe: *1.56*\n"
         "• Assets: Full 20+ 'Sherpa Basket' Tokens\n\n"
-        "📈 _Institutional access delivers a **7.6x profit multiplier** by unlocking the full 20-token basket and taking advantage of **Advanced Dynamic Compounding**._"
+        "📈 _Institutional access delivers a **7.6x profit multiplier** by unlocking the full 20-token basket without increasing your risk per trade._"
     )
     
     if os.path.exists(master_path):
@@ -160,7 +161,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         # Serve Master Audit Instantly
         audit_msg = (
             "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
-            "Settings: `1.5% Risk` | `All Institutional Tokens`\n\n"
+            "Settings: `1.0% Risk` | `All 20 Institutional Tokens`\n\n"
             "Final Equity: *$30,869.74*\n"
             "Total PnL: *+208.7%*\n"
             "Sharpe Ratio: *1.56*\n"
