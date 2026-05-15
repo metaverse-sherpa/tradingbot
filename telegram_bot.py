@@ -2128,8 +2128,6 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not user_data:
         await target.reply_text("❌ No API keys found. Please run /setup first.")
-        return
-        
     await target.reply_text("💰 Fetching your live balance...")
     
     try:
@@ -2164,52 +2162,84 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await target.reply_text(f"❌ Error fetching balance: {e}")
 
-async def trading_engine(application):
-    logger.info("Starting Multi-Tenant Engine Task...")
+async def sync_engine(application):
+    """
+    High-speed task (60s) for trade notifications and PnL syncing.
+    """
+    logger.info("📡 Starting Sentinel Sync Task (60s Notifications)...")
     while True:
         try:
-            # 1. Get all active users
             active_users = database.get_all_active_users()
             if not active_users:
                 await asyncio.sleep(60)
                 continue
             
-            # 2. Group users by strategy to optimize API calls
+            for user in active_users:
+                try:
+                    chat_id = user['telegram_chat_id']
+                    if not user.get('api_key'): continue
+
+                    user_ex = ccxt.blofin({
+                        "apiKey": user['api_key'],
+                        "secret": user['api_secret'],
+                        "password": user['api_password'],
+                        "options": {"defaultType": "swap"},
+                    })
+                    
+                    # Fetch balance and sync closed trades
+                    balance = user_ex.fetch_balance(params={"type": "futures"})
+                    equity = float(balance.get("USDT", {}).get("total", 0))
+                    
+                    database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
+                except Exception as e:
+                    logger.error(f"Sync error for {user.get('telegram_chat_id')}: {e}")
+            
+            await asyncio.sleep(60)
+        except Exception as e:
+            logger.error(f"Sentinel critical failure: {e}")
+            await asyncio.sleep(60)
+
+async def signal_engine(application):
+    """
+    Institutional task (15m) for Signal Generation and Trade Execution.
+    """
+    logger.info("🏔️ Starting Sherpa Signal Task (15m Precision)...")
+    while True:
+        try:
+            # 1. Wait until next 15-minute mark + buffer
+            now = time.time()
+            seconds_past_mark = now % 900
+            wait_time = 900 - seconds_past_mark + 30
+            logger.info(f"Sherpa Sleeping {wait_time:.1f}s until next candle close...")
+            await asyncio.sleep(wait_time)
+
+            # 2. Process Signals
+            active_users = database.get_all_active_users()
+            if not active_users: continue
+            
             strategy_groups = {}
             for user in active_users:
                 strat = user.get('strategy', 'Mean Reversion Scalper')
-                if strat not in strategy_groups:
-                    strategy_groups[strat] = []
+                if strat not in strategy_groups: strategy_groups[strat] = []
                 strategy_groups[strat].append(user)
             
-            logger.info(f"Engine Pass: Processing {len(active_users)} users across {len(strategy_groups)} strategies...")
-            
-            # 3. Process each strategy group
             public_ex = ccxt.blofin({"options": {"defaultType": "swap"}})
             public_ex.load_markets()
             
             for strat_name, users in strategy_groups.items():
                 signals = {}
-                # Calculate signals once for this strategy
                 for symbol in live_bot_multi.SYMBOLS:
                     try:
                         ohlcv = public_ex.fetch_ohlcv(symbol, "15m", limit=100)
                         df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
                         sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
-                        if sig:
-                            signals[symbol] = sig
+                        if sig: signals[symbol] = sig
                     except: pass
                 
-                # Execute for all users in this group
                 for user in users:
                     try:
                         chat_id = user['telegram_chat_id']
-                        # Last-mile credential check
-                        if not user.get('api_key'):
-                            # Silence noise for users without API keys
-                            pass
-                            continue
-
+                        if not user.get('api_key'): continue
                         user_ex = ccxt.blofin({
                             "apiKey": user['api_key'],
                             "secret": user['api_secret'],
@@ -2220,23 +2250,15 @@ async def trading_engine(application):
                         balance = user_ex.fetch_balance(params={"type": "futures"})
                         equity = float(balance.get("USDT", {}).get("total", 0))
                         
-                        # Sync stats and history
-                        database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
-                        
-                        # Execute signals
                         user_enabled = user.get('enabled_symbols', [])
                         user_risk = user.get('risk_pct', 1.5)
                         
                         for symbol, sig in signals.items():
-                            clean_sym = symbol.split("/")[0]
-                            if clean_sym not in user_enabled:
-                                continue
-                                
+                            if symbol.split("/")[0] not in user_enabled: continue
+                            
                             pos = user_ex.fetch_positions([symbol])
                             if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                                if live_bot_multi.DRY_RUN:
-                                    logger.info(f"DRY RUN: skipping order for {chat_id}")
-                                    continue
+                                if live_bot_multi.DRY_RUN: continue
                                     
                                 res = live_bot_multi.place_order(user_ex, symbol, sig, equity, risk_pct=user_risk)
                                 if res:
@@ -2257,24 +2279,15 @@ async def trading_engine(application):
                                         side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
                                         open_ts = int(time.time() * 1000)
                                         chart_file = charting.generate_trade_chart(res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
-                                        
-                                        # Add Nav Buttons to the Signal
                                         is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
                                         keyboard = get_nav_buttons(True, is_admin=is_admin)
-                                        
                                         with open(chart_file, 'rb') as photo:
-                                            await application.bot.send_photo(
-                                                chat_id=chat_id, 
-                                                photo=photo,
-                                                caption=msg,
-                                                reply_markup=InlineKeyboardMarkup(keyboard),
-                                                parse_mode="Markdown"
-                                            )
+                                            await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
                                     except Exception as chart_err:
                                         logger.error(f"Chart generation failed: {chart_err}")
                                         await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
                     except Exception as e:
-                        logger.error(f"Error for user {user.get('telegram_chat_id')}: {e}")
+                        logger.error(f"Signal execution error for {user.get('telegram_chat_id')}: {e}")
             
             # --- Precision Candle Sync ---
             # Wait until the next 15-minute mark + 30 seconds buffer
@@ -2332,8 +2345,9 @@ async def post_init(application: ApplicationBuilder):
     except Exception as e:
         logger.error(f"Failed to send startup notification: {e}")
 
-    # This automatically starts the background engine when the Telegram bot boots up
-    asyncio.create_task(trading_engine(application))
+    # 🚀 Start Dual-Heartbeat Engine
+    asyncio.create_task(sync_engine(application))
+    asyncio.create_task(signal_engine(application))
 
 def main():
     # Ensure database table exists
