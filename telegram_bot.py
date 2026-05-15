@@ -1381,13 +1381,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name = escape_md_v2(u.get('full_name') or "Unknown")
             uname = escape_md_v2(f" (@{u['username']})") if u.get('username') else ""
             
-            # 🕵️‍♂️ Last-Mile Identity Fetch (if Unknown)
-            if name == "Unknown":
-                try:
-                    member = await context.bot.get_chat_member(chat_id=u['telegram_chat_id'], user_id=u['telegram_chat_id'])
+            # 🕵️‍♂️ Proactive Identity Refresh (Ensures names like 'Mindaugas' sync immediately)
+            try:
+                member = await context.bot.get_chat_member(chat_id=u['telegram_chat_id'], user_id=u['telegram_chat_id'])
+                if member and member.user:
                     name = escape_md_v2(member.user.full_name)
                     uname = escape_md_v2(f" (@{member.user.username})") if member.user.username else ""
-                except: pass
+                    # Save back to DB for future fast-fetches
+                    database.sync_user_metadata(u['telegram_chat_id'], member.user.full_name, member.user.username)
+            except: pass
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
             # 🏢 Human-Friendly Formatting: "Mindaugas (@Bumeris77)"
