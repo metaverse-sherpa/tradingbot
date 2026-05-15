@@ -372,6 +372,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Error in deep-link processing: {e}")
 
     # --- 2. High-Authority Welcome Message ---
+    welcome_msg = (
         "🏔️ *Welcome to the Metaverse Sherpa Trading Bot!*\n\n"
         "The elite automated trading solution for institutional-grade professionals. We currently support **Blofin**, **Binance**, and **MEXC**.\n\n"
         "📖 *Getting Started:*\n"
