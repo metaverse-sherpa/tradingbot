@@ -321,6 +321,12 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     draw.text((get_x(tp), bar_y - 60), "TP", font=font_sub, fill=(0, 200, 83, 255), anchor="mm")
     draw.text((get_x(entry), bar_y + 40), "ENTRY", font=font_sub, fill=(200, 200, 200, 255), anchor="mm")
     
+    # SL/TP Percentages
+    sl_roe = ((sl - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - sl) / entry * 100)
+    tp_roe = ((tp - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - tp) / entry * 100)
+    draw.text((get_x(sl), bar_y + 40), f"{sl_roe:.1f}%", font=font_sub, fill=(255, 100, 100, 255), anchor="mm")
+    draw.text((get_x(tp), bar_y + 40), f"{tp_roe:+.1f}%", font=font_sub, fill=(0, 255, 150, 255), anchor="mm")
+    
     # Current Position Dot
     dot_x = get_x(current)
     # Glow effect
