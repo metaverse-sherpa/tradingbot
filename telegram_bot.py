@@ -2270,20 +2270,22 @@ async def post_init(application: ApplicationBuilder):
             changelog = "• New deployment (Audit Trail Unavailable)"
             
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_v2 = escape_md_v2(now)
+        changelog_v2 = escape_md_v2(changelog)
         msg = (
             "🚀 *Deployment Success*\n\n"
-            "The MetaverseSherpa Trading Bot has been upgraded and is now online.\n\n"
-            "🕒 *Timestamp:* `" + now + "`\n\n"
-            "📜 *Recent Fixes:* \n" + changelog + "\n\n"
+            "The MetaverseSherpa Trading Bot has been upgraded and is now online\\.\n\n"
+            f"🕒 *Timestamp:* `{now_v2}`\n\n"
+            "📜 *Recent Fixes:* \n" + changelog_v2 + "\n\n"
             "🔬 *What to Test Next:*\n"
             "• Verify 'Close Trade' tactical confirmation on /opentrades\n"
             "• Audit the new 'Glass Progress Bar' for layout overlap\n"
-            "• Confirm Blofin Tutorial deep-link delivers PDF correctly"
+            "• Confirm Blofin Tutorial deep\\_link delivers PDF correctly"
         )
         await application.bot.send_message(
             chat_id=SUPER_ADMIN_ID,
             text=msg,
-            parse_mode="Markdown"
+            parse_mode="MarkdownV2"
         )
     except Exception as e:
         logger.error(f"Failed to send startup notification: {e}")
@@ -2293,43 +2295,61 @@ async def post_init(application: ApplicationBuilder):
     asyncio.create_task(signal_engine(application))
 
 def main():
-    # Ensure database table exists
-    database.init_db()
+    try:
+        # Ensure database table exists
+        database.init_db()
 
-    # Initialize Bot Application with the post_init hook
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
-    
-    # Register Commands
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("settings", settings_command))
-    app.add_handler(CommandHandler("refer", refer_command))
-    app.add_handler(CommandHandler("premium", show_premium_menu))
-    app.add_handler(CommandHandler("admin", admin_command))
-    app.add_handler(CommandHandler("privacy", privacy_command))
-    app.add_handler(CommandHandler("docs", docs))
-    app.add_handler(CommandHandler("help", docs))
-    app.add_handler(CommandHandler("setup", setup))
-    app.add_handler(CommandHandler("reset", setup))
-    app.add_handler(CommandHandler("stats", stats))
-    app.add_handler(CommandHandler("opentrades", open_trades))
-    app.add_handler(CommandHandler("list", list_trades))
-    app.add_handler(CommandHandler("backtest", backtest))
-    app.add_handler(CommandHandler("balance", balance_command))
-    app.add_handler(CommandHandler("strategy", strategy_command))
-    app.add_handler(CommandHandler("promote", promote_command))
-    app.add_handler(CommandHandler("demote", demote_command))
-    app.add_handler(CommandHandler("cancel", cancel_command))
-    app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
-    app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
-    app.add_handler(CommandHandler("stop", stop_bot))
-    app.add_handler(CommandHandler("resume", resume_bot))
-    
-    # Catch all non-command messages (used for the setup step flow)
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    
-    logger.info("Starting Telegram Bot Polling...")
-    app.run_polling()
+        # Initialize Bot Application with the post_init hook
+        app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+        
+        # Register Commands
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("settings", settings_command))
+        app.add_handler(CommandHandler("refer", refer_command))
+        app.add_handler(CommandHandler("premium", show_premium_menu))
+        app.add_handler(CommandHandler("admin", admin_command))
+        app.add_handler(CommandHandler("privacy", privacy_command))
+        app.add_handler(CommandHandler("docs", docs))
+        app.add_handler(CommandHandler("help", docs))
+        app.add_handler(CommandHandler("setup", setup))
+        app.add_handler(CommandHandler("reset", setup))
+        app.add_handler(CommandHandler("stats", stats))
+        app.add_handler(CommandHandler("opentrades", open_trades))
+        app.add_handler(CommandHandler("list", list_trades))
+        app.add_handler(CommandHandler("backtest", backtest))
+        app.add_handler(CommandHandler("balance", balance_command))
+        app.add_handler(CommandHandler("strategy", strategy_command))
+        app.add_handler(CommandHandler("promote", promote_command))
+        app.add_handler(CommandHandler("demote", demote_command))
+        app.add_handler(CommandHandler("cancel", cancel_command))
+        app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
+        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
+        app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
+        app.add_handler(CommandHandler("stop", stop_bot))
+        app.add_handler(CommandHandler("resume", resume_bot))
+        
+        # Catch all non-command messages (used for the setup step flow)
+        app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+        
+        logger.info("Starting Telegram Bot Polling...")
+        app.run_polling()
+    except Exception as e:
+        import traceback
+        import requests
+        err_msg = f"🚨 *FATAL BOT CRASH*\n\nThe Cyber-Sherpa has fallen! 🏔️\n\n*Error:* `{str(e)}`"
+        try:
+            tb = traceback.format_exc()
+            # Send to Super Admin via simple HTTP request to bypass complex bot setup
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": SUPER_ADMIN_ID,
+                "text": f"{err_msg}\n\n*Traceback:*\n```\n{tb[:3500]}\n```",
+                "parse_mode": "Markdown"
+            }
+            requests.post(url, json=payload, timeout=10)
+        except: pass
+        logger.critical(f"FATAL ERROR: {e}\n{traceback.format_exc()}")
+        raise e
 
 if __name__ == "__main__":
     main()

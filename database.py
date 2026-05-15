@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import time
+import asyncio
 import ccxt.async_support as ccxt
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
