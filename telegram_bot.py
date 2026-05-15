@@ -372,11 +372,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Error in deep-link processing: {e}")
 
     # --- 2. High-Authority Welcome Message ---
-    welcome_msg = (
         "🏔️ *Welcome to the Metaverse Sherpa Trading Bot!*\n\n"
         "The elite automated trading solution for institutional-grade professionals. We currently support **Blofin**, **Binance**, and **MEXC**.\n\n"
         "📖 *Getting Started:*\n"
-        "Instructions for setting up your API key on Blofin: [Download PDF Guide](https://github.com/metaverse-sherpa/tradingbot/blob/main/tutorials/MetaverseSherpa%20Blofin%20API%20Setup.pdf)\n\n"
+        "Tap the button below to download the official Blofin API Setup Guide directly to your device.\n\n"
         "🛡️ *Security & Control*\n"
         "Your exchange API credentials are **fully encrypted** and isolated from all other identities. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit, but you can close any position directly on your exchange at any time.\n\n"
         "📊 *Standard vs. Institutional Access*\n"
@@ -390,7 +389,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚠️ *Disclaimer:* _Automated trading carries significant risk. The Metaverse Sherpa is a tool for professional-grade execution and is **not financial advice**. Past performance does not guarantee future results. Trade at your own risk._"
     )
     
-    await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
+    await update.effective_message.reply_text(
+        welcome_msg, 
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]])
+    )
 
     # 2. Institutional Master Audit (Strictly Static Hook)
     await send_master_audit(update, context, chat_id)
@@ -402,7 +405,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
         [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
         [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
-        [InlineKeyboardButton("📖 Blofin Setup Guide (PDF)", url="https://github.com/metaverse-sherpa/tradingbot/blob/main/tutorials/MetaverseSherpa%20Blofin%20API%20Setup.pdf")]
+        [InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]
     ]
     
     await update.effective_message.reply_text(
@@ -1300,6 +1303,21 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("💎 *INSTITUTIONAL ACCESS ACTIVATED!*\nSuccessfully used $20.00 in referral credits.", parse_mode="Markdown")
         msg, rm = get_settings_ui(user)
         await safe_edit_text(update, context, msg, reply_markup=rm)
+        return
+
+    if query.data == "send_blofin_guide":
+        await query.answer("📥 Sending Blofin Guide...")
+        pdf_path = os.path.join(BASE_DIR, "tutorials", "MetaverseSherpa Blofin API Setup.pdf")
+        if os.path.exists(pdf_path):
+            with open(pdf_path, 'rb') as doc:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=doc,
+                    caption="🏔️ *Blofin API Setup Guide*\nFollow these steps to link your account securely.",
+                    parse_mode="Markdown"
+                )
+        else:
+            await query.message.reply_text("❌ Guide not found on server. Please contact @metaverse_sherpa.")
         return
 
     if query.data == "admin_command":
@@ -2227,7 +2245,7 @@ def main():
     app.add_handler(CommandHandler("contact", contact_command))
     app.add_handler(CommandHandler("cancel", cancel_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
+    app.add_handler(CallbackQueryHandler(settings_callback, pattern="^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CommandHandler("stop", stop_bot))
     app.add_handler(CommandHandler("resume", resume_bot))
