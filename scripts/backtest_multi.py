@@ -134,15 +134,25 @@ def adx(df, p=14):
 # ---------------------------------------------------------------------------
 
 def simulate(df: pd.DataFrame, risk_per_trade: float) -> dict:
-    d              = df.copy()
-    d["ema"]       = ema(d["close"], EMA_PERIOD)
-    d["rsi"]       = rsi(d["close"], RSI_PERIOD)
-    d["atr"]       = atr(d, ATR_PERIOD)
-    d["adx"]       = adx(d, ADX_PERIOD)
-    mid            = d["close"].rolling(BB_PERIOD).mean()
-    std            = d["close"].rolling(BB_PERIOD).std()
-    d["bb_top"]    = mid + BB_DEV * std
-    d["bb_bot"]    = mid - BB_DEV * std
+    d = df.copy()
+    d["ema"] = ema(d["close"], EMA_PERIOD)
+    d["rsi"] = rsi(d["close"], RSI_PERIOD)
+    d["atr"] = atr(d, ATR_PERIOD)
+    d["adx"] = adx(d, ADX_PERIOD)
+    
+    # 🏔️ RESTORING BASELINE (No RVOL)
+    BB_DEV_H = 2.5
+    ADX_TH_H = 20
+    RVOL_TH  = 0.0 # Disabled
+    
+    mid = d["close"].rolling(BB_PERIOD).mean()
+    std = d["close"].rolling(BB_PERIOD).std()
+    d["bb_top"] = mid + BB_DEV_H * std
+    d["bb_bot"] = mid - BB_DEV_H * std
+    
+    # RVOL calculation
+    d["avg_vol"] = d["volume"].rolling(20).mean()
+    d["rvol"] = d["volume"] / d["avg_vol"]
 
     close  = d["close"].values
     high   = d["high"].values
@@ -151,84 +161,54 @@ def simulate(df: pd.DataFrame, risk_per_trade: float) -> dict:
     rsi_v  = d["rsi"].values
     atr_v  = d["atr"].values
     adx_v  = d["adx"].values
+    rvol_v = d["rvol"].values
     bb_top = d["bb_top"].values
     bb_bot = d["bb_bot"].values
     n      = len(close)
 
-    equity   = START_CASH
-    max_eq   = START_CASH
-    max_dd   = 0.0
-    wins = losses = 0
-    in_trade  = False
-    cooldown  = 0          # bars to wait before next entry (prevents immediate re-entry)
-    sl = tp = size = risk_amt = sl_dist = 0.0
-    side = 0
-    warmup = max(EMA_PERIOD, 50)
+    equity = START_CASH; max_eq = START_CASH; max_dd = 0.0; wins = losses = 0; in_trade = False; cooldown = 0
+    sl = tp = size = risk_amt = sl_dist = 0.0; side = 0; warmup = 200
 
     for i in range(warmup, n - 1):
-        if np.isnan(ema_v[i]) or np.isnan(adx_v[i]):
-            continue
-
-        # Count down cooldown after each exit
-        if cooldown > 0:
-            cooldown -= 1
-            continue
+        if np.isnan(ema_v[i]) or np.isnan(adx_v[i]): continue
+        if cooldown > 0: cooldown -= 1; continue
 
         if not in_trade:
-            if adx_v[i] < ADX_THRESHOLD:
-                continue
+            # 🛡️ New Momentum Filters
+            if adx_v[i] < ADX_TH_H: continue
+            if rvol_v[i] < RVOL_TH: continue
 
             # LONG
             if close[i] > ema_v[i] and close[i] < bb_bot[i] and rsi_v[i] < 30:
-                side     = 1
-                fill     = close[i] * (1 + SLIPPAGE)
-                sl_dist  = atr_v[i] * ATR_MULT
-                sl       = fill - sl_dist
-                tp       = fill + sl_dist * RR_RATIO
-                risk_amt = equity * risk_per_trade
-                size     = min(risk_amt / sl_dist, (equity * LEVERAGE) / fill)
-                equity  -= fill * size * COMMISSION
-                in_trade = True
+                side = 1; fill = close[i] * (1 + SLIPPAGE); sl_dist = atr_v[i] * ATR_MULT
+                sl = fill - sl_dist; tp = fill + sl_dist * RR_RATIO; risk_amt = equity * risk_per_trade
+                size = min(risk_amt / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * size * COMMISSION; in_trade = True
 
             # SHORT
             elif close[i] < ema_v[i] and close[i] > bb_top[i] and rsi_v[i] > 70:
-                side     = -1
-                fill     = close[i] * (1 - SLIPPAGE)
-                sl_dist  = atr_v[i] * ATR_MULT
-                sl       = fill + sl_dist
-                tp       = fill - sl_dist * RR_RATIO
-                risk_amt = equity * risk_per_trade
-                size     = min(risk_amt / sl_dist, (equity * LEVERAGE) / fill)
-                equity  -= fill * size * COMMISSION
-                in_trade = True
+                side = -1; fill = close[i] * (1 - SLIPPAGE); sl_dist = atr_v[i] * ATR_MULT
+                sl = fill + sl_dist; tp = fill - sl_dist * RR_RATIO; risk_amt = equity * risk_per_trade
+                size = min(risk_amt / sl_dist, (equity * LEVERAGE) / fill); equity -= fill * size * COMMISSION; in_trade = True
 
         else:
-            hit_sl = hit_tp = False
-            exit_px = 0.0
-
+            hit_sl = hit_tp = False; exit_px = 0.0
             if side == 1:
-                if low[i]  <= sl:  hit_sl = True; exit_px = sl
+                if low[i] <= sl: hit_sl = True; exit_px = sl
                 elif high[i] >= tp: hit_tp = True; exit_px = tp
             else:
-                if high[i] >= sl:  hit_sl = True; exit_px = sl
-                elif low[i]  <= tp: hit_tp = True; exit_px = tp
+                if high[i] >= sl: hit_sl = True; exit_px = sl
+                elif low[i] <= tp: hit_tp = True; exit_px = tp
 
             if hit_sl or hit_tp:
-                pnl      = risk_amt * RR_RATIO if hit_tp else -risk_amt
-                equity  += pnl - exit_px * size * COMMISSION
-                if hit_tp: wins   += 1
-                else:      losses += 1
-
-                if equity <= 0:
-                    return {"blown": True, "wins": wins, "losses": losses}
-
-                if equity > max_eq:  max_eq = equity
+                pnl = risk_amt * RR_RATIO if hit_tp else -risk_amt
+                equity += pnl - exit_px * size * COMMISSION
+                if hit_tp: wins += 1
+                else: losses += 1
+                if equity > max_eq: max_eq = equity
                 else:
                     dd = (max_eq - equity) / max_eq * 100
                     if dd > max_dd: max_dd = dd
-
-                in_trade = False
-                cooldown = 3       # wait 3 bars (45 min) before next entry
+                in_trade = False; cooldown = 3
 
     total = wins + losses
     if total == 0:
