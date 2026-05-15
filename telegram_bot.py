@@ -1195,7 +1195,7 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("🔍 View Live VPS Logs", callback_data="view_logs")],
         [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
         [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
-        [InlineKeyboardButton("🔗 Get Marketing Deep-Link", callback_data="admin_get_link")],
+        [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],
         [InlineKeyboardButton("📜 View Audit Trail (TronScan)", url=f"https://tronscan.org/#/address/{master_wallet}")],
         [InlineKeyboardButton("🔙 Close Console", callback_data="close_admin")]
     ]
