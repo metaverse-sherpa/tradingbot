@@ -374,7 +374,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- 2. High-Authority Welcome Message ---
     welcome_msg = (
         "🏔️ *Welcome to the Metaverse Sherpa Trading Bot!*\n\n"
-        "The elite automated trading solution for institutional-grade multi-exchange professionals.\n\n"
+        "The elite automated trading solution for institutional-grade professionals. We currently support **Blofin**, **Binance**, and **MEXC**.\n\n"
+        "📖 *Getting Started:*\n"
+        "Instructions for setting up your API key on Blofin: [Download PDF Guide](https://github.com/metaverse-sherpa/tradingbot/blob/main/tutorials/MetaverseSherpa%20Blofin%20API%20Setup.pdf)\n\n"
         "🛡️ *Security & Control*\n"
         "Your exchange API credentials are **fully encrypted** and isolated from all other identities. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit, but you can close any position directly on your exchange at any time.\n\n"
         "📊 *Standard vs. Institutional Access*\n"
@@ -399,7 +401,8 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
         [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
-        [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")]
+        [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
+        [InlineKeyboardButton("📖 Blofin Setup Guide (PDF)", url="https://github.com/metaverse-sherpa/tradingbot/blob/main/tutorials/MetaverseSherpa%20Blofin%20API%20Setup.pdf")]
     ]
     
     await update.effective_message.reply_text(
