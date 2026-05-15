@@ -961,6 +961,16 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     target_roe_str = f"{target_roe:+.1f}%"
             except: pass
 
+            sl_roe_str = "N/A"
+            if sl_price > 0:
+                try:
+                    if side == "LONG":
+                        sl_roe = ((sl_price - entry) / entry) * live_bot_multi.LEVERAGE * 100
+                    else: # SHORT
+                        sl_roe = ((entry - sl_price) / entry) * live_bot_multi.LEVERAGE * 100
+                    sl_roe_str = f"{sl_roe:.1f}%"
+                except: pass
+
             # 3. Generate the Chart
             chart_path = None
             try:
@@ -976,16 +986,21 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if tp_price > 0:
                 target_pnl_dollars = initial_margin * (target_roe / 100)
             
-            # Format for MarkdownV2 using helper
             upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
             roe_v2 = escape_md_v2(f"{roe:+.2f}")
             target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
             target_roe_v2 = escape_md_v2(target_roe_str)
+            sl_roe_v2 = escape_md_v2(sl_roe_str)
             sym_v2 = escape_md_v2(sym)
             
+            if upnl < 0 and sl_price > 0:
+                pnl_info = f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}% of {sl_roe_v2}\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
+            else:
+                pnl_info = f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
+
             caption = (
                 f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
-                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\)"
+                f"{pnl_info}"
             )
 
             if chart_path and os.path.exists(chart_path):
