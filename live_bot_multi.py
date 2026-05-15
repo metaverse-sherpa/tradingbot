@@ -24,26 +24,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SYMBOL_CONFIGS = {
-    "BTC":  {"bb": 2.5, "atr": 6.0, "rr": 1.25, "adx": 20, "rsi": 30},
-    "ETH":  {"bb": 2.5, "atr": 5.0, "rr": 1.25, "adx": 25, "rsi": 30},
-    "SOL":  {"bb": 2.0, "atr": 4.0, "rr": 1.25, "adx": 20, "rsi": 30},
-    "DOGE": {"bb": 2.0, "atr": 5.0, "rr": 1.25, "adx": 0,  "rsi": 30, "long_only": True},
-    "ADA":  {"bb": 2.5, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 40},
-    "LINK": {"bb": 2.0, "atr": 6.0, "rr": 1.0,  "adx": 20, "rsi": 30},
-    "DOT":  {"bb": 2.5, "atr": 4.0, "rr": 1.25, "adx": 20, "rsi": 30},
-    "TON":  {"bb": 2.0, "atr": 4.0, "rr": 1.25, "adx": 20, "rsi": 30},
-    "ZEC":  {"bb": 2.0, "atr": 4.0, "rr": 1.0,  "adx": 20, "rsi": 30},
-    "PEPE": {"bb": 2.0, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30},
-    "BNB":  {"bb": 2.5, "atr": 4.0, "rr": 1.25, "adx": 25, "rsi": 30},
-    "NEAR": {"bb": 3.0, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30},
-    "SUI":  {"bb": 2.0, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30},
-    "NOT":  {"bb": 2.0, "atr": 6.0, "rr": 1.25, "adx": 0,  "rsi": 30},
-    "TAO":  {"bb": 2.0, "atr": 5.0, "rr": 1.25, "adx": 0,  "rsi": 30},
-    "ONDO": {"bb": 2.5, "atr": 5.0, "rr": 1.25, "adx": 0,  "rsi": 30},
-    "ENA":  {"bb": 2.0, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30},
-    "FET":  {"bb": 2.0, "atr": 6.0, "rr": 1.0,  "adx": 25, "rsi": 30},
-    "WIF":  {"bb": 3.0, "atr": 5.0, "rr": 1.25, "adx": 25, "rsi": 30},
-    "SHIB": {"bb": 2.5, "atr": 6.0, "rr": 1.25, "adx": 15, "rsi": 30},
+    "BTC":  {"bb": 2.7, "atr": 6.0, "rr": 1.25, "adx": 25, "rsi": 30, "rvol": 1.5},
+    "ETH":  {"bb": 2.7, "atr": 5.0, "rr": 1.25, "adx": 25, "rsi": 30, "rvol": 1.5},
+    "SOL":  {"bb": 2.5, "atr": 4.0, "rr": 1.25, "adx": 25, "rsi": 30, "rvol": 1.5},
+    "DOGE": {"bb": 2.5, "atr": 5.0, "rr": 1.25, "adx": 20, "rsi": 30, "rvol": 1.8, "long_only": True},
+    "ADA":  {"bb": 2.7, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 35, "rvol": 1.5},
+    "LINK": {"bb": 2.5, "atr": 6.0, "rr": 1.0,  "adx": 25, "rsi": 30, "rvol": 1.5},
+    "DOT":  {"bb": 2.7, "atr": 4.0, "rr": 1.25, "adx": 25, "rsi": 30, "rvol": 1.5},
+    "TON":  {"bb": 2.5, "atr": 4.0, "rr": 1.25, "adx": 25, "rsi": 30, "rvol": 1.5},
+    "ZEC":  {"bb": 2.5, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30, "rvol": 1.5},
+    "PEPE": {"bb": 2.5, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30, "rvol": 2.0},
+    "BNB":  {"bb": 2.7, "atr": 4.0, "rr": 1.25, "adx": 25, "rsi": 30, "rvol": 1.5},
+    "NEAR": {"bb": 2.7, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30, "rvol": 1.5},
+    "SUI":  {"bb": 2.5, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30, "rvol": 1.5},
+    "NOT":  {"bb": 2.5, "atr": 6.0, "rr": 1.25, "adx": 20, "rsi": 30, "rvol": 2.0},
+    "TAO":  {"bb": 2.5, "atr": 5.0, "rr": 1.25, "adx": 20, "rsi": 30, "rvol": 1.5},
+    "ONDO": {"bb": 2.7, "atr": 5.0, "rr": 1.25, "adx": 20, "rsi": 30, "rvol": 1.5},
+    "ENA":  {"bb": 2.5, "atr": 4.0, "rr": 1.0,  "adx": 25, "rsi": 30, "rvol": 1.5},
+    "FET":  {"bb": 2.5, "atr": 6.0, "rr": 1.0,  "adx": 25, "rsi": 30, "rvol": 1.5},
+    "WIF":  {"bb": 2.7, "atr": 5.0, "rr": 1.25, "adx": 25, "rsi": 30, "rvol": 2.0},
+    "SHIB": {"bb": 2.7, "atr": 6.0, "rr": 1.25, "adx": 20, "rsi": 30, "rvol": 1.8},
 }
 
 SYMBOLS = [f"{s}/USDT:USDT" for s in SYMBOL_CONFIGS.keys()]
@@ -79,16 +79,17 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
     """
     Modular signal computation using the selected strategy.
     """
+    if symbol_name not in SYMBOL_CONFIGS: return None
+    cfg = SYMBOL_CONFIGS[symbol_name]
+    
     strat = strategies.get_strategy(strategy_name)
-    side = strat.check_signal(df)
+    # 🏔️ Institutional Pass: Feed full symbol config into the momentum engine
+    side = strat.check_signal(df, config=cfg)
     
     if not side:
         return None
         
-    # Standardize output for the engine
-    cfg = SYMBOL_CONFIGS[symbol_name]
-    
-    # ATR for SL calculation (common across strategies)
+    # ATR for SL calculation
     tr = pd.concat([df["high"] - df["low"], abs(df["high"] - df["close"].shift()), abs(df["low"] - df["close"].shift())], axis=1).max(axis=1)
     atr = tr.rolling(14).mean()
     last = df.iloc[-2]
