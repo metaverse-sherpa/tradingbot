@@ -78,10 +78,10 @@ def get_main_inline_menu(chat_id=None):
 def get_admin_keyboard(master_wallet):
     """Generates the specialized keyboard for the Sherpa Overlord."""
     return [
-        [InlineKeyboardButton("🌍 Global Broadcast", callback_data="admin_broadcast")],
-        [InlineKeyboardButton("📊 Detailed User Report", callback_data="admin_report")],
-        [InlineKeyboardButton("🎁 Generate Gift Code", callback_data="admin_gift")],
-        [InlineKeyboardButton("💰 Set Master Wallet", callback_data="admin_set_wallet")],
-        [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="admin_undercover")],
+        [InlineKeyboardButton("🌍 Global Broadcast", callback_data="admin_broadcast_prompt")],
+        [InlineKeyboardButton("📊 Detailed User Report", callback_data="admin_user_audit")],
+        [InlineKeyboardButton("🎁 Generate Gift Code", callback_data="admin_gift_prompt")],
+        [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
+        [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="toggle_undercover")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="main_menu")]
     ]
