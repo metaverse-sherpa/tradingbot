@@ -91,7 +91,8 @@ def run_blofin_deep_audit():
         pos = d["index"].get_indexer(common_idx); valid = pos >= 0
         aligned[name] = {k: np.where(valid, d[k][np.where(valid, pos, 0)], np.nan) for k in ["close","high","low","ema","rsi","atr","adx","bb_top","bb_bot"]}
 
-    states = {name: {"in_trade": False, "side": 0, "sl": 0.0, "tp": 0.0, "size": 0.0, "risk_amt": 0.0, "wins": 0, "losses": 0} for name in datasets}
+    states = {name: {"in_trade": False, "side": 0, "sl": 0.0, "tp": 0.0, "size": 0.0, "risk_amt": 0.0, 
+                     "long_wins": 0, "long_losses": 0, "short_wins": 0, "short_losses": 0} for name in datasets}
     equity = START_CASH; equity_history = [(common_idx[0], equity)]
     max_eq = START_CASH; drawdowns = [(common_idx[0], 0.0)]; max_dd_val = 0.0
 
@@ -107,14 +108,19 @@ def run_blofin_deep_audit():
                 if st["side"] == 1:
                     if lo <= st["sl"]: hit_sl = True; ex = st["sl"]
                     elif hi >= st["tp"]: hit_tp = True; ex = st["tp"]
+                    if hit_sl or hit_tp:
+                        if hit_tp: st["long_wins"] += 1
+                        else: st["long_losses"] += 1
                 else:
                     if hi >= st["sl"]: hit_sl = True; ex = st["sl"]
                     elif lo <= st["tp"]: hit_tp = True; ex = st["tp"]
+                    if hit_sl or hit_tp:
+                        if hit_tp: st["short_wins"] += 1
+                        else: st["short_losses"] += 1
+                
                 if hit_sl or hit_tp:
                     pnl = st["risk_amt"] * cfg["rr"] if hit_tp else -st["risk_amt"]
                     equity += pnl - ex * st["size"] * COMMISSION
-                    if hit_tp: st["wins"] += 1
-                    else: st["losses"] += 1
                     st["in_trade"] = False
                     equity_history.append((common_idx[i], equity)); max_eq = max(max_eq, equity)
                     dd = (max_eq - equity) / max_eq * 100; max_dd_val = max(max_dd_val, dd); drawdowns.append((common_idx[i], -dd))
@@ -138,33 +144,35 @@ def run_blofin_deep_audit():
     sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(365) if len(daily_returns) > 1 else 0
 
     # 📊 PER-SYMBOL BREAKDOWN
-    print("\n" + "="*70)
-    print(f"{'Symbol':<8} {'WR':>6} {'Trades':>7} {'Wins':>5} {'Losses':>6}")
-    print("-" * 70)
+    print("\n" + "="*85)
+    print(f"{'Symbol':<8} {'Long WR':>10} {'(T)':>4} | {'Short WR':>10} {'(T)':>4} | {'Overall':>9} {'(T)':>4}")
+    print("-" * 85)
     
-    total_wins = 0
-    total_losses = 0
+    total_l_w, total_l_l = 0, 0
+    total_s_w, total_s_l = 0, 0
     symbol_stats = []
 
     for name, st in states.items():
-        tw = st["wins"] + st["losses"]
-        total_wins += st["wins"]
-        total_losses += st["losses"]
+        lw, ll = st["long_wins"], st["long_losses"]
+        sw, sl = st["short_wins"], st["short_losses"]
+        total_l_w += lw; total_l_l += ll
+        total_s_w += sw; total_s_l += sl
+        
+        tw = lw + ll + sw + sl
         if tw > 0:
-            wr = (st["wins"] / tw) * 100
+            wr = ((lw + sw) / tw) * 100
+            l_wr = (lw / (lw + ll) * 100) if (lw + ll) > 0 else 0
+            s_wr = (sw / (sw + sl) * 100) if (sw + sl) > 0 else 0
             symbol_stats.append({
-                "name": name,
-                "wr": wr,
-                "trades": tw,
-                "wins": st["wins"],
-                "losses": st["losses"]
+                "name": name, "wr": wr, "trades": tw,
+                "l_wr": l_wr, "l_t": lw + ll,
+                "s_wr": s_wr, "s_t": sw + sl
             })
 
-    # 🏔️ Sorting by Win Rate Descending
     symbol_stats.sort(key=lambda x: x["wr"], reverse=True)
 
     for s in symbol_stats:
-        print(f"{s['name']:<8} {s['wr']:>5.1f}% {s['trades']:>7} {s['wins']:>5} {s['losses']:>6}")
+        print(f"{s['name']:<8} {s['l_wr']:>8.1f}% {s['l_t']:>4} | {s['s_wr']:>8.1f}% {s['s_t']:>4} | {s['wr']:>8.1f}% {s['trades']:>4}")
 
     # Institutional 75/25 Layout
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#121212")
@@ -187,16 +195,18 @@ def run_blofin_deep_audit():
     
     plt.tight_layout(); plt.savefig(os.path.join(RESULTS_DIR, "blofin_deep_audit.png"), dpi=150, facecolor="#121212")
     
-    total_trades = total_wins + total_losses
-    final_wr = (total_wins / total_trades * 100) if total_trades else 0
+    total_trades = total_l_w + total_l_l + total_s_w + total_s_l
+    final_wr = ((total_l_w + total_s_w) / total_trades * 100) if total_trades else 0
+    l_wr = (total_l_w / (total_l_w + total_l_l) * 100) if (total_l_w + total_l_l) > 0 else 0
+    s_wr = (total_s_w / (total_s_w + total_s_l) * 100) if (total_s_w + total_s_l) > 0 else 0
     
     # Calculate Days
     days = (common_idx[-1] - common_idx[0]).days
     avg_daily = total_trades / days if days > 0 else 0
     
-    print("-" * 70)
-    print(f"TOTALS:  {final_wr:>5.1f}% {total_trades:>7} {total_wins:>5} {total_losses:>6}")
-    print("="*70)
+    print("-" * 85)
+    print(f"TOTALS:  {l_wr:>8.1f}% {total_l_w+total_l_l:>4} | {s_wr:>8.1f}% {total_s_w+total_s_l:>4} | {final_wr:>8.1f}% {total_trades:>4}")
+    print("="*85)
     print(f"Avg Trades/Day: {avg_daily:.1f}")
     print(f"Final Equity:   ${equity:,.2f} | Sharpe: {sharpe:.2f} | MaxDD: {max_dd_val:.1f}%\n")
 
