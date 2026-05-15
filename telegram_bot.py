@@ -1381,15 +1381,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name = escape_md_v2(u.get('full_name') or "Unknown")
             uname = escape_md_v2(f" (@{u['username']})") if u.get('username') else ""
             
-            # 🕵️‍♂️ Proactive Identity Refresh (Ensures names like 'Mindaugas' sync immediately)
+            # 🕵️‍♂️ Proactive Identity Refresh (Nuclear Option: get_chat)
             try:
-                member = await context.bot.get_chat_member(chat_id=u['telegram_chat_id'], user_id=u['telegram_chat_id'])
-                if member and member.user:
-                    name = escape_md_v2(member.user.full_name)
-                    uname = escape_md_v2(f" (@{member.user.username})") if member.user.username else ""
-                    # Save back to DB for future fast-fetches
-                    database.sync_user_metadata(u['telegram_chat_id'], member.user.full_name, member.user.username)
-            except: pass
+                chat = await context.bot.get_chat(u['telegram_chat_id'])
+                f_name = chat.first_name or ""
+                l_name = chat.last_name or ""
+                full_identity = f"{f_name} {l_name}".strip() or "Unknown"
+                
+                name = escape_md_v2(full_identity)
+                uname = escape_md_v2(f" (@{chat.username})") if chat.username else ""
+                
+                # Save back to DB to kill legacy IDs like 'VIR13_FATUM'
+                database.sync_user_metadata(u['telegram_chat_id'], full_identity, chat.username)
+            except Exception as e:
+                logger.error(f"Audit identity sync failed for {u['telegram_chat_id']}: {e}")
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
             # 🏢 Human-Friendly Formatting: "Mindaugas (@Bumeris77)"
