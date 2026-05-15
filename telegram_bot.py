@@ -910,7 +910,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
         
         if not active:
-            await update.effective_message.reply_text("You have no active trades at the moment.", reply_markup=get_main_inline_menu(chat_id))
+            await update.effective_message.reply_text("🏔️ *The MetaverseSherpa is currently scanning the mountains and valleys for the next high-altitude trade setup. Stay vigilant.*", parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
             return
             
         await update.effective_message.reply_text(
