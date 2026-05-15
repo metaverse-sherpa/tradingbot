@@ -1,7 +1,7 @@
 import os
 import logging
 import asyncio
-import ccxt
+import ccxt.async_support as ccxt
 import pandas as pd
 import live_bot_multi
 import media_gen
@@ -12,6 +12,8 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from telegram.error import BadRequest
 import database
 import charting
+import bot_ui
+from bot_ui import escape_md_v2, safe_edit_text, get_nav_buttons, get_main_inline_menu, get_admin_keyboard
 import time
 import sys
 from datetime import datetime
@@ -25,7 +27,7 @@ from sherpa_visual_audit import run_visual_audit
 # Load environment variables
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-ADMIN_CHAT_ID = 1567788633  # Metaverse Sherpa Lead
+SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID", 1567788633))
 
 def get_master_wallet():
     """Retrieves the master wallet from database config."""
@@ -43,37 +45,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 logging.getLogger("ccxt.blofin").setLevel(logging.WARNING)
 
-def escape_md_v2(text):
-    """Escapes all reserved characters for Telegram MarkdownV2."""
-    if not text: return ""
-    # Characters that must be escaped in MarkdownV2
-    reserved = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    for char in reserved:
-        text = str(text).replace(char, f"\\{char}")
-    return text
-
-async def safe_edit_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, reply_markup: InlineKeyboardMarkup = None, parse_mode: str = "Markdown"):
-    """Surgically edits a message or sends a fresh one if media conflict exists."""
-    query = update.callback_query
-    if not query:
-        return await update.effective_message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
-    
-    try:
-        # 🕵️ Attempt sleak inline update
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
-    except Exception as e:
-        error_str = str(e)
-        if "Message is not modified" in error_str:
-            return
-        
-        # 🏔️ Fallback: If it's a photo message or other edit conflict, send fresh
-        try:
-            await query.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
-            # Try to clean up the orphaned photo menu
-            try: await query.message.delete()
-            except: pass
-        except Exception as e2:
-            logger.error(f"SafeEdit Fatal Error: {e2}")
+# Removed UI helpers (Moved to bot_ui.py)
 
 async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Triggers the personalized visual 3-year audit for the user."""
@@ -265,38 +237,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         logger.error(f"Personal audit error: {e}")
         await status_msg.edit_text(f"❌ Error during simulation: {e}")
         
-def get_nav_buttons(has_active_trades=False, is_admin=False):
-    """Returns a standardized grid of inline navigation buttons, dynamically adding Panic Exit if trades are open."""
-    kb = [
-        [
-            InlineKeyboardButton("🛰️ Active Trades", callback_data="opentrades_menu"),
-            InlineKeyboardButton("📜 History", callback_data="history_menu")
-        ],
-        [
-            InlineKeyboardButton("📊 Your Stats", callback_data="stats_menu"),
-            InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
-        ],
-        [
-            InlineKeyboardButton("❓ Help", callback_data="help_menu"),
-            InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
-        ]
-    ]
-    if is_admin:
-        kb.append([InlineKeyboardButton("👑 Admin Console", callback_data="admin_command")])
-    
-    if has_active_trades:
-        kb.append([InlineKeyboardButton("🚨 CLOSE ALL TRADES", callback_data="confirm_panic")])
-    return kb
-
-def get_main_inline_menu(chat_id=None):
-    has_active = False
-    is_admin = False
-    if chat_id:
-        user = database.get_user(chat_id)
-        if user:
-            has_active = user.get('has_open_positions', False)
-            is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
-    return InlineKeyboardMarkup(get_nav_buttons(has_active, is_admin))
+# Removed Navigation helpers (Moved to bot_ui.py)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -317,7 +258,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"ID: `{chat_id}`{ref_info}\n\n"
                 "📈 _A new recruit has joined the trail. Awaiting setup..._"
             )
-            await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_msg, parse_mode="Markdown")
+            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Error sending admin notification: {e}")
     
@@ -426,7 +367,7 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop('setting_risk', None)
     context.user_data.pop('setup_step', None)
     
-    if chat_id == ADMIN_CHAT_ID:
+    if chat_id == SUPER_ADMIN_ID:
         footer = "\n\n───────────────────\n👑 *Sherpa Overlord Mission Control*"
         footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
         await update.effective_message.reply_text(f"🛑 *Action Cancelled.*{footer}", parse_mode="Markdown", reply_markup=footer_kb)
@@ -474,7 +415,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     # --- 2. Handle Admin Master Wallet Setup ---
-    if context.user_data.get('setting_admin_wallet') and chat_id == ADMIN_CHAT_ID:
+    if context.user_data.get('setting_admin_wallet') and chat_id == SUPER_ADMIN_ID:
         if text.startswith('T') and len(text) == 34:
             database.update_config('master_usdt_wallet', text)
             context.user_data['setting_admin_wallet'] = False
@@ -535,7 +476,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"ID: `{chat_id}`\n\n"
                 "🚀 _Member has configured API and is now LIVE in the engine._"
             )
-            await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=act_msg, parse_mode="Markdown")
+            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=act_msg, parse_mode="Markdown")
         except: pass
         
         context.user_data.clear()
@@ -690,38 +631,41 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     import live_bot_multi
     
     try:
-        user_ex = ccxt.blofin({
+        async with ccxt.blofin({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
             "password": user['api_password'],
             "options": {"defaultType": "swap"},
-        })
-        
-        now_ms = int(time.time() * 1000)
-        twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
-        
-        # 1. Get Realized PnL for last 24h
-        for sym in live_bot_multi.SYMBOLS:
-            try:
-                trades = user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago)
-                for t in trades:
-                    info = t.get("info", {})
-                    gross_pnl = float(info.get("fillPnl") or 0)
-                    if gross_pnl != 0:
-                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                        net_pnl = gross_pnl - (fee * 2)
-                        realized_daily_pnl += net_pnl
-            except: pass
+        }) as user_ex:
             
-        # 2. Get Total Unrealized PnL from positions
-        try:
-            positions = user_ex.fetch_positions(live_bot_multi.SYMBOLS)
-            for p in positions:
-                contracts = float(p.get("contracts", 0) or 0)
-                if contracts != 0:
-                    open_positions_count += 1
-                    total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or 0)
-        except: pass
+            now_ms = int(time.time() * 1000)
+            twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
+            
+            # 1. Parallelize Realized PnL fetching for last 24h
+            async def fetch_sym_pnl(sym):
+                nonlocal realized_daily_pnl
+                try:
+                    trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago)
+                    for t in trades:
+                        info = t.get("info", {})
+                        gross_pnl = float(info.get("fillPnl") or 0)
+                        if gross_pnl != 0:
+                            fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                            net_pnl = gross_pnl - (fee * 2)
+                            realized_daily_pnl += net_pnl
+                except: pass
+
+            await asyncio.gather(*(fetch_sym_pnl(sym) for sym in live_bot_multi.SYMBOLS))
+            
+            # 2. Get Total Unrealized PnL from positions
+            try:
+                positions = await user_ex.fetch_positions(live_bot_multi.SYMBOLS)
+                for p in positions:
+                    contracts = float(p.get("contracts", 0) or 0)
+                    if contracts != 0:
+                        open_positions_count += 1
+                        total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or 0)
+            except: pass
             
     except Exception as e:
         logger.error(f"PnL calculation failed: {e}")
@@ -756,7 +700,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg += f"Closed Trades: *{total_closed}*\n"
     
     # Add Share Stats button
-    is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+    is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
     cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
     keyboard = [
         [InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)],
@@ -788,62 +732,64 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
     
     try:
-        user_ex = database.get_exchange_client(user)
-        user_ex.load_markets()
-        
-        import live_bot_multi
-        all_closed = []
-        # We check the last 100 trades to ensure we find enough realized PnL events
-        for sym in live_bot_multi.SYMBOLS:
-            try:
-                norm_sym = database.normalize_symbol(sym, user_ex.id)
-                trades = user_ex.fetch_my_trades(norm_sym, limit=50)
-                for t in trades:
-                    info = t.get("info", {})
-                    gross_pnl = 0
-                    if user_ex.id == 'blofin':
-                        gross_pnl = float(info.get("fillPnl") or 0)
-                    else:
-                        gross_pnl = float(info.get("realizedPnl") or 0)
-                        
-                    if gross_pnl != 0:
-                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                        net_pnl = gross_pnl - (fee * 2)
-                        
-                        side_raw = t.get('side', 'buy').lower()
-                        is_long = (side_raw == 'sell')
-                        
-                        # Calculate ROE
-                        try:
-                            market = user_ex.market(sym)
-                            contract_size = float(market.get('contractSize', 1))
-                            initial_margin = (t['price'] * t['amount'] * contract_size) / 20
-                            roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                        except: roe_val = 0
-
-                        all_closed.append({
-                            "symbol": sym,
-                            "timestamp": t['timestamp'],
-                            "net_pnl": net_pnl,
-                            "price": t['price'],
-                            "amount": t['amount'],
-                            "side": "l" if is_long else "s",
-                            "roe_val": roe_val
-                        })
-            except: pass
-                 
-        all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
-        last_10 = all_closed[:10]
-        
-        if not last_10:
-            await status_msg.edit_text("No recently closed trades found in your account.")
-            return
+        async with database.get_exchange_client(user) as user_ex:
+            await user_ex.load_markets()
             
-        # Lock into Sherpa Cache
-        database.set_history_cache(chat_id, last_10)
-        
-        await status_msg.delete()
-        await render_history_dashboard(update, context, last_10, chat_id, user)
+            import live_bot_multi
+            all_closed = []
+            
+            async def fetch_sym_history(sym):
+                try:
+                    norm_sym = database.normalize_symbol(sym, user_ex.id)
+                    trades = await user_ex.fetch_my_trades(norm_sym, limit=50)
+                    for t in trades:
+                        info = t.get("info", {})
+                        gross_pnl = 0
+                        if user_ex.id == 'blofin':
+                            gross_pnl = float(info.get("fillPnl") or 0)
+                        else:
+                            gross_pnl = float(info.get("realizedPnl") or 0)
+                            
+                        if gross_pnl != 0:
+                            fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                            net_pnl = gross_pnl - (fee * 2)
+                            
+                            side_raw = t.get('side', 'buy').lower()
+                            is_long = (side_raw == 'sell')
+                            
+                            # Calculate ROE
+                            try:
+                                market = user_ex.market(sym)
+                                contract_size = float(market.get('contractSize', 1))
+                                initial_margin = (t['price'] * t['amount'] * contract_size) / 20
+                                roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                            except: roe_val = 0
+
+                            all_closed.append({
+                                "symbol": sym,
+                                "timestamp": t['timestamp'],
+                                "net_pnl": net_pnl,
+                                "price": t['price'],
+                                "amount": t['amount'],
+                                "side": "l" if is_long else "s",
+                                "roe_val": roe_val
+                            })
+                except: pass
+
+            await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
+                 
+            all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
+            last_10 = all_closed[:10]
+            
+            if not last_10:
+                await status_msg.edit_text("No recently closed trades found in your account.")
+                return
+                
+            # Lock into Sherpa Cache
+            database.set_history_cache(chat_id, last_10)
+            
+            await status_msg.delete()
+            await render_history_dashboard(update, context, last_10, chat_id, user)
             
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
@@ -877,7 +823,7 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         
     history_text += "\n*Tap a button below to Share & Earn 📸*"
     
-    is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+    is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
     grid = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
     grid.append([InlineKeyboardButton(" ", callback_data="none")])
     grid.extend(get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin))
@@ -898,110 +844,98 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text("🔍 Checking your active trades on the exchange...")
     
     try:
-        user_ex = database.get_exchange_client(user)
-        user_ex.load_markets()
-        
-        import live_bot_multi
-        import charting
-        import os
-        
-        # Normalize all symbols for this exchange
-        norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
-        positions = user_ex.fetch_positions(norm_syms)
-        active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
-        
-        if not active:
-            await update.effective_message.reply_text("🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
-            return
+        async with database.get_exchange_client(user) as user_ex:
+            await user_ex.load_markets()
             
-        await update.effective_message.reply_text(
-            f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...",
-            parse_mode="Markdown"
-        )
+            import live_bot_multi
+            import charting
+            import os
+            
+            # Normalize all symbols for this exchange
+            norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
+            positions = await user_ex.fetch_positions(norm_syms)
+            active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
+            
+            if not active:
+                await update.effective_message.reply_text("🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+                return
+                
+            await update.effective_message.reply_text(
+                f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...",
+                parse_mode="Markdown"
+            )
 
-        for p in active:
-            sym = p['symbol']
-            side = p['side'].upper()
-            entry = float(p['entryPrice'] or 0)
-            mark_price = float(p.get('markPrice') or 0)
-            upnl = float(p['unrealizedPnl'] or 0)
-            
-            # 1. Calculate Current ROE
-            try:
-                market = user_ex.market(sym)
-                contract_size = float(market.get('contractSize', 1))
-                initial_margin = (entry * float(p['contracts']) * contract_size) / live_bot_multi.LEVERAGE
-                roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
-            except:
-                roe = 0
-                initial_margin = 0
-            
-            # 2. Fetch TP/SL Prices and Calculate Target ROE
-            tp_price = 0
-            sl_price = 0
-            target_roe_str = "N/A"
-            
-            try:
-                # 🛡️ Verified Blofin TPSL system
+            async def process_active_position(p):
                 try:
-                    all_tpsl = user_ex.private_get_trade_orders_tpsl_pending({"instType": "SWAP"})
-                    if all_tpsl and "data" in all_tpsl:
-                        for o in all_tpsl["data"]:
-                            if o.get('instId') == market['id']:
-                                tp = float(o.get('tpTriggerPrice') or 0)
-                                sl = float(o.get('slTriggerPrice') or 0)
-                                if tp > 0: tp_price = tp
-                                if sl > 0: sl_price = sl
-                except: pass
+                    sym = p['symbol']
+                    side = p['side'].upper()
+                    entry = float(p['entryPrice'] or 0)
+                    upnl = float(p['unrealizedPnl'] or 0)
                     
-                if tp_price > 0:
-                    if side == "LONG":
-                        target_roe = ((tp_price - entry) / entry) * live_bot_multi.LEVERAGE * 100
-                    else: # SHORT
-                        target_roe = ((entry - tp_price) / entry) * live_bot_multi.LEVERAGE * 100
-                    target_roe_str = f"{target_roe:+.1f}%"
-            except: pass
+                    market = user_ex.market(sym)
+                    contract_size = float(market.get('contractSize', 1))
+                    initial_margin = (entry * float(p['contracts']) * contract_size) / live_bot_multi.LEVERAGE
+                    roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
+                    
+                    # 2. Fetch TP/SL Prices
+                    tp_price = 0
+                    sl_price = 0
+                    target_roe_str = "N/A"
+                    
+                    try:
+                        all_tpsl = await user_ex.private_get_trade_orders_tpsl_pending({"instType": "SWAP"})
+                        if all_tpsl and "data" in all_tpsl:
+                            for o in all_tpsl["data"]:
+                                if o.get('instId') == market['id']:
+                                    tp = float(o.get('tpTriggerPrice') or 0)
+                                    sl = float(o.get('slTriggerPrice') or 0)
+                                    if tp > 0: tp_price = tp
+                                    if sl > 0: sl_price = sl
+                        
+                        if tp_price > 0:
+                            target_roe = ((tp_price - entry) / entry) * live_bot_multi.LEVERAGE * 100 if side == "LONG" else ((entry - tp_price) / entry) * live_bot_multi.LEVERAGE * 100
+                            target_roe_str = f"{target_roe:+.1f}%"
+                    except: pass
 
-            sl_roe_str = "N/A"
-            if sl_price > 0:
-                try:
-                    if side == "LONG":
-                        sl_roe = ((sl_price - entry) / entry) * live_bot_multi.LEVERAGE * 100
-                    else: # SHORT
-                        sl_roe = ((entry - sl_price) / entry) * live_bot_multi.LEVERAGE * 100
-                    sl_roe_str = f"{sl_roe:.1f}%"
-                except: pass
+                    # 3. Generate the Chart (Async)
+                    try:
+                        open_ts = int(p.get('info', {}).get('createTime') or 0)
+                        ohlcv = await user_ex.fetch_ohlcv(sym, timeframe='15m', limit=100)
+                        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                        chart_path = await asyncio.to_thread(charting.generate_trade_chart, sym, df, entry, tp_price, sl_price, side, open_ts)
+                    except Exception as e:
+                        logger.error(f"Chart generation failed for {sym}: {e}")
+                        chart_path = None
 
-            # 3. Generate the Chart
-            chart_path = None
-            try:
-                open_ts = int(p.get('info', {}).get('createTime') or 0)
-                ohlcv = user_ex.fetch_ohlcv(sym, timeframe='15m', limit=100)
-                df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-                chart_path = charting.generate_trade_chart(sym, df, entry, tp_price, sl_price, side, open_ts)
-            except Exception as e:
-                logger.error(f"Chart generation failed for {sym}: {e}")
+                    # 4. Final Output
+                    target_pnl_dollars = initial_margin * (float(target_roe_str.strip("%")) / 100) if target_roe_str != "N/A" else 0
+                    upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
+                    roe_v2 = escape_md_v2(f"{roe:+.2f}")
+                    target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
+                    target_roe_v2 = escape_md_v2(target_roe_str)
+                    sym_v2 = escape_md_v2(sym)
+                    
+                    caption = (
+                        f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
+                        f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
+                    )
+                    
+                    # Keyboard for tactical management
+                    kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
+                    
+                    if chart_path and os.path.exists(chart_path):
+                        with open(chart_path, 'rb') as photo:
+                            await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                    else:
+                        await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                except Exception as e:
+                    logger.error(f"Position processing error for {p.get('symbol')}: {e}")
 
-            # 4. Calculate Dollar Targets for Summary
-            target_pnl_dollars = 0
-            if tp_price > 0:
-                target_pnl_dollars = initial_margin * (target_roe / 100)
+            await asyncio.gather(*(process_active_position(p) for p in active))
             
-            upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
-            roe_v2 = escape_md_v2(f"{roe:+.2f}")
-            target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
-            target_roe_v2 = escape_md_v2(target_roe_str)
-            sl_roe_v2 = escape_md_v2(sl_roe_str)
-            sym_v2 = escape_md_v2(sym)
-            
-            if upnl < 0 and sl_price > 0:
-                pnl_info = f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}% of {sl_roe_v2}\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
-            else:
-                pnl_info = f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
-
-            caption = (
-                f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
-                f"{pnl_info}"
+    except Exception as e:
+        logger.error(f"Error checking open trades: {e}")
+        await update.effective_message.reply_text(f"❌ Error fetching positions: {e}")
             )
 
             if chart_path and os.path.exists(chart_path):
@@ -1069,7 +1003,7 @@ def get_settings_ui(user):
     wallet_display = f"{wallet_val[:6]}...{wallet_val[-4:]}" if wallet_val else "(Not Set)"
     
     is_premium = database.is_premium(user)
-    is_admin = (user.get('telegram_chat_id') == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+    is_admin = (user.get('telegram_chat_id') == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
     
     tier_display = "👑 Sherpa Overlord (Permanent)" if is_admin else ("💎 Premium (Institutional)" if is_premium else "🥈 Standard")
     
@@ -1150,6 +1084,41 @@ async def show_refer_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     kb = [[InlineKeyboardButton("📱 Share Invite Link", url=f"https://t.me/share/url?url={invite_link}&text=Unlock%20the%20Institutional%20Wealth%20Gap%20with%20the%20Metaverse%20Sherpa%20Trading%20Bot!%20🏔️")]]
     await safe_edit_text(update, context, refer_msg, reply_markup=InlineKeyboardMarkup(kb))
 
+async def promote_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Super Admin only: Promotes a user to Admin."""
+    chat_id = update.effective_chat.id
+    if chat_id != SUPER_ADMIN_ID: return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: `/promote <chat_id>`", parse_mode="Markdown")
+        return
+        
+    try:
+        target_id = int(context.args[0])
+        database.set_admin_status(target_id, True)
+        await update.message.reply_text(f"✅ User `{target_id}` promoted to Admin.", parse_mode="Markdown")
+        try:
+            await context.bot.send_message(chat_id=target_id, text="💎 *Promotion Success*\nYou have been granted Admin privileges by the Super Admin.", parse_mode="Markdown")
+        except: pass
+    except:
+        await update.message.reply_text("❌ Invalid Chat ID.")
+
+async def demote_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Super Admin only: Demotes a user from Admin status."""
+    chat_id = update.effective_chat.id
+    if chat_id != SUPER_ADMIN_ID: return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: `/demote <chat_id>`", parse_mode="Markdown")
+        return
+        
+    try:
+        target_id = int(context.args[0])
+        database.set_admin_status(target_id, False)
+        await update.message.reply_text(f"✅ User `{target_id}` demoted from Admin.", parse_mode="Markdown")
+    except:
+        await update.message.reply_text("❌ Invalid Chat ID.")
+
 async def refer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await show_refer_dashboard(update, context)
 
@@ -1208,8 +1177,6 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
     await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
 
-def get_admin_keyboard(master_wallet):
-    """Definitive High-Authority Command Buttons."""
     return [
         [InlineKeyboardButton("📊 User & Referral Audit", callback_data="admin_user_audit")],
         [InlineKeyboardButton("🎁 Gift Premium Access", callback_data="admin_gift_prompt")],
@@ -1224,7 +1191,7 @@ def get_admin_keyboard(master_wallet):
 async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gated dashboard for the Sherpa Overlord."""
     chat_id = update.effective_chat.id
-    if chat_id != ADMIN_CHAT_ID: return
+    if chat_id != SUPER_ADMIN_ID: return
     
     user = database.get_user(chat_id)
     if not user: return
@@ -1344,7 +1311,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "admin_get_link":
-        if chat_id != ADMIN_CHAT_ID: return
+        if chat_id != SUPER_ADMIN_ID: return
         await query.answer()
         bot_username = (await context.bot.get_me()).username
         deep_link = f"https://t.me/{bot_username}?start=guide_blofin"
@@ -1358,12 +1325,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "admin_command":
-        if chat_id != ADMIN_CHAT_ID: return
+        if chat_id != SUPER_ADMIN_ID: return
         await admin_command(update, context)
         return
 
     if query.data == "admin_user_audit":
-        if chat_id != ADMIN_CHAT_ID: return
+        if chat_id != SUPER_ADMIN_ID: return
         await query.answer("📊 Generating Audit...")
         report = database.get_detailed_user_report()
         
@@ -1413,7 +1380,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "admin_broadcast_prompt":
-        if chat_id != ADMIN_CHAT_ID: return
+        if chat_id != SUPER_ADMIN_ID: return
         context.user_data['admin_broadcasting'] = True
         await query.message.reply_text(
             "📢 *Institutional Broadcast Mode*\n\n"
@@ -1436,7 +1403,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "view_logs":
-        if chat_id != ADMIN_CHAT_ID: return
+        if chat_id != SUPER_ADMIN_ID: return
         await query.answer("🔍 Fetching Mission Logs...")
         try:
             import subprocess
@@ -1495,7 +1462,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "prompt_admin_wallet":
-        if chat_id != ADMIN_CHAT_ID: return
+        if chat_id != SUPER_ADMIN_ID: return
         context.user_data['setting_admin_wallet'] = True
         await query.message.reply_text(
             "👑 *Overlord: Update Treasury Address*\n\n"
@@ -1514,7 +1481,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "toggle_undercover":
-        if chat_id != ADMIN_CHAT_ID: 
+        if chat_id != SUPER_ADMIN_ID: 
             logger.warning(f"UNAUTHORIZED TOGGLE ATTEMPT: {chat_id}")
             return
         database.toggle_undercover(chat_id)
@@ -1538,7 +1505,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         # 👑 Admin-Only Self-Audit Security
-        if source_wallet == get_master_wallet() and chat_id != ADMIN_CHAT_ID:
+        if source_wallet == get_master_wallet() and chat_id != SUPER_ADMIN_ID:
             await query.message.reply_text(
                 "❌ *Invalid Source Wallet*\n\n"
                 "You cannot use the Master Treasury address as your source wallet. Please link your personal USDT (TRC-20) address in Settings.",
@@ -1603,7 +1570,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 try:
                     user_info = f"@{update.effective_user.username}" if update.effective_user.username else f"ID: `{chat_id}`"
                     await context.bot.send_message(
-                        chat_id=ADMIN_CHAT_ID,
+                        chat_id=SUPER_ADMIN_ID,
                         text=f"💰 *INSTITUTIONAL REVENUE CONFIRMED!*\n\nUser: {user_info}\nRequired: *${required_price:.2f} USDT*\n\n📈 _The treasury is growing._",
                         parse_mode="Markdown"
                     )
@@ -1838,7 +1805,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['setting_risk'] = True
         keyboard = [
             [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
-            *get_nav_buttons(user.get('has_open_positions', False), is_admin=(chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode')))
+            *get_nav_buttons(user.get('has_open_positions', False), is_admin=(chat_id == SUPER_ADMIN_ID and not user.get('undercover_mode')))
         ]
         await safe_edit_text(
             update, context,
@@ -1931,7 +1898,7 @@ async def show_symbol_menu(update, context, user):
     keyboard.append([InlineKeyboardButton("🚀 Apply & Run Audit", callback_data="apply_symbol_audit")])
     keyboard.append([InlineKeyboardButton("───────────────", callback_data="none")])
     keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
-    is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+    is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
     keyboard.extend(get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin))
     
     await safe_edit_text(
@@ -2038,7 +2005,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             # For losses, keep it humble and private (No referral link or share button)
             viral_caption = headline
-            is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
+            is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
             keyboard = get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
         with open(card_path, 'rb') as photo:
             await context.bot.send_photo(
@@ -2090,7 +2057,7 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     keyboard = [[InlineKeyboardButton("📖 Download Blofin Setup Guide (PDF)", callback_data="send_blofin_guide")]]
     # Merge with standard navigation buttons
-    keyboard.extend(get_nav_buttons(is_admin=(chat_id == ADMIN_CHAT_ID)))
+    keyboard.extend(get_nav_buttons(is_admin=(chat_id == SUPER_ADMIN_ID or user.get('is_admin'))))
     
     await update.effective_message.reply_text(
         help_text, 
@@ -2125,40 +2092,43 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target = update.effective_message
         
     user_data = database.get_user(chat_id)
-    
-    if not user_data:
+    if not user_data or not user_data.get('api_key'):
         await target.reply_text("❌ No API keys found. Please run /setup first.")
-    await target.reply_text("💰 Fetching your live balance...")
-    
+        return
+
     try:
-        # Note: database.get_user already returns decrypted keys
-        user_ex = database.get_exchange_client(user_data)
-        
-        balance = user_ex.fetch_balance(params={"type": "futures"})
-        free = float(balance.get("USDT", {}).get("free", 0))
-        
-        # True Equity Calculation: Available + Margin + Unrealized PnL
-        total_value = free
-        try:
-            positions = user_ex.fetch_positions()
-            for p in positions:
-                margin = float(p.get('info', {}).get('margin', 0))
-                upnl = float(p.get('info', {}).get('unrealizedPnl', 0))
-                total_value += (margin + upnl)
-        except: pass
-        
-        # Format numbers with commas and escape for MarkdownV2 using helper
-        free_str = escape_md_v2(f"{free:,.2f}")
-        total_str = escape_md_v2(f"{total_value:,.2f}")
-        
-        msg = (
-            "💰 *Your Account Balance*\n\n"
-            f"Available Cash: ||*${free_str}*|| USDT\n"
-            f"Total Account Value: ||*${total_str}*|| USDT\n\n"
-            "_Total Value \\= Available \\+ Margin \\+ PnL_"
-        )
-        await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
-        
+
+        async with ccxt.blofin({
+            "apiKey": user_data['api_key'],
+            "secret": user_data['api_secret'],
+            "password": user_data['api_password'],
+            "options": {"defaultType": "swap"},
+        }) as user_ex:
+            balance = await user_ex.fetch_balance(params={"type": "futures"})
+            free = float(balance.get("USDT", {}).get("free", 0))
+            
+            # True Equity Calculation: Available + Margin + Unrealized PnL
+            total_value = free
+            try:
+                positions = await user_ex.fetch_positions()
+                for p in positions:
+                    margin = float(p.get('info', {}).get('margin', 0))
+                    upnl = float(p.get('info', {}).get('unrealizedPnl', 0))
+                    total_value += (margin + upnl)
+            except: pass
+            
+            # Format numbers with commas and escape for MarkdownV2 using helper
+            free_str = escape_md_v2(f"{free:,.2f}")
+            total_str = escape_md_v2(f"{total_value:,.2f}")
+            
+            msg = (
+                "💰 *Your Account Balance*\n\n"
+                f"Available Cash: ||*${free_str}*|| USDT\n"
+                f"Total Account Value: ||*${total_str}*|| USDT\n\n"
+                "_Total Value \\= Available \\+ Margin \\+ PnL_"
+            )
+            await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
+            
     except Exception as e:
         await target.reply_text(f"❌ Error fetching balance: {e}")
 
@@ -2174,26 +2144,25 @@ async def sync_engine(application):
                 await asyncio.sleep(60)
                 continue
             
-            for user in active_users:
+            async def sync_user(user):
                 try:
                     chat_id = user['telegram_chat_id']
-                    if not user.get('api_key'): continue
+                    if not user.get('api_key'): return
 
-                    user_ex = ccxt.blofin({
+                    async with ccxt.blofin({
                         "apiKey": user['api_key'],
                         "secret": user['api_secret'],
                         "password": user['api_password'],
                         "options": {"defaultType": "swap"},
-                    })
-                    
-                    # Fetch balance and sync closed trades
-                    balance = user_ex.fetch_balance(params={"type": "futures"})
-                    equity = float(balance.get("USDT", {}).get("total", 0))
-                    
-                    database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
+                    }) as user_ex:
+                        # Fetch balance and sync closed trades
+                        balance = await user_ex.fetch_balance(params={"type": "futures"})
+                        equity = float(balance.get("USDT", {}).get("total", 0))
+                        await database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
                 except Exception as e:
                     logger.error(f"Sync error for {user.get('telegram_chat_id')}: {e}")
-            
+
+            await asyncio.gather(*(sync_user(u) for u in active_users))
             await asyncio.sleep(60)
         except Exception as e:
             logger.error(f"Sentinel critical failure: {e}")
@@ -2204,6 +2173,7 @@ async def signal_engine(application):
     Institutional task (15m) for Signal Generation and Trade Execution.
     """
     logger.info("🏔️ Starting Sherpa Signal Task (15m Precision)...")
+    mdm = live_bot_multi.MarketDataManager()
     while True:
         try:
             # 1. Wait until next 15-minute mark + buffer
@@ -2217,88 +2187,84 @@ async def signal_engine(application):
             active_users = database.get_all_active_users()
             if not active_users: continue
             
+            # Reset MDM cache for the new cycle
+            mdm.ohlcv_cache = {}
+            
+            # Fetch all OHLCV in parallel
+            await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=100) for sym in live_bot_multi.SYMBOLS))
+            
             strategy_groups = {}
             for user in active_users:
                 strat = user.get('strategy', 'Mean Reversion Scalper')
                 if strat not in strategy_groups: strategy_groups[strat] = []
                 strategy_groups[strat].append(user)
             
-            public_ex = ccxt.blofin({"options": {"defaultType": "swap"}})
-            public_ex.load_markets()
-            
             for strat_name, users in strategy_groups.items():
                 signals = {}
                 for symbol in live_bot_multi.SYMBOLS:
-                    try:
-                        ohlcv = public_ex.fetch_ohlcv(symbol, "15m", limit=100)
-                        df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+                    df = await mdm.fetch_ohlcv(symbol, "15m")
+                    if df is not None:
                         sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
                         if sig: signals[symbol] = sig
-                    except: pass
                 
-                for user in users:
+                async def execute_user_signals(user):
                     try:
                         chat_id = user['telegram_chat_id']
-                        if not user.get('api_key'): continue
-                        user_ex = ccxt.blofin({
+                        if not user.get('api_key'): return
+                        
+                        async with ccxt.blofin({
                             "apiKey": user['api_key'],
                             "secret": user['api_secret'],
                             "password": user['api_password'],
                             "options": {"defaultType": "swap"},
-                        })
-                        
-                        balance = user_ex.fetch_balance(params={"type": "futures"})
-                        equity = float(balance.get("USDT", {}).get("total", 0))
-                        
-                        user_enabled = user.get('enabled_symbols', [])
-                        user_risk = user.get('risk_pct', 1.5)
-                        
-                        for symbol, sig in signals.items():
-                            if symbol.split("/")[0] not in user_enabled: continue
+                        }) as user_ex:
                             
-                            pos = user_ex.fetch_positions([symbol])
-                            if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                                if live_bot_multi.DRY_RUN: continue
-                                    
-                                res = live_bot_multi.place_order(user_ex, symbol, sig, equity, risk_pct=user_risk)
-                                if res:
-                                    database.increment_opened(chat_id)
-                                    side_icon = "📈" if sig['side'] == 'buy' else "📉"
-                                    msg = (
-                                        f"{side_icon} *{strat_name}* SIGNAL!\n\n"
-                                        f"Symbol: *{res['symbol']}*\n"
-                                        f"Risk: `{user_risk:.2f}%`\n"
-                                        f"Entry: `{res['entry']:.8f}`\n"
-                                        f"TP: `{res['tp']:.8f}`\n"
-                                        f"SL: `{res['sl']:.8f}`"
-                                    )
-                                    # Generate and send chart
-                                    try:
-                                        ohlcv = user_ex.fetch_ohlcv(symbol, timeframe='15m', limit=100)
-                                        df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
-                                        side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
-                                        open_ts = int(time.time() * 1000)
-                                        chart_file = charting.generate_trade_chart(res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
-                                        is_admin = (chat_id == ADMIN_CHAT_ID and not user.get('undercover_mode'))
-                                        keyboard = get_nav_buttons(True, is_admin=is_admin)
-                                        with open(chart_file, 'rb') as photo:
-                                            await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-                                    except Exception as chart_err:
-                                        logger.error(f"Chart generation failed: {chart_err}")
-                                        await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                            balance = await user_ex.fetch_balance(params={"type": "futures"})
+                            equity = float(balance.get("USDT", {}).get("total", 0))
+                            
+                            user_enabled = user.get('enabled_symbols', [])
+                            user_risk = user.get('risk_pct', 1.5)
+                            
+                            for symbol, sig in signals.items():
+                                if symbol.split("/")[0] not in user_enabled: continue
+                                
+                                # Parallelize position checks within user if needed, but sequential is safer for nonce
+                                pos = await user_ex.fetch_positions([symbol])
+                                if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                                    if live_bot_multi.DRY_RUN: continue
+                                        
+                                    res = await live_bot_multi.place_order(user_ex, symbol, sig, equity, risk_pct=user_risk)
+                                    if res:
+                                        database.increment_opened(chat_id)
+                                        side_icon = "📈" if sig['side'] == 'buy' else "📉"
+                                        msg = (
+                                            f"{side_icon} *{strat_name}* SIGNAL!\n\n"
+                                            f"Symbol: *{res['symbol']}*\n"
+                                            f"Risk: `{user_risk:.2f}%`\n"
+                                            f"Entry: `{res['entry']:.8f}`\n"
+                                            f"TP: `{res['tp']:.8f}`\n"
+                                            f"SL: `{res['sl']:.8f}`"
+                                        )
+                                        # Generate and send chart
+                                        try:
+                                            df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
+                                            side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
+                                            open_ts = int(time.time() * 1000)
+                                            # charting.generate_trade_chart is still blocking, wrap in thread
+                                            chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
+                                            is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
+                                            keyboard = get_nav_buttons(True, is_admin=is_admin)
+                                            with open(chart_file, 'rb') as photo:
+                                                await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                                        except Exception as chart_err:
+                                            logger.error(f"Chart generation failed: {chart_err}")
+                                            await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
                     except Exception as e:
                         logger.error(f"Signal execution error for {user.get('telegram_chat_id')}: {e}")
+
+                await asyncio.gather(*(execute_user_signals(u) for u in users))
             
-            # --- Precision Candle Sync ---
-            # Wait until the next 15-minute mark + 30 seconds buffer
-            now = time.time()
-            # 900 seconds = 15 minutes
-            seconds_past_mark = now % 900
-            wait_time = 900 - seconds_past_mark + 30
-            
-            logger.info(f"Engine pass complete. Sleeping {wait_time:.1f}s until next institutional candle close...")
-            await asyncio.sleep(wait_time)
-            
+            logger.info(f"Engine pass complete.")
         except Exception as e:
             logger.error(f"Engine pass critical failure: {e}")
             await asyncio.sleep(60)
@@ -2338,7 +2304,7 @@ async def post_init(application: ApplicationBuilder):
             "• Confirm Blofin Tutorial deep-link delivers PDF correctly"
         )
         await application.bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
+            chat_id=SUPER_ADMIN_ID,
             text=msg,
             parse_mode="Markdown"
         )
@@ -2373,7 +2339,8 @@ def main():
     app.add_handler(CommandHandler("backtest", backtest))
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("strategy", strategy_command))
-    app.add_handler(CommandHandler("contact", contact_command))
+    app.add_handler(CommandHandler("promote", promote_command))
+    app.add_handler(CommandHandler("demote", demote_command))
     app.add_handler(CommandHandler("cancel", cancel_command))
     app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
     app.add_handler(CallbackQueryHandler(settings_callback, pattern="^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
@@ -2396,22 +2363,22 @@ async def close_single_position(chat_id, sym):
     if not user: return False, "User not found."
     
     try:
-        user_ex = database.get_exchange_client(user)
-        # Fetch the specific position
-        positions = user_ex.fetch_positions([sym])
-        pos = next((p for p in positions if float(p.get("contracts", 0) or 0) != 0), None)
-        
-        if not pos:
-            return False, f"No active position found for {sym}."
+        async with database.get_exchange_client(user) as user_ex:
+            # Fetch the specific position
+            positions = await user_ex.fetch_positions([sym])
+            pos = next((p for p in positions if float(p.get("contracts", 0) or 0) != 0), None)
             
-        side = pos['side'].upper()
-        contracts = float(pos['contracts'])
-        
-        # Market close order
-        order_side = "sell" if side == "LONG" else "buy"
-        user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
-        
-        return True, f"Market Closed {sym} position."
+            if not pos:
+                return False, f"No active position found for {sym}."
+                
+            side = pos['side'].upper()
+            contracts = float(pos['contracts'])
+            
+            # Market close order
+            order_side = "sell" if side == "LONG" else "buy"
+            await user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
+            
+            return True, f"Market Closed {sym} position."
     except Exception as e:
         return False, f"Failed to close {sym}: {e}"
 
@@ -2421,31 +2388,31 @@ async def panic_close_all(chat_id):
     if not user: return False, "User not found."
     
     try:
-        user_ex = database.get_exchange_client(user)
-        import live_bot_multi
-        
-        # Normalize all symbols for this exchange
-        norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
-        positions = user_ex.fetch_positions(norm_syms)
-        active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
-        
-        if not active:
-            return True, "No active trades to close."
+        async with database.get_exchange_client(user) as user_ex:
+            import live_bot_multi
             
-        results = []
-        for p in active:
-            try:
-                sym = p['symbol']
-                side = p['side'].upper()
-                contracts = float(p['contracts'])
+            # Normalize all symbols for this exchange
+            norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
+            positions = await user_ex.fetch_positions(norm_syms)
+            active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
+            
+            if not active:
+                return True, "No active trades to close."
                 
-                # Market close order
-                order_side = "sell" if side == "LONG" else "buy"
-                user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
-                results.append(f"✅ Closed {sym}")
-            except Exception as e:
-                results.append(f"❌ Failed {p['symbol']}: {e}")
-                
-        return True, "\n".join(results)
+            results = []
+            for p in active:
+                try:
+                    sym = p['symbol']
+                    side = p['side'].upper()
+                    contracts = float(p['contracts'])
+                    
+                    # Market close order
+                    order_side = "sell" if side == "LONG" else "buy"
+                    await user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
+                    results.append(f"✅ Closed {sym}")
+                except Exception as e:
+                    results.append(f"❌ Failed {p['symbol']}: {e}")
+                    
+            return True, "\n".join(results)
     except Exception as e:
         return False, f"Critical failure: {e}"

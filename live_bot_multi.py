@@ -11,9 +11,8 @@ import time
 import logging
 import requests
 import re
-from datetime import datetime, timezone
-
-import ccxt
+import asyncio
+import ccxt.async_support as ccxt
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
@@ -65,6 +64,29 @@ log = logging.getLogger("Bot")
 import database
 from database import get_exchange_client, normalize_symbol
 
+class MarketDataManager:
+    """
+    Centralized market data fetcher to save rate limits and ensure consistency.
+    """
+    def __init__(self, exchange_id='blofin'):
+        self.exchange_id = exchange_id
+        self.exchange = getattr(ccxt, exchange_id)({"options": {"defaultType": "swap"}})
+        self.ohlcv_cache = {}
+
+    async def fetch_ohlcv(self, symbol, timeframe, limit=250):
+        if symbol not in self.ohlcv_cache:
+            try:
+                ohlcv = await self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+                df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+                self.ohlcv_cache[symbol] = df
+            except Exception as e:
+                log.error(f"MarketData fetch failed for {symbol}: {e}")
+                return None
+        return self.ohlcv_cache[symbol]
+
+    async def close(self):
+        await self.exchange.close()
+
 def create_github_issue(subject, body):
     token, repo = os.getenv("GITHUB_TOKEN"), os.getenv("GITHUB_REPOSITORY")
     if not token or not repo: return
@@ -104,13 +126,13 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
     }
 
 
-def place_order(exchange, symbol, signal, equity, risk_pct=None):
+async def place_order(exchange, symbol, signal, equity, risk_pct=None):
     try:
         # Use user-specific risk or fallback to global default
         risk_val = (risk_pct / 100.0) if risk_pct is not None else RISK_PER_TRADE
         
         market = exchange.market(symbol)
-        ticker = exchange.fetch_ticker(symbol)
+        ticker = await exchange.fetch_ticker(symbol)
         lp = ticker["last"]
         if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
         sl_dist, rr = signal["sl_dist"], signal["rr"]
@@ -133,7 +155,7 @@ def place_order(exchange, symbol, signal, equity, risk_pct=None):
 
         # 🛡️ FORCED LEVERAGE SYNC
         try:
-            exchange.set_leverage(LEVERAGE, symbol)
+            await exchange.set_leverage(LEVERAGE, symbol)
         except Exception as le:
             log.warning("⚠️ Leverage set failed for %s: %s. Continuing with caution.", symbol, le)
 
@@ -163,7 +185,7 @@ def place_order(exchange, symbol, signal, equity, risk_pct=None):
             "stopLoss": {"triggerPrice": sl}, 
             "takeProfit": {"triggerPrice": tp}
         }
-        exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
+        await exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
             
         log.info("✅ Order placed for %s on %s", symbol, exchange.id)
         return {"symbol": symbol.split("/")[0], "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
@@ -171,75 +193,85 @@ def place_order(exchange, symbol, signal, equity, risk_pct=None):
         log.error("❌ Order failed for %s: %s", symbol, e)
         return None
 
-def run():
-    log.info("═"*60 + "\n  Multi-Exchange Metaverse Sherpa Engine \n" + "═"*60)
+
+async def process_user_on_symbol(user, symbol, signal):
+    """
+    Processes a single user's trade logic for a specific symbol.
+    """
+    try:
+        # 💎 Institutional Gating
+        is_prem = database.is_premium(user)
+        sym_name = symbol.split("/")[0]
+        
+        # 🥈 Standard Tier Limits
+        if not is_prem:
+            if sym_name not in ["BTC", "ETH", "SOL", "XRP", "BNB"]:
+                return
+            risk_val = 0.01
+        else:
+            risk_val = user.get('risk_pct', 0.015)
+
+        if sym_name not in user.get('enabled_symbols', []):
+            return
+        
+        ex = get_exchange_client(user)
+        try:
+            norm_sym = normalize_symbol(symbol, ex.id)
+            # Check existing positions
+            pos = await ex.fetch_positions([norm_sym])
+            if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                await place_order(ex, norm_sym, signal, user['equity'], risk_pct=risk_val)
+        finally:
+            await ex.close()
+    except Exception as ue:
+        log.error("User %s error on %s: %s", user['telegram_chat_id'], symbol, ue)
+
+
+async def run():
+    log.info("═"*60 + "\n  Multi-Exchange Metaverse Sherpa Engine (ASYNC) \n" + "═"*60)
     import database
     active_users = database.get_all_active_users()
     if not active_users:
         log.info("No active users found. Skipping pass.")
         return
 
-    # Use a shared public exchange for market data to save rate limits
-    market_data_ex = ccxt.blofin() 
-    market_data_ex.load_markets()
+    mdm = MarketDataManager()
     
-    # 🕵️ Sync Position Status for all users first
-    for user in active_users:
+    # 🕵️ Sync Position Status for all users first (Parallelized)
+    async def sync_user_pos(user):
         try:
             ex = get_exchange_client(user)
-            # Fetch all open positions to update the "Panic Button" status
-            pos = ex.fetch_positions()
-            has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
-            database.update_position_status(user['telegram_chat_id'], has_active)
+            try:
+                pos = await ex.fetch_positions()
+                has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
+                database.update_position_status(user['telegram_chat_id'], has_active)
+            finally:
+                await ex.close()
         except Exception as e:
             log.error("Position sync failed for %s: %s", user['telegram_chat_id'], e)
 
-    errors = []
+    await asyncio.gather(*(sync_user_pos(u) for u in active_users))
 
+    # Parallelize Market Data Fetching
+    market_data_tasks = [mdm.fetch_ohlcv(sym, TIMEFRAME, limit=CANDLE_LIMIT) for sym in SYMBOLS]
+    await asyncio.gather(*market_data_tasks)
+
+    # Parallelize Signal Computation and User Processing
+    processing_tasks = []
     for symbol in SYMBOLS:
-        try:
-            ohlcv = market_data_ex.fetch_ohlcv(symbol, TIMEFRAME, limit=CANDLE_LIMIT)
-            df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
-            
-            # Compute signals for all strategies used by users
-            # (In the future we can optimize by only computing strategies currently active)
+        df = await mdm.fetch_ohlcv(symbol, TIMEFRAME)
+        if df is not None:
             signal = compute_signal(df, symbol.split("/")[0])
-            
             if signal:
                 for user in active_users:
-                    # 💎 Institutional Gating
-                    is_prem = database.is_premium(user)
-                    sym_name = symbol.split("/")[0]
-                    
-                    # 🥈 Standard Tier Limits
-                    if not is_prem:
-                        # 1. Basket Limit: Only top 5 "Safe" symbols
-                        if sym_name not in ["BTC", "ETH", "SOL", "XRP", "BNB"]:
-                            continue
-                        # 2. Risk Limit: Force 1%
-                        risk_val = 0.01
-                    else:
-                        # 💎 Premium Tier: Full settings
-                        risk_val = user.get('risk_pct', 0.015)
+                    processing_tasks.append(process_user_on_symbol(user, symbol, signal))
 
-                    if sym_name not in user.get('enabled_symbols', []):
-                        continue
-                    
-                    try:
-                        ex = get_exchange_client(user)
-                        norm_sym = normalize_symbol(symbol, ex.id)
-                        
-                        # Check existing positions
-                        pos = ex.fetch_positions([norm_sym])
-                        if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                            place_order(ex, norm_sym, signal, user['equity'], risk_pct=risk_val)
-                    except Exception as ue:
-                        log.error("User %s error on %s: %s", user['telegram_chat_id'], symbol, ue)
-                        
-        except Exception as e:
-            log.error("Global signal error for %s: %s", symbol, e)
+    if processing_tasks:
+        await asyncio.gather(*processing_tasks)
 
+    await mdm.close()
     log.info("═"*60 + "\n  Multi-Exchange Pass Complete \n" + "═"*60)
 
+
 if __name__ == "__main__":
-    run()
+    asyncio.run(run())
