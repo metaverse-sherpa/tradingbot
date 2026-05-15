@@ -2298,10 +2298,27 @@ async def post_init(application: ApplicationBuilder):
 
     # 🚀 Notify Overlord of Deployment Success
     try:
+        import subprocess
+        # Fetch the latest 3 commit messages for the changelog
+        try:
+            changelog = subprocess.check_output(['git', 'log', '-n', '3', '--pretty=format:• %s (%ar)']).decode('utf-8')
+        except:
+            changelog = "• New deployment (Audit Trail Unavailable)"
+            
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        msg = (
+            "🚀 *Deployment Success*\n\n"
+            "The MetaverseSherpa Trading Bot has been upgraded and is now online.\n\n"
+            "🕒 *Timestamp:* `" + now + "`\n\n"
+            "📜 *Recent Fixes:* \n" + changelog + "\n\n"
+            "🔬 *What to Test Next:*\n"
+            "• Verify 'Close Trade' tactical confirmation on /opentrades\n"
+            "• Audit the new 'Glass Progress Bar' for layout overlap\n"
+            "• Confirm Blofin Tutorial deep-link delivers PDF correctly"
+        )
         await application.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
-            text=f"🚀 *Deployment Success*\n\nThe MetaverseSherpa Trading Bot has been upgraded and is now online.\n\n🕒 *Timestamp:* `{now}`",
+            text=msg,
             parse_mode="Markdown"
         )
     except Exception as e:
