@@ -978,11 +978,13 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Format for MarkdownV2 using helper
             upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
             roe_v2 = escape_md_v2(f"{roe:+.2f}")
+            target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
+            target_roe_v2 = escape_md_v2(target_roe_str)
             sym_v2 = escape_md_v2(sym)
             
             caption = (
                 f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
-                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\)"
+                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\)"
             )
 
             if chart_path and os.path.exists(chart_path):
