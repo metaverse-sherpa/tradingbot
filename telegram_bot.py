@@ -371,18 +371,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.error(f"Error in deep-link processing: {e}")
 
-    # --- 2. Deliver the Mission Briefing (PDF Guide) Instantly ---
-    pdf_path = os.path.join(BASE_DIR, "tutorials", "MetaverseSherpa Blofin API Setup.pdf")
-    if os.path.exists(pdf_path):
-        with open(pdf_path, 'rb') as doc:
-            await context.bot.send_document(
-                chat_id=chat_id,
-                document=doc,
-                caption="🏔️ *Welcome Scout!*\nAttached is your official **Blofin API Setup Guide**. Tap it to download and follow the instructions to link your account.",
-                parse_mode="Markdown"
-            )
-
-    # --- 3. High-Authority Welcome Message ---
+    # --- 2. High-Authority Welcome Message ---
     welcome_msg = (
         "🏔️ *Metaverse Sherpa Trading Bot*\n\n"
         "The elite automated trading solution for institutional-grade professionals. We currently support **Blofin**, **Binance**, and **MEXC**.\n\n"
