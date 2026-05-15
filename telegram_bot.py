@@ -910,7 +910,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
         
         if not active:
-            await update.effective_message.reply_text("🏔️ *The MetaverseSherpa is currently scanning the mountains and valleys for the next high-altitude trade setup. Stay vigilant.*", parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+            await update.effective_message.reply_text("You have no active trades at the moment.", reply_markup=get_main_inline_menu(chat_id))
             return
             
         await update.effective_message.reply_text(
@@ -1297,14 +1297,6 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     chat_id = query.from_user.id
-    
-    # 🏔️ Passive Identity Refresh
-    try:
-        full_name = query.from_user.full_name
-        username = query.from_user.username
-        database.sync_user_metadata(chat_id, full_name, username)
-    except: pass
-
     user = database.get_user(chat_id)
     
     if query.data == "activate_with_credits":
@@ -1381,25 +1373,16 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name = escape_md_v2(u.get('full_name') or "Unknown")
             uname = escape_md_v2(f" (@{u['username']})") if u.get('username') else ""
             
-            # 🕵️‍♂️ Proactive Identity Refresh (Nuclear Option: get_chat)
-            try:
-                chat = await context.bot.get_chat(u['telegram_chat_id'])
-                f_name = chat.first_name or ""
-                l_name = chat.last_name or ""
-                full_identity = f"{f_name} {l_name}".strip() or "Unknown"
-                
-                name = escape_md_v2(full_identity)
-                uname = escape_md_v2(f" (@{chat.username})") if chat.username else ""
-                
-                # Save back to DB to kill legacy IDs like 'VIR13_FATUM'
-                database.sync_user_metadata(u['telegram_chat_id'], full_identity, chat.username)
-            except Exception as e:
-                logger.error(f"Audit identity sync failed for {u['telegram_chat_id']}: {e}")
+            # 🕵️‍♂️ Last-Mile Identity Fetch (if Unknown)
+            if name == "Unknown":
+                try:
+                    member = await context.bot.get_chat_member(chat_id=u['telegram_chat_id'], user_id=u['telegram_chat_id'])
+                    name = escape_md_v2(member.user.full_name)
+                    uname = escape_md_v2(f" (@{member.user.username})") if member.user.username else ""
+                except: pass
 
             status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
-            # 🏢 Human-Friendly Formatting: "Mindaugas (@Bumeris77)"
-            display_identity = f"{name}{uname}"
-            msg += f"• `{u['telegram_chat_id']}` \| *{display_identity}*\n  Status: {status} \| Tier: {tier}\n"
+            msg += f"• `{u['telegram_chat_id']}` \| *{name}*{uname}\n  Status: {status} \| Tier: {tier}\n"
             
             # 🤝 Display Referral Tree
             if u.get('recruit_list'):
