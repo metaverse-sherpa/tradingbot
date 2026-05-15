@@ -1739,7 +1739,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "By closing early, you may miss out on significant profit potential. Your performance statistics will also deviate from the Sherpa algorithm's official results.\n\n"
             "Are you absolutely sure?"
         )
-        await safe_edit_text(update, context, warn_msg, reply_markup=InlineKeyboardMarkup(kb))
+        # Send as a fresh message below the chart instead of deleting the chart
+        await query.message.reply_text(warn_msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
         return
 
     elif query.data.startswith("execute_close_"):
