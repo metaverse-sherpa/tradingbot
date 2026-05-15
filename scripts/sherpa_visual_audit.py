@@ -8,12 +8,12 @@ import time
 # ---------------------------------------------------------------------------
 # Sherpa Visual Audit Settings
 # ---------------------------------------------------------------------------
-CSV_DIR         = "csv"
+CSV_DIR         = "csv_blofin"
 RESULTS_DIR     = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 START_CASH      = 10_000.0
-RISK_PER_TRADE  = 0.015     # 1.5% of current equity per trade
+RISK_PER_TRADE  = 0.01      # 1% of current equity per trade
 LEVERAGE        = 20.0
 COMMISSION      = 0.0006    # 0.06%
 SLIPPAGE        = 0.0005    # 0.05%
@@ -83,7 +83,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
         
     datasets = {}
     for name in enabled_symbols:
-        path = os.path.join(CSV_DIR, f"cache_{name}_15m.csv")
+        path = os.path.join(CSV_DIR, f"blofin_{name}_15m.csv")
         if not os.path.exists(path): continue
         df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
         datasets[name] = prepare_indicators(df, SYMBOL_CONFIGS[name])
@@ -170,27 +170,23 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
         sharpe = 0.0
 
     # Institutional 75/25 Layout
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]})
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#121212")
     
-    # Equity Curve (The Sherpa Trail)
-    ax1.plot(df_eq.index, df_eq["equity"], color="cyan", linewidth=2.0)
+    # 🏔️ Equity Chart
+    ax1.plot(df_eq.index, df_eq["equity"], color="cyan", linewidth=2)
+    ax1.set_title(f"Sherpa 3-Year Audit: {user_id}", color="white", fontsize=16)
+    ax1.tick_params(colors="white")
+    ax1.grid(alpha=0.1)
+    ax1.set_facecolor("#121212")
+    ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}\nFinal: ${equity:,.2f}", transform=ax1.transAxes, color='cyan', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
     
-    # Add Start/End Labels
-    start_date, end_date = df_eq.index[0], df_eq.index[-1]
-    ax1.annotate(f"${start_balance:,.0f}", (start_date, start_balance), textcoords="offset points", xytext=(-10,10), ha='center', color='white', fontweight='bold')
-    ax1.annotate(f"${equity:,.0f}", (end_date, equity), textcoords="offset points", xytext=(-10,10), ha='center', color='cyan', fontweight='bold')
-
-    ax1.set_title(f"Metaverse Sherpa: 3-Year Equity Trail ({risk_val_pct}% Risk)", color="white", fontsize=16, pad=20)
-    ax1.set_ylabel("Account Equity ($)", color="white")
-    ax1.grid(True, alpha=0.15); ax1.set_facecolor("#121212"); ax1.tick_params(colors="white")
-    
-    # Add Sharpe Metric Box
-    ax1.text(0.02, 0.90, f"Sharpe Ratio: {sharpe:.2f}", transform=ax1.transAxes, color='cyan', fontweight='bold', fontsize=12, bbox=dict(facecolor='#1A1A1A', alpha=0.8, edgecolor='cyan'))
-
-    # Drawdown Chart (The Valleys - Compressed for Authority)
+    # 🌊 Drawdown Chart
     ax2.fill_between(df_dd.index, df_dd["drawdown"], 0, color="red", alpha=0.2)
     ax2.plot(df_dd.index, df_dd["drawdown"], color="red", linewidth=0.8)
-    ax2.set_title("Strategy Drawdown (%)", color="white", fontsize=10)
+    ax2.tick_params(colors="white")
+    ax2.grid(alpha=0.1)
+    ax2.set_facecolor("#121212")
+    ax2.set_title("Drawdown (%)", color="white", fontsize=10)
     ax2.set_ylabel("Drawdown (%)", color="white")
     ax2.set_ylim(-100, 5) # 0-100% Scale for visual compression
     ax2.grid(True, alpha=0.1); ax2.set_facecolor("#121212"); ax2.tick_params(colors="white")

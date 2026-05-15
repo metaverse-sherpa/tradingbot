@@ -80,7 +80,7 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
     Modular signal computation using the selected strategy.
     """
     strat = strategies.get_strategy(strategy_name)
-    side = strat.check_signal(df)
+    side = strat.check_signal(df, symbol_name)
     
     if not side:
         return None

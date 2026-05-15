@@ -96,12 +96,12 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         "🏔️ *Metaverse Sherpa: Institutional Wealth Gap*\n"
         "Comparison: `Standard (1% Risk)` vs `Institutional (Premium)`\n\n"
         "📊 *Standard Tier (Always Free)*\n"
-        "• PnL: *+64.5%* | Sharpe: *5.40*\n"
+        "• PnL: *+27.5%* | Sharpe: *3.90*\n"
         "• Assets: 5 Core Institutional Tokens\n\n"
         "💎 *Institutional Tier (Premium Access)*\n"
-        "• PnL: *+1,514.9%* | Sharpe: *4.83*\n"
+        "• PnL: *+208.7%* | Sharpe: *1.56*\n"
         "• Assets: Full 20+ 'Sherpa Basket' Tokens\n\n"
-        "📈 _Institutional access delivers a **23x profit multiplier** by unlocking the full 20-token basket and taking advantage of **Advanced Dynamic Compounding**._"
+        "📈 _Institutional access delivers a **7.6x profit multiplier** by unlocking the full 20-token basket and taking advantage of **Advanced Dynamic Compounding**._"
     )
     
     if os.path.exists(master_path):
@@ -132,9 +132,9 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             premium_msg = (
                 "🔒 *Premium Feature: Personal Projections*\n\n"
                 "The chart above reveals the *Institutional Wealth Gap*.\n\n"
-                "📊 *Free Tier (White)*: +64.5% PnL\n"
-                "💎 *Premium Tier (Neon)*: +1,514.9% PnL\n\n"
-                "Unlock **23x more profit potential** for just **$20/mo**.\n"
+                "📊 *Free Tier (White)*: +27.5% PnL\n"
+                "💎 *Premium Tier (Neon)*: +208.7% PnL\n\n"
+                "Unlock **7.6x more profit potential** for just **$20/mo**.\n"
                 "Institutional access unlocks full compounding power and the complete 'Sherpa Basket'.\n\n"
                 "Refer 3 friends or subscribe to unlock!"
             )
@@ -161,11 +161,11 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         audit_msg = (
             "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
             "Settings: `1.5% Risk` | `All Institutional Tokens`\n\n"
-            "Final Equity: *$161,486.23*\n"
-            "Total PnL: *+1,514.9%*\n"
-            "Sharpe Ratio: *4.83*\n"
-            "Win Rate: *61.2%*\n"
-            "Max Drawdown: *18.8%*\n\n"
+            "Final Equity: *$30,869.74*\n"
+            "Total PnL: *+208.7%*\n"
+            "Sharpe Ratio: *1.56*\n"
+            "Win Rate: *54.9%*\n"
+            "Max Drawdown: *23.9%*\n\n"
             "📈 _This simulation represents the core Sherpa algorithm's performance over the last 3 years._"
         )
         with open(master_path, 'rb') as photo:
