@@ -2276,8 +2276,15 @@ async def trading_engine(application):
                     except Exception as e:
                         logger.error(f"Error for user {user.get('telegram_chat_id')}: {e}")
             
-            # Wait 5 minutes before next pass
-            await asyncio.sleep(300)
+            # --- Precision Candle Sync ---
+            # Wait until the next 15-minute mark + 30 seconds buffer
+            now = time.time()
+            # 900 seconds = 15 minutes
+            seconds_past_mark = now % 900
+            wait_time = 900 - seconds_past_mark + 30
+            
+            logger.info(f"Engine pass complete. Sleeping {wait_time:.1f}s until next institutional candle close...")
+            await asyncio.sleep(wait_time)
             
         except Exception as e:
             logger.error(f"Engine pass critical failure: {e}")
