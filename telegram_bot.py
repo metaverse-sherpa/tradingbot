@@ -1251,7 +1251,8 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
                 trc20_tokens = acc.get('trc20', [])
                 for token_map in trc20_tokens:
                     for contract, raw_bal in token_map.items():
-                        if contract == "TR7NHqjehp3u3M11K2xv39zSQqyvssF6t":
+                        # Official USDT TRC-20 Contract
+                        if contract == "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t":
                             usdt_bal = float(raw_bal) / 10**6
                             break
         
