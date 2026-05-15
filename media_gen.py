@@ -262,3 +262,83 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     gc.collect()
     
     return save_path
+
+def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024):
+    """
+    Generates a premium horizontal progress bar box to be appended below charts.
+    """
+    height = 200
+    # Background: Dark, almost black
+    bg_color = (18, 18, 18, 255)
+    img = Image.new("RGBA", (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+    
+    try:
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "Arial"
+        ]
+        def find_font(size):
+            for path in font_paths:
+                try: return ImageFont.truetype(path, size)
+                except: continue
+            return ImageFont.load_default()
+        font_main = find_font(28)
+        font_sub = find_font(22)
+    except:
+        font_main = font_sub = ImageFont.load_default()
+
+    # Calculate ROE
+    roe = ((current - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - current) / entry * 100)
+    color_neon = (0, 255, 150, 255) if roe >= 0 else (255, 50, 50, 255)
+    
+    # Progress Bar Geometry
+    bar_x_start = 100
+    bar_x_end = width - 100
+    bar_y = height // 2 + 20
+    bar_width = bar_x_end - bar_x_start
+    
+    # Range: SL to TP
+    p_min = min(sl, tp, entry)
+    p_max = max(sl, tp, entry)
+    p_range = p_max - p_min if p_max > p_min else 1
+    
+    def get_x(price):
+        ratio = (price - p_min) / p_range
+        return bar_x_start + int(ratio * bar_width)
+
+    # Draw Main Track
+    draw.line([(bar_x_start, bar_y), (bar_x_end, bar_y)], fill=(60, 60, 60, 255), width=4)
+    
+    # Draw Ticks
+    draw.line([(get_x(sl), bar_y - 20), (get_x(sl), bar_y + 20)], fill=(255, 50, 50, 255), width=4)
+    draw.line([(get_x(tp), bar_y - 20), (get_x(tp), bar_y + 20)], fill=(0, 200, 83, 255), width=4)
+    draw.line([(get_x(entry), bar_y - 10), (get_x(entry), bar_y + 10)], fill=(255, 255, 255, 200), width=2)
+    
+    # Labels
+    draw.text((get_x(sl), bar_y - 60), "SL", font=font_sub, fill=(255, 50, 50, 255), anchor="mm")
+    draw.text((get_x(tp), bar_y - 60), "TP", font=font_sub, fill=(0, 200, 83, 255), anchor="mm")
+    draw.text((get_x(entry), bar_y + 40), "ENTRY", font=font_sub, fill=(200, 200, 200, 255), anchor="mm")
+    
+    # Current Position Dot
+    dot_x = get_x(current)
+    # Glow effect
+    for r in range(15, 0, -2):
+        alpha = int(100 * (1 - r/15))
+        draw.ellipse([dot_x - r, bar_y - r, dot_x + r, bar_y + r], fill=(color_neon[0], color_neon[1], color_neon[2], alpha))
+    draw.ellipse([dot_x - 8, bar_y - 8, dot_x + 8, bar_y + 8], fill=color_neon, outline=(255, 255, 255, 255), width=2)
+    
+    # ROE Bubble
+    roe_text = f"{roe:+.2f}%"
+    bbox = draw.textbbox((dot_x, bar_y - 60), roe_text, font=font_main, anchor="mm")
+    draw.rounded_rectangle([bbox[0]-10, bbox[1]-5, bbox[2]+10, bbox[3]+5], radius=10, fill=(30, 30, 30, 255), outline=color_neon, width=2)
+    draw.text((dot_x, bar_y - 60), roe_text, font=font_main, fill=color_neon, anchor="mm")
+    
+    # Header
+    draw.text((width // 2, 30), "TRADE PROGRESS", font=font_sub, fill=(150, 150, 150, 255), anchor="mm")
+    
+    save_path = os.path.join("pnl_cards", f"progress_{symbol.replace('/', '_')}.png")
+    img.save(save_path)
+    img.close()
+    return save_path

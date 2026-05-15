@@ -82,53 +82,35 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
              figscale=1.3,
              returnfig=True)
              
-    # --- 4. Add Trade Progress Bar Subplot ---
-    try:
-        # Create a small progress axis at the bottom
-        # We'll use the existing figure and add a new axes
-        # [left, bottom, width, height] in normalized coordinates
-        ax_progress = fig.add_axes([0.15, 0.05, 0.7, 0.05])
-        ax_progress.set_facecolor('#121212')
-        ax_progress.set_xlim(min(sl, tp, entry), max(sl, tp, entry))
-        ax_progress.set_ylim(-1, 1)
-        ax_progress.set_yticks([])
-        ax_progress.set_xticks([])
-        
-        # Draw the main line
-        ax_progress.hlines(0, min(sl, tp), max(sl, tp), color='#444444', linewidth=2, alpha=0.5)
-        
-        # Draw Ticks
-        ax_progress.vlines(sl, -0.5, 0.5, color='#FF1744', linewidth=3, label='SL')
-        ax_progress.vlines(tp, -0.5, 0.5, color='#00C853', linewidth=3, label='TP')
-        ax_progress.vlines(entry, -0.3, 0.3, color='#FFFFFF', linewidth=1.5, linestyle='--')
-        
-        # Labels
-        ax_progress.text(sl, -0.8, 'SL', color='#FF1744', fontsize=8, ha='center', fontweight='bold')
-        ax_progress.text(tp, -0.8, 'TP', color='#00C853', fontsize=8, ha='center', fontweight='bold')
-        ax_progress.text(entry, 0.6, 'ENTRY', color='#FFFFFF', fontsize=7, ha='center', alpha=0.7)
-        
-        # Current Position (The Dot)
-        current_price = df['close'].iloc[-1]
-        dot_color = '#00E5FF' # Neon Cyan
-        if current_price >= entry and side == 'LONG': dot_color = '#00C853'
-        elif current_price < entry and side == 'LONG': dot_color = '#FF1744'
-        elif current_price <= entry and side == 'SHORT': dot_color = '#00C853'
-        elif current_price > entry and side == 'SHORT': dot_color = '#FF1744'
-        
-        ax_progress.plot(current_price, 0, marker='o', markersize=10, color=dot_color, markeredgecolor='white', markeredgewidth=1)
-        
-        # Progress Text
-        roe = ((current_price - entry) / entry * 100) if side == 'LONG' else ((entry - current_price) / entry * 100)
-        ax_progress.text(current_price, 0.5, f"{roe:+.2f}%", color=dot_color, fontsize=9, ha='center', fontweight='bold')
-        
-        # Remove spines
-        for spine in ax_progress.spines.values(): spine.set_visible(False)
-    except Exception as e:
-        print(f"Progress bar failed: {e}")
-
     # Save final figure
     fig.savefig(filepath, dpi=100, bbox_inches='tight')
     
     # CRITICAL: Explicitly close the figure to release memory!
     plt.close(fig)
+    
+    # --- 4. Premium Visual Assembly ---
+    try:
+        import media_gen
+        progress_box = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, df['close'].iloc[-1], width=1024)
+        
+        from PIL import Image
+        chart_img = Image.open(filepath).convert("RGBA")
+        prog_img = Image.open(progress_box).convert("RGBA")
+        
+        # Scale progress box to match chart width
+        scale = chart_img.width / prog_img.width
+        new_h = int(prog_img.height * scale)
+        prog_img = prog_img.resize((chart_img.width, new_h), Image.Resampling.LANCZOS)
+        
+        # Combine vertically
+        combined = Image.new("RGBA", (chart_img.width, chart_img.height + prog_img.height), (18, 18, 18, 255))
+        combined.paste(chart_img, (0, 0), chart_img)
+        combined.paste(prog_img, (0, chart_img.height), prog_img)
+        
+        combined.convert("RGB").save(filepath, "JPEG", quality=90)
+        chart_img.close(); prog_img.close(); combined.close()
+        os.remove(progress_box)
+    except Exception as e:
+        print(f"Visual assembly failed: {e}")
+
     return filepath
