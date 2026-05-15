@@ -1213,7 +1213,6 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("📊 User & Referral Audit", callback_data="admin_user_audit")],
         [InlineKeyboardButton("🎁 Gift Premium Access", callback_data="admin_gift_prompt")],
         [InlineKeyboardButton("📢 Broadcast Message", callback_data="admin_broadcast_prompt")],
-        [InlineKeyboardButton("🔍 View Live VPS Logs", callback_data="view_logs")],
         [InlineKeyboardButton("🕶️ Toggle Undercover Mode", callback_data="toggle_undercover")],
         [InlineKeyboardButton("👛 Update Master Wallet", callback_data="prompt_admin_wallet")],
         [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],
