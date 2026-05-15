@@ -14,6 +14,7 @@ import database
 import charting
 import time
 import sys
+from datetime import datetime
 
 # Add scripts directory to path for imports
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -2279,6 +2280,18 @@ async def post_init(application: ApplicationBuilder):
         ("contact", "🤝 Contact @metaverse_sherpa"),
         ("reset", "🔄 Reconfigure API keys"),
     ])
+
+    # 🚀 Notify Overlord of Deployment Success
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await application.bot.send_message(
+            chat_id=ADMIN_CHAT_ID,
+            text=f"🚀 *Deployment Success*\n\nThe MetaverseSherpa Trading Bot has been upgraded and is now online.\n\n🕒 *Timestamp:* `{now}`",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        logger.error(f"Failed to send startup notification: {e}")
+
     # This automatically starts the background engine when the Telegram bot boots up
     asyncio.create_task(trading_engine(application))
 
