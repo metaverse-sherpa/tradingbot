@@ -2008,21 +2008,15 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚠️ *Disclaimer:* _Automated trading carries significant risk. The Metaverse Sherpa is a tool for professional-grade execution and is **not financial advice**. Past performance does not guarantee future results. Trade at your own risk._"
     )
     chat_id = update.effective_chat.id
-    await update.effective_message.reply_text(help_text, parse_mode="Markdown")
+    keyboard = [[InlineKeyboardButton("📖 Download Blofin Setup Guide (PDF)", callback_data="send_blofin_guide")]]
+    # Merge with standard navigation buttons
+    keyboard.extend(get_nav_buttons(is_admin=(chat_id == ADMIN_CHAT_ID)))
     
-    # Send PDF Documentation
-    pdf_path = os.path.join(BASE_DIR, "tutorials", "MetaverseSherpa Blofin API Setup.pdf")
-    if os.path.exists(pdf_path):
-        with open(pdf_path, 'rb') as doc:
-            await context.bot.send_document(
-                chat_id=chat_id,
-                document=doc,
-                caption="📖 *Official Blofin Setup Guide (PDF)*",
-                parse_mode="Markdown",
-                reply_markup=get_main_inline_menu(chat_id)
-            )
-    else:
-        await update.effective_message.reply_text("🛰️ *Main Menu Activated*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+    await update.effective_message.reply_text(
+        help_text, 
+        parse_mode="Markdown", 
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Provides contact info for the Sherpa."""
