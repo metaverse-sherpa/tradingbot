@@ -1003,6 +1003,7 @@ def get_settings_ui(user):
          InlineKeyboardButton(f"🛰 Symbols {'🔒' if not is_premium else ''}", callback_data="manage_symbols")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
+        [InlineKeyboardButton("🔬 Backtest Your Strategy", callback_data="run_backtest")],
     ]
     
     if is_admin:
@@ -1468,6 +1469,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         database.toggle_undercover(chat_id)
         await query.answer("🔄 Identity Toggled!")
         await show_admin_dashboard(update, context)
+        return
+
+    if query.data == "run_backtest":
+        await query.answer("🔬 Generating Backtest Projection...")
+        # Get current balance for projection
+        balance = user.get('equity', 10000.0)
+        if balance < 100: balance = 10000.0
+        
+        await trigger_personalized_audit(update, context, user, start_balance=balance)
         return
 
     if query.data == "premium_menu":
@@ -2354,7 +2364,7 @@ def main():
         app.add_handler(CommandHandler("demote", demote_command))
         app.add_handler(CommandHandler("cancel", cancel_command))
         app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
+        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet"))
         app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
         app.add_handler(CommandHandler("stop", stop_bot))
         app.add_handler(CommandHandler("resume", resume_bot))
