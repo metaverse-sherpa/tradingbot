@@ -247,40 +247,40 @@ async def run():
         return
 
     mdm = MarketDataManager()
-    
-    # 🕵️ Sync Position Status for all users first (Parallelized)
-    async def sync_user_pos(user):
-        try:
-            ex = get_exchange_client(user)
+    try:
+        # 🕵️ Sync Position Status for all users first (Parallelized)
+        async def sync_user_pos(user):
             try:
-                pos = await ex.fetch_positions()
-                has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
-                database.update_position_status(user['telegram_chat_id'], has_active)
-            finally:
-                await ex.close()
-        except Exception as e:
-            log.error("Position sync failed for %s: %s", user['telegram_chat_id'], e)
+                ex = get_exchange_client(user)
+                try:
+                    pos = await ex.fetch_positions()
+                    has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
+                    database.update_position_status(user['telegram_chat_id'], has_active)
+                finally:
+                    await ex.close()
+            except Exception as e:
+                log.error("Position sync failed for %s: %s", user['telegram_chat_id'], e)
 
-    await asyncio.gather(*(sync_user_pos(u) for u in active_users))
+        await asyncio.gather(*(sync_user_pos(u) for u in active_users))
 
-    # Parallelize Market Data Fetching
-    market_data_tasks = [mdm.fetch_ohlcv(sym, TIMEFRAME, limit=CANDLE_LIMIT) for sym in SYMBOLS]
-    await asyncio.gather(*market_data_tasks)
+        # Parallelize Market Data Fetching
+        market_data_tasks = [mdm.fetch_ohlcv(sym, TIMEFRAME, limit=CANDLE_LIMIT) for sym in SYMBOLS]
+        await asyncio.gather(*market_data_tasks)
 
-    # Parallelize Signal Computation and User Processing
-    processing_tasks = []
-    for symbol in SYMBOLS:
-        df = await mdm.fetch_ohlcv(symbol, TIMEFRAME)
-        if df is not None:
-            signal = compute_signal(df, symbol.split("/")[0])
-            if signal:
-                for user in active_users:
-                    processing_tasks.append(process_user_on_symbol(user, symbol, signal))
+        # Parallelize Signal Computation and User Processing
+        processing_tasks = []
+        for symbol in SYMBOLS:
+            df = await mdm.fetch_ohlcv(symbol, TIMEFRAME)
+            if df is not None:
+                signal = compute_signal(df, symbol.split("/")[0])
+                if signal:
+                    for user in active_users:
+                        processing_tasks.append(process_user_on_symbol(user, symbol, signal))
 
-    if processing_tasks:
-        await asyncio.gather(*processing_tasks)
-
-    await mdm.close()
+        if processing_tasks:
+            await asyncio.gather(*processing_tasks)
+    finally:
+        await mdm.close()
     log.info("═"*60 + "\n  Multi-Exchange Pass Complete \n" + "═"*60)
 
 
