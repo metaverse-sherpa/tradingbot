@@ -737,6 +737,8 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 try:
                     norm_sym = database.normalize_symbol(sym, user_ex.id)
                     trades = await user_ex.fetch_my_trades(norm_sym, limit=50)
+                    
+                    order_groups = {}
                     for t in trades:
                         info = t.get("info", {})
                         gross_pnl = 0
@@ -752,23 +754,44 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             side_raw = t.get('side', 'buy').lower()
                             is_long = (side_raw == 'sell')
                             
-                            # Calculate ROE
-                            try:
-                                market = user_ex.market(sym)
-                                contract_size = float(market.get('contractSize', 1))
-                                initial_margin = (t['price'] * t['amount'] * contract_size) / 20
-                                roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                            except: roe_val = 0
-
-                            all_closed.append({
-                                "symbol": sym,
-                                "timestamp": t['timestamp'],
+                            order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
+                            if order_id not in order_groups:
+                                order_groups[order_id] = []
+                                
+                            order_groups[order_id].append({
                                 "net_pnl": net_pnl,
                                 "price": t['price'],
                                 "amount": t['amount'],
-                                "side": "l" if is_long else "s",
-                                "roe_val": roe_val
+                                "timestamp": t['timestamp'],
+                                "is_long": is_long
                             })
+                            
+                    for order_id, fills in order_groups.items():
+                        total_net_pnl = sum(f['net_pnl'] for f in fills)
+                        total_amount = sum(f['amount'] for f in fills)
+                        total_cost = sum(f['price'] * f['amount'] for f in fills)
+                        avg_price = total_cost / total_amount if total_amount > 0 else fills[0]['price']
+                        
+                        max_timestamp = max(f['timestamp'] for f in fills)
+                        is_long = fills[0]['is_long']
+                        
+                        try:
+                            market = user_ex.market(sym)
+                            contract_size = float(market.get('contractSize', 1))
+                            initial_margin = (avg_price * total_amount * contract_size) / 20
+                            roe_val = (total_net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                        except:
+                            roe_val = 0
+                            
+                        all_closed.append({
+                            "symbol": sym,
+                            "timestamp": max_timestamp,
+                            "net_pnl": total_net_pnl,
+                            "price": avg_price,
+                            "amount": total_amount,
+                            "side": "l" if is_long else "s",
+                            "roe_val": roe_val
+                        })
                 except: pass
 
             await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
