@@ -2232,40 +2232,44 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("❌ Error generating card.", show_alert=True)
 
 async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Provides a brief tutorial of all bot commands."""
+    """Provides a brief tutorial of all bot commands and multi-exchange setup."""
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    is_admin = False
+    if user:
+        is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin', False))
+
     help_text = (
         "📖 *Metaverse Sherpa Bot - User Manual*\n\n"
-        "Welcome! Here is a guide to everything your bot can do:\n\n"
+        "Welcome! The Metaverse Sherpa is an institutional-grade, multi-exchange futures trading bot built for high-precision trade execution.\n\n"
         
         "📊 *Trading & Performance*\n"
-        "• /stats - Your dashboard. Shows Overall PnL, Daily PnL (last 24h), and Win Rate.\n"
-        "• /opentrades - Visual check. Fetches all live positions and generates charts.\n"
-        "• /list - History. Shows your last 10 closed trades directly from the exchange.\n\n"
+        "• /stats - Your personal performance dashboard. Shows Win Rate, Profit Factor, Cumulative PnL, and Daily PnL.\n"
+        "• /opentrades - Visual engine audit. Fetches live active positions with customized target/stop charts.\n"
+        "• /list - Historical ledger. Lists your 10 most recent closed trades sync'd directly from the exchange.\n\n"
         
-        "💰 *Account Management*\n"
-        "• /balance - Check your wallet. Shows available USDT and Total Value.\n"
-        "• /setup - The engine room. Connect or update your Blofin API keys securely.\n\n"
+        "💰 *Account & Sizing Controls*\n"
+        "• /balance - Live wallet audit. Checks available USDT margin, margin utilized, and total equity value.\n"
+        "• /settings - Sizing controls. Customize **Capital Allocation** (trade using full balance, fixed $X amount, or X% balance isolation) and adjust risk tolerance tiers.\n"
+        "• /setup - API Engine Room. Step-by-step wizard to connect/update exchange API keys.\n\n"
         
         "🎯 *Control & Strategy*\n"
-        "• /strategy - Swap brains. Switch between different trading algorithms.\n"
-        "• /stop - Emergency brake. Pauses the trading engine for your account.\n"
-        "• /resume - Green light. Restarts the automated engine.\n\n"
+        "• /strategy - Swapping brains. Instantly select your preferred active algorithmic model.\n"
+        "• /stop - Emergency brake. Pauses the automated execution cycle for your account.\n"
+        "• /resume - Re-enable. Resumes the high-speed trade heartbeat loop.\n\n"
         
-        "🔑 *Blofin API Setup Guide*\n"
-        "1. Go to **API Management** on Blofin.\n"
-        "2. Create Key with **'Read'** & **'Trade'** permissions.\n"
-        "3. Use the passphrase you set during creation.\n\n"
+        "🔌 *Multi-Exchange Setup Guides*\n"
+        "🏔️ *Blofin*: Create API Key with **'Read'** & **'Trade'** permissions. Set a passphrase and keep it handy.\n"
+        "🔶 *Binance*: Create API Key under API Management -> Enable Futures permissions -> Whitelist VPS IP for safety.\n"
+        "💠 *MEXC*: Complete Primary KYC -> Create Key with Futures permissions -> Whitelist VPS IP to avoid 90-day expiry.\n\n"
         
-        "🤝 *Support*\n"
-        "• /contact - Reach out to @metaverse\\_sherpa for questions or ideas.\n\n"
+        "🤝 *Institutional Support*\n"
+        "• /contact - Connect directly with @metaverse\\_sherpa or join our official community channel.\n\n"
         
-        "_Need more help? Just tap any command to try it out!_\n\n"
-        "⚠️ *Disclaimer:* _Automated trading carries significant risk. The Metaverse Sherpa is a tool for professional-grade execution and is **not financial advice**. Past performance does not guarantee future results. Trade at your own risk._"
+        "⚠️ *Risk Disclaimer:* _Automated trading carries substantial risk of capital loss. The Metaverse Sherpa executes with professional-grade sizing (defaulting to 1.5% institutional risk per trade), but is **not financial advice**. Past backtest audits do not guarantee live market profits. Trade responsibly._"
     )
-    chat_id = update.effective_chat.id
     keyboard = [[InlineKeyboardButton("📖 Download Blofin Setup Guide (PDF)", callback_data="send_blofin_guide")]]
-    # Merge with standard navigation buttons
-    keyboard.extend(get_nav_buttons(is_admin=(chat_id == SUPER_ADMIN_ID or user.get('is_admin'))))
+    keyboard.extend(get_nav_buttons(is_admin=is_admin))
     
     await update.effective_message.reply_text(
         help_text, 
