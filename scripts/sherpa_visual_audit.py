@@ -178,18 +178,33 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     ax1.tick_params(colors="white")
     ax1.grid(alpha=0.1)
     ax1.set_facecolor("#121212")
-    ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}\nFinal: ${equity:,.2f}", transform=ax1.transAxes, color='cyan', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+    ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color='cyan', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+    ax1.text(0.02, 0.05, f"Start: ${start_balance:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+    ax1.text(0.98, 0.9, f"Final: ${equity:,.2f}", transform=ax1.transAxes, color='#39FF14', fontweight='bold', ha='right', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
     
     # 🌊 Drawdown Chart
     ax2.fill_between(df_dd.index, df_dd["drawdown"], 0, color="red", alpha=0.2)
     ax2.plot(df_dd.index, df_dd["drawdown"], color="red", linewidth=0.8)
     ax2.tick_params(colors="white")
-    ax2.grid(alpha=0.1)
     ax2.set_facecolor("#121212")
     ax2.set_title("Drawdown (%)", color="white", fontsize=10)
     ax2.set_ylabel("Drawdown (%)", color="white")
     ax2.set_ylim(-100, 5) # 0-100% Scale for visual compression
-    ax2.grid(True, alpha=0.1); ax2.set_facecolor("#121212"); ax2.tick_params(colors="white")
+    ax2.grid(True, alpha=0.1); ax2.tick_params(colors="white")
+    
+    # 📌 Annotate Max Drawdown Peak
+    if not df_dd.empty:
+        max_dd_date = df_dd["drawdown"].idxmin()
+        min_dd_val = df_dd["drawdown"].min()
+        ax2.annotate(f"Peak DD: {min_dd_val:.1f}%", 
+                     xy=(max_dd_date, min_dd_val), 
+                     xytext=(0, -25), 
+                     textcoords="offset points", 
+                     ha='center', 
+                     color="white", 
+                     fontweight='bold',
+                     bbox=dict(facecolor='#1A1A1A', alpha=0.8, edgecolor='red'),
+                     arrowprops=dict(arrowstyle='->', color='red'))
     
     fig.patch.set_facecolor("#121212")
     plt.tight_layout()

@@ -192,7 +192,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         def get_delta(current, last, is_pct=True, is_dd=False, is_dollar=False):
             if not last: return ""
             diff = current - last
-            if abs(diff) < 0.001: return " (—)"
+            if abs(diff) < 0.001: return ""
             
             trend_icon = "⬆️" if diff > 0 else "⬇️"
             sign = "+" if diff > 0 else "-"
@@ -214,8 +214,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         audit_msg = (
             f"🏔️ *Your Personalized 3-Year Audit*\n"
             f"Start Balance: `${start_balance:,.0f}` | Risk: `{risk:.2f}%`\n\n"
-            f"Final Equity: *${stats['final_equity']:,.2f}*{equity_delta}\n"
-            f"Total PnL: *{stats['pnl_pct']:+.1f}%*{pnl_delta}\n"
+            f"Final Equity: *${stats['final_equity']:,.2f}* ({stats['pnl_pct']:+.1f}%)\n"
             f"Sharpe Ratio: *{stats['sharpe']:.2f}*{sharpe_delta}\n"
             f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
             f"Max Drawdown: *{stats['max_dd']:.1f}%*{dd_delta}\n\n"
