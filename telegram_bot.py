@@ -258,6 +258,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             full_name = update.effective_user.full_name
             username = f"@{update.effective_user.username}" if update.effective_user.username else "No Username"
+            
+            # Auto-initialize user in DB immediately
+            database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
+            
             ref_info = f" (Referrer: `{context.args[0].split('_')[1]}`)" if context.args and context.args[0].startswith("ref_") else ""
             
             admin_msg = (
@@ -689,11 +693,47 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
         await update.message.reply_text(f"📢 Broadcast sent to {count} users.{footer}", parse_mode="Markdown", reply_markup=footer_kb)
 
+async def show_forward_test_stats(update: Update, context: ContextTypes.DEFAULT_TYPE, chat_id: int, user: dict):
+    """Displays the bot's global theoretical forward testing performance dashboard."""
+    stats_data = database.get_theoretical_stats()
+    
+    current_balance = stats_data['current_balance']
+    wins = stats_data['wins']
+    losses = stats_data['losses']
+    win_rate = stats_data['win_rate']
+    cumulative_pnl = stats_data['cumulative_pnl']
+    
+    # Calculate % growth since $1k
+    growth_pct = ((current_balance - 1000.0) / 1000.0) * 100
+    
+    msg = (
+        "📊 *Bot Forward Test Performance* (Simulated)\n"
+        "🏔️ _Simulated paper trading starting from a $1,000 balance_\n\n"
+        f"Simulated Balance: *${current_balance:,.2f} USDT*\n"
+        f"Simulated Growth: *{growth_pct:+.2f}%*\n"
+        f"Win Rate: *{win_rate:.1f}% ({wins} wins | {losses} losses)*\n"
+        f"Total Completed: *{wins + losses} trades*\n"
+        f"Cumulative PnL: *{cumulative_pnl:+,.2f} USDT*\n\n"
+        "💡 *How this works:*\n"
+        "The bot automatically forward-tests every 15-minute signal at **1.5% institutional risk**. "
+        "Trades open and close purely based on Take Profit and Stop Loss levels.\n\n"
+        "🏆 *Link your exchange API keys via /setup to start executing these signals automatically!*"
+    )
+    
+    is_admin = (chat_id == SUPER_ADMIN_ID or (user and user.get('is_admin'))) and not (user and user.get('undercover_mode'))
+    keyboard = get_nav_buttons(is_admin=is_admin)
+    
+    await update.effective_message.reply_text(
+        msg,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
-    if not user:
-        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
+    if not user or not user.get('api_key'):
+        await show_forward_test_stats(update, context, chat_id, user)
         return
     
     await update.effective_message.reply_text("📊 Calculating your performance stats...")
@@ -2400,101 +2440,290 @@ async def signal_engine(application):
                 logger.info(f"Sherpa Sleeping {wait_time:.1f}s until next candle close...")
                 await asyncio.sleep(wait_time)
 
-                # 2. Process Signals
-                active_users = database.get_all_active_users()
-                if not active_users: continue
-                
                 # Reset MDM cache for the new cycle
                 mdm.ohlcv_cache = {}
                 
-                # Fetch all OHLCV in parallel
+                # Fetch all OHLCV in parallel using public API
                 await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=100) for sym in live_bot_multi.SYMBOLS))
-                
-                strategy_groups = {}
-                for user in active_users:
-                    strat = user.get('strategy', 'Mean Reversion Scalper')
-                    if strat not in strategy_groups: strategy_groups[strat] = []
-                    strategy_groups[strat].append(user)
-                
-                for strat_name, users in strategy_groups.items():
-                    signals = {}
-                    for symbol in live_bot_multi.SYMBOLS:
-                        df = await mdm.fetch_ohlcv(symbol, "15m")
-                        if df is not None:
-                            sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
-                            if sig: signals[symbol] = sig
-                    
-                    async def execute_user_signals(user):
-                        try:
-                            chat_id = user['telegram_chat_id']
-                            if not user.get('api_key'): return
-                            
-                            ex_id = user.get('exchange_id', 'blofin')
-                            ex_class = getattr(ccxt, ex_id)
-                            async with ex_class({
-                                "apiKey": user['api_key'],
-                                "secret": user['api_secret'],
-                                "password": user['api_password'],
-                                "options": {"defaultType": "swap"},
-                            }) as user_ex:
-                                
-                                balance = await user_ex.fetch_balance(params={"type": "futures"})
-                                actual_equity = float(balance.get("USDT", {}).get("total", 0))
-                                
-                                # Custom Capital Allocation Override
-                                eq_type = user.get('custom_equity_type', 'all')
-                                eq_val = user.get('custom_equity_value')
-                                
-                                equity = actual_equity
-                                if eq_type == 'amount' and eq_val is not None:
-                                    equity = min(float(eq_val), actual_equity)
-                                elif eq_type == 'pct' and eq_val is not None:
-                                    equity = actual_equity * (float(eq_val) / 100.0)
-                                
-                                user_enabled = user.get('enabled_symbols', [])
-                                user_risk = user.get('risk_pct', 1.5)
-                                
-                                for symbol, sig in signals.items():
-                                    if symbol.split("/")[0] not in user_enabled: continue
-                                    
-                                    # Parallelize position checks within user if needed, but sequential is safer for nonce
-                                    norm_sym = database.normalize_symbol(symbol, user_ex.id)
-                                    pos = await user_ex.fetch_positions([norm_sym])
-                                    if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                                        if live_bot_multi.DRY_RUN: continue
-                                            
-                                        res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
-                                        if res:
-                                            database.increment_opened(chat_id)
-                                            side_icon = "📈" if sig['side'] == 'buy' else "📉"
-                                            msg = (
-                                                f"{side_icon} *{strat_name}* SIGNAL!\n\n"
-                                                f"Symbol: *{res['symbol']}*\n"
-                                                f"Risk: `{user_risk:.2f}%`\n"
-                                                f"Entry: `{res['entry']:.8f}`\n"
-                                                f"TP: `{res['tp']:.8f}`\n"
-                                                f"SL: `{res['sl']:.8f}`"
-                                            )
-                                            # Generate and send chart
-                                            try:
-                                                df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
-                                                side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
-                                                open_ts = int(time.time() * 1000)
-                                                # charting.generate_trade_chart is still blocking, wrap in thread
-                                                chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
-                                                is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-                                                keyboard = get_nav_buttons(True, is_admin=is_admin)
-                                                with open(chart_file, 'rb') as photo:
-                                                    await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-                                            except Exception as chart_err:
-                                                logger.error(f"Chart generation failed: {chart_err}")
-                                                await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
-                        except Exception as e:
-                            logger.error(f"Signal execution error for {user.get('telegram_chat_id')}: {e}")
 
-                    await asyncio.gather(*(execute_user_signals(u) for u in users))
+                # 🧪 A. RESOLVE OPEN THEORETICAL TRADES
+                open_theory_trades = database.get_open_theoretical_trades()
+                for t in open_theory_trades:
+                    symbol = t['symbol']
+                    side = t['side']
+                    entry_price = t['entry_price']
+                    tp_price = t['tp_price']
+                    sl_price = t['sl_price']
+                    trade_id = t['id']
+                    position_size = t['position_size']
+                    
+                    df = await mdm.fetch_ohlcv(symbol, "15m")
+                    if df is not None and len(df) > 0:
+                        last_candle = df.iloc[-1]
+                        high = float(last_candle['high'])
+                        low = float(last_candle['low'])
+                        
+                        triggered = False
+                        status = 'open'
+                        exit_price = 0.0
+                        
+                        if side == 'buy':  # Long
+                            if low <= sl_price:
+                                triggered = True
+                                status = 'sl'
+                                exit_price = sl_price
+                            elif high >= tp_price:
+                                triggered = True
+                                status = 'tp'
+                                exit_price = tp_price
+                        else:  # Short
+                            if high >= sl_price:
+                                triggered = True
+                                status = 'sl'
+                                exit_price = sl_price
+                            elif low <= tp_price:
+                                triggered = True
+                                status = 'tp'
+                                exit_price = tp_price
+                        
+                        if triggered:
+                            close_time = int(time.time() * 1000)
+                            pnl_raw = exit_price - entry_price if side == 'buy' else entry_price - exit_price
+                            pnl_pct = (pnl_raw / entry_price) * 100
+                            pnl_usdt = position_size * pnl_raw
+                            
+                            current_bal = database.get_theoretical_balance()
+                            new_bal = current_bal + pnl_usdt
+                            database.update_theoretical_balance(new_bal)
+                            
+                            database.close_theoretical_trade(trade_id, exit_price, close_time, status, pnl_raw, pnl_pct, pnl_usdt)
+                            
+                            # Broadcast EXIT alert
+                            all_targets = database.get_all_broadcast_targets()
+                            exit_msg = (
+                                f"🔔 *SIMULATED TRADE CLOSED!* (Forward Test)\n"
+                                f"🏔️ _Global strategy tracker resolution_\n\n"
+                                f"Symbol: *{symbol}*\n"
+                                f"Direction: *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
+                                f"Exit Trigger: *{status.upper()}*\n\n"
+                                f"Entry Price: `{entry_price:.8f}`\n"
+                                f"Exit Price: `{exit_price:.8f}`\n"
+                                f"Trade PnL: *{pnl_pct:+.2f}% ({pnl_usdt:+.2f} USDT)*\n\n"
+                                f"Simulated Balance: *${new_bal:,.2f} USDT*"
+                            )
+                            for target_id in all_targets:
+                                try:
+                                    is_adm = (target_id == SUPER_ADMIN_ID)
+                                    u = database.get_user(target_id)
+                                    if u:
+                                        is_adm = (target_id == SUPER_ADMIN_ID or u.get('is_admin')) and not u.get('undercover_mode')
+                                    kb = get_nav_buttons(is_admin=is_adm)
+                                    await application.bot.send_message(
+                                        chat_id=target_id,
+                                        text=exit_msg,
+                                        reply_markup=InlineKeyboardMarkup(kb),
+                                        parse_mode="Markdown"
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"Failed forward test exit broadcast to {target_id}: {e}")
+
+                # 🧪 B. EVALUATE NEW THEORETICAL SIGNALS
+                strategy_name = "Mean Reversion Scalper"
+                signals = {}
+                for symbol in live_bot_multi.SYMBOLS:
+                    df = await mdm.fetch_ohlcv(symbol, "15m")
+                    if df is not None:
+                        sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strategy_name)
+                        if sig:
+                            signals[symbol] = sig
+                
+                open_theory_trades = database.get_open_theoretical_trades()
+                open_theory_symbols = {t['symbol'] for t in open_theory_trades}
+                
+                for symbol, sig in signals.items():
+                    if symbol in open_theory_symbols: continue
+                    
+                    entry = sig['entry']
+                    tp = sig['tp']
+                    sl = sig['sl']
+                    side = sig['side']
+                    open_ts = int(time.time() * 1000)
+                    
+                    sim_balance = database.get_theoretical_balance()
+                    risk_val = 0.015  # 1.5% default institutional risk setting
+                    sl_dist = abs(entry - sl)
+                    
+                    if sl_dist > 0:
+                        position_size_usd = (sim_balance * risk_val) / (sl_dist / entry)
+                        position_size_units = position_size_usd / entry
+                        
+                        database.add_theoretical_trade(
+                            symbol=symbol,
+                            strategy=strategy_name,
+                            side=side,
+                            entry_price=entry,
+                            tp_price=tp,
+                            sl_price=sl,
+                            open_time=open_ts,
+                            position_size=position_size_units
+                        )
+                        
+                        chart_file = None
+                        try:
+                            df_chart = await mdm.fetch_ohlcv(symbol, timeframe='15m')
+                            side_str = "LONG" if side == 'buy' else "SHORT"
+                            chart_file = await asyncio.to_thread(
+                                charting.generate_trade_chart,
+                                symbol,
+                                df_chart,
+                                entry,
+                                tp,
+                                sl,
+                                side_str,
+                                open_ts=open_ts
+                            )
+                        except Exception as chart_err:
+                            logger.error(f"Forward test chart generation failed: {chart_err}")
+                        
+                        all_targets = database.get_all_broadcast_targets()
+                        entry_msg = (
+                            f"🏔️ *NEW SIMULATED SIGNAL!* (Forward Test)\n"
+                            f"🤖 *Strategy:* `{strategy_name}`\n\n"
+                            f"Symbol: *{symbol}*\n"
+                            f"Direction: *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
+                            f"Risk Setting: `1.5%`\n"
+                            f"Simulated Entry: `{entry:.8f}`\n"
+                            f"Take Profit (TP): `{tp:.8f}`\n"
+                            f"Stop Loss (SL): `{sl:.8f}`\n\n"
+                            f"Simulated Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} USD)\n"
+                            f"Current Simulated Balance: *${sim_balance:,.2f} USDT*"
+                        )
+                        
+                        for target_id in all_targets:
+                            try:
+                                is_adm = (target_id == SUPER_ADMIN_ID)
+                                u = database.get_user(target_id)
+                                if u:
+                                    is_adm = (target_id == SUPER_ADMIN_ID or u.get('is_admin')) and not u.get('undercover_mode')
+                                kb = get_nav_buttons(is_admin=is_adm)
+                                
+                                if chart_file and os.path.exists(chart_file):
+                                    with open(chart_file, 'rb') as photo:
+                                        await application.bot.send_photo(
+                                            chat_id=target_id,
+                                            photo=photo,
+                                            caption=entry_msg,
+                                            reply_markup=InlineKeyboardMarkup(kb),
+                                            parse_mode="Markdown"
+                                        )
+                                else:
+                                    await application.bot.send_message(
+                                        chat_id=target_id,
+                                        text=entry_msg,
+                                        reply_markup=InlineKeyboardMarkup(kb),
+                                        parse_mode="Markdown"
+                                    )
+                            except Exception as e:
+                                logger.warning(f"Failed forward test entry broadcast to {target_id}: {e}")
+
+                # 2. Process Signals (Active Users)
+                active_users = database.get_all_active_users()
+                if active_users:
+                    strategy_groups = {}
+                    for user in active_users:
+                        strat = user.get('strategy', 'Mean Reversion Scalper')
+                        if strat not in strategy_groups: strategy_groups[strat] = []
+                        strategy_groups[strat].append(user)
+                    
+                    for strat_name, users in strategy_groups.items():
+                        user_signals = {}
+                        for symbol in live_bot_multi.SYMBOLS:
+                            df = await mdm.fetch_ohlcv(symbol, "15m")
+                            if df is not None:
+                                sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
+                                if sig: user_signals[symbol] = sig
+                        
+                        async def execute_user_signals(user):
+                            try:
+                                chat_id = user['telegram_chat_id']
+                                if not user.get('api_key'): return
+                                
+                                ex_id = user.get('exchange_id', 'blofin')
+                                ex_class = getattr(ccxt, ex_id)
+                                async with ex_class({
+                                    "apiKey": user['api_key'],
+                                    "secret": user['api_secret'],
+                                    "password": user['api_password'],
+                                    "options": {"defaultType": "swap"},
+                                }) as user_ex:
+                                    
+                                    balance = await user_ex.fetch_balance(params={"type": "futures"})
+                                    actual_equity = float(balance.get("USDT", {}).get("total", 0))
+                                    
+                                    # Custom Capital Allocation Override
+                                    eq_type = user.get('custom_equity_type', 'all')
+                                    eq_val = user.get('custom_equity_value')
+                                    
+                                    equity = actual_equity
+                                    if eq_type == 'amount' and eq_val is not None:
+                                        equity = min(float(eq_val), actual_equity)
+                                    elif eq_type == 'pct' and eq_val is not None:
+                                        equity = actual_equity * (float(eq_val) / 100.0)
+                                    
+                                    user_enabled = user.get('enabled_symbols', [])
+                                    user_risk = user.get('risk_pct', 1.5)
+                                    
+                                    for symbol, sig in user_signals.items():
+                                        if symbol.split("/")[0] not in user_enabled: continue
+                                        
+                                        norm_sym = database.normalize_symbol(symbol, user_ex.id)
+                                        pos = await user_ex.fetch_positions([norm_sym])
+                                        if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                                            if live_bot_multi.DRY_RUN: continue
+                                                
+                                            res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
+                                            if res:
+                                                database.increment_opened(chat_id)
+                                                side_icon = "📈" if sig['side'] == 'buy' else "📉"
+                                                msg = (
+                                                    f"{side_icon} *{strat_name}* SIGNAL!\n\n"
+                                                    f"Symbol: *{res['symbol']}*\n"
+                                                    f"Risk: `{user_risk:.2f}%`\n"
+                                                    f"Entry: `{res['entry']:.8f}`\n"
+                                                    f"TP: `{res['tp']:.8f}`\n"
+                                                    f"SL: `{res['sl']:.8f}`"
+                                                )
+                                                try:
+                                                    df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
+                                                    side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
+                                                    open_ts = int(time.time() * 1000)
+                                                    chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
+                                                    is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
+                                                    keyboard = get_nav_buttons(True, is_admin=is_admin)
+                                                    with open(chart_file, 'rb') as photo:
+                                                        await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                                                except Exception as chart_err:
+                                                    logger.error(f"Chart generation failed: {chart_err}")
+                                                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                            except Exception as e:
+                                logger.error(f"Signal execution error for {user.get('telegram_chat_id')}: {e}")
+
+                        await asyncio.gather(*(execute_user_signals(u) for u in users))
                 
                 logger.info(f"Engine pass complete.")
+            except Exception as e:
+                logger.error(f"Engine pass critical failure: {e}")
+                
+                # Notify admins of the critical error
+                admins_to_notify = set(database.get_all_admins() + [SUPER_ADMIN_ID])
+                err_msg = f"🚨 *ENGINE PASS CRITICAL FAILURE*\n\nError: `{e}`\n\nThe engine loop has caught an exception and will pause for 60 seconds before retrying."
+                for admin_id in admins_to_notify:
+                    try:
+                        await application.bot.send_message(chat_id=admin_id, text=err_msg, parse_mode="Markdown")
+                    except Exception as notify_err:
+                        logger.error(f"Failed to send error notification to admin {admin_id}: {notify_err}")
+                
+                await asyncio.sleep(60)
             except Exception as e:
                 logger.error(f"Engine pass critical failure: {e}")
                 

@@ -129,6 +129,26 @@ def init_db():
         
         # Set default master wallet if not exists
         c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('master_usdt_wallet', 'YOUR_MASTER_TRON_ADDRESS_HERE')")
+        
+        # 🧪 Theoretical Trades Table
+        c.execute('''CREATE TABLE IF NOT EXISTS TheoreticalTrades
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol TEXT,
+                      strategy TEXT,
+                      side TEXT,
+                      entry_price REAL,
+                      tp_price REAL,
+                      sl_price REAL,
+                      open_time INTEGER,
+                      close_time INTEGER,
+                      status TEXT DEFAULT 'open',
+                      position_size REAL DEFAULT 0.0,
+                      pnl_raw REAL DEFAULT 0.0,
+                      pnl_pct REAL DEFAULT 0.0,
+                      pnl_usdt REAL DEFAULT 0.0)''')
+                      
+        # Set default theoretical balance
+        c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('theoretical_balance', '1000.0')")
 
 def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=False, full_name=None, username=None):
     with db_session() as conn:
@@ -626,3 +646,77 @@ def get_chat_id_by_username(username):
         c.execute('SELECT telegram_chat_id FROM Users WHERE username = ? OR full_name LIKE ?', (username, f"%{username}%"))
         row = c.fetchone()
     return row[0] if row else None
+
+def get_open_theoretical_trades():
+    """Returns all currently open theoretical trades."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open'")
+        rows = c.fetchall()
+    return [dict(r) for r in rows]
+
+def add_theoretical_trade(symbol, strategy, side, entry_price, tp_price, sl_price, open_time, position_size):
+    """Inserts a new open theoretical trade in the database."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('''INSERT INTO TheoreticalTrades 
+                     (symbol, strategy, side, entry_price, tp_price, sl_price, open_time, status, position_size)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)''',
+                  (symbol, strategy, side, entry_price, tp_price, sl_price, open_time, position_size))
+
+def close_theoretical_trade(trade_id, close_price, close_time, status, pnl_raw, pnl_pct, pnl_usdt):
+    """Closes an open theoretical trade and updates its performance metrics."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('''UPDATE TheoreticalTrades 
+                     SET close_time = ?, status = ?, pnl_raw = ?, pnl_pct = ?, pnl_usdt = ? 
+                     WHERE id = ?''',
+                  (close_time, status, pnl_raw, pnl_pct, pnl_usdt, trade_id))
+
+def get_theoretical_balance():
+    """Gets the current simulated compounding balance."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
+        row = c.fetchone()
+    return float(row[0]) if row else 1000.0
+
+def update_theoretical_balance(balance):
+    """Updates the simulated compounding balance."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(balance),))
+
+def get_theoretical_stats():
+    """Computes high-level theoretical performance stats."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades")
+        total_trades = c.fetchone()[0]
+        
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status = 'tp'")
+        wins = c.fetchone()[0]
+        
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status = 'sl'")
+        losses = c.fetchone()[0]
+        
+        c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE status != 'open'")
+        pnl_sum = c.fetchone()[0] or 0.0
+        
+        # Calculate win rate
+        total_closed = wins + losses
+        win_rate = (wins / total_closed * 100) if total_closed > 0 else 0.0
+        
+        # Simulated Balance
+        c.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
+        bal_row = c.fetchone()
+        current_balance = float(bal_row[0]) if bal_row else 1000.0
+        
+    return {
+        "total_trades": total_trades,
+        "wins": wins,
+        "losses": losses,
+        "win_rate": win_rate,
+        "cumulative_pnl": pnl_sum,
+        "current_balance": current_balance
+    }
