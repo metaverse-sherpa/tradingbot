@@ -456,6 +456,13 @@ def is_admin(chat_id):
         row = c.fetchone()
         return bool(row[0]) if row else False
 
+def get_all_admins():
+    """Returns a list of all telegram_chat_ids for users with is_admin=1."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT telegram_chat_id FROM Users WHERE is_admin = 1")
+        return [row[0] for row in c.fetchall()]
+
 def toggle_undercover(chat_id):
     """Toggles the undercover mode for the founder."""
     with db_session() as conn:

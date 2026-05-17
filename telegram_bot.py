@@ -2248,6 +2248,16 @@ async def signal_engine(application):
             logger.info(f"Engine pass complete.")
         except Exception as e:
             logger.error(f"Engine pass critical failure: {e}")
+            
+            # Notify admins of the critical error
+            admins_to_notify = set(database.get_all_admins() + [SUPER_ADMIN_ID])
+            err_msg = f"🚨 *ENGINE PASS CRITICAL FAILURE*\n\nError: `{e}`\n\nThe engine loop has caught an exception and will pause for 60 seconds before retrying."
+            for admin_id in admins_to_notify:
+                try:
+                    await application.bot.send_message(chat_id=admin_id, text=err_msg, parse_mode="Markdown")
+                except Exception as notify_err:
+                    logger.error(f"Failed to send error notification to admin {admin_id}: {notify_err}")
+            
             await asyncio.sleep(60)
 
 async def post_init(application: ApplicationBuilder):
