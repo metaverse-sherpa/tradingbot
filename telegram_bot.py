@@ -729,6 +729,12 @@ async def show_forward_test_stats(update: Update, context: ContextTypes.DEFAULT_
         parse_mode="Markdown"
     )
 
+async def stats_simulated(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Explicitly shows simulated stats dashboard to any user."""
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    await show_forward_test_stats(update, context, chat_id, user)
+
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
@@ -1378,6 +1384,11 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
 
     admin_status = "🕵️‍♂️ Undercover" if user.get('undercover_mode') else "👑 Overlord"
     
+    # 🧪 Simulated Forward Testing Analytics
+    theory_stats = database.get_theoretical_stats()
+    open_theory_count = len(database.get_open_theoretical_trades())
+    growth_pct = ((theory_stats['current_balance'] - 1000.0) / 1000.0) * 100
+    
     last_sync = time.strftime('%H:%M:%S')
     admin_msg = (
         "👑 *Sherpa Overlord Mission Control*\n\n"
@@ -1387,6 +1398,10 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         f"• Total Referrals: `{stats['total_referrals']}`\n"
         f"• Active Premium: `{stats['premium_users']}`\n"
         f"• Last Deploy: *2026-05-14 10:08*\n\n"
+        "🧪 *Simulated Forward Testing*\n"
+        f"• Simulated Balance: `${theory_stats['current_balance']:,.2f} USDT` ({growth_pct:+.2f}%)\n"
+        f"• Simulated Win Rate: `{theory_stats['win_rate']:.1f}%` ({theory_stats['wins']} wins | {theory_stats['losses']} losses)\n"
+        f"• Open Simulated Trades: `{open_theory_count} open`\n\n"
         "💰 *Total Treasury Value*\n"
         f"• Master Wallet: `{master_wallet}`\n"
         f"• TRX: `{trx_bal:,.1f}` | USDT: `${usdt_bal:,.2f}`\n"
@@ -2826,6 +2841,8 @@ def main():
         app.add_handler(CommandHandler("setup", setup))
         app.add_handler(CommandHandler("reset", setup))
         app.add_handler(CommandHandler("stats", stats))
+        app.add_handler(CommandHandler("forwardtest", stats_simulated))
+        app.add_handler(CommandHandler("fstats", stats_simulated))
         app.add_handler(CommandHandler("opentrades", open_trades))
         app.add_handler(CommandHandler("list", list_trades))
         app.add_handler(CommandHandler("backtest", backtest))
