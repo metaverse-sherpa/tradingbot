@@ -82,6 +82,7 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("📊 Detailed User Report", callback_data="admin_user_audit")],
         [InlineKeyboardButton("🎁 Generate Gift Code", callback_data="admin_gift_prompt")],
         [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
+        [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],
         [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="toggle_undercover")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="close_admin")]
     ]

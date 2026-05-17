@@ -2305,16 +2305,32 @@ async def post_init(application: ApplicationBuilder):
         logger.error(f"Failed to send startup notification: {e}")
 
     # 🚀 Start Dual-Heartbeat Engine
-    asyncio.create_task(sync_engine(application))
-    asyncio.create_task(signal_engine(application))
+    task1 = asyncio.create_task(sync_engine(application))
+    task2 = asyncio.create_task(signal_engine(application))
+    application.bot_data['bg_tasks'] = [task1, task2]
+
+async def post_stop(application: ApplicationBuilder):
+    """Gracefully cancel background engines to release TCP sockets safely."""
+    logger.info("Gracefully shutting down background engines...")
+    bg_tasks = application.bot_data.get('bg_tasks', [])
+    for task in bg_tasks:
+        task.cancel()
+        
+    if bg_tasks:
+        # Wait for them to cancel, triggering CCXT finally/__aexit__ blocks
+        await asyncio.gather(*bg_tasks, return_exceptions=True)
+    
+    # Give aiohttp a small buffer to sweep the unclosed connectors
+    await asyncio.sleep(0.5)
+    logger.info("Background engines shut down.")
 
 def main():
     try:
         # Ensure database table exists
         database.init_db()
 
-        # Initialize Bot Application with the post_init hook
-        app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+        # Initialize Bot Application with the post_init and post_stop hooks
+        app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).post_stop(post_stop).build()
         app.add_error_handler(error_handler)
         
         # Register Commands
