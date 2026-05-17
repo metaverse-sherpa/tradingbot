@@ -215,13 +215,23 @@ async def process_user_on_symbol(user, symbol, signal):
         if sym_name not in user.get('enabled_symbols', []):
             return
         
+        # Capital Allocation Override
+        eq_type = user.get('custom_equity_type', 'all')
+        eq_val = user.get('custom_equity_value')
+        
+        effective_equity = user.get('equity', 10000.0)
+        if eq_type == 'amount' and eq_val is not None:
+            effective_equity = min(float(eq_val), user.get('equity', 10000.0))
+        elif eq_type == 'pct' and eq_val is not None:
+            effective_equity = user.get('equity', 10000.0) * (float(eq_val) / 100.0)
+        
         ex = get_exchange_client(user)
         try:
             norm_sym = normalize_symbol(symbol, ex.id)
             # Check existing positions
             pos = await ex.fetch_positions([norm_sym])
             if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                await place_order(ex, norm_sym, signal, user['equity'], risk_pct=risk_val)
+                await place_order(ex, norm_sym, signal, effective_equity, risk_pct=risk_val)
         finally:
             await ex.close()
     except Exception as ue:

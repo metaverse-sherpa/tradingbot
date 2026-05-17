@@ -102,7 +102,9 @@ def init_db():
             ("referral_credits", "REAL DEFAULT 0.0"),
             ("full_name", "TEXT"),
             ("username", "TEXT"),
-            ("is_admin", "BOOLEAN DEFAULT 0")
+            ("is_admin", "BOOLEAN DEFAULT 0"),
+            ("custom_equity_type", "TEXT DEFAULT 'all'"),
+            ("custom_equity_value", "REAL")
         ]
         for col_name, col_def in cols:
             try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
@@ -147,7 +149,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
@@ -178,7 +180,9 @@ def get_user(chat_id):
             "referral_credits": row[22] if len(row) > 22 else 0.0,
             "full_name": row[23] if len(row) > 23 else None,
             "username": row[24] if len(row) > 24 else None,
-            "is_admin": bool(row[25]) if len(row) > 25 else False
+            "is_admin": bool(row[25]) if len(row) > 25 else False,
+            "custom_equity_type": row[26] if len(row) > 26 and row[26] is not None else 'all',
+            "custom_equity_value": row[27] if len(row) > 27 else None
         }
     return None
 
@@ -219,7 +223,9 @@ def update_user_preference(chat_id, key, value):
             "hide_dollars": "hide_dollars", 
             "risk_pct": "risk_pct", 
             "enabled_symbols": "enabled_symbols", 
-            "exchange_id": "exchange_id"
+            "exchange_id": "exchange_id",
+            "custom_equity_type": "custom_equity_type",
+            "custom_equity_value": "custom_equity_value"
         }
         if key in cols:
             col_name = cols[key]

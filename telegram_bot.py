@@ -55,9 +55,19 @@ async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
     
-    # Get current balance for projection
-    balance = user.get('equity', 10000.0)
-    if balance < 100: balance = 10000.0 # Default to 10k for new users
+    # Calculate starting balance using Capital Allocation Override
+    actual_equity = user.get('equity') or 0.0
+    if actual_equity <= 100.0:
+        actual_equity = 10000.0
+        
+    eq_type = user.get('custom_equity_type', 'all')
+    eq_val = user.get('custom_equity_value')
+    
+    balance = actual_equity
+    if eq_type == 'amount' and eq_val is not None:
+        balance = min(float(eq_val), actual_equity)
+    elif eq_type == 'pct' and eq_val is not None:
+        balance = actual_equity * (float(eq_val) / 100.0)
         
     await trigger_personalized_audit(update, context, user, start_balance=balance)
 
@@ -380,13 +390,75 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def clear_input_states(context):
     """Clears all mutually exclusive interactive input states from user_data."""
-    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'setting_risk', 'setup_step']:
+    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'setting_risk', 'setup_step', 'setting_cap_amount', 'setting_cap_pct']:
         context.user_data.pop(key, None)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     text = update.effective_message.text.strip()
     
+    # --- Capital Fixed Amount Input Validation ---
+    if context.user_data.get('setting_cap_amount'):
+        try:
+            val = float(text)
+            if val <= 0:
+                raise ValueError()
+        except ValueError:
+            await update.effective_message.reply_text("❌ *Invalid Amount*: Please enter a valid positive number (e.g. `500`):", parse_mode="Markdown")
+            return
+            
+        # Get actual balance
+        user = database.get_user(chat_id)
+        actual_balance = user.get('equity') or 0.0
+        if val > actual_balance:
+            await update.effective_message.reply_text(
+                f"❌ *Value Exceeds Balance*\n\n"
+                f"You specified **${val:,.2f} USDT**, which exceeds your current exchange account balance of **${actual_balance:,.2f} USDT**.\n\n"
+                "Please specify a lower amount (or tap /cancel to abort):",
+                parse_mode="Markdown"
+            )
+            return
+            
+        database.update_user_preference(chat_id, "custom_equity_type", "amount")
+        database.update_user_preference(chat_id, "custom_equity_value", val)
+        context.user_data['setting_cap_amount'] = False
+        
+        await update.effective_message.reply_text(
+            f"✅ *Capital Allocation Updated!*\n\n"
+            f"The bot will now trade with a fixed capital limit of **${val:,.2f} USDT**.",
+            parse_mode="Markdown"
+        )
+        # Display settings menu
+        user = database.get_user(chat_id)
+        msg, markup = get_settings_ui(user)
+        await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
+        return
+
+    # --- Capital Percentage Input Validation ---
+    if context.user_data.get('setting_cap_pct'):
+        try:
+            val = float(text)
+            if val <= 0 or val > 100:
+                raise ValueError()
+        except ValueError:
+            await update.effective_message.reply_text("❌ *Invalid Percentage*: Please enter a valid number between `1` and `100` (e.g. `50`):", parse_mode="Markdown")
+            return
+            
+        database.update_user_preference(chat_id, "custom_equity_type", "pct")
+        database.update_user_preference(chat_id, "custom_equity_value", val)
+        context.user_data['setting_cap_pct'] = False
+        
+        await update.effective_message.reply_text(
+            f"✅ *Capital Allocation Updated!*\n\n"
+            f"The bot will now trade with **{val:.1f}%** of your account balance.",
+            parse_mode="Markdown"
+        )
+        # Display settings menu
+        user = database.get_user(chat_id)
+        msg, markup = get_settings_ui(user)
+        await update.effective_message.reply_text(msg, reply_markup=markup, parse_mode="Markdown")
+        return
+
     # --- 1. Handle Institutional Wallet Setup ---
     if context.user_data.get('setting_wallet'):
         # Basic TRON (TRC-20) Validation: Starts with T, length 34
@@ -631,7 +703,9 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_unrealized_pnl = 0.0
     open_positions_count = 0
     try:
-        async with ccxt.blofin({
+        ex_id = user.get('exchange_id', 'blofin')
+        ex_class = getattr(ccxt, ex_id)
+        async with ex_class({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
             "password": user['api_password'],
@@ -645,7 +719,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async def fetch_sym_pnl(sym):
                 nonlocal realized_daily_pnl
                 try:
-                    trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago, params={'instType': 'SWAP'})
+                    params = {'instType': 'SWAP'} if user_ex.id == 'blofin' else {}
+                    trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago, params=params)
                     for t in trades:
                         info = t.get("info", {})
                         gross_pnl = float(info.get("fillPnl") or 0)
@@ -659,7 +734,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # 2. Get Total Unrealized PnL from positions
             try:
-                positions = await user_ex.fetch_positions(live_bot_multi.SYMBOLS)
+                norm_syms = [database.normalize_symbol(sym, user_ex.id) for sym in live_bot_multi.SYMBOLS]
+                positions = await user_ex.fetch_positions(norm_syms)
                 for p in positions:
                     contracts = float(p.get("contracts", 0) or 0)
                     if contracts != 0:
@@ -1013,6 +1089,18 @@ def get_settings_ui(user):
         expiry_date = time.strftime('%Y-%m-%d', time.localtime(user['premium_expiry']))
         expiry_msg = f"Expires: *{expiry_date}* ({days_left} days left)\n"
     
+    eq_type = user.get('custom_equity_type', 'all')
+    eq_val = user.get('custom_equity_value')
+    
+    if eq_type == 'all' or eq_val is None:
+        capital_display = "Full Account Balance (100%)"
+    elif eq_type == 'pct':
+        capital_display = f"{eq_val:.1f}% of Balance"
+    elif eq_type == 'amount':
+        capital_display = f"${eq_val:,.2f} USDT"
+    else:
+        capital_display = "Full Account Balance (100%)"
+
     msg = (
         f"⚙️ *Metaverse Sherpa Settings*\n\n"
         f"Status: *{bot_status}*\n"
@@ -1021,6 +1109,7 @@ def get_settings_ui(user):
         f"Strategy: *{user['strategy']}*\n"
         f"Risk Level: *{risk_val:.2f}%*\n"
         f"Active Symbols: *{len(syms)}/19*\n"
+        f"Capital Allocation: *{capital_display}*\n"
         f"Dollar PnL: *{privacy_status}*\n"
         f"Source Wallet: `{wallet_display}`\n"
     )
@@ -1028,6 +1117,7 @@ def get_settings_ui(user):
     keyboard = [
         [InlineKeyboardButton(f"⚖️ Set Risk % {'🔒' if not is_premium else ''}", callback_data="set_risk"),
          InlineKeyboardButton(f"🛰 Symbols {'🔒' if not is_premium else ''}", callback_data="manage_symbols")],
+        [InlineKeyboardButton("💰 Capital Allocation", callback_data="capital_menu")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
         [InlineKeyboardButton("🔬 Backtest Your Strategy", callback_data="run_backtest")],
@@ -1504,10 +1594,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "run_backtest":
         await query.answer("🔬 Generating Backtest Projection...")
-        # Get current balance for projection
-        balance = user.get('equity', 10000.0)
-        if balance < 100: balance = 10000.0
+        # Calculate starting balance using Capital Allocation Override
+        actual_equity = user.get('equity') or 0.0
+        if actual_equity <= 100.0:
+            actual_equity = 10000.0
+            
+        eq_type = user.get('custom_equity_type', 'all')
+        eq_val = user.get('custom_equity_value')
         
+        balance = actual_equity
+        if eq_type == 'amount' and eq_val is not None:
+            balance = min(float(eq_val), actual_equity)
+        elif eq_type == 'pct' and eq_val is not None:
+            balance = actual_equity * (float(eq_val) / 100.0)
+            
         await trigger_personalized_audit(update, context, user, start_balance=balance)
         return
 
@@ -1623,7 +1723,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error checking payment: {e}")
             await query.message.reply_text("⚠️ _Blockchain audit engine is busy. Please try again in 60 seconds._")
         
-        return
+    elif query.data.startswith("setex_"):
         exchange_id = query.data.split("_")[1]
         context.user_data['exchange_id'] = exchange_id
         context.user_data['setup_step'] = 1
@@ -1848,6 +1948,91 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "manage_symbols":
         await query.answer()
         await show_symbol_menu(update, context, user)
+        return
+
+    elif query.data == "capital_menu":
+        await query.answer()
+        clear_input_states(context)
+        
+        # Display Capital Allocation Sub-dashboard
+        eq_type = user.get('custom_equity_type', 'all')
+        eq_val = user.get('custom_equity_value')
+        
+        actual_balance = user.get('equity') or 0.0
+        
+        if eq_type == 'all' or eq_val is None:
+            active_mode = "🏦 Use Full Balance (100%)"
+            effective_cap = actual_balance
+        elif eq_type == 'pct':
+            active_mode = f"📊 Percentage Override ({eq_val:.1f}%)"
+            effective_cap = actual_balance * (float(eq_val) / 100.0)
+        elif eq_type == 'amount':
+            active_mode = f"💵 Fixed Dollar Amount (${eq_val:,.2f} USDT)"
+            effective_cap = min(float(eq_val), actual_balance)
+            
+        menu_text = (
+            "💰 *Capital Allocation Settings*\n\n"
+            "By default, the bot trades using your full exchange account balance. "
+            "You can override this to isolate a specific dollar amount or percentage of your balance for trading.\n\n"
+            f"• Current Balance: *${actual_balance:,.2f} USDT*\n"
+            f"• Active Mode: *{active_mode}*\n"
+            f"• Effective Trading Capital: *${effective_cap:,.2f} USDT*\n\n"
+            "Select an option below to change your allocation:"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("🏦 Use Full Balance (100%)", callback_data="set_cap_all")],
+            [InlineKeyboardButton("💵 Set Fixed Dollar Amount ($)", callback_data="set_cap_amount_prompt")],
+            [InlineKeyboardButton("📊 Set Percentage (%)", callback_data="set_cap_pct_prompt")],
+            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
+        ]
+        
+        await safe_edit_text(update, context, menu_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    elif query.data == "set_cap_all":
+        database.update_user_preference(chat_id, "custom_equity_type", "all")
+        database.update_user_preference(chat_id, "custom_equity_value", None)
+        await query.answer("✅ Reset to Full Balance!")
+        
+        # Reload Settings
+        user = database.get_user(chat_id)
+        msg, markup = get_settings_ui(user)
+        await safe_edit_text(update, context, msg, reply_markup=markup)
+        return
+
+    elif query.data == "set_cap_amount_prompt":
+        await query.answer()
+        clear_input_states(context)
+        context.user_data['setting_cap_amount'] = True
+        
+        actual_balance = user.get('equity') or 0.0
+        
+        prompt_text = (
+            "💵 *Set Fixed Dollar Amount (USDT)*\n\n"
+            f"Your current exchange account balance is: *${actual_balance:,.2f} USDT*\n\n"
+            "Please send the exact USDT amount you want the bot to trade with (e.g., `500` or `1250`):\n\n"
+            "⚠️ _Note: This amount cannot exceed your current account balance._\n\n"
+            "Tap /cancel to abort."
+        )
+        
+        keyboard = [[InlineKeyboardButton("🔙 Cancel", callback_data="capital_menu")]]
+        await safe_edit_text(update, context, prompt_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    elif query.data == "set_cap_pct_prompt":
+        await query.answer()
+        clear_input_states(context)
+        context.user_data['setting_cap_pct'] = True
+        
+        prompt_text = (
+            "📊 *Set Capital Percentage (%)*\n\n"
+            "Please send the percentage of your balance you want the bot to trade with (a number between `1` and `100`, e.g. `50`):\n\n"
+            "Tap /cancel to abort."
+        )
+        
+        keyboard = [[InlineKeyboardButton("🔙 Cancel", callback_data="capital_menu")]]
+        await safe_edit_text(update, context, prompt_text, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     elif query.data.startswith("tsym_"): # TOGGLE SYMBOL
@@ -2121,7 +2306,9 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        async with ccxt.blofin({
+        ex_id = user_data.get('exchange_id', 'blofin')
+        ex_class = getattr(ccxt, ex_id)
+        async with ex_class({
             "apiKey": user_data['api_key'],
             "secret": user_data['api_secret'],
             "password": user_data['api_password'],
@@ -2135,8 +2322,8 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 positions = await user_ex.fetch_positions()
                 for p in positions:
-                    margin = float(p.get('info', {}).get('margin', 0))
-                    upnl = float(p.get('info', {}).get('unrealizedPnl', 0))
+                    margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
+                    upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
                     total_value += (margin + upnl)
             except: pass
             
@@ -2172,7 +2359,9 @@ async def sync_engine(application):
                     chat_id = user['telegram_chat_id']
                     if not user.get('api_key'): return
 
-                    async with ccxt.blofin({
+                    ex_id = user.get('exchange_id', 'blofin')
+                    ex_class = getattr(ccxt, ex_id)
+                    async with ex_class({
                         "apiKey": user['api_key'],
                         "secret": user['api_secret'],
                         "password": user['api_password'],
@@ -2235,7 +2424,9 @@ async def signal_engine(application):
                         chat_id = user['telegram_chat_id']
                         if not user.get('api_key'): return
                         
-                        async with ccxt.blofin({
+                        ex_id = user.get('exchange_id', 'blofin')
+                        ex_class = getattr(ccxt, ex_id)
+                        async with ex_class({
                             "apiKey": user['api_key'],
                             "secret": user['api_secret'],
                             "password": user['api_password'],
@@ -2243,7 +2434,17 @@ async def signal_engine(application):
                         }) as user_ex:
                             
                             balance = await user_ex.fetch_balance(params={"type": "futures"})
-                            equity = float(balance.get("USDT", {}).get("total", 0))
+                            actual_equity = float(balance.get("USDT", {}).get("total", 0))
+                            
+                            # Custom Capital Allocation Override
+                            eq_type = user.get('custom_equity_type', 'all')
+                            eq_val = user.get('custom_equity_value')
+                            
+                            equity = actual_equity
+                            if eq_type == 'amount' and eq_val is not None:
+                                equity = min(float(eq_val), actual_equity)
+                            elif eq_type == 'pct' and eq_val is not None:
+                                equity = actual_equity * (float(eq_val) / 100.0)
                             
                             user_enabled = user.get('enabled_symbols', [])
                             user_risk = user.get('risk_pct', 1.5)
@@ -2252,11 +2453,12 @@ async def signal_engine(application):
                                 if symbol.split("/")[0] not in user_enabled: continue
                                 
                                 # Parallelize position checks within user if needed, but sequential is safer for nonce
-                                pos = await user_ex.fetch_positions([symbol])
+                                norm_sym = database.normalize_symbol(symbol, user_ex.id)
+                                pos = await user_ex.fetch_positions([norm_sym])
                                 if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
                                     if live_bot_multi.DRY_RUN: continue
                                         
-                                    res = await live_bot_multi.place_order(user_ex, symbol, sig, equity, risk_pct=user_risk)
+                                    res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
                                     if res:
                                         database.increment_opened(chat_id)
                                         side_icon = "📈" if sig['side'] == 'buy' else "📉"
@@ -2396,7 +2598,7 @@ def main():
         app.add_handler(CommandHandler("demote", demote_command))
         app.add_handler(CommandHandler("cancel", cancel_command))
         app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits"))
+        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits"))
         app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
         app.add_handler(CommandHandler("stop", stop_bot))
         app.add_handler(CommandHandler("resume", resume_bot))
