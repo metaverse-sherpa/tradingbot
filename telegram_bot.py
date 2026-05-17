@@ -378,6 +378,11 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown"
         )
 
+def clear_input_states(context):
+    """Clears all mutually exclusive interactive input states from user_data."""
+    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'setting_risk', 'setup_step']:
+        context.user_data.pop(key, None)
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     text = update.effective_message.text.strip()
@@ -1385,6 +1390,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "admin_broadcast_prompt":
         if chat_id != SUPER_ADMIN_ID: return
+        clear_input_states(context)
         context.user_data['admin_broadcasting'] = True
         await query.message.reply_text(
             "📢 *Institutional Broadcast Mode*\n\n"
@@ -1396,6 +1402,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "admin_gift_prompt":
+        clear_input_states(context)
         context.user_data['admin_gifting'] = True
         await query.message.reply_text(
             "🎁 *Institutional Gifting Center*\n\n"
@@ -1455,6 +1462,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if query.data == "prompt_set_wallet":
+        clear_input_states(context)
         context.user_data['setting_wallet'] = True
         await query.message.reply_text(
             "👛 *Institutional Wallet Setup*\n\n"
@@ -1467,6 +1475,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "prompt_admin_wallet":
         if chat_id != SUPER_ADMIN_ID: return
+        clear_input_states(context)
         context.user_data['setting_admin_wallet'] = True
         await query.message.reply_text(
             "👑 *Overlord: Update Treasury Address*\n\n"
@@ -1815,6 +1824,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "set_risk":
         await query.answer()
+        clear_input_states(context)
         context.user_data['setting_risk'] = True
         keyboard = [
             [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
