@@ -356,17 +356,15 @@ def set_referrer(chat_id, referrer_id):
     """Links a new user to a referrer and increments the referrer's count."""
     if chat_id == referrer_id: return False # No self-referral
     
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    # Check if user already has a referrer
-    c.execute("SELECT referred_by FROM Users WHERE telegram_chat_id = ?", (chat_id,))
-    row = c.fetchone()
-    
     reward_granted = False
-    # If user exists and doesn't have a referrer yet
-    if row and row[0] is None:
-        with db_session() as conn:
-            c = conn.cursor()
+    with db_session() as conn:
+        c = conn.cursor()
+        # Check if user already has a referrer
+        c.execute("SELECT referred_by FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+        row = c.fetchone()
+        
+        # If user exists and doesn't have a referrer yet
+        if row and row[0] is None:
             c.execute("UPDATE Users SET referred_by = ? WHERE telegram_chat_id = ?", (referrer_id, chat_id))
             c.execute("UPDATE Users SET referral_count = referral_count + 1 WHERE telegram_chat_id = ?", (referrer_id,))
             # Check for reward
