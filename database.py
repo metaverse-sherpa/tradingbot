@@ -269,7 +269,7 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
             nonlocal wins, losses, cum_pnl
             try:
                 norm_sym = normalize_symbol(sym, exchange.id)
-                trades = await exchange.fetch_my_trades(norm_sym, last_ts)
+                trades = await exchange.fetch_my_trades(norm_sym, since=last_ts, params={'instType': 'SWAP'})
                 symbol_new_closed = []
                 for t in trades:
                     if t['timestamp'] <= last_ts: continue

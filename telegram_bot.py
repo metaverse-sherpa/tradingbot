@@ -641,7 +641,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async def fetch_sym_pnl(sym):
                 nonlocal realized_daily_pnl
                 try:
-                    trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago)
+                    trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago, params={'instType': 'SWAP'})
                     for t in trades:
                         info = t.get("info", {})
                         gross_pnl = float(info.get("fillPnl") or 0)
