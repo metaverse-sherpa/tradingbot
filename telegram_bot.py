@@ -1788,7 +1788,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• *Philosophy*: Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.\n"
             "• *Indicators*: Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.\n"
             "• *Pace*: Highly active. Averages ~0.84 trades/day.\n"
-            "• *Drawdown Profile*: Higher risk/reward; handles strong trends with ADX filters but has larger peak drawdowns (~32.9%).\n\n"
+            "• *Drawdown Profile*: Optimized for recommended **1.0% risk**, maintaining a safe drawdown of **~21.9%** (well below the 25% safety ceiling) while delivering **+384.1%** PnL.\n\n"
             "🛡️ *Valkyrie Elite Scalper*\n"
             "• *Philosophy*: Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.\n"
             "• *Indicators*: Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.\n"
@@ -1798,7 +1798,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• *Focus*: Volatility Extremes vs Wick Rejection\n"
             "• *Active Basket*: 29-Token Basket vs 7-Token Premium\n"
             "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside\n"
-            "• *Risk Profile*: High compounding PnL vs High Sharpe / Low Drawdowns\n\n"
+            "• *Risk Profile*: Highly active (21.9% DD @ 1% Risk) vs High Sharpe (19.5% DD @ 1.5% Risk)\n\n"
             "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety, maximum Sharpe ratios, and smooth, protected growth curves."
         )
         kb = [
