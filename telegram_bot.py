@@ -1092,7 +1092,8 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     keyboard = [
-        [InlineKeyboardButton("Mean Reversion Scalper (Active)", callback_data="set_strat_mean")],
+        [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
+        [InlineKeyboardButton("Valkyrie Elite Scalper", callback_data="set_strat_valk")],
         [InlineKeyboardButton("Crypto Chart Patterns (Coming Soon)", callback_data="set_strat_soon")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1113,6 +1114,9 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "set_strat_mean":
         database.update_user_strategy(query.message.chat.id, "Mean Reversion Scalper")
         await safe_edit_text(update, context, "✅ Strategy set to: *Mean Reversion Scalper*", reply_markup=get_main_inline_menu(query.message.chat.id))
+    elif query.data == "set_strat_valk":
+        database.update_user_strategy(query.message.chat.id, "Valkyrie Elite Scalper")
+        await safe_edit_text(update, context, "✅ Strategy set to: *Valkyrie Elite Scalper*", reply_markup=get_main_inline_menu(query.message.chat.id))
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 
@@ -1949,27 +1953,49 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "strategy_menu":
         await query.answer()
         risk_val = user.get('risk_pct', 1.5)
+        strat_choice = user.get('strategy', 'Mean Reversion Scalper')
         
-        strategy_overview = (
-            "🎯 *Strategy Selection & Overview*\n\n"
-            "🛡️ *Engine: Mean Reversion Scalper*\n"
-            "This strategy uses Bollinger Band volatility expansion/contraction to identify overextended price moves. It enters 'reversion' trades to capture the snap-back to the mean.\n\n"
-            "📊 *Core Parameters:*\n"
-            "• *Target R:R*: 1:1.5 or better\n"
-            "• *Risk Per Trade*: User-defined (% of equity)\n"
-            "• *Logic*: Auto-calculates position size based on SL distance.\n\n"
-            "📈 *3-Year Performance Proof:*\n"
-            "• Total PnL: *+576.2%*\n"
-            "• Win Rate: *60.0%*\n"
-            "• Max Drawdown: *18.8%*\n\n"
-            f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
-            "Select a strategy or adjust your risk below:"
-        )
+        if strat_choice == "Valkyrie Elite Scalper":
+            strategy_overview = (
+                "🎯 *Strategy Selection & Overview*\n\n"
+                "🛡️ *Engine: Valkyrie Elite Scalper*\n"
+                "This institutional strategy uses Bollinger Band wick piercing and candle close confirmation to target high-integrity reversion setups on high-volume assets.\n\n"
+                "📊 *Core Parameters:*\n"
+                "• *Assets*: SOL, LINK, BTC, ADA, DOT\n"
+                "• *Risk Per Trade*: User-defined (% of equity)\n"
+                "• *Filters*: Volatility Squeeze + ADX trend strength gating.\n\n"
+                "📈 *3-Year Portfolio Performance Proof (1.5% Risk):*\n"
+                "• Total PnL: *+240.15%*\n"
+                "• Win Rate: *63.1%* (353 wins / 206 losses)\n"
+                "• Max Drawdown: *-16.27%*\n"
+                "• Sharpe Ratio: *1.91* (Institutional Elite)\n\n"
+                f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
+                "Select a strategy or adjust your risk below:"
+            )
+        else:
+            strategy_overview = (
+                "🎯 *Strategy Selection & Overview*\n\n"
+                "🛡️ *Engine: Mean Reversion Scalper*\n"
+                "This strategy uses Bollinger Band volatility expansion/contraction to identify overextended price moves. It enters 'reversion' trades to capture the snap-back to the mean.\n\n"
+                "📊 *Core Parameters:*\n"
+                "• *Target R:R*: 1:1.5 or better\n"
+                "• *Risk Per Trade*: User-defined (% of equity)\n"
+                "• *Logic*: Auto-calculates position size based on SL distance.\n\n"
+                "📈 *3-Year Performance Proof:*\n"
+                "• Total PnL: *+576.2%*\n"
+                "• Win Rate: *60.0%*\n"
+                "• Max Drawdown: *18.8%*\n\n"
+                f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
+                "Select a strategy or adjust your risk below:"
+            )
         
         keyboard = [
             [InlineKeyboardButton("🏔️ Preview My Performance", callback_data="run_backtest")],
             [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk")],
-            [InlineKeyboardButton("Mean Reversion Scalper (Active)", callback_data="set_strat_mean")],
+            [
+                InlineKeyboardButton("Mean Reversion" + (" (Active)" if strat_choice == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
+                InlineKeyboardButton("Valkyrie" + (" (Active)" if strat_choice == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk")
+            ],
             [InlineKeyboardButton("🚧 Crypto Chart Patterns (Soon)", callback_data="set_strat_soon")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))

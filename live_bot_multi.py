@@ -46,11 +46,20 @@ SYMBOL_CONFIGS = {
     "SHIB": {"bb": 2.5, "atr": 6.0, "rr": 1.25, "adx": 15, "rsi": 30},
 }
 
+# Optimized Valkyrie Elite Scalper individual symbol configurations
+VALKYRIE_SYMBOL_CONFIGS = {
+    "SOL":  {"bb": 2.4, "atr": 3.5, "rr": 1.0, "adx": 25, "rsi_low": 25, "rsi_high": 75},
+    "LINK": {"bb": 2.6, "atr": 3.5, "rr": 1.0, "adx": 30, "rsi_low": 25, "rsi_high": 75},
+    "BTC":  {"bb": 2.2, "atr": 3.5, "rr": 1.0, "adx": 30, "rsi_low": 25, "rsi_high": 75},
+    "ADA":  {"bb": 2.4, "atr": 3.5, "rr": 0.8, "adx": 25, "rsi_low": 25, "rsi_high": 75},
+    "DOT":  {"bb": 2.6, "atr": 3.0, "rr": 0.8, "adx": 25, "rsi_low": 25, "rsi_high": 75}
+}
+
 SYMBOLS = [f"{s}/USDT:USDT" for s in SYMBOL_CONFIGS.keys()]
 BAD_HOURS_UTC = {4, 12}
 TIMEFRAME     = "15m"
 LEVERAGE      = 20
-RISK_PER_TRADE = 0.01
+RISK_PER_TRADE = 0.015         # Default 1.5% compounding risk (Valkyrie Sweet Spot)
 CANDLE_LIMIT   = 250
 DRY_RUN        = os.getenv("BLOFIN_DRY_RUN", "true").lower() == "true"
 
@@ -108,8 +117,15 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
     if not side:
         return None
         
-    # Standardize output for the engine
-    cfg = SYMBOL_CONFIGS[symbol_name]
+    # Standardize output using strategy-specific configurations
+    if strategy_name == "Valkyrie Elite Scalper":
+        cfg = VALKYRIE_SYMBOL_CONFIGS.get(symbol_name)
+        if not cfg:
+            return None
+    else:
+        cfg = SYMBOL_CONFIGS.get(symbol_name)
+        if not cfg:
+            return None
     
     # ATR for SL calculation (common across strategies)
     tr = pd.concat([df["high"] - df["low"], abs(df["high"] - df["close"].shift()), abs(df["low"] - df["close"].shift())], axis=1).max(axis=1)
@@ -267,15 +283,23 @@ async def run():
         market_data_tasks = [mdm.fetch_ohlcv(sym, TIMEFRAME, limit=CANDLE_LIMIT) for sym in SYMBOLS]
         await asyncio.gather(*market_data_tasks)
 
-        # Parallelize Signal Computation and User Processing
+        # Parallelize Signal Computation and User Processing by grouping users by strategy
+        strategy_groups = {}
+        for user in active_users:
+            strat = user.get("strategy", "Mean Reversion Scalper")
+            if strat not in strategy_groups:
+                strategy_groups[strat] = []
+            strategy_groups[strat].append(user)
+            
         processing_tasks = []
-        for symbol in SYMBOLS:
-            df = await mdm.fetch_ohlcv(symbol, TIMEFRAME)
-            if df is not None:
-                signal = compute_signal(df, symbol.split("/")[0])
-                if signal:
-                    for user in active_users:
-                        processing_tasks.append(process_user_on_symbol(user, symbol, signal))
+        for strat_name, users in strategy_groups.items():
+            for symbol in SYMBOLS:
+                df = await mdm.fetch_ohlcv(symbol, TIMEFRAME)
+                if df is not None:
+                    signal = compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
+                    if signal:
+                        for user in users:
+                            processing_tasks.append(process_user_on_symbol(user, symbol, signal))
 
         if processing_tasks:
             await asyncio.gather(*processing_tasks)
