@@ -52,9 +52,16 @@ async def main():
     tp = 135.00
     sl = 110.00
     side = "buy"
-    open_ts = int(time.time() * 1000)
     
-    # 3. Size and insert theoretical trade
+    # 3. Generate visual chart overlay using public market feed first to resolve open_ts
+    print("📊 Generating simulated signal chart...")
+    mdm = live_bot_multi.MarketDataManager()
+    df_chart = await mdm.fetch_ohlcv(symbol, timeframe='15m')
+    await mdm.close()
+    
+    open_ts = int(df_chart.iloc[-1]['timestamp']) if df_chart is not None and len(df_chart) > 0 else int(time.time() * 1000)
+    
+    # 4. Size and insert theoretical trade
     sim_balance = database.get_theoretical_balance()
     risk_val = 0.015
     sl_dist = abs(entry - sl)
@@ -78,12 +85,6 @@ async def main():
         position_size=position_size_units
     )
     print("📝 Opened mock simulated trade SOL/USDT in database.")
-    
-    # 4. Generate visual chart overlay using public market feed
-    print("📊 Generating simulated signal chart...")
-    mdm = live_bot_multi.MarketDataManager()
-    df_chart = await mdm.fetch_ohlcv(symbol, timeframe='15m')
-    await mdm.close()
     
     chart_file = None
     try:
