@@ -44,6 +44,14 @@ SYMBOL_CONFIGS = {
     "WIF":  {"bb": 3.0, "atr": 5.0, "rr": 1.25, "adx": 25, "rsi": 30},
 }
 
+VALKYRIE_SYMBOL_CONFIGS = {
+    "SOL":  {"bb": 2.4, "atr": 3.5, "rr": 1.0, "adx": 25, "rsi_low": 25, "rsi_high": 75},
+    "LINK": {"bb": 2.6, "atr": 3.5, "rr": 1.0, "adx": 30, "rsi_low": 25, "rsi_high": 75},
+    "BTC":  {"bb": 2.2, "atr": 3.5, "rr": 1.0, "adx": 30, "rsi_low": 25, "rsi_high": 75},
+    "ADA":  {"bb": 2.4, "atr": 3.5, "rr": 0.8, "adx": 25, "rsi_low": 25, "rsi_high": 75},
+    "DOT":  {"bb": 2.6, "atr": 3.0, "rr": 0.8, "adx": 25, "rsi_low": 25, "rsi_high": 75}
+}
+
 def calc_ema(s, p): return s.ewm(span=p, adjust=False).mean()
 def calc_rsi(s, p=14):
     d = s.diff(); g = d.clip(lower=0).ewm(alpha=1/p, adjust=False).mean()
@@ -71,22 +79,29 @@ def prepare_indicators(df, cfg):
         "index": df.index,
     }
 
-def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", start_balance=10000.0):
+def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", start_balance=10000.0, strategy_name="Mean Reversion Scalper"):
     """
     Performs a visual backtest and returns (stats, chart_path)
     """
     is_master = False
-    if enabled_symbols is None:
-        enabled_symbols = list(SYMBOL_CONFIGS.keys())
-        if risk_val_pct == 1.5:
-            is_master = True
+    
+    if strategy_name == "Valkyrie Elite Scalper":
+        valkyrie_symbols = ["SOL", "LINK", "BTC", "ADA", "DOT"]
+        enabled_symbols = [s for s in (enabled_symbols or valkyrie_symbols) if s in valkyrie_symbols]
+        cfg_source = VALKYRIE_SYMBOL_CONFIGS
+    else:
+        cfg_source = SYMBOL_CONFIGS
+        if enabled_symbols is None:
+            enabled_symbols = list(SYMBOL_CONFIGS.keys())
+            if risk_val_pct == 1.5:
+                is_master = True
         
     datasets = {}
     for name in enabled_symbols:
         path = os.path.join(CSV_DIR, f"blofin_{name}_15m.csv")
         if not os.path.exists(path): continue
         df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
-        datasets[name] = prepare_indicators(df, SYMBOL_CONFIGS[name])
+        datasets[name] = prepare_indicators(df, cfg_source[name])
     
     if not datasets: return None, None
     
@@ -113,7 +128,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     for i in range(EMA_PERIOD, n_bars - 1):
         # 1. Check Exit
         for name, d in aligned.items():
-            st = states[name]; cfg = SYMBOL_CONFIGS[name]
+            st = states[name]; cfg = cfg_source[name]
             if not st["in_trade"]: continue
             hi, lo, ex = d["high"][i], d["low"][i], d["close"][i]
             if np.isnan(hi): continue
@@ -141,22 +156,40 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
 
         # 2. Check Entry
         for name, d in aligned.items():
-            st = states[name]; cfg = SYMBOL_CONFIGS[name]
+            st = states[name]; cfg = cfg_source[name]
             if st["in_trade"]: continue
             close, ema_v, bb_top, bb_bot = d["close"][i], d["ema"][i], d["bb_top"][i], d["bb_bot"][i]
             if any(np.isnan(v) for v in [close, ema_v, bb_bot]): continue
-            if cfg["adx"] > 0 and d["adx"][i] < cfg["adx"]: continue
 
-            if close > ema_v and close < bb_bot and d["rsi"][i] < cfg["rsi"]:
-                fill = close * (1 + SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
-                st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
-                st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
-                equity -= fill * st["size"] * COMMISSION
-            elif not cfg.get("long_only") and close < ema_v and close > bb_top and d["rsi"][i] > (100 - cfg["rsi"]):
-                fill = close * (1 - SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
-                st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
-                st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
-                equity -= fill * st["size"] * COMMISSION
+            if strategy_name == "Valkyrie Elite Scalper":
+                high, low = d["high"][i], d["low"][i]
+                bandwidth = (bb_top - bb_bot) / close
+                if bandwidth < 0.012 or d["adx"][i] > cfg["adx"]: continue
+                
+                # LONG: Uptrend + Wick break lower band + Close inside band + RSI oversold
+                if close > ema_v and low < bb_bot and close >= bb_bot and d["rsi"][i] < cfg["rsi_low"]:
+                    fill = close * (1 + SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
+                    st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
+                    st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
+                    equity -= fill * st["size"] * COMMISSION
+                # SHORT: Downtrend + Wick break upper band + Close inside band + RSI overbought
+                elif close < ema_v and high > bb_top and close <= bb_top and d["rsi"][i] > cfg["rsi_high"]:
+                    fill = close * (1 - SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
+                    st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
+                    st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
+                    equity -= fill * st["size"] * COMMISSION
+            else:
+                if cfg["adx"] > 0 and d["adx"][i] < cfg["adx"]: continue
+                if close > ema_v and close < bb_bot and d["rsi"][i] < cfg["rsi"]:
+                    fill = close * (1 + SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
+                    st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
+                    st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
+                    equity -= fill * st["size"] * COMMISSION
+                elif not cfg.get("long_only") and close < ema_v and close > bb_top and d["rsi"][i] > (100 - cfg["rsi"]):
+                    fill = close * (1 - SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
+                    st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
+                    st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
+                    equity -= fill * st["size"] * COMMISSION
 
     # --- Calculations ---
     df_eq = pd.DataFrame(equity_history, columns=["date", "equity"]).set_index("date")

@@ -179,7 +179,8 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
     # Start the visual audit
     # If it's a default run but we're missing the master chart, run it as 'admin' to save it
     sim_user_id = "admin" if is_default else chat_id
-    audit_task = asyncio.create_task(asyncio.to_thread(run_visual_audit, risk, syms, user_id=sim_user_id, start_balance=start_balance))
+    strategy = user.get('strategy', 'Mean Reversion Scalper')
+    audit_task = asyncio.create_task(asyncio.to_thread(run_visual_audit, risk, syms, user_id=sim_user_id, start_balance=start_balance, strategy_name=strategy))
     
     idx = 1
     while not audit_task.done():
@@ -1111,12 +1112,51 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
+    chat_id = query.message.chat.id
+    user = database.get_user(chat_id)
+    if not user:
+        return
+        
+    current_risk = user.get('risk_pct', 1.5)
+    
     if query.data == "set_strat_mean":
-        database.update_user_strategy(query.message.chat.id, "Mean Reversion Scalper")
-        await safe_edit_text(update, context, "✅ Strategy set to: *Mean Reversion Scalper*", reply_markup=get_main_inline_menu(query.message.chat.id))
+        database.update_user_strategy(chat_id, "Mean Reversion Scalper")
+        msg = "✅ Strategy set to: *Mean Reversion Scalper*"
+        
+        # Proactive Risk Mismatch Warning for Mean Reversion (Recommends 1.0%)
+        if abs(current_risk - 1.0) > 0.01:
+            msg += (
+                "\n\n⚠️ *Risk Mismatch Detected!*\n"
+                f"Your current risk-per-trade is set to **{current_risk:.2f}%**, but the Mean Reversion Scalper recommends a **1.00%** risk allocation to prevent excessive drawdowns.\n\n"
+                "Would you like to instantly align your risk settings?"
+            )
+            keyboard = [
+                [InlineKeyboardButton("⚖️ Update Risk to 1.00%", callback_data="set_risk_to_1.0")],
+                [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
+            ]
+            await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
+        else:
+            await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+            
     elif query.data == "set_strat_valk":
-        database.update_user_strategy(query.message.chat.id, "Valkyrie Elite Scalper")
-        await safe_edit_text(update, context, "✅ Strategy set to: *Valkyrie Elite Scalper*", reply_markup=get_main_inline_menu(query.message.chat.id))
+        database.update_user_strategy(chat_id, "Valkyrie Elite Scalper")
+        msg = "✅ Strategy set to: *Valkyrie Elite Scalper*"
+        
+        # Proactive Risk Mismatch Warning for Valkyrie (Recommends 1.5%)
+        if abs(current_risk - 1.5) > 0.01:
+            msg += (
+                "\n\n⚠️ *Risk Mismatch Detected!*\n"
+                f"Your current risk-per-trade is set to **{current_risk:.2f}%**, but the Valkyrie Elite Scalper recommends a **1.50%** risk allocation to maximize compounding efficiency safely.\n\n"
+                "Would you like to instantly align your risk settings?"
+            )
+            keyboard = [
+                [InlineKeyboardButton("⚖️ Update Risk to 1.50%", callback_data="set_risk_to_1.5")],
+                [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
+            ]
+            await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
+        else:
+            await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+            
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
 
@@ -1424,6 +1464,26 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
+    if query.data.startswith("set_risk_to_"):
+        try:
+            val = float(query.data.split("_")[-1])
+            database.update_user_preference(chat_id, "risk_pct", val)
+            await query.answer(f"✅ Risk aligned to {val:.2f}%!")
+            user = database.get_user(chat_id)
+            
+            # Send dynamic confirmation message
+            await query.message.reply_text(
+                f"⚖️ *Institutional Risk Aligned!*\n"
+                f"Successfully updated your risk-per-trade to **{val:.2f}%** to match the strategy's recommended allocation profile.",
+                parse_mode="Markdown"
+            )
+            query.data = "strategy_menu"
+            # Fallthrough to let the query get processed under "strategy_menu"
+        except Exception as e:
+            logger.error(f"Error handling set_risk_to_ callback: {e}")
+            await query.answer("❌ Error updating risk settings.", show_alert=True)
+            return
+
     if query.data == "activate_with_credits":
         user = database.get_user(chat_id)
         credits = user.get('referral_credits', 0.0)
@@ -2172,7 +2232,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_symbol_menu(update, context, user):
     query = update.callback_query
     chat_id = user['telegram_chat_id']
-    all_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
+    
+    strategy = user.get('strategy', 'Mean Reversion Scalper')
+    if strategy == "Valkyrie Elite Scalper":
+        all_syms = ["SOL", "LINK", "BTC", "ADA", "DOT"]
+        title_text = "🛰 *Manage Valkyrie Symbols*\n\nTap a symbol to toggle it ON or OFF. Valkyrie operates on these Top 5 institutional volume assets."
+    else:
+        all_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
+        title_text = "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account."
+        
     enabled = user['enabled_symbols']
     
     keyboard = []
@@ -2192,7 +2260,7 @@ async def show_symbol_menu(update, context, user):
     
     await safe_edit_text(
         update, context,
-        "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account.",
+        title_text,
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -2878,7 +2946,7 @@ def main():
         app.add_handler(CommandHandler("demote", demote_command))
         app.add_handler(CommandHandler("cancel", cancel_command))
         app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits"))
+        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits"))
         app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
         app.add_handler(CommandHandler("stop", stop_bot))
         app.add_handler(CommandHandler("resume", resume_bot))
