@@ -241,21 +241,22 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             f"Final Equity: *${stats['final_equity']:,.2f}* ({stats['pnl_pct']:+.1f}%)\n"
             f"Sharpe Ratio: *{stats['sharpe']:.2f}*{sharpe_delta}\n"
             f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
-            f"{dd_line}\n\n"
+            f"{dd_line}"
+            f"{advice_note}\n\n"
             "📈 _This simulation represents your settings applied over the last 3 years._"
-            f"{advice_note}"
         )
         
         # 💎 Institutional Memory: Update Last Audit Cache
         database.update_last_audit(chat_id, stats)
         
         await status_msg.delete()
+        show_risk = stats['max_dd'] > 25.0
         if os.path.exists(chart_path):
             with open(chart_path, 'rb') as photo:
-                await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id))
+                await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk))
             if not is_default: os.remove(chart_path)
         else:
-            await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id))
+            await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk))
             
     except Exception as e:
         logger.error(f"Personal audit error: {e}")
