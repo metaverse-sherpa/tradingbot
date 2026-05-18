@@ -49,7 +49,9 @@ VALKYRIE_SYMBOL_CONFIGS = {
     "LINK": {"bb": 2.6, "atr": 3.5, "rr": 0.8, "adx": 30, "rsi_low": 25, "rsi_high": 75},
     "BTC":  {"bb": 2.4, "atr": 3.0, "rr": 1.5, "adx": 30, "rsi_low": 25, "rsi_high": 75},
     "ADA":  {"bb": 2.4, "atr": 3.0, "rr": 1.0, "adx": 25, "rsi_low": 25, "rsi_high": 75},
-    "DOT":  {"bb": 2.8, "atr": 4.5, "rr": 1.5, "adx": 25, "rsi_low": 25, "rsi_high": 75}
+    "DOT":  {"bb": 2.8, "atr": 4.5, "rr": 1.5, "adx": 25, "rsi_low": 25, "rsi_high": 75},
+    "ETH":  {"bb": 2.2, "atr": 3.5, "rr": 1.0, "adx": 30, "rsi_low": 25, "rsi_high": 75},
+    "SUI":  {"bb": 2.2, "atr": 4.0, "rr": 0.8, "adx": 25, "rsi_low": 25, "rsi_high": 75}
 }
 
 def calc_ema(s, p): return s.ewm(span=p, adjust=False).mean()
@@ -92,7 +94,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     is_master = False
     
     if strategy_name == "Valkyrie Elite Scalper":
-        valkyrie_symbols = ["SOL", "LINK", "BTC", "ADA", "DOT"]
+        valkyrie_symbols = ["SOL", "LINK", "BTC", "ADA", "DOT", "ETH", "SUI"]
         enabled_symbols = [s for s in (enabled_symbols or valkyrie_symbols) if s in valkyrie_symbols]
         cfg_source = VALKYRIE_SYMBOL_CONFIGS
     else:

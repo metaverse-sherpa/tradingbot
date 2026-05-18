@@ -5,7 +5,7 @@ from sherpa_visual_audit import run_visual_audit
 print("1. RUNNING VALKYRIE ELITE SCALPER BACKTEST ($180 starting balance, 1.5% Risk):")
 stats_valk, _, _ = run_visual_audit(
     risk_val_pct=1.5,
-    enabled_symbols=["SOL", "LINK", "BTC", "ADA", "DOT"],
+    enabled_symbols=["SOL", "LINK", "BTC", "ADA", "DOT", "ETH", "SUI"],
     user_id="1567788633",
     start_balance=180.0,
     strategy_name="Valkyrie Elite Scalper"

@@ -2235,8 +2235,8 @@ async def show_symbol_menu(update, context, user):
     
     strategy = user.get('strategy', 'Mean Reversion Scalper')
     if strategy == "Valkyrie Elite Scalper":
-        all_syms = ["SOL", "LINK", "BTC", "ADA", "DOT"]
-        title_text = "🛰 *Manage Valkyrie Symbols*\n\nTap a symbol to toggle it ON or OFF. Valkyrie operates on these Top 5 institutional volume assets."
+        all_syms = ["SOL", "LINK", "BTC", "ADA", "DOT", "ETH", "SUI"]
+        title_text = "🛰 *Manage Valkyrie Symbols*\n\nTap a symbol to toggle it ON or OFF. Valkyrie operates on these Top 7 institutional volume assets."
     else:
         all_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
         title_text = "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account."
