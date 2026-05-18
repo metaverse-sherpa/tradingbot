@@ -163,11 +163,16 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
 
     # 🏔️ Custom Animation Frames
     frames = [
-        "🥾 *Sherpa is packing the gear...*",
-        "🧗‍♂️ *Climbing the 2024 candles...*",
-        "🧗‍♂️ *Navigating the 2025 volatility...*",
-        "🏔️ *Reaching the peak...*",
-        "🛰️ *Syncing your private results...*"
+        "🥾 *Sherpa is packing the quantitative gear...*",
+        "🧗‍♂️ *Securing the ropes on the Bollinger bands...*",
+        "🏔️ *Climbing the 2023 peaks and valleys...*",
+        "📉 *Surviving the 2024 bear traps and liquidation zones...*",
+        "📈 *Riding the 2025 parabolic momentum curves...*",
+        "🛰️ *Calibrating the Blofin high-frequency antennas...*",
+        "💎 *Polishing the institutional risk multipliers...*",
+        "📊 *Plotting your private equity curves...*",
+        "🗺️ *Mapping out the final risk audits...*",
+        "🏔️ *Planting the Sherpa flag at the peak...*"
     ]
     
     status_msg = await context.bot.send_message(
