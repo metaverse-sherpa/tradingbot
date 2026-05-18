@@ -222,8 +222,11 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         equity_delta = get_delta(stats['final_equity'], last_stats.get('final_equity'), is_pct=False, is_dollar=True) if last_stats else ""
         sharpe_delta = get_delta(stats['sharpe'], last_stats.get('sharpe'), is_pct=False) if last_stats else ""
 
+        advice_note = ""
         if stats['max_dd'] > 25.0:
             dd_line = f"⚠️ *Max Drawdown: {stats['max_dd']:.1f}%{dd_delta}*"
+            rec_risk = 1.0 if risk >= 1.49 else max(0.5, round(risk * 0.67 * 2) / 2)
+            advice_note = f"\n\n💡 *Risk Management Tip*:\nYour drawdown exceeds the **25.0% cap**. Consider lowering your risk allocation (e.g. **{rec_risk:.2f}%** instead of your current **{risk:.2f}%**) to keep capital drawdowns safely compressed."
         else:
             dd_line = f"Max Drawdown: *{stats['max_dd']:.1f}%*{dd_delta}"
 
@@ -235,6 +238,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
             f"{dd_line}\n\n"
             "📈 _This simulation represents your settings applied over the last 3 years._"
+            f"{advice_note}"
         )
         
         # 💎 Institutional Memory: Update Last Audit Cache
@@ -590,11 +594,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 database.update_user_preference(chat_id, "risk_pct", val)
                 context.user_data.pop('setting_risk', None)
                 await update.effective_message.reply_text(f"✅ Risk updated to *{val:.2f}%*", parse_mode="Markdown")
-                # Trigger Audit
-                user = database.get_user(chat_id)
-                user_equity = user.get('equity', 10000.0)
-                asyncio.create_task(trigger_personalized_audit(update, context, user, start_balance=user_equity))
                 # Show settings again
+                user = database.get_user(chat_id)
                 msg, reply_markup = get_settings_ui(user)
                 await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
             else:
@@ -1651,17 +1652,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "apply_symbol_audit":
-        await query.answer("🏔️ Applying Institutional Settings...")
+        await query.answer("🏔️ Settings Applied!")
         try:
-            # Trigger single definitive audit
             user = database.get_user(chat_id)
-            user_equity = user.get('equity', 10000.0)
-            logger.info(f"Triggering personalized audit for user {chat_id} with equity {user_equity}")
-            
-            # Fire and forget the audit task
-            asyncio.create_task(trigger_personalized_audit(update, context, user, start_balance=user_equity))
-            
-            # IMMEDIATELY return to main settings so UI doesn't hang
             msg, reply_markup = get_settings_ui(user)
             await safe_edit_text(update, context, msg, reply_markup=reply_markup)
             return
@@ -2257,7 +2250,7 @@ async def show_symbol_menu(update, context, user):
             keyboard.append(row)
             row = []
     if row: keyboard.append(row)
-    keyboard.append([InlineKeyboardButton("🚀 Apply & Run Audit", callback_data="apply_symbol_audit")])
+    keyboard.append([InlineKeyboardButton("🚀 Apply Settings", callback_data="apply_symbol_audit")])
     keyboard.append([InlineKeyboardButton("───────────────", callback_data="none")])
     keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
     is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
