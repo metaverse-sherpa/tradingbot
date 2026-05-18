@@ -2672,14 +2672,21 @@ async def signal_engine(application):
                                 
                     for symbol, sig in signals.items():
                         entry = sig['entry']
-                        tp = sig['tp']
-                        sl = sig['sl']
                         side = sig['side']
+                        sl_dist = sig['sl_dist']
+                        rr = sig['rr']
+                        
+                        if side == 'buy': # Long
+                            sl = entry - sl_dist
+                            tp = entry + (sl_dist * rr)
+                        else: # Short
+                            sl = entry + sl_dist
+                            tp = entry - (sl_dist * rr)
+                            
                         open_ts = int(time.time() * 1000)
                         
                         sim_balance = database.get_theoretical_balance()
                         risk_val = 0.015  # 1.5% default institutional risk setting
-                        sl_dist = abs(entry - sl)
                         
                         if sl_dist > 0:
                             position_size_usd = (sim_balance * risk_val) / (sl_dist / entry)
