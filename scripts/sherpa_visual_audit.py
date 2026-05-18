@@ -13,10 +13,10 @@ RESULTS_DIR     = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 START_CASH      = 10_000.0
-RISK_PER_TRADE  = 0.01      # 1% of current equity per trade
 LEVERAGE        = 20.0
-COMMISSION      = 0.0006    # 0.06%
-SLIPPAGE        = 0.0005    # 0.05%
+TAKER_FEE       = 0.0006    # 0.06% Taker Fee (Entry / SL Market trigger)
+MAKER_FEE       = 0.0002    # 0.02% Maker Fee (Resting TP Limit order)
+SLIPPAGE        = 0.0005    # 0.05% Slippage on entry
 
 BB_PERIOD = 20
 EMA_PERIOD = 200
@@ -54,8 +54,8 @@ VALKYRIE_SYMBOL_CONFIGS = {
 
 def calc_ema(s, p): return s.ewm(span=p, adjust=False).mean()
 def calc_rsi(s, p=14):
-    d = s.diff(); g = d.clip(lower=0).ewm(alpha=1/p, adjust=False).mean()
-    l = (-d.clip(upper=0)).ewm(alpha=1/p, adjust=False).mean()
+    d = s.diff(); g = d.clip(lower=0).ewm(span=p, adjust=False).mean()
+    l = (-d.clip(upper=0)).ewm(span=p, adjust=False).mean()
     rs = g / l.replace(0, np.nan)
     return 100 - 100 / (1 + rs)
 def calc_atr(df, p=14):
@@ -81,7 +81,7 @@ def prepare_indicators(df, cfg):
 
 def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", start_balance=10000.0, strategy_name="Mean Reversion Scalper"):
     """
-    Performs a visual backtest and returns (stats, chart_path)
+    Performs a visual backtest and returns (stats, chart_path, df_eq)
     """
     is_master = False
     
@@ -103,98 +103,204 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
         df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
         datasets[name] = prepare_indicators(df, cfg_source[name])
     
-    if not datasets: return None, None
+    if not datasets: return None, None, None
     
     risk_val_decimal = risk_val_pct / 100.0
     
-    all_indices = [v["index"] for v in datasets.values()]
-    common_idx = all_indices[0]
-    for idx in all_indices[1:]: common_idx = common_idx.union(idx)
-    common_idx = common_idx.sort_values()
-    n_bars = len(common_idx)
-    
-    aligned = {}
-    for name, d in datasets.items():
-        pos = d["index"].get_indexer(common_idx)
-        valid = pos >= 0
-        arr = {k: np.where(valid, d[k][np.where(valid, pos, 0)], np.nan) for k in ["close","high","low","ema","rsi","atr","adx","bb_top","bb_bot"]}
-        aligned[name] = arr
-
-    states = {name: {"in_trade": False, "side": 0, "sl": 0.0, "tp": 0.0, "size": 0.0, "risk_amt": 0.0, "wins": 0, "losses": 0} for name in datasets}
-    equity = start_balance; equity_history = [(common_idx[0], equity)]
-    max_eq = start_balance; drawdowns = [(common_idx[0], 0.0)]
-    max_dd_val = 0.0
-
-    for i in range(EMA_PERIOD, n_bars - 1):
-        # 1. Check Exit
-        for name, d in aligned.items():
-            st = states[name]; cfg = cfg_source[name]
-            if not st["in_trade"]: continue
-            hi, lo, ex = d["high"][i], d["low"][i], d["close"][i]
-            if np.isnan(hi): continue
+    if strategy_name == "Valkyrie Elite Scalper":
+        # 🛡️ Valkyrie Elite Scalper: Independent sub-account compounding model (as per backtest_research.py)
+        n_assets = len(datasets)
+        alloc_cash = start_balance / n_assets
+        risk_level_sub = risk_val_decimal * n_assets
+        
+        all_symbol_curves = {}
+        total_wins = 0
+        total_losses = 0
+        
+        for name, d in datasets.items():
+            cfg = cfg_source[name]
+            close = d["close"]
+            high = d["high"]
+            low = d["low"]
+            ema = d["ema"]
+            rsi = d["rsi"]
+            atr = d["atr"]
+            adx = d["adx"]
+            bb_top = d["bb_top"]
+            bb_bot = d["bb_bot"]
+            idx = d["index"]
+            n = len(close)
             
-            hit_sl = hit_tp = False
-            if st["side"] == 1:
-                if lo <= st["sl"]: hit_sl = True; ex = st["sl"]
-                elif hi >= st["tp"]: hit_tp = True; ex = st["tp"]
-            else:
-                if hi >= st["sl"]: hit_sl = True; ex = st["sl"]
-                elif lo <= st["tp"]: hit_tp = True; ex = st["tp"]
-
-            if hit_sl or hit_tp:
-                pnl = st["risk_amt"] * cfg["rr"] if hit_tp else -st["risk_amt"]
-                equity += pnl - ex * st["size"] * COMMISSION
-                if hit_tp: st["wins"] += 1
-                else: st["losses"] += 1
-                st["in_trade"] = False
+            sub_equity = alloc_cash
+            sub_eq_history = []
+            
+            in_trade = False
+            side = 0
+            sl = 0.0
+            tp = 0.0
+            size = 0.0
+            risk_amt = 0.0
+            cooldown = 0
+            
+            for i in range(EMA_PERIOD, n - 1):
+                if cooldown > 0:
+                    cooldown -= 1
+                    sub_eq_history.append((idx[i], sub_equity))
+                    continue
+                    
+                if not in_trade:
+                    # Check Entry
+                    bandwidth = (bb_top[i] - bb_bot[i]) / close[i]
+                    if bandwidth < 0.012 or adx[i] > cfg["adx"]:
+                        sub_eq_history.append((idx[i], sub_equity))
+                        continue
+                    
+                    # LONG
+                    if close[i] > ema[i] and low[i] < bb_bot[i] and close[i] >= bb_bot[i] and rsi[i] < cfg["rsi_low"]:
+                        side = 1
+                        fill = close[i] * (1 + SLIPPAGE)
+                        sl_dist = atr[i] * cfg["atr"]
+                        sl = fill - sl_dist
+                        tp = fill + sl_dist * cfg["rr"]
+                        risk_amt = sub_equity * risk_level_sub
+                        size = min(risk_amt / sl_dist, (sub_equity * LEVERAGE) / fill)
+                        sub_equity -= fill * size * TAKER_FEE
+                        in_trade = True
+                    # SHORT
+                    elif close[i] < ema[i] and high[i] > bb_top[i] and close[i] <= bb_top[i] and rsi[i] > cfg["rsi_high"]:
+                        side = -1
+                        fill = close[i] * (1 - SLIPPAGE)
+                        sl_dist = atr[i] * cfg["atr"]
+                        sl = fill + sl_dist
+                        tp = fill - sl_dist * cfg["rr"]
+                        risk_amt = sub_equity * risk_level_sub
+                        size = min(risk_amt / sl_dist, (sub_equity * LEVERAGE) / fill)
+                        sub_equity -= fill * size * TAKER_FEE
+                        in_trade = True
+                else:
+                    # Settle position check
+                    hi, lo, ex = high[i], low[i], close[i]
+                    hit_sl = hit_tp = False
+                    
+                    if side == 1:
+                        if lo <= sl: hit_sl = True; ex = sl
+                        elif hi >= tp: hit_tp = True; ex = tp
+                    else:
+                        if hi >= sl: hit_sl = True; ex = sl
+                        elif lo <= tp: hit_tp = True; ex = tp
+                        
+                    if hit_sl or hit_tp:
+                        pnl = risk_amt * cfg["rr"] if hit_tp else -risk_amt
+                        fee_rate = MAKER_FEE if hit_tp else TAKER_FEE
+                        sub_equity += pnl - ex * size * fee_rate
+                        if hit_tp: total_wins += 1
+                        else: total_losses += 1
+                        in_trade = False
+                        cooldown = 2 # Cooldown buffer
+                        
+                sub_eq_history.append((idx[i], sub_equity))
                 
-                equity_history.append((common_idx[i], equity))
-                max_eq = max(max_eq, equity)
-                dd = (max_eq - equity) / max_eq * 100
-                max_dd_val = max(max_dd_val, dd)
-                drawdowns.append((common_idx[i], -dd))
-
-        # 2. Check Entry
-        for name, d in aligned.items():
-            st = states[name]; cfg = cfg_source[name]
-            if st["in_trade"]: continue
-            close, ema_v, bb_top, bb_bot = d["close"][i], d["ema"][i], d["bb_top"][i], d["bb_bot"][i]
-            if any(np.isnan(v) for v in [close, ema_v, bb_bot]): continue
-
-            if strategy_name == "Valkyrie Elite Scalper":
-                high, low = d["high"][i], d["low"][i]
-                bandwidth = (bb_top - bb_bot) / close
-                if bandwidth < 0.012 or d["adx"][i] > cfg["adx"]: continue
+            sub_eq_history.append((idx[-1], sub_equity))
+            df_sub = pd.DataFrame(sub_eq_history, columns=["datetime", f"equity_{name}"]).set_index("datetime")
+            all_symbol_curves[name] = df_sub.resample("D").last().ffill()
+            
+        # Combine daily curves into unified portfolio equity
+        portfolio_df = pd.concat(all_symbol_curves.values(), axis=1)
+        portfolio_df.ffill(inplace=True)
+        portfolio_df["combined_equity"] = portfolio_df.sum(axis=1)
+        
+        df_eq = pd.DataFrame(portfolio_df["combined_equity"]).rename(columns={"combined_equity": "equity"})
+        
+        # Calculate Drawdowns
+        running_max = df_eq["equity"].cummax()
+        df_dd = pd.DataFrame((df_eq["equity"] - running_max) / running_max * 100).rename(columns={"equity": "drawdown"})
+        max_dd_val = abs(df_dd["drawdown"].min())
+        
+        # Format drawdowns with negative values for the lower chart
+        df_dd["drawdown"] = -df_dd["drawdown"]
+        drawdowns = [(d, val) for d, val in zip(df_dd.index, df_dd["drawdown"])]
+        
+        total_trades = total_wins + total_losses
+        states = {
+            "valkyrie": {"wins": total_wins, "losses": total_losses}
+        }
+        equity = df_eq["equity"].values[-1]
+        
+    else:
+        # Standard Single Shared Account compounding model
+        all_indices = [v["index"] for v in datasets.values()]
+        common_idx = all_indices[0]
+        for idx in all_indices[1:]: common_idx = common_idx.union(idx)
+        common_idx = common_idx.sort_values()
+        n_bars = len(common_idx)
+        
+        aligned = {}
+        for name, d in datasets.items():
+            pos = d["index"].get_indexer(common_idx)
+            valid = pos >= 0
+            arr = {k: np.where(valid, d[k][np.where(valid, pos, 0)], np.nan) for k in ["close","high","low","ema","rsi","atr","adx","bb_top","bb_bot"]}
+            aligned[name] = arr
+    
+        states = {name: {"in_trade": False, "side": 0, "sl": 0.0, "tp": 0.0, "size": 0.0, "risk_amt": 0.0, "wins": 0, "losses": 0} for name in datasets}
+        equity = start_balance; equity_history = [(common_idx[0], equity)]
+        max_eq = start_balance; drawdowns = [(common_idx[0], 0.0)]
+        max_dd_val = 0.0
+    
+        for i in range(EMA_PERIOD, n_bars - 1):
+            # 1. Check Exit
+            for name, d in aligned.items():
+                st = states[name]; cfg = cfg_source[name]
+                if not st["in_trade"]: continue
+                hi, lo, ex = d["high"][i], d["low"][i], d["close"][i]
+                if np.isnan(hi): continue
                 
-                # LONG: Uptrend + Wick break lower band + Close inside band + RSI oversold
-                if close > ema_v and low < bb_bot and close >= bb_bot and d["rsi"][i] < cfg["rsi_low"]:
-                    fill = close * (1 + SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
-                    st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
-                    st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
-                    equity -= fill * st["size"] * COMMISSION
-                # SHORT: Downtrend + Wick break upper band + Close inside band + RSI overbought
-                elif close < ema_v and high > bb_top and close <= bb_top and d["rsi"][i] > cfg["rsi_high"]:
-                    fill = close * (1 - SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
-                    st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
-                    st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
-                    equity -= fill * st["size"] * COMMISSION
-            else:
+                hit_sl = hit_tp = False
+                if st["side"] == 1:
+                    if lo <= st["sl"]: hit_sl = True; ex = st["sl"]
+                    elif hi >= st["tp"]: hit_tp = True; ex = st["tp"]
+                else:
+                    if hi >= st["sl"]: hit_sl = True; ex = st["sl"]
+                    elif lo <= st["tp"]: hit_tp = True; ex = st["tp"]
+    
+                if hit_sl or hit_tp:
+                    pnl = st["risk_amt"] * cfg["rr"] if hit_tp else -st["risk_amt"]
+                    fee_rate = MAKER_FEE if hit_tp else TAKER_FEE
+                    equity += pnl - ex * st["size"] * fee_rate
+                    if hit_tp: st["wins"] += 1
+                    else: st["losses"] += 1
+                    st["in_trade"] = False
+                    
+                    equity_history.append((common_idx[i], equity))
+                    max_eq = max(max_eq, equity)
+                    dd = (max_eq - equity) / max_eq * 100
+                    max_dd_val = max(max_dd_val, dd)
+                    drawdowns.append((common_idx[i], -dd))
+    
+            # 2. Check Entry
+            for name, d in aligned.items():
+                st = states[name]; cfg = cfg_source[name]
+                if st["in_trade"]: continue
+                close, ema_v, bb_top, bb_bot = d["close"][i], d["ema"][i], d["bb_top"][i], d["bb_bot"][i]
+                if any(np.isnan(v) for v in [close, ema_v, bb_bot]): continue
+                
                 if cfg["adx"] > 0 and d["adx"][i] < cfg["adx"]: continue
                 if close > ema_v and close < bb_bot and d["rsi"][i] < cfg["rsi"]:
                     fill = close * (1 + SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
                     st.update({"side": 1, "sl": fill - sl_dist, "tp": fill + sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
                     st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
-                    equity -= fill * st["size"] * COMMISSION
+                    equity -= fill * st["size"] * TAKER_FEE
+                    in_trade = True
                 elif not cfg.get("long_only") and close < ema_v and close > bb_top and d["rsi"][i] > (100 - cfg["rsi"]):
                     fill = close * (1 - SLIPPAGE); sl_dist = d["atr"][i] * cfg["atr"]
                     st.update({"side": -1, "sl": fill + sl_dist, "tp": fill - sl_dist * cfg["rr"], "risk_amt": equity * risk_val_decimal, "in_trade": True})
                     st["size"] = min(st["risk_amt"] / sl_dist, (equity * LEVERAGE) / fill)
-                    equity -= fill * st["size"] * COMMISSION
+                    equity -= fill * st["size"] * TAKER_FEE
+                    in_trade = True
+    
+        df_eq = pd.DataFrame(equity_history, columns=["date", "equity"]).set_index("date")
+        df_dd = pd.DataFrame(drawdowns, columns=["date", "drawdown"]).set_index("date")
 
     # --- Calculations ---
-    df_eq = pd.DataFrame(equity_history, columns=["date", "equity"]).set_index("date")
-    df_dd = pd.DataFrame(drawdowns, columns=["date", "drawdown"]).set_index("date")
-    
     # Annualized Sharpe Ratio
     daily_returns = df_eq["equity"].resample('D').last().pct_change(fill_method=None).dropna()
     if len(daily_returns) > 1:
@@ -229,7 +335,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     if not df_dd.empty:
         max_dd_date = df_dd["drawdown"].idxmin()
         min_dd_val = df_dd["drawdown"].min()
-        ax2.annotate(f"Peak DD: {min_dd_val:.1f}%", 
+        ax2.annotate(f"Peak DD: {abs(min_dd_val):.1f}%", 
                      xy=(max_dd_date, min_dd_val), 
                      xytext=(0, -25), 
                      textcoords="offset points", 
@@ -310,6 +416,5 @@ def generate_comparison_chart():
 
 if __name__ == "__main__":
     import time
-    s, p = run_visual_audit(1.5)
+    s, p, _ = run_visual_audit(1.5)
     if s: print(f"Audit Complete! Final Equity: ${s['final_equity']:,.2f}")
-    # generate_comparison_chart() # Manual trigger if needed

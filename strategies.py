@@ -32,10 +32,10 @@ class MeanReversionScalper(BaseStrategy):
         lower_band = sma_20 - (cfg["bb"] * std_20)
         upper_band = sma_20 + (cfg["bb"] * std_20)
         
-        # 3. RSI (Wilder Smoothing)
+        # 3. RSI (Standard EMA Smoothing)
         delta = close.diff()
-        gain = (delta.where(delta > 0, 0)).ewm(alpha=1/14, adjust=False).mean()
-        loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/14, adjust=False).mean()
+        gain = delta.clip(lower=0).ewm(span=14, adjust=False).mean()
+        loss = (-delta.clip(upper=0)).ewm(span=14, adjust=False).mean()
         rs = gain / (loss.replace(0, np.nan))
         rsi = 100 - (100 / (1 + rs))
         
@@ -102,10 +102,10 @@ class ValkyrieEliteScalper(BaseStrategy):
         lower_band = sma_20 - (cfg["bb"] * std_20)
         upper_band = sma_20 + (cfg["bb"] * std_20)
         
-        # 3. RSI
+        # 3. RSI (Standard EMA Smoothing)
         delta = close.diff()
-        gain = (delta.where(delta > 0, 0)).ewm(alpha=1/14, adjust=False).mean()
-        loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/14, adjust=False).mean()
+        gain = delta.clip(lower=0).ewm(span=14, adjust=False).mean()
+        loss = (-delta.clip(upper=0)).ewm(span=14, adjust=False).mean()
         rs = gain / (loss.replace(0, np.nan))
         rsi = 100 - (100 / (1 + rs))
         
