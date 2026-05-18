@@ -216,8 +216,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
         df_dd = pd.DataFrame((df_eq["equity"] - running_max) / running_max * 100).rename(columns={"equity": "drawdown"})
         max_dd_val = abs(df_dd["drawdown"].min())
         
-        # Format drawdowns with negative values for the lower chart
-        df_dd["drawdown"] = -df_dd["drawdown"]
+        # Drawdowns are already negative (e.g. -15.0%)
         drawdowns = [(d, val) for d, val in zip(df_dd.index, df_dd["drawdown"])]
         
         total_trades = total_wins + total_losses
