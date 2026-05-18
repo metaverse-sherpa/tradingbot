@@ -1763,7 +1763,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     status_icon = "✅ Take Profit" if t['status'] == 'tp' else "❌ Stop Loss"
                     status_line = f"Resolved: *{status_icon}*"
                     pnl_line = f"\n  PnL: *{t['pnl_pct']:+.2f}% ({t['pnl_usdt']:+.2f} USDT)*"
-                    price_line = f"• Entry: `{t['entry_price']:.8f}` | Exit: `{t['exit_price']:.8f}`"
+                    exit_price = t['tp_price'] if t['status'] == 'tp' else t['sl_price']
+                    price_line = f"• Entry: `{t['entry_price']:.8f}` | Exit: `{exit_price:.8f}`"
                 
                 msg_parts.append(
                     f"• *{t['symbol']}* ({direction}) | {strat_icon} _{strat_short}_\n"
