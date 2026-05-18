@@ -1779,6 +1779,35 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
         return
 
+    if query.data == "view_strategy_guide":
+        await query.answer()
+        guide_text = (
+            "📖 *Sherpa Strategy Guide & Comparison*\n\n"
+            "Choose the algorithm that best aligns with your risk tolerance and market outlook:\n\n"
+            "📈 *Mean Reversion Scalper*\n"
+            "• *Philosophy*: Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.\n"
+            "• *Indicators*: Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.\n"
+            "• *Pace*: Highly active. Averages ~0.84 trades/day.\n"
+            "• *Drawdown Profile*: Higher risk/reward; handles strong trends with ADX filters but has larger peak drawdowns (~32.9%).\n\n"
+            "🛡️ *Valkyrie Elite Scalper*\n"
+            "• *Philosophy*: Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.\n"
+            "• *Indicators*: Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.\n"
+            "• *Pace*: Patient and calculated. Averages ~0.68 trades/day.\n"
+            "• *Drawdown Profile*: Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket).\n\n"
+            "📊 *Comparative Matrix:*\n"
+            "• *Focus*: Volatility Extremes vs Wick Rejection\n"
+            "• *Active Basket*: 29-Token Basket vs 7-Token Premium\n"
+            "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside\n"
+            "• *Risk Profile*: High compounding PnL vs High Sharpe / Low Drawdowns\n\n"
+            "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety, maximum Sharpe ratios, and smooth, protected growth curves."
+        )
+        kb = [
+            [InlineKeyboardButton("🔙 Back to Strategy Menu", callback_data="strategy_menu")],
+            *get_nav_buttons(user.get('has_open_positions', False))
+        ]
+        await safe_edit_text(update, context, guide_text, reply_markup=InlineKeyboardMarkup(kb))
+        return
+
     if query.data == "run_backtest":
         await query.answer("🔬 Generating Backtest Projection...")
         # Calculate starting balance using Capital Allocation Override
@@ -2125,6 +2154,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Valkyrie" + (" (Active)" if strat_choice == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk")
             ],
             [InlineKeyboardButton("🚧 Crypto Chart Patterns (Soon)", callback_data="set_strat_soon")],
+            [InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))
         ]
@@ -3024,7 +3054,7 @@ def main():
         app.add_handler(CommandHandler("demote", demote_command))
         app.add_handler(CommandHandler("cancel", cancel_command))
         app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits|^admin_view_simulated_trades"))
+        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits|^admin_view_simulated_trades|^view_strategy_guide"))
         app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
         app.add_handler(CommandHandler("stop", stop_bot))
         app.add_handler(CommandHandler("resume", resume_bot))
