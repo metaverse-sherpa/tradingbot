@@ -1727,6 +1727,57 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_admin_dashboard(update, context)
         return
 
+    if query.data == "admin_view_simulated_trades":
+        if chat_id != SUPER_ADMIN_ID and not (user and user.get('is_admin')):
+            logger.warning(f"UNAUTHORIZED SIMULATED TRADES ACCESS ATTEMPT: {chat_id}")
+            return
+        
+        await query.answer("Fetching simulated trades...")
+        trades = database.get_recent_theoretical_trades(10)
+        
+        if not trades:
+            msg = (
+                "🔬 *Recent Simulated Forward Trades*\n\n"
+                "No simulated trades have been opened or resolved yet on this platform! ⏳\n\n"
+                "Once the 15-minute engine completes signal passes and places simulated trades, they will be logged here."
+            )
+        else:
+            msg_parts = ["🔬 *Recent Simulated Forward Trades*\n_Showing last 10 activities_\n"]
+            for t in trades:
+                # Format opened timestamp
+                open_time_str = "???"
+                if t.get('open_time'):
+                    open_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t['open_time'] / 1000))
+                
+                direction = "LONG 📈" if t['side'] == 'buy' else "SHORT 📉"
+                
+                # Format Strategy Label
+                strat_icon = "📈" if "Mean Reversion" in t['strategy'] else "🛡️"
+                strat_short = "Mean Rev" if "Mean Reversion" in t['strategy'] else "Valkyrie"
+                
+                if t['status'] == 'open':
+                    status_line = "⏳ *OPEN POSITION*"
+                    pnl_line = ""
+                    price_line = f"• Entry: `{t['entry_price']:.8f}` | SL: `{t['sl_price']:.8f}` | TP: `{t['tp_price']:.8f}`"
+                else:
+                    status_icon = "✅ Take Profit" if t['status'] == 'tp' else "❌ Stop Loss"
+                    status_line = f"Resolved: *{status_icon}*"
+                    pnl_line = f"\n  PnL: *{t['pnl_pct']:+.2f}% ({t['pnl_usdt']:+.2f} USDT)*"
+                    price_line = f"• Entry: `{t['entry_price']:.8f}` | Exit: `{t['exit_price']:.8f}`"
+                
+                msg_parts.append(
+                    f"• *{t['symbol']}* ({direction}) | {strat_icon} _{strat_short}_\n"
+                    f"  {status_line}{pnl_line}\n"
+                    f"  {price_line}\n"
+                    f"  Opened: _{open_time_str}_\n"
+                )
+            msg = "\n".join(msg_parts)
+            
+        # Inline keyboard to return to admin
+        kb = [[InlineKeyboardButton("🔙 Back to Admin Control", callback_data="admin_command")]]
+        await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
+        return
+
     if query.data == "run_backtest":
         await query.answer("🔬 Generating Backtest Projection...")
         # Calculate starting balance using Capital Allocation Override
@@ -2972,7 +3023,7 @@ def main():
         app.add_handler(CommandHandler("demote", demote_command))
         app.add_handler(CommandHandler("cancel", cancel_command))
         app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits"))
+        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits|^admin_view_simulated_trades"))
         app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
         app.add_handler(CommandHandler("stop", stop_bot))
         app.add_handler(CommandHandler("resume", resume_bot))

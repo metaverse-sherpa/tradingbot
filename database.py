@@ -748,3 +748,11 @@ def get_theoretical_stats_by_strategy(strategy_name):
         "win_rate": win_rate,
         "cumulative_pnl": pnl_sum
     }
+
+def get_recent_theoretical_trades(limit=10):
+    """Returns the most recent theoretical trades (open and closed)."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM TheoreticalTrades ORDER BY id DESC LIMIT ?", (limit,))
+        rows = c.fetchall()
+    return [dict(r) for r in rows]
