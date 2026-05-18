@@ -720,3 +720,31 @@ def get_theoretical_stats():
         "cumulative_pnl": pnl_sum,
         "current_balance": current_balance
     }
+
+def get_theoretical_stats_by_strategy(strategy_name):
+    """Computes theoretical performance stats for a specific strategy."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ?", (strategy_name,))
+        total_trades = c.fetchone()[0]
+        
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status = 'tp'", (strategy_name,))
+        wins = c.fetchone()[0]
+        
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status = 'sl'", (strategy_name,))
+        losses = c.fetchone()[0]
+        
+        c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open'", (strategy_name,))
+        pnl_sum = c.fetchone()[0] or 0.0
+        
+        # Calculate win rate
+        total_closed = wins + losses
+        win_rate = (wins / total_closed * 100) if total_closed > 0 else 0.0
+        
+    return {
+        "total_trades": total_trades,
+        "wins": wins,
+        "losses": losses,
+        "win_rate": win_rate,
+        "cumulative_pnl": pnl_sum
+    }

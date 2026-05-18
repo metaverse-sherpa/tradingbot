@@ -1445,6 +1445,9 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     open_theory_count = len(database.get_open_theoretical_trades())
     growth_pct = ((theory_stats['current_balance'] - 1000.0) / 1000.0) * 100
     
+    mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
+    vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+    
     last_sync = time.strftime('%H:%M:%S')
     admin_msg = (
         "👑 *Sherpa Overlord Mission Control*\n\n"
@@ -1455,9 +1458,14 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         f"• Active Premium: `{stats['premium_users']}`\n"
         f"• Last Deploy: *2026-05-14 10:08*\n\n"
         "🧪 *Simulated Forward Testing*\n"
-        f"• Simulated Balance: `${theory_stats['current_balance']:,.2f} USDT` ({growth_pct:+.2f}%)\n"
-        f"• Simulated Win Rate: `{theory_stats['win_rate']:.1f}%` ({theory_stats['wins']} wins | {theory_stats['losses']} losses)\n"
+        f"• Compounding Balance: *${theory_stats['current_balance']:,.2f} USDT* ({growth_pct:+.2f}%)\n"
         f"• Open Simulated Trades: `{open_theory_count} open`\n\n"
+        "📈 *Mean Reversion Scalper*\n"
+        f"• Win Rate: `{mr_stats['win_rate']:.1f}%` ({mr_stats['wins']} W | {mr_stats['losses']} L)\n"
+        f"• Cumulative PnL: `+{mr_stats['cumulative_pnl']:+.2f} USDT`\n\n"
+        "🛡️ *Valkyrie Elite Scalper*\n"
+        f"• Win Rate: `{vk_stats['win_rate']:.1f}%` ({vk_stats['wins']} W | {vk_stats['losses']} L)\n"
+        f"• Cumulative PnL: `+{vk_stats['cumulative_pnl']:+.2f} USDT`\n\n"
         "💰 *Total Treasury Value*\n"
         f"• Master Wallet: `{master_wallet}`\n"
         f"• TRX: `{trx_bal:,.1f}` | USDT: `${usdt_bal:,.2f}`\n"
@@ -2644,35 +2652,38 @@ async def signal_engine(application):
                                 except Exception as e:
                                     logger.warning(f"Failed forward test exit broadcast to {target_id}: {e}")
 
-                # 🧪 B. EVALUATE NEW THEORETICAL SIGNALS
-                strategy_name = "Mean Reversion Scalper"
-                signals = {}
-                for symbol in live_bot_multi.SYMBOLS:
-                    df = await mdm.fetch_ohlcv(symbol, "15m")
-                    if df is not None:
-                        sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strategy_name)
-                        if sig:
-                            signals[symbol] = sig
-                
+                # 🧪 B. EVALUATE NEW THEORETICAL SIGNALS FOR ALL STRATEGIES
+                strategies_to_test = ["Mean Reversion Scalper", "Valkyrie Elite Scalper"]
                 open_theory_trades = database.get_open_theoretical_trades()
-                open_theory_symbols = {t['symbol'] for t in open_theory_trades}
+                open_theory_keys = {(t['symbol'], t['strategy']) for t in open_theory_trades}
                 
-                for symbol, sig in signals.items():
-                    if symbol in open_theory_symbols: continue
-                    
-                    entry = sig['entry']
-                    tp = sig['tp']
-                    sl = sig['sl']
-                    side = sig['side']
-                    open_ts = int(time.time() * 1000)
-                    
-                    sim_balance = database.get_theoretical_balance()
-                    risk_val = 0.015  # 1.5% default institutional risk setting
-                    sl_dist = abs(entry - sl)
-                    
-                    if sl_dist > 0:
-                        position_size_usd = (sim_balance * risk_val) / (sl_dist / entry)
-                        position_size_units = position_size_usd / entry
+                for strategy_name in strategies_to_test:
+                    signals = {}
+                    for symbol in live_bot_multi.SYMBOLS:
+                        # Avoid duplicate positions for this symbol/strategy pair
+                        if (symbol, strategy_name) in open_theory_keys:
+                            continue
+                            
+                        df = await mdm.fetch_ohlcv(symbol, "15m")
+                        if df is not None:
+                            sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strategy_name)
+                            if sig:
+                                signals[symbol] = sig
+                                
+                    for symbol, sig in signals.items():
+                        entry = sig['entry']
+                        tp = sig['tp']
+                        sl = sig['sl']
+                        side = sig['side']
+                        open_ts = int(time.time() * 1000)
+                        
+                        sim_balance = database.get_theoretical_balance()
+                        risk_val = 0.015  # 1.5% default institutional risk setting
+                        sl_dist = abs(entry - sl)
+                        
+                        if sl_dist > 0:
+                            position_size_usd = (sim_balance * risk_val) / (sl_dist / entry)
+                            position_size_units = position_size_usd / entry
                         
                         database.add_theoretical_trade(
                             symbol=symbol,
