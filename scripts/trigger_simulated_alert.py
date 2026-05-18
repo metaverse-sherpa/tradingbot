@@ -9,7 +9,9 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, ".."))
 sys.path.append(project_root)
 
-load_dotenv()
+# Load explicit .env path
+dotenv_path = os.path.join(project_root, ".env")
+load_dotenv(dotenv_path=dotenv_path)
 
 import database
 import live_bot_multi
@@ -35,16 +37,16 @@ async def main():
         print("💡 Please start your bot and run /start in Telegram first to register your user.")
         return
         
-    token = os.getenv("TELEGRAM_TOKEN")
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
-        print("❌ TELEGRAM_TOKEN not found in environment!")
+        print("❌ TELEGRAM_BOT_TOKEN not found in environment!")
         return
         
     bot = Bot(token=token)
     print(f"📡 Found {len(all_targets)} registered target chat(s) to receive alerts.")
     
     # 2. Setup mock trade params
-    symbol = "SOL/USDT"
+    symbol = "SOL/USDT:USDT"
     strategy_name = "Mean Reversion Scalper"
     entry = 120.50
     tp = 135.00
