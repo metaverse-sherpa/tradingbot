@@ -53,9 +53,14 @@ VALKYRIE_SYMBOL_CONFIGS = {
 }
 
 def calc_ema(s, p): return s.ewm(span=p, adjust=False).mean()
-def calc_rsi(s, p=14):
-    d = s.diff(); g = d.clip(lower=0).ewm(span=p, adjust=False).mean()
-    l = (-d.clip(upper=0)).ewm(span=p, adjust=False).mean()
+def calc_rsi(s, p=14, wilder=False):
+    d = s.diff()
+    if wilder:
+        g = d.clip(lower=0).ewm(alpha=1/p, adjust=False).mean()
+        l = (-d.clip(upper=0)).ewm(alpha=1/p, adjust=False).mean()
+    else:
+        g = d.clip(lower=0).ewm(span=p, adjust=False).mean()
+        l = (-d.clip(upper=0)).ewm(span=p, adjust=False).mean()
     rs = g / l.replace(0, np.nan)
     return 100 - 100 / (1 + rs)
 def calc_atr(df, p=14):
@@ -69,11 +74,12 @@ def calc_adx(df, p=14):
     dx = (abs(pdi - ndi) / (pdi + ndi).replace(0, np.nan)) * 100
     return dx.ewm(alpha=1/p, adjust=False).mean()
 
-def prepare_indicators(df, cfg):
+def prepare_indicators(df, cfg, strategy_name="Mean Reversion Scalper"):
     close_s = df["close"]; mid = close_s.rolling(BB_PERIOD).mean(); std = close_s.rolling(BB_PERIOD).std()
+    is_wilder = (strategy_name == "Mean Reversion Scalper")
     return {
         "close": close_s.values, "high": df["high"].values, "low": df["low"].values,
-        "ema": calc_ema(close_s, EMA_PERIOD).values, "rsi": calc_rsi(close_s).values,
+        "ema": calc_ema(close_s, EMA_PERIOD).values, "rsi": calc_rsi(close_s, wilder=is_wilder).values,
         "atr": calc_atr(df).values, "adx": calc_adx(df).values,
         "bb_top": (mid + cfg["bb"] * std).values, "bb_bot": (mid - cfg["bb"] * std).values,
         "index": df.index,
@@ -101,7 +107,7 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
         path = os.path.join(CSV_DIR, f"blofin_{name}_15m.csv")
         if not os.path.exists(path): continue
         df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
-        datasets[name] = prepare_indicators(df, cfg_source[name])
+        datasets[name] = prepare_indicators(df, cfg_source[name], strategy_name)
     
     if not datasets: return None, None, None
     
