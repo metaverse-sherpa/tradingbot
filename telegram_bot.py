@@ -13,7 +13,7 @@ from telegram.error import BadRequest
 import database
 import charting
 import bot_ui
-from bot_ui import escape_md_v2, safe_edit_text, get_nav_buttons, get_main_inline_menu, get_admin_keyboard
+from bot_ui import escape_md_v2, safe_edit_text, get_nav_buttons, get_main_inline_menu, get_admin_keyboard, get_backtest_inline_menu
 import time
 import sys
 from datetime import datetime
@@ -238,10 +238,10 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         await status_msg.delete()
         if os.path.exists(chart_path):
             with open(chart_path, 'rb') as photo:
-                await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=audit_msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+                await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id))
             if not is_default: os.remove(chart_path)
         else:
-            await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+            await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id))
             
     except Exception as e:
         logger.error(f"Personal audit error: {e}")

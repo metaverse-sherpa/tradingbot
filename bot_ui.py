@@ -86,3 +86,18 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="toggle_undercover")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="close_admin")]
     ]
+
+def get_backtest_inline_menu(chat_id=None):
+    """Generates the navigation menu markup with a 'Change Strategy' button above the nav buttons."""
+    has_active = False
+    is_admin = False
+    if chat_id:
+        user = database.get_user(chat_id)
+        if user:
+            has_active = user.get('has_open_positions', False)
+            is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
+    kb = [
+        [InlineKeyboardButton("⚖️ Change Strategy", callback_data="strategy_menu")]
+    ]
+    kb.extend(get_nav_buttons(has_active, is_admin))
+    return InlineKeyboardMarkup(kb)
