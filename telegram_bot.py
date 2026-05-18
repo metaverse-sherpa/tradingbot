@@ -1483,14 +1483,18 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer(f"✅ Risk aligned to {val:.2f}%!")
             user = database.get_user(chat_id)
             
-            # Send dynamic confirmation message
-            await query.message.reply_text(
-                f"⚖️ *Institutional Risk Aligned!*\n"
+            # Setup dynamic confirmation message with inline keyboard
+            kb = [
+                [InlineKeyboardButton("🔬 Backtest Your Strategy", callback_data="run_backtest")],
+                [InlineKeyboardButton("⚙️ Back to Settings", callback_data="back_to_settings")]
+            ]
+            await safe_edit_text(
+                update, context,
+                f"⚖️ *Institutional Risk Aligned!*\n\n"
                 f"Successfully updated your risk-per-trade to **{val:.2f}%** to match the strategy's recommended allocation profile.",
-                parse_mode="Markdown"
+                reply_markup=InlineKeyboardMarkup(kb)
             )
-            query.data = "strategy_menu"
-            # Fallthrough to let the query get processed under "strategy_menu"
+            return
         except Exception as e:
             logger.error(f"Error handling set_risk_to_ callback: {e}")
             await query.answer("❌ Error updating risk settings.", show_alert=True)
