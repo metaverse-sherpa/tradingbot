@@ -323,6 +323,68 @@ def generate_comparison_chart():
     plt.close()
     return save_path
 
+def generate_strategy_comparison_chart():
+    """Generates a high-impact comparison chart between Mean Reversion and Valkyrie Elite strategies."""
+    # 1. Run Mean Reversion (1.0% Risk, Recommended)
+    mr_stats, _, df_mr = run_visual_audit(1.0, None, user_id="diag", strategy_name="Mean Reversion Scalper")
+    plt.close('all')
+    
+    # 2. Run Valkyrie (1.5% Risk, Recommended)
+    valkyrie_symbols = ["SOL", "LINK", "BTC", "ADA", "DOT", "ETH", "SUI"]
+    valk_stats, _, df_valk = run_visual_audit(1.5, valkyrie_symbols, user_id="diag_inst", strategy_name="Valkyrie Elite Scalper")
+    plt.close('all')
+    
+    if df_mr is None or df_valk is None: return None
+    
+    # --- Plotting ---
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True, gridspec_kw={'height_ratios': [2.5, 1]}, facecolor="#121212")
+    
+    ax1.set_facecolor("#121212")
+    # Plot Mean Reversion (Neon Cyan)
+    ax1.plot(df_mr.index, df_mr["equity"], color="#00FFFF", linewidth=2.5, label=f"Mean Reversion Scalper (Sharpe: {mr_stats['sharpe']:.2f}, Max DD: {abs(mr_stats['max_dd']):.1f}%)")
+    # Plot Valkyrie (Neon Magenta)
+    ax1.plot(df_valk.index, df_valk["equity"], color="#FF00FF", linewidth=2.5, label=f"Valkyrie Elite Scalper (Sharpe: {valk_stats['sharpe']:.2f}, Max DD: {abs(valk_stats['max_dd']):.1f}%)")
+    
+    # End Labels
+    last_date = df_mr.index[-1]
+    ax1.annotate(f"Mean Rev:\n${mr_stats['final_equity']:,.0f}\n(+{mr_stats['pnl_pct']:.1f}%)", 
+                 (last_date, mr_stats['final_equity']), textcoords="offset points", xytext=(10,0), va='center', color="#00FFFF", fontweight='bold')
+    ax1.annotate(f"Valkyrie:\n${valk_stats['final_equity']:,.0f}\n(+{valk_stats['pnl_pct']:.1f}%)", 
+                 (last_date, valk_stats['final_equity']), textcoords="offset points", xytext=(10,0), va='center', color="#FF00FF", fontweight='bold')
+    
+    ax1.set_xlim(df_mr.index[0], df_mr.index[-1] + pd.Timedelta(days=120))
+    ax1.set_title("Metaverse Sherpa: Mean Reversion vs Valkyrie Elite Performance Comparison", color="white", fontsize=16, pad=20)
+    ax1.set_ylabel("Account Equity ($)", color="white")
+    ax1.grid(True, alpha=0.1)
+    ax1.tick_params(colors="white")
+    ax1.legend(facecolor="#1A1A1A", labelcolor="white", loc='upper left', fontsize=11)
+    
+    # Drawdowns Subplot
+    ax2.set_facecolor("#121212")
+    
+    # MR Drawdown
+    mr_dd = (df_mr["equity"] - df_mr["equity"].cummax()) / df_mr["equity"].cummax() * 100
+    ax2.plot(mr_dd.index, mr_dd, color="#00FFFF", linewidth=1, alpha=0.7, label="Mean Rev DD")
+    
+    # Valkyrie Drawdown
+    valk_dd = (df_valk["equity"] - df_valk["equity"].cummax()) / df_valk["equity"].cummax() * 100
+    ax2.plot(valk_dd.index, valk_dd, color="#FF00FF", linewidth=1, alpha=0.7, label="Valkyrie DD")
+    
+    ax2.set_ylim(-40, 2)
+    ax2.set_ylabel("Drawdown (%)", color="white")
+    ax2.grid(True, alpha=0.1)
+    ax2.tick_params(colors="white")
+    ax2.legend(facecolor="#1A1A1A", labelcolor="white", loc='lower left')
+    
+    fig.patch.set_facecolor("#121212")
+    plt.tight_layout()
+    
+    save_path = os.path.join(RESULTS_DIR, "strategy_comparison.png")
+    plt.savefig(save_path, dpi=150, facecolor="#121212")
+    plt.close()
+    return save_path
+
+
 if __name__ == "__main__":
     import time
     s, p, _ = run_visual_audit(1.5)
