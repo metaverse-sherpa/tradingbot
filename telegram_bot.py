@@ -1806,23 +1806,32 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         
         chart_path = os.path.join(BASE_DIR, "results", "strategy_comparison.png")
-        if not os.path.exists(chart_path):
-            from sherpa_visual_audit import generate_strategy_comparison_chart
-            await asyncio.to_thread(generate_strategy_comparison_chart)
-            
+        chart_sent = False
+        
         try:
-            await query.message.delete()
-        except:
-            pass
+            if not os.path.exists(chart_path):
+                from sherpa_visual_audit import generate_strategy_comparison_chart
+                await asyncio.to_thread(generate_strategy_comparison_chart)
+                
+            if os.path.exists(chart_path):
+                try:
+                    await query.message.delete()
+                except:
+                    pass
+                with open(chart_path, 'rb') as photo:
+                    await context.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption=guide_text,
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup(kb)
+                    )
+                chart_sent = True
+        except Exception as e:
+            logger.error(f"❌ Error generating/sending strategy guide chart: {e}")
             
-        with open(chart_path, 'rb') as photo:
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo,
-                caption=guide_text,
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(kb)
-            )
+        if not chart_sent:
+            await safe_edit_text(update, context, guide_text, reply_markup=InlineKeyboardMarkup(kb))
         return
 
     if query.data == "run_backtest":

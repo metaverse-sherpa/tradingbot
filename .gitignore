@@ -30,5 +30,6 @@ results/*
 !results/master_audit.png
 !results/free_master_audit.png
 !results/upsell_comparison.png
+!results/strategy_comparison.png
 bot_users.db
 
