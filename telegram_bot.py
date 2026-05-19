@@ -1189,9 +1189,7 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
         with open(mr_path, 'rb') as photo:
             msg = await context.bot.send_photo(
                 chat_id=chat_id,
-                photo=photo,
-                caption="📈 *Mean Reversion Scalper Strategy Infographic*",
-                parse_mode="Markdown"
+                photo=photo
             )
             photo_ids.append(msg.message_id)
         
@@ -1206,9 +1204,7 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
         with open(valk_path, 'rb') as photo:
             msg = await context.bot.send_photo(
                 chat_id=chat_id,
-                photo=photo,
-                caption="🛡️ *Valkyrie Elite Scalper Strategy Infographic*",
-                parse_mode="Markdown"
+                photo=photo
             )
             photo_ids.append(msg.message_id)
         
@@ -1985,9 +1981,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 with open(mr_path, 'rb') as photo:
                     msg = await context.bot.send_photo(
                         chat_id=chat_id,
-                        photo=photo,
-                        caption="📈 *Mean Reversion Scalper Strategy Infographic*",
-                        parse_mode="Markdown"
+                        photo=photo
                     )
                     photo_ids.append(msg.message_id)
                 
@@ -2002,9 +1996,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 with open(valk_path, 'rb') as photo:
                     msg = await context.bot.send_photo(
                         chat_id=chat_id,
-                        photo=photo,
-                        caption="🛡️ *Valkyrie Elite Scalper Strategy Infographic*",
-                        parse_mode="Markdown"
+                        photo=photo
                     )
                     photo_ids.append(msg.message_id)
                 
