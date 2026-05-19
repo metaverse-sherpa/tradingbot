@@ -1337,6 +1337,7 @@ def get_settings_ui(user):
         [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
         [InlineKeyboardButton("🔬 Backtest Your Strategy", callback_data="run_backtest")],
+        [InlineKeyboardButton("🔌 Switch Exchange", callback_data="switch_exchange_prompt")],
     ]
     
     if is_admin:
@@ -2547,6 +2548,23 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await open_trades(update, context)
         return
 
+    elif query.data == "switch_exchange_prompt":
+        await query.answer()
+        keyboard = [
+            [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
+            [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
+            [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
+            [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
+            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
+        ]
+        await safe_edit_text(
+            update, context,
+            "🌍 *Select Your Exchange*\n\n"
+            "Which exchange would you like to link to the Metaverse Sherpa?",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
     elif query.data == "back_to_settings":
         context.user_data.pop('setting_risk', None)
         await query.answer()
@@ -3292,7 +3310,7 @@ def main():
         app.add_handler(CommandHandler("demote", demote_command))
         app.add_handler(CommandHandler("cancel", cancel_command))
         app.add_handler(CallbackQueryHandler(strategy_callback, pattern="^set_strat_"))
-        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits|^admin_view_simulated_trades|^view_strategy_guide"))
+        app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^view_logs|^prompt_admin_wallet|^toggle_undercover|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits|^admin_view_simulated_trades|^view_strategy_guide|^switch_exchange_prompt"))
         app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
         app.add_handler(CommandHandler("stop", stop_bot))
         app.add_handler(CommandHandler("resume", resume_bot))
