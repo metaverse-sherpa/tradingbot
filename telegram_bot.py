@@ -1119,6 +1119,125 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Provides a sequential visual walkthrough of both active strategies with pre-rendered infographics."""
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    if not user:
+        await update.effective_message.reply_text("Please run /setup first.")
+        return
+        
+    intro_text = (
+        "📖 *Sherpa Strategy Guide & Comparison*\n\n"
+        "Choose the algorithm that best aligns with your risk tolerance and market outlook:\n\n"
+        "📈 *Mean Reversion Scalper*\n"
+        "• *Philosophy*: Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.\n"
+        "• *Indicators*: Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.\n"
+        "• *Pace*: Highly active. Averages ~0.84 trades/day.\n"
+        "• *Drawdown Profile*: Optimized for recommended **1.0% risk**, maintaining a safe drawdown of **~21.9%** (well below the 25% safety ceiling) while delivering **+384.1%** PnL."
+    )
+    valk_text = (
+        "🛡️ *Valkyrie Elite Scalper*\n"
+        "• *Philosophy*: Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.\n"
+        "• *Indicators*: Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.\n"
+        "• *Pace*: Patient and calculated. Averages ~0.68 trades/day.\n"
+        "• *Drawdown Profile*: Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket)."
+    )
+    matrix_text = (
+        "📊 *Comparative Matrix:*\n"
+        "• *Focus*: Volatility Extremes vs Wick Rejection\n"
+        "• *Active Basket*: 29-Token Basket vs 7-Token Premium\n"
+        "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside\n"
+        "• *Risk Profile*: Highly active (21.9% DD @ 1% Risk) vs High Sharpe (19.5% DD @ 1.5% Risk)\n\n"
+        "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety, maximum Sharpe ratios, and smooth, protected growth curves."
+    )
+    
+    kb = [
+        [InlineKeyboardButton("🔙 Back to Strategy Menu", callback_data="strategy_menu")],
+        *get_nav_buttons(user.get('has_open_positions', False))
+    ]
+    
+    chart_path = os.path.join(BASE_DIR, "results", "strategy_comparison.png")
+    mr_path = os.path.join(BASE_DIR, "results", "mean_reversion_infographic.png")
+    valk_path = os.path.join(BASE_DIR, "results", "valkyrie_elite_infographic.png")
+    
+    try:
+        if not os.path.exists(chart_path):
+            from sherpa_visual_audit import generate_strategy_comparison_chart
+            await asyncio.to_thread(generate_strategy_comparison_chart)
+            
+        photo_ids = []
+        
+        # 1. Send the comparison visual chart first
+        with open(chart_path, 'rb') as photo:
+            msg = await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption="📊 *Metaverse Sherpa: 3-Year Strategy Comparison Visual*",
+                parse_mode="Markdown"
+            )
+            photo_ids.append(msg.message_id)
+        
+        # 2. Send Intro & Mean Reversion text description
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=intro_text,
+            parse_mode="Markdown"
+        )
+        
+        # 3. Send Mean Reversion Infographic
+        with open(mr_path, 'rb') as photo:
+            msg = await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption="📈 *Mean Reversion Scalper Strategy Infographic*",
+                parse_mode="Markdown"
+            )
+            photo_ids.append(msg.message_id)
+        
+        # 4. Send Valkyrie Elite text description
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=valk_text,
+            parse_mode="Markdown"
+        )
+        
+        # 5. Send Valkyrie Elite Infographic
+        with open(valk_path, 'rb') as photo:
+            msg = await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption="🛡️ *Valkyrie Elite Scalper Strategy Infographic*",
+                parse_mode="Markdown"
+            )
+            photo_ids.append(msg.message_id)
+        
+        # 6. Send Comparative Matrix & final keyboard menu
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=matrix_text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(kb)
+        )
+        
+        context.user_data['strategy_guide_photo_ids'] = photo_ids
+    except Exception as e:
+        logger.error(f"❌ Error in /strategyguide command: {e}")
+        # Fallback
+        guide_text = (
+            "📖 *Sherpa Strategy Guide & Comparison*\n\n"
+            "📈 *Mean Reversion Scalper*\n"
+            "• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
+            "🛡️ *Valkyrie Elite Scalper*\n"
+            "• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
+            "Full visual and interactive infographics are displayed in the sequential guide above."
+        )
+        await update.effective_message.reply_text(
+            guide_text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(kb)
+        )
+
 async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2610,7 +2729,8 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• /setup - API Engine Room. Step-by-step wizard to connect/update exchange API keys.\n\n"
         
         "🎯 *Control & Strategy*\n"
-        "• /strategy - Swapping brains. Instantly select your preferred active algorithmic model. Tap the button below to view the full **Strategy Guide & Differences**.\n"
+        "• /strategy - Swapping brains. Instantly select your preferred active algorithmic model.\n"
+        "• /strategyguide - Deep-dive. Displays sequential visual guides and comparison matrix with detailed neon infographics.\n"
         "• /stop - Emergency brake. Pauses the automated execution cycle for your account.\n"
         "• /resume - Re-enable. Resumes the high-speed trade heartbeat loop.\n\n"
         
@@ -3162,6 +3282,7 @@ def main():
         app.add_handler(CommandHandler("backtest", backtest))
         app.add_handler(CommandHandler("balance", balance_command))
         app.add_handler(CommandHandler("strategy", strategy_command))
+        app.add_handler(CommandHandler("strategyguide", strategy_guide_command))
         app.add_handler(CommandHandler("promote", promote_command))
         app.add_handler(CommandHandler("demote", demote_command))
         app.add_handler(CommandHandler("cancel", cancel_command))
