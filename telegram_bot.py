@@ -2610,7 +2610,7 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• /setup - API Engine Room. Step-by-step wizard to connect/update exchange API keys.\n\n"
         
         "🎯 *Control & Strategy*\n"
-        "• /strategy - Swapping brains. Instantly select your preferred active algorithmic model.\n"
+        "• /strategy - Swapping brains. Instantly select your preferred active algorithmic model. Tap the button below to view the full **Strategy Guide & Differences**.\n"
         "• /stop - Emergency brake. Pauses the automated execution cycle for your account.\n"
         "• /resume - Re-enable. Resumes the high-speed trade heartbeat loop.\n\n"
         
@@ -2624,7 +2624,10 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         "⚠️ *Risk Disclaimer:* _Automated trading carries substantial risk of capital loss. The Metaverse Sherpa executes with professional-grade sizing (defaulting to 1.5% institutional risk per trade), but is **not financial advice**. Past backtest audits do not guarantee live market profits. Trade responsibly._"
     )
-    keyboard = [[InlineKeyboardButton("📖 Download Blofin Setup Guide (PDF)", callback_data="send_blofin_guide")]]
+    keyboard = [
+        [InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")],
+        [InlineKeyboardButton("📖 Download Blofin Setup Guide (PDF)", callback_data="send_blofin_guide")]
+    ]
     keyboard.extend(get_nav_buttons(is_admin=is_admin))
     
     await update.effective_message.reply_text(
