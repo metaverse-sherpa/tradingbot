@@ -308,8 +308,8 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
                         if exchange.id == 'blofin':
                             gross_pnl = float(info.get("fillPnl") or 0)
                         else:
-                            # Binance/MEXC/Bybit
-                            gross_pnl = float(info.get("realizedPnl") or 0)
+                            # Binance/MEXC/Bybit/Bitget
+                            gross_pnl = float(info.get("realizedPnl") or info.get("profit") or 0)
                         
                         if gross_pnl != 0:
                             fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))

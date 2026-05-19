@@ -204,6 +204,9 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
             "stopLoss": {"triggerPrice": sl}, 
             "takeProfit": {"triggerPrice": tp}
         }
+        if exchange.id == 'bitget':
+            params['tdMode'] = 'isolated' # Bitget specific override
+            
         await exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
             
         log.info("✅ Order placed for %s on %s", symbol, exchange.id)

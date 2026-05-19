@@ -1,16 +1,21 @@
 # Trading Bot: Multi-Symbol BB Scalper 📈
 
-A production-ready, multi-tenant Telegram trading bot for the Blofin exchange. This bot utilizes Bollinger Band scalping, trend filters, and volatility protection to trade for multiple users simultaneously from a dedicated VPS.
+A production-ready, multi-tenant Telegram trading bot for Blofin, Binance, MEXC, and Bitget. This bot utilizes advanced algorithmic strategies (including Bollinger Band scalping, trend filters, and volatility protection) to trade for multiple users simultaneously from a dedicated VPS.
 
 ## 🚀 Features
 
 *   **Multi-Tenant Telegram Interface**: Users securely connect their own accounts via `/setup` or `/reset`.
+*   **Multi-Exchange Support**: Fully integrated with Blofin, Binance, MEXC, and Bitget futures.
 *   **Professional Dashboards**: Real-time stats, open position charts with Bollinger Clouds, and trade history.
-*   **Precision Execution**: Async engine runs every 5 minutes with marketable limit orders to bypass size limits.
+*   **Precision Execution**: Async engine runs every 15 minutes (30s after the candle close) with marketable limit orders to bypass size limits.
 *   **Safety & Privacy**: 
     *   **Military-Grade Encryption**: API keys are encrypted with Fernet symmetric encryption at rest.
-    *   **Privacy Mode**: Toggle between showing dollar PnL or protected percentages.
-*   **Automated Tracking**: Real-time Win Rate, PnL %, and trade counts updated live.
+    *   **Privacy Mode**: Toggle between showing dollar PnL or protected percentages (`/privacy`).
+*   **Advanced Algorithmic Strategies**: Switch between multiple brains, including the *Mean Reversion Scalper* and the *Valkyrie Elite Scalper* (`/strategy`).
+*   **Tactical Controls**: Manual overrides including One-Click Close and Panic Close functionality directly from Telegram.
+*   **Capital Allocation**: Granular control over position sizing (trade with full balance, fixed $ amount, or % isolation) via `/settings`.
+*   **Tiered Access & Referrals**: Standard (Free, 5 tokens) and Institutional (Premium, 20+ tokens) tiers. Built-in referral system to earn Premium.
+*   **Automated & Forward Testing**: Real-time Win Rate, PnL %, and trade counts updated live (`/stats`), plus simulated forward test tracking (`/forwardtest`).
 
 ## 🛠️ Initial VPS Setup (GCP/Ubuntu)
 

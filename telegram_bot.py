@@ -377,6 +377,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
         [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
         [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
+        [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
         [InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]
     ]
     
@@ -2729,7 +2730,8 @@ async def docs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔌 *Multi-Exchange Setup Guides*\n"
         "🏔️ *Blofin*: Create API Key with **'Read'** & **'Trade'** permissions. Set a passphrase and keep it handy.\n"
         "🔶 *Binance*: Create API Key under API Management -> Enable Futures permissions -> Whitelist VPS IP for safety.\n"
-        "💠 *MEXC*: Complete Primary KYC -> Create Key with Futures permissions -> Whitelist VPS IP to avoid 90-day expiry.\n\n"
+        "💠 *MEXC*: Complete Primary KYC -> Create Key with Futures permissions -> Whitelist VPS IP to avoid 90-day expiry.\n"
+        "🔷 *Bitget*: Create API Key -> Enable Futures Trading -> Set Passphrase -> Whitelist VPS IP.\n\n"
         
         "🤝 *Institutional Support*\n"
         "• /contact - Connect directly with @metaverse\\_sherpa or join our official community channel.\n\n"

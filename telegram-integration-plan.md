@@ -8,13 +8,13 @@ This architecture is specifically designed to cost **$0.00/month** by utilizing 
 
 Currently, the bot runs as a "serverless" script via GitHub Actions. To support multiple users securely and interactively without incurring costs, we will use the following free infrastructure:
 
-*   **Hosting:** A dedicated Virtual Private Server (VPS). Services like Render or Heroku "sleep" on free tiers (which kills the 5-minute loop), so we must use a real Virtual Machine.
+*   **Hosting:** A dedicated Virtual Private Server (VPS). Services like Render or Heroku "sleep" on free tiers (which kills the 15-minute loop), so we must use a real Virtual Machine.
     *   *Option A (Best):* **Oracle Cloud "Always Free"** provides an ARM server with up to 24GB RAM and 4 CPUs forever.
     *   *Option B:* **Google Cloud Platform (GCP)** provides 1 `e2-micro` instance free per month.
 *   **Database:** 
     *   *Option A (Local):* **SQLite**. Stores everything in a local `.sqlite3` file on the VPS. Requires no setup and zero memory overhead. Perfect for hundreds of users.
     *   *Option B (Cloud):* **Supabase**. Offers a generous free-tier PostgreSQL database with a beautiful web UI for managing user data.
-*   **Execution Engine:** Python's built-in **`asyncio`**. Instead of heavy task queues like Celery/Redis, a lightweight async loop will run the Telegram bot and the 5-minute trading cycle simultaneously.
+*   **Execution Engine:** Python's built-in **`asyncio`**. Instead of heavy task queues like Celery/Redis, a lightweight async loop will run the Telegram bot and the 15-minute trading cycle simultaneously.
 
 ## 2. Security: Protecting User API Keys (CRITICAL)
 
@@ -23,7 +23,7 @@ Storing other people's exchange API keys is a massive responsibility.
 *   **Encryption at Rest:** You must NEVER store API keys in plain text. Use Python's `cryptography` library (Fernet symmetric encryption). 
     *   Your free server holds the master `.env` encryption key.
     *   When a user submits an API key via Telegram, the bot encrypts it before writing it to SQLite/Supabase.
-    *   When the 5-minute loop runs, it decrypts the key in memory, executes the trade, and destroys the decrypted key instantly.
+    *   When the 15-minute loop runs, it decrypts the key in memory, executes the trade, and destroys the decrypted key instantly.
 *   **API Key Restrictions:** During the `/setup` flow, explicitly warn users to create API keys with **"Trade Only"** permissions and absolutely **NO Withdrawal permissions**.
 
 ## 3. Database Schema Design
@@ -68,7 +68,7 @@ The Telegram interface (`python-telegram-bot`) will be the user's dashboard.
 The `live_bot_multi.py` script will be converted into an async daemon running on your free VPS.
 
 **The Loop Logic:**
-1. Every 5 minutes, the async timer triggers.
+1. Every 15 minutes (with a 30s buffer), the async timer triggers.
 2. Query the database for `SELECT * FROM Users WHERE is_active = True`.
 3. Fetch the market data (OHLCV) *once* to save API rate limits (all users trade the same signals).
 4. Compute the signals.
