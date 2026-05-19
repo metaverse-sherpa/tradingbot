@@ -2174,6 +2174,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "3️⃣ (Optional) Whitelist the VPS IP to avoid key expiration.\n\n"
                 "Please paste your **MEXC API Key** below:"
             )
+        elif exchange_id == 'bitget':
+            guide = (
+                "🔷 *Bitget API Setup*\n\n"
+                "1️⃣ Go to **API Management** on Bitget.\n"
+                "2️⃣ Create Key -> Enable **'Futures Trading'**.\n"
+                "3️⃣ Note your passphrase for the final step.\n"
+                "4️⃣ (Optional) Whitelist the VPS IP for security.\n\n"
+                "Please paste your **Bitget API Key** below:"
+            )
         else:
             guide = (
                 "🏔️ *Blofin API Setup*\n\n"
