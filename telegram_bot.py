@@ -1483,6 +1483,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
+    # Clean up strategy guide photo if the user clicks any action other than view_strategy_guide
+    if query.data != "view_strategy_guide":
+        photo_id = context.user_data.pop('strategy_guide_photo_id', None)
+        if photo_id:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=photo_id)
+            except:
+                pass
+                
     if query.data.startswith("set_risk_to_"):
         try:
             val = float(query.data.split("_")[-1])
@@ -1818,14 +1827,24 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await query.message.delete()
                 except:
                     pass
+                
+                # 1. Send the comparison visual chart first (with short title caption)
                 with open(chart_path, 'rb') as photo:
-                    await context.bot.send_photo(
+                    photo_msg = await context.bot.send_photo(
                         chat_id=chat_id,
                         photo=photo,
-                        caption=guide_text,
-                        parse_mode="Markdown",
-                        reply_markup=InlineKeyboardMarkup(kb)
+                        caption="📊 *Metaverse Sherpa: 3-Year Strategy Comparison Visual*",
+                        parse_mode="Markdown"
                     )
+                context.user_data['strategy_guide_photo_id'] = photo_msg.message_id
+                
+                # 2. Send the comprehensive educational guide + keyboard menu
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=guide_text,
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(kb)
+                )
                 chart_sent = True
         except Exception as e:
             logger.error(f"❌ Error generating/sending strategy guide chart: {e}")
