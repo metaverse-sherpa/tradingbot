@@ -558,7 +558,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['api_secret'],
             context.user_data['api_password'],
             exchange_id=context.user_data.get('exchange_id', 'blofin'),
-            equity=0.0,
             is_active=True
         )
         
