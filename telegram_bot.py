@@ -1483,10 +1483,10 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.from_user.id
     user = database.get_user(chat_id)
     
-    # Clean up strategy guide photo if the user clicks any action other than view_strategy_guide
+    # Clean up strategy guide photos if the user clicks any action other than view_strategy_guide
     if query.data != "view_strategy_guide":
-        photo_id = context.user_data.pop('strategy_guide_photo_id', None)
-        if photo_id:
+        photo_ids = context.user_data.pop('strategy_guide_photo_ids', [])
+        for photo_id in photo_ids:
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=photo_id)
             except:
@@ -1789,19 +1789,23 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "view_strategy_guide":
         await query.answer()
-        guide_text = (
+        intro_text = (
             "📖 *Sherpa Strategy Guide & Comparison*\n\n"
             "Choose the algorithm that best aligns with your risk tolerance and market outlook:\n\n"
             "📈 *Mean Reversion Scalper*\n"
             "• *Philosophy*: Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.\n"
             "• *Indicators*: Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.\n"
             "• *Pace*: Highly active. Averages ~0.84 trades/day.\n"
-            "• *Drawdown Profile*: Optimized for recommended **1.0% risk**, maintaining a safe drawdown of **~21.9%** (well below the 25% safety ceiling) while delivering **+384.1%** PnL.\n\n"
+            "• *Drawdown Profile*: Optimized for recommended **1.0% risk**, maintaining a safe drawdown of **~21.9%** (well below the 25% safety ceiling) while delivering **+384.1%** PnL."
+        )
+        valk_text = (
             "🛡️ *Valkyrie Elite Scalper*\n"
             "• *Philosophy*: Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.\n"
             "• *Indicators*: Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.\n"
             "• *Pace*: Patient and calculated. Averages ~0.68 trades/day.\n"
-            "• *Drawdown Profile*: Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket).\n\n"
+            "• *Drawdown Profile*: Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket)."
+        )
+        matrix_text = (
             "📊 *Comparative Matrix:*\n"
             "• *Focus*: Volatility Extremes vs Wick Rejection\n"
             "• *Active Basket*: 29-Token Basket vs 7-Token Premium\n"
@@ -1809,12 +1813,23 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• *Risk Profile*: Highly active (21.9% DD @ 1% Risk) vs High Sharpe (19.5% DD @ 1.5% Risk)\n\n"
             "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety, maximum Sharpe ratios, and smooth, protected growth curves."
         )
+        guide_text = (
+            "📖 *Sherpa Strategy Guide & Comparison*\n\n"
+            "📈 *Mean Reversion Scalper*\n"
+            "• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
+            "🛡️ *Valkyrie Elite Scalper*\n"
+            "• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
+            "Full visual and interactive infographics are displayed in the sequential guide above."
+        )
         kb = [
             [InlineKeyboardButton("🔙 Back to Strategy Menu", callback_data="strategy_menu")],
             *get_nav_buttons(user.get('has_open_positions', False))
         ]
         
         chart_path = os.path.join(BASE_DIR, "results", "strategy_comparison.png")
+        mr_path = os.path.join(BASE_DIR, "results", "mean_reversion_infographic.png")
+        valk_path = os.path.join(BASE_DIR, "results", "valkyrie_elite_infographic.png")
+        
         chart_sent = False
         
         try:
@@ -1822,29 +1837,67 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 from sherpa_visual_audit import generate_strategy_comparison_chart
                 await asyncio.to_thread(generate_strategy_comparison_chart)
                 
-            if os.path.exists(chart_path):
+            if os.path.exists(chart_path) and os.path.exists(mr_path) and os.path.exists(valk_path):
                 try:
                     await query.message.delete()
                 except:
                     pass
                 
-                # 1. Send the comparison visual chart first (with short title caption)
+                photo_ids = []
+                
+                # 1. Send the comparison visual chart first
                 with open(chart_path, 'rb') as photo:
-                    photo_msg = await context.bot.send_photo(
+                    msg = await context.bot.send_photo(
                         chat_id=chat_id,
                         photo=photo,
                         caption="📊 *Metaverse Sherpa: 3-Year Strategy Comparison Visual*",
                         parse_mode="Markdown"
                     )
-                context.user_data['strategy_guide_photo_id'] = photo_msg.message_id
+                    photo_ids.append(msg.message_id)
                 
-                # 2. Send the comprehensive educational guide + keyboard menu
+                # 2. Send Intro & Mean Reversion text description
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=guide_text,
+                    text=intro_text,
+                    parse_mode="Markdown"
+                )
+                
+                # 3. Send Mean Reversion Infographic
+                with open(mr_path, 'rb') as photo:
+                    msg = await context.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption="📈 *Mean Reversion Scalper Strategy Infographic*",
+                        parse_mode="Markdown"
+                    )
+                    photo_ids.append(msg.message_id)
+                
+                # 4. Send Valkyrie Elite text description
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=valk_text,
+                    parse_mode="Markdown"
+                )
+                
+                # 5. Send Valkyrie Elite Infographic
+                with open(valk_path, 'rb') as photo:
+                    msg = await context.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption="🛡️ *Valkyrie Elite Scalper Strategy Infographic*",
+                        parse_mode="Markdown"
+                    )
+                    photo_ids.append(msg.message_id)
+                
+                # 6. Send Comparative Matrix & final keyboard menu
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=matrix_text,
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(kb)
                 )
+                
+                context.user_data['strategy_guide_photo_ids'] = photo_ids
                 chart_sent = True
         except Exception as e:
             logger.error(f"❌ Error generating/sending strategy guide chart: {e}")
