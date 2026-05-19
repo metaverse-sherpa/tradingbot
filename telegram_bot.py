@@ -1106,8 +1106,7 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     keyboard = [
         [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
-        [InlineKeyboardButton("Valkyrie Elite Scalper", callback_data="set_strat_valk")],
-        [InlineKeyboardButton("Crypto Chart Patterns (Coming Soon)", callback_data="set_strat_soon")]
+        [InlineKeyboardButton("Valkyrie Elite Scalper", callback_data="set_strat_valk")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -2153,7 +2152,6 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Mean Reversion" + (" (Active)" if strat_choice == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
                 InlineKeyboardButton("Valkyrie" + (" (Active)" if strat_choice == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk")
             ],
-            [InlineKeyboardButton("🚧 Crypto Chart Patterns (Soon)", callback_data="set_strat_soon")],
             [InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))
