@@ -2799,7 +2799,8 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "password": user_data['api_password'],
             "options": {"defaultType": "swap"},
         }) as user_ex:
-            balance = await user_ex.fetch_balance(params={"type": "futures"})
+            acc_type = "swap" if ex_id == 'bitget' else "futures"
+            balance = await user_ex.fetch_balance(params={"type": acc_type})
             free = float(balance.get("USDT", {}).get("free", 0))
             
             # True Equity Calculation: Available + Margin + Unrealized PnL
@@ -2853,7 +2854,8 @@ async def sync_engine(application):
                         "options": {"defaultType": "swap"},
                     }) as user_ex:
                         # Fetch balance and sync closed trades
-                        balance = await user_ex.fetch_balance(params={"type": "futures"})
+                        acc_type = "swap" if ex_id == 'bitget' else "futures"
+                        balance = await user_ex.fetch_balance(params={"type": acc_type})
                         equity = float(balance.get("USDT", {}).get("total", 0))
                         await database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
                 except Exception as e:
@@ -3108,7 +3110,8 @@ async def signal_engine(application):
                                     "options": {"defaultType": "swap"},
                                 }) as user_ex:
                                     
-                                    balance = await user_ex.fetch_balance(params={"type": "futures"})
+                                    acc_type = "swap" if ex_id == 'bitget' else "futures"
+                                    balance = await user_ex.fetch_balance(params={"type": acc_type})
                                     actual_equity = float(balance.get("USDT", {}).get("total", 0))
                                     
                                     # Custom Capital Allocation Override
