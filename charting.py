@@ -8,19 +8,37 @@ import matplotlib.pyplot as plt
 # Use a non-interactive backend to save RAM and avoid VPS issues
 matplotlib.use('Agg')
 
-def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
+def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="15M", currency="USDT"):
     """
     Generates a high-contrast Neon chart where TP/SL/Entry lines only start from open_ts.
     """
     df = df.copy()
     df.index = pd.to_datetime(df['timestamp'], unit='ms')
     
-    # 1. Calculate Indicators
-    df["ema"] = df["close"].ewm(span=200, adjust=False).mean()
-    df["bb_mid"] = df["close"].rolling(window=20).mean()
-    std = df["close"].rolling(window=20).std()
-    df["bb_up"] = df["bb_mid"] + (2 * std)
-    df["bb_low"] = df["bb_mid"] - (2 * std)
+    # 1. Calculate Indicators & Setup Vibrant Neon Addplots
+    ap = []
+    fb_bb = None
+    
+    if timeframe == "1D":
+        df["ema_50"] = df["close"].ewm(span=50, adjust=False).mean()
+        df["ema_200"] = df["close"].ewm(span=200, adjust=False).mean()
+        # Add EMA 50 (Vibrant Neon Cyan)
+        ap.append(mpf.make_addplot(df["ema_50"], color='#00E5FF', alpha=0.8, width=1.2))
+        # Add EMA 200 (Vibrant Neon Purple/Magenta)
+        ap.append(mpf.make_addplot(df["ema_200"], color='#D500F9', alpha=0.8, width=1.2))
+    else:
+        df["bb_mid"] = df["close"].rolling(window=20).mean()
+        std = df["close"].rolling(window=20).std()
+        df["bb_up"] = df["bb_mid"] + (2 * std)
+        df["bb_low"] = df["bb_mid"] - (2 * std)
+        
+        # Bollinger Bands - Upper/Lower (Vibrant Cyan, thicker)
+        ap.append(mpf.make_addplot(df["bb_up"], color='#00E5FF', alpha=0.5, width=1.2))
+        ap.append(mpf.make_addplot(df["bb_low"], color='#00E5FF', alpha=0.5, width=1.2))
+        # Bollinger Mid (Subtle Dashed Cyan)
+        ap.append(mpf.make_addplot(df["bb_mid"], color='#00E5FF', alpha=0.3, width=0.8, linestyle='--'))
+        
+        fb_bb = dict(y1=df["bb_up"].values, y2=df["bb_low"].values, color='#00E5FF', alpha=0.05)
 
     # 2. Define the R:R lines logic (Only start from open_ts)
     start_time = pd.to_datetime(open_ts, unit='ms')
@@ -40,22 +58,12 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     entry_line.loc[where_mask] = entry
     sl_line.loc[where_mask] = sl
     
-    # 3. Vibrant Neon Addplots
-    ap = [
-        
-        # Bollinger Bands - Upper/Lower (Vibrant Cyan, thicker)
-        mpf.make_addplot(df["bb_up"], color='#00E5FF', alpha=0.5, width=1.2),
-        mpf.make_addplot(df["bb_low"], color='#00E5FF', alpha=0.5, width=1.2),
-        # Bollinger Mid (Subtle Dashed Cyan)
-        mpf.make_addplot(df["bb_mid"], color='#00E5FF', alpha=0.3, width=0.8, linestyle='--'),
-        
-        # TP Line (Neon Green) - Only starts from trade open
-        mpf.make_addplot(tp_line, color='#00C853', width=1.8, linestyle='-'),
-        # Entry Line (White) - Only starts from trade open
-        mpf.make_addplot(entry_line, color='#FFFFFF', width=1.2, linestyle='--'),
-        # SL Line (Neon Red) - Only starts from trade open
-        mpf.make_addplot(sl_line, color='#FF1744', width=1.8, linestyle='-')
-    ]
+    # TP Line (Neon Green) - Only starts from trade open
+    ap.append(mpf.make_addplot(tp_line, color='#00C853', width=1.8, linestyle='-'))
+    # Entry Line (White) - Only starts from trade open
+    ap.append(mpf.make_addplot(entry_line, color='#FFFFFF', width=1.2, linestyle='--'))
+    # SL Line (Neon Red) - Only starts from trade open
+    ap.append(mpf.make_addplot(sl_line, color='#FF1744', width=1.8, linestyle='-'))
 
     # Pro-Grade Dark Style
     style = mpf.make_mpf_style(
@@ -70,18 +78,17 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     filename = f"chart_{symbol.replace('/', '_')}.png"
     filepath = os.path.join(os.getcwd(), "pnl_cards", filename)
     
-    # Shaded Areas (R:R Boxes + Bollinger Cloud)
+    # Shaded Areas (R:R Boxes)
     fb_tp = dict(y1=entry, y2=tp, where=where_mask, color='#00C853', alpha=0.10)
     fb_sl = dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.10)
-    fb_bb = dict(y1=df["bb_up"].values, y2=df["bb_low"].values, color='#00E5FF', alpha=0.05)
     
     # Generate the chart
     fig, axlist = mpf.plot(df, type='candle', 
              style=style,
-             title=f"\n{symbol} ({side}) - 15M Strategy Setup",
-             ylabel='Price (USDT)',
+             title=f"\n{symbol} ({side}) - {timeframe} Strategy Setup",
+             ylabel=f'Price ({currency})',
              addplot=ap,
-             fill_between=[fb_tp, fb_sl, fb_bb],
+             fill_between=[fb for fb in [fb_tp, fb_sl, fb_bb] if fb is not None],
              volume=False,
              figratio=(16,10),
              figscale=1.3,
@@ -92,6 +99,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     
     # CRITICAL: Explicitly close the figure to release memory!
     plt.close(fig)
+
     
     # --- 4. Premium Visual Assembly ---
     try:

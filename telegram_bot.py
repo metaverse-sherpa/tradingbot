@@ -1295,6 +1295,64 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         parse_mode="MarkdownV2"
     )
 
+async def fetch_alpaca_daily_bars_async(user, symbol, limit=60):
+    import requests
+    from datetime import datetime, timedelta
+    
+    # We fetch up to 120 calendar days to guarantee limit (60) trading days
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=120)
+    
+    start_str = start_date.strftime('%Y-%m-%dT00:00:00Z')
+    end_str = end_date.strftime('%Y-%m-%dT23:59:59Z')
+    
+    url = "https://data.alpaca.markets/v2/stocks/bars"
+    headers = {
+        "APCA-API-KEY-ID": user.get("alpaca_api_key") or "",
+        "APCA-API-SECRET-KEY": user.get("alpaca_api_secret") or "",
+        "Content-Type": "application/json"
+    }
+    params = {
+        "symbols": symbol,
+        "timeframe": "1Day",
+        "start": start_str,
+        "end": end_str,
+        "limit": 1000,
+        "adjustment": "all"
+    }
+    
+    def do_request():
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+        
+    try:
+        data = await asyncio.to_thread(do_request)
+        bars = data.get("bars", {}).get(symbol, [])
+        if not bars:
+            return None
+            
+        records = []
+        for b in bars:
+            dt = datetime.strptime(b['t'].split('T')[0], '%Y-%m-%d')
+            ms_ts = int(dt.timestamp() * 1000)
+            records.append({
+                "timestamp": ms_ts,
+                "open": float(b['o']),
+                "high": float(b['h']),
+                "low": float(b['l']),
+                "close": float(b['c']),
+                "volume": float(b['v'])
+            })
+            
+        import pandas as pd
+        df = pd.DataFrame(records)
+        df.sort_values('timestamp', inplace=True)
+        return df.tail(limit)
+    except Exception as e:
+        logger.error(f"Error fetching Alpaca daily bars for {symbol}: {e}")
+        return None
+
 async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
@@ -1373,8 +1431,57 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
                         )
                         
-                        kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
-                        await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                        # Attempt to generate daily stock chart
+                        chart_sent = False
+                        try:
+                            # 1. Fetch entry time from closed orders
+                            open_ts = 0
+                            try:
+                                closed_orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 50})
+                                for o in closed_orders:
+                                    if o.get("symbol") == sym and o.get("side") == ("buy" if side == "LONG" else "sell") and o.get("status") == "filled":
+                                        filled_at = o.get("filled_at")
+                                        if filled_at:
+                                            import pandas as pd
+                                            open_ts = int(pd.to_datetime(filled_at).timestamp() * 1000)
+                                            break
+                            except Exception as order_err:
+                                logger.error(f"Failed to find entry filled time for stock {sym}: {order_err}")
+                                
+                            # 2. Fetch daily bars
+                            df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
+                            if df_daily is not None and not df_daily.empty:
+                                chart_path = await asyncio.to_thread(
+                                    charting.generate_trade_chart,
+                                    sym,
+                                    df_daily,
+                                    entry,
+                                    tp_price,
+                                    sl_price,
+                                    side,
+                                    open_ts=open_ts,
+                                    timeframe="1D",
+                                    currency="USD"
+                                )
+                                
+                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
+                                with open(chart_path, 'rb') as photo:
+                                    await context.bot.send_photo(
+                                        chat_id=chat_id,
+                                        photo=photo,
+                                        caption=caption,
+                                        parse_mode="MarkdownV2",
+                                        reply_markup=InlineKeyboardMarkup(kb)
+                                    )
+                                try: os.remove(chart_path)
+                                except: pass
+                                chart_sent = True
+                        except Exception as chart_err:
+                            logger.error(f"Failed to generate Alpaca daily chart for {sym}: {chart_err}")
+                            
+                        if not chart_sent:
+                            kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
+                            await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
                     except Exception as e:
                         logger.error(f"Error processing Alpaca position: {e}")
         except Exception as e:
@@ -1438,11 +1545,21 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             # Try to generate live technical chart
                             try:
                                 ohlcv = await user_ex.fetch_ohlcv(sym, "15m", limit=60)
-                                chart_filename = f"chart_{chat_id}_{sym.replace('/', '_').replace(':', '_')}.png"
-                                chart_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", chart_filename)
-                                os.makedirs(os.path.dirname(chart_path), exist_ok=True)
+                                import pandas as pd
+                                df_chart = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
                                 
-                                charting.generate_trade_chart(ohlcv, sym, side, entry, tp_price, sl_price, chart_path)
+                                chart_path = await asyncio.to_thread(
+                                    charting.generate_trade_chart,
+                                    sym,
+                                    df_chart,
+                                    entry,
+                                    tp_price,
+                                    sl_price,
+                                    side,
+                                    open_ts=0,
+                                    timeframe="15M",
+                                    currency="USDT"
+                                )
                                 
                                 kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
                                 
