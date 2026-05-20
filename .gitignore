@@ -34,6 +34,7 @@ results/*
 !results/strategy_comparison.png
 !results/mean_reversion_infographic.png
 !results/valkyrie_elite_infographic.png
+!results/stock_strategy_infographic.png
 bot_users.db
 
 # Scratch / Sandbox Files

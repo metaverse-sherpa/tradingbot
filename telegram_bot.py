@@ -1496,13 +1496,20 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
         "• *Pace*: Patient and calculated. Averages ~0.68 trades/day.\n"
         "• *Drawdown Profile*: Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket)."
     )
+    stock_text = (
+        "🦙 *Sherpa Velocity Pullback (SVP)*\n"
+        "• *Philosophy*: Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.\n"
+        "• *Indicators*: Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).\n"
+        "• *Pace*: Daily swing. Executes scans daily at market open (9:31 AM EST).\n"
+        "• *Drawdown Profile*: Ultra-safe equity curve, maintaining a tight **14.2%** maximum drawdown with a verified **+113.5%** return and high **66.9%** win rate over a 3-year period."
+    )
     matrix_text = (
         "📊 *Comparative Matrix:*\n"
-        "• *Focus*: Volatility Extremes vs Wick Rejection\n"
-        "• *Active Basket*: 29-Token Basket vs 7-Token Premium\n"
-        "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside\n"
-        "• *Risk Profile*: Highly active (21.9% DD @ 1% Risk) vs High Sharpe (19.5% DD @ 1.5% Risk)\n\n"
-        "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety, maximum Sharpe ratios, and smooth, protected growth curves."
+        "• *Focus*: Volatility Extremes vs Wick Rejection vs Equities Pullbacks\n"
+        "• *Active Basket*: 29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40\n"
+        "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside vs 3-Period RSI < 10\n"
+        "• *Risk Profile*: Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)\n\n"
+        "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety and smooth growth curves in crypto. Activate *Sherpa Velocity Pullback (SVP)* to diversify into high-liquidity megacap US equities with low drawdown."
     )
     
     kb = [
@@ -1513,6 +1520,7 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
     chart_path = os.path.join(BASE_DIR, "results", "strategy_comparison.png")
     mr_path = os.path.join(BASE_DIR, "results", "mean_reversion_infographic.png")
     valk_path = os.path.join(BASE_DIR, "results", "valkyrie_elite_infographic.png")
+    stock_path = os.path.join(BASE_DIR, "results", "stock_strategy_infographic.png")
     
     try:
         if not os.path.exists(chart_path):
@@ -1560,8 +1568,23 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
                 photo=photo
             )
             photo_ids.append(msg.message_id)
+            
+        # 6. Send Sherpa Velocity Pullback text description
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=stock_text,
+            parse_mode="Markdown"
+        )
         
-        # 6. Send Comparative Matrix & final keyboard menu
+        # 7. Send Sherpa Velocity Pullback Infographic
+        with open(stock_path, 'rb') as photo:
+            msg = await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo
+            )
+            photo_ids.append(msg.message_id)
+        
+        # 8. Send Comparative Matrix & final keyboard menu
         await context.bot.send_message(
             chat_id=chat_id,
             text=matrix_text,
@@ -1579,6 +1602,8 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
             "• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
             "🛡️ *Valkyrie Elite Scalper*\n"
             "• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
+            "🦙 *Sherpa Velocity Pullback*\n"
+            "• Philosophy: Momentum pullbacks on megacap US equities.\n\n"
             "Full visual and interactive infographics are displayed in the sequential guide above."
         )
         await update.effective_message.reply_text(
@@ -2409,13 +2434,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• *Pace*: Patient and calculated. Averages ~0.68 trades/day.\n"
             "• *Drawdown Profile*: Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket)."
         )
+        stock_text = (
+            "🦙 *Sherpa Velocity Pullback (SVP)*\n"
+            "• *Philosophy*: Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.\n"
+            "• *Indicators*: Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).\n"
+            "• *Pace*: Daily swing. Executes scans daily at market open (9:31 AM EST).\n"
+            "• *Drawdown Profile*: Ultra-safe equity curve, maintaining a tight **14.2%** maximum drawdown with a verified **+113.5%** return and high **66.9%** win rate over a 3-year period."
+        )
         matrix_text = (
             "📊 *Comparative Matrix:*\n"
-            "• *Focus*: Volatility Extremes vs Wick Rejection\n"
-            "• *Active Basket*: 29-Token Basket vs 7-Token Premium\n"
-            "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside\n"
-            "• *Risk Profile*: Highly active (21.9% DD @ 1% Risk) vs High Sharpe (19.5% DD @ 1.5% Risk)\n\n"
-            "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety, maximum Sharpe ratios, and smooth, protected growth curves."
+            "• *Focus*: Volatility Extremes vs Wick Rejection vs Equities Pullbacks\n"
+            "• *Active Basket*: 29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40\n"
+            "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside vs 3-Period RSI < 10\n"
+            "• *Risk Profile*: Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)\n\n"
+            "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety and smooth growth curves in crypto. Activate *Sherpa Velocity Pullback (SVP)* to diversify into high-liquidity megacap US equities with low drawdown."
         )
         guide_text = (
             "📖 *Sherpa Strategy Guide & Comparison*\n\n"
@@ -2423,6 +2455,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
             "🛡️ *Valkyrie Elite Scalper*\n"
             "• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
+            "🦙 *Sherpa Velocity Pullback*\n"
+            "• Philosophy: Momentum pullbacks on megacap US equities.\n\n"
             "Full visual and interactive infographics are displayed in the sequential guide above."
         )
         kb = [
@@ -2433,6 +2467,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chart_path = os.path.join(BASE_DIR, "results", "strategy_comparison.png")
         mr_path = os.path.join(BASE_DIR, "results", "mean_reversion_infographic.png")
         valk_path = os.path.join(BASE_DIR, "results", "valkyrie_elite_infographic.png")
+        stock_path = os.path.join(BASE_DIR, "results", "stock_strategy_infographic.png")
         
         chart_sent = False
         
@@ -2441,7 +2476,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 from sherpa_visual_audit import generate_strategy_comparison_chart
                 await asyncio.to_thread(generate_strategy_comparison_chart)
                 
-            if os.path.exists(chart_path) and os.path.exists(mr_path) and os.path.exists(valk_path):
+            if os.path.exists(chart_path) and os.path.exists(mr_path) and os.path.exists(valk_path) and os.path.exists(stock_path):
                 try:
                     await query.message.delete()
                 except:
@@ -2488,8 +2523,23 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         photo=photo
                     )
                     photo_ids.append(msg.message_id)
+                    
+                # 6. Send Sherpa Velocity Pullback text description
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=stock_text,
+                    parse_mode="Markdown"
+                )
                 
-                # 6. Send Comparative Matrix & final keyboard menu
+                # 7. Send Sherpa Velocity Pullback Infographic
+                with open(stock_path, 'rb') as photo:
+                    msg = await context.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo
+                    )
+                    photo_ids.append(msg.message_id)
+                
+                # 8. Send Comparative Matrix & final keyboard menu
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=matrix_text,
