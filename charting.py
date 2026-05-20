@@ -26,9 +26,10 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     start_time = pd.to_datetime(open_ts, unit='ms')
     where_mask = (df.index >= start_time)
     
-    # Fallback: if open_ts is in the future or no candles match yet, default to showing from the last candle
-    if not where_mask.any():
-        where_mask[-1] = True
+    # If the trade is brand new or open_ts is in the future (fewer than 8 candles match),
+    # draw the R:R lines across the entire chart so they are beautifully visible!
+    if where_mask.sum() < 8:
+        where_mask[:] = True
     
     # Create price level series that are NaN before start_time
     tp_line = pd.Series(np.nan, index=df.index)
