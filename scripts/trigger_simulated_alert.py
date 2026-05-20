@@ -48,9 +48,6 @@ async def main():
     # 2. Setup mock trade params
     symbol = "SOL/USDT:USDT"
     strategy_name = "Mean Reversion Scalper"
-    entry = 120.50
-    tp = 135.00
-    sl = 110.00
     side = "buy"
     
     # 3. Generate visual chart overlay using public market feed first to resolve open_ts
@@ -58,6 +55,16 @@ async def main():
     mdm = live_bot_multi.MarketDataManager()
     df_chart = await mdm.fetch_ohlcv(symbol, timeframe='15m')
     await mdm.close()
+    
+    # Resolve dynamic entry, TP, and SL based on the actual current market price of SOL to prevent candle squishing!
+    if df_chart is not None and len(df_chart) > 0:
+        last_close = float(df_chart.iloc[-1]['close'])
+        entry = last_close
+    else:
+        entry = 120.50
+        
+    tp = entry * 1.1203  # +12.0% Take Profit
+    sl = entry * 0.9129  # -8.7% Stop Loss
     
     open_ts = int(df_chart.iloc[-1]['timestamp']) if df_chart is not None and len(df_chart) > 0 else int(time.time() * 1000)
     
