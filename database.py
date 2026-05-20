@@ -773,6 +773,9 @@ def make_alpaca_request(user, method, path, params=None, json_data=None):
     endpoint = user.get("alpaca_endpoint") or "https://paper-api.alpaca.markets"
     # Ensure no trailing slash
     endpoint = endpoint.rstrip('/')
+    # If the user included /v2 in their custom endpoint base URL, normalize it to prevent duplication with /v2 paths
+    if endpoint.endswith('/v2'):
+        endpoint = endpoint[:-3]
     url = f"{endpoint}{path}"
     
     headers = {
