@@ -177,7 +177,7 @@ def check_signal(df, idx, strategy_name, params):
     return None
 
 # 🏆 Chronological Portfolio Backtester
-def run_backtest(data_dict, strategy_name, params, verbose=False):
+def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=10000.0, pct_per_trade=0.01):
     """Simulates chronological trading across all symbols with strict cash constraints."""
     
     # 1. Precalculate indicators for all symbols
@@ -189,7 +189,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False):
     all_dates = sorted(list(set().union(*(df.index for df in processed_data.values()))))
     
     # Initialize portfolio state
-    cash = INITIAL_CASH
+    cash = initial_cash
     active_trades = {}  # symbol -> trade_dict
     trade_history = []
     equity_history = []
@@ -421,8 +421,8 @@ def run_backtest(data_dict, strategy_name, params, verbose=False):
             sl = entry_price - D if sig_type == "LONG" else entry_price + D
             tp = entry_price + (rr_ratio * D) if sig_type == "LONG" else entry_price - (rr_ratio * D)
             
-            # Sizing: risk exactly 1% of total equity
-            risk_dollars = calc_equity * PCT_PER_TRADE
+            # Sizing: risk exactly custom percent of total equity
+            risk_dollars = calc_equity * pct_per_trade
             shares = risk_dollars / D
             
             # Notional required
@@ -472,7 +472,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False):
     
     # Cumulative PnL
     final_equity = h_df['equity'].iloc[-1]
-    pnl_pct = (final_equity / INITIAL_CASH - 1) * 100
+    pnl_pct = (final_equity / initial_cash - 1) * 100
     
     # Win Rate
     wins = t_df[t_df['net_pnl'] > 0]
@@ -507,6 +507,142 @@ def run_backtest(data_dict, strategy_name, params, verbose=False):
     }
     
     return h_df, t_df, metrics
+
+def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=10000.0):
+    """
+    Performs a personalized daily stock backtest and generates a premium chart.
+    Returns (stats, chart_path, df_eq)
+    """
+    import sqlite3
+    import pandas as pd
+    import numpy as np
+    import os
+    
+    # 1. Load data
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(base_dir, "data", "stock_daily_cache.db")
+    
+    global DB_PATH
+    old_db_path = DB_PATH
+    DB_PATH = db_path
+    
+    try:
+        data_dict = load_data_from_db()
+    finally:
+        DB_PATH = old_db_path
+        
+    if not data_dict:
+        return None, None, None
+        
+    # 2. Set best params for Velocity_Pullback
+    best_params = {
+        "rsi_period": 3,
+        "rsi_entry": 10,
+        "rsi_exit": 65,
+        "atr_sl_mult": 3.0,
+        "trend_ema": "ema_200",
+        "long_only": True
+    }
+    
+    # 3. Run backtest with custom starting balance and risk level
+    pct_per_trade = risk_val_pct / 100.0
+    h_df, t_df, metrics = run_backtest(
+        data_dict, 
+        "Velocity_Pullback", 
+        best_params, 
+        verbose=False,
+        initial_cash=start_balance,
+        pct_per_trade=pct_per_trade
+    )
+    
+    if not metrics:
+        return None, None, None
+        
+    # 4. Generate premium neon chart similar to sherpa_visual_audit.py
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import time
+    
+    # Calculate Sharpe and drawdown
+    equity_series = h_df["equity"]
+    daily_returns = equity_series.pct_change().dropna()
+    if len(daily_returns) > 1:
+        sharpe = (daily_returns.mean() / (daily_returns.std() + 1e-10)) * np.sqrt(252)
+    else:
+        sharpe = 0.0
+        
+    # Drawdown series
+    peak = equity_series.cummax()
+    drawdown = (peak - equity_series) / peak * 100
+    max_dd_val = drawdown.max()
+    
+    # Setup subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#121212")
+    
+    # 🏔️ Equity Chart (Neon Theme)
+    ax1.plot(h_df.index, equity_series, color="#39FF14", linewidth=2.5, label="Velocity Pullback Stock Portfolio")
+    ax1.set_title(f"Sherpa Stock Audit (Daily Swing): {user_id}", color="white", fontsize=16, pad=15)
+    ax1.tick_params(colors="white")
+    ax1.grid(alpha=0.1)
+    ax1.set_facecolor("#121212")
+    
+    # Annotations
+    ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color='#39FF14', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+    ax1.text(0.02, 0.05, f"Start: ${start_balance:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+    ax1.text(0.98, 0.9, f"Final: ${metrics['final_equity']:,.2f}", transform=ax1.transAxes, color='#39FF14', fontweight='bold', ha='right', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+    
+    # 🌊 Drawdown Chart
+    ax2.fill_between(drawdown.index, -drawdown, 0, color="red", alpha=0.2)
+    ax2.plot(drawdown.index, -drawdown, color="red", linewidth=0.8)
+    ax2.tick_params(colors="white")
+    ax2.set_facecolor("#121212")
+    ax2.set_title("Drawdown (%)", color="white", fontsize=10)
+    ax2.set_ylabel("Drawdown (%)", color="white")
+    ax2.set_ylim(-100, 5) # 0-100% Scale for visual compression
+    ax2.grid(True, alpha=0.1); ax2.tick_params(colors="white")
+    
+    # 📌 Annotate Max Drawdown Peak
+    if not drawdown.empty:
+        max_dd_date = drawdown.idxmax()
+        min_dd_val = -drawdown.max()
+        ax2.annotate(f"Peak DD: {abs(min_dd_val):.1f}%", 
+                     xy=(max_dd_date, min_dd_val), 
+                     xytext=(0, -25), 
+                     textcoords="offset points", 
+                     ha='center', 
+                     color="white", 
+                     fontweight='bold',
+                     bbox=dict(facecolor='#1A1A1A', alpha=0.8, edgecolor='red'),
+                     arrowprops=dict(arrowstyle='->', color='red'))
+                     
+    fig.patch.set_facecolor("#121212")
+    plt.tight_layout()
+    
+    results_dir = os.path.join(base_dir, "results")
+    os.makedirs(results_dir, exist_ok=True)
+    
+    is_master = (risk_val_pct == 1.0 and start_balance == 10000.0) # Standard defaults for master
+    
+    if is_master and user_id == "admin":
+        chart_path = os.path.join(results_dir, "stock_master_audit.png")
+    else:
+        chart_name = f"audit_stock_{user_id}_{int(time.time())}.png"
+        chart_path = os.path.join(results_dir, chart_name)
+        
+    plt.savefig(chart_path, dpi=150, facecolor="#121212")
+    plt.close() # Important for bot memory
+    
+    stats = {
+        "pnl_pct": metrics["total_pnl_pct"],
+        "final_equity": metrics["final_equity"],
+        "max_dd": metrics["max_dd_pct"],
+        "total_trades": metrics["total_trades"],
+        "win_rate": metrics["win_rate"],
+        "sharpe": sharpe
+    }
+    
+    return stats, chart_path, h_df
 
 def main():
     print("🏔️ Loading 3-Year Daily Historical Stock Data...")

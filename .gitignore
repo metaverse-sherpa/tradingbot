@@ -29,9 +29,12 @@ pnl_cards/
 results/*
 !results/master_audit.png
 !results/free_master_audit.png
+!results/stock_master_audit.png
 !results/upsell_comparison.png
 !results/strategy_comparison.png
 !results/mean_reversion_infographic.png
 !results/valkyrie_elite_infographic.png
 bot_users.db
 
+# Scratch / Sandbox Files
+scratch/

@@ -107,11 +107,34 @@ def init_db():
             ("custom_equity_value", "REAL"),
             ("alpaca_api_key", "TEXT"),
             ("alpaca_api_secret", "TEXT"),
-            ("alpaca_endpoint", "TEXT")
+            ("alpaca_endpoint", "TEXT"),
+            ("active_crypto_strategy", "TEXT DEFAULT 'Mean Reversion Scalper'"),
+            ("active_stock_strategy", "TEXT DEFAULT 'None'")
         ]
         for col_name, col_def in cols:
             try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
             except: pass
+            
+        # Backward-compatible data migration
+        try:
+            # 1. Migrate stock strategy users
+            c.execute("""
+                UPDATE Users 
+                SET active_stock_strategy = 'Sherpa Velocity Pullback', active_crypto_strategy = 'None'
+                WHERE (active_stock_strategy IS NULL OR active_stock_strategy = 'None') AND strategy = 'Sherpa Velocity Pullback'
+            """)
+            # 2. Migrate crypto strategy users
+            c.execute("""
+                UPDATE Users 
+                SET active_crypto_strategy = COALESCE(strategy, 'Mean Reversion Scalper'), active_stock_strategy = 'None'
+                WHERE active_crypto_strategy IS NULL OR active_crypto_strategy = ''
+            """)
+            # 3. Ensure no NULL values exist for the new fields
+            c.execute("UPDATE Users SET active_crypto_strategy = 'Mean Reversion Scalper' WHERE active_crypto_strategy IS NULL")
+            c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE active_stock_strategy IS NULL")
+            conn.commit()
+        except Exception as migration_err:
+            pass
         
         # 💎 Institutional Config Table
         c.execute('''CREATE TABLE IF NOT EXISTS Config
@@ -172,7 +195,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
@@ -208,7 +231,9 @@ def get_user(chat_id):
             "custom_equity_value": row[27] if len(row) > 27 else None,
             "alpaca_api_key": decrypt(row[28]) if len(row) > 28 and row[28] else None,
             "alpaca_api_secret": decrypt(row[29]) if len(row) > 29 and row[29] else None,
-            "alpaca_endpoint": row[30] if len(row) > 30 else None
+            "alpaca_endpoint": row[30] if len(row) > 30 else None,
+            "active_crypto_strategy": row[31] if len(row) > 31 and row[31] else 'Mean Reversion Scalper',
+            "active_stock_strategy": row[32] if len(row) > 32 and row[32] else 'None'
         }
     return None
 
@@ -254,7 +279,9 @@ def update_user_preference(chat_id, key, value):
             "custom_equity_value": "custom_equity_value",
             "alpaca_api_key": "alpaca_api_key",
             "alpaca_api_secret": "alpaca_api_secret",
-            "alpaca_endpoint": "alpaca_endpoint"
+            "alpaca_endpoint": "alpaca_endpoint",
+            "active_crypto_strategy": "active_crypto_strategy",
+            "active_stock_strategy": "active_stock_strategy"
         }
         if key in cols:
             col_name = cols[key]
@@ -270,6 +297,13 @@ def increment_opened(chat_id):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('UPDATE Users SET total_trades_opened = total_trades_opened + 1 WHERE telegram_chat_id = ?', (chat_id,))
+
+def update_user_crypto_strategy(chat_id, strategy):
+    update_user_preference(chat_id, "active_crypto_strategy", strategy)
+    update_user_preference(chat_id, "strategy", strategy)  # Keep backward compatibility
+
+def update_user_stock_strategy(chat_id, strategy):
+    update_user_preference(chat_id, "active_stock_strategy", strategy)
 
 async def update_user_stats_from_engine(chat_id, equity, exchange, application):
     """

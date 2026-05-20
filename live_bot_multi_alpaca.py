@@ -162,7 +162,7 @@ def check_is_market_open():
     with sqlite3.connect(USER_DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute("SELECT * FROM Users WHERE exchange_id = 'alpaca' AND is_active = 1 LIMIT 1")
+        c.execute("SELECT * FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != '' AND active_stock_strategy = 'Sherpa Velocity Pullback' LIMIT 1")
         row = c.fetchone()
         
     if not row:
@@ -324,7 +324,7 @@ async def run_real_trader_execution(today_opens):
     with sqlite3.connect(USER_DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute("SELECT telegram_chat_id FROM Users WHERE exchange_id = 'alpaca' AND is_active = 1")
+        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != ''")
         rows = c.fetchall()
         
     if not rows:
@@ -334,7 +334,7 @@ async def run_real_trader_execution(today_opens):
     for r in rows:
         chat_id = r['telegram_chat_id']
         user = database.get_user(chat_id)
-        if not user or user.get("strategy") != "Sherpa Velocity Pullback":
+        if not user or user.get("active_stock_strategy") != "Sherpa Velocity Pullback":
             continue
             
         logger.info(f"Processing real trade execution for user chat_id={chat_id}...")

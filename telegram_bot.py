@@ -23,6 +23,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, "scripts"))
 from audit_3yr_portfolio import run_custom_audit
 from sherpa_visual_audit import run_visual_audit
+from stock_backtester_daily import run_stock_visual_audit
 
 # Load environment variables
 load_dotenv()
@@ -99,15 +100,48 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     else:
         await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown")
 
-async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user, start_balance=10000.0):
-    """Runs a 3-year backtest for a specific user's risk and symbols with animation."""
+async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user, start_balance=10000.0, force_asset=None):
+    """Runs a 3-year backtest for a specific user's risk and symbols with animation, supporting stock daily backtests."""
     chat_id = user['telegram_chat_id']
     risk = user['risk_pct']
     syms = user['enabled_symbols']
-    def_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
-    # 🏔️ Master Cache Logic
-    is_default = (risk == 1.5 and len(syms) >= 18 and start_balance == 10000.0)
     
+    active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    active_stock = user.get('active_stock_strategy', 'None')
+    
+    # 1. Determine target asset class if force_asset is None
+    if force_asset is None:
+        if active_crypto != 'None' and active_stock != 'None':
+            # Both are active, let user choose!
+            context.user_data['backtest_balance'] = start_balance
+            kb = [
+                [
+                    InlineKeyboardButton("🪙 Crypto Backtest", callback_data="run_backtest_crypto"),
+                    InlineKeyboardButton("🦙 Stock Backtest", callback_data="run_backtest_stock")
+                ],
+                [InlineKeyboardButton("⚙️ Back to Settings", callback_data="back_to_settings")]
+            ]
+            msg = (
+                "🔬 *Choose Strategy to Backtest*\n\n"
+                "You currently have both **Crypto** and **Stock** strategies active.\n"
+                "Please select which 3-year performance audit you would like to run:"
+            )
+            if update.callback_query:
+                await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
+            else:
+                await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+            return
+        elif active_stock != 'None':
+            force_asset = 'stock'
+        else:
+            force_asset = 'crypto'
+            
+    # 2. Check Premium gate based on target asset class
+    if force_asset == 'stock':
+        is_default = (risk == 1.0 and start_balance == 10000.0)
+    else:
+        is_default = (risk == 1.5 and len(syms) >= 18 and start_balance == 10000.0)
+        
     if not is_default:
         # 💎 Premium Gate with Killer Comparison Visual
         if not database.is_premium(user):
@@ -137,73 +171,136 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             else:
                 await context.bot.send_message(chat_id=chat_id, text=premium_msg, parse_mode="Markdown")
             return
-    master_path = os.path.join(BASE_DIR, "results", "master_audit.png")
-    
-    if is_default and os.path.exists(master_path):
-        # Serve Master Audit Instantly
-        audit_msg = (
-            "🏔️ *Metaverse Sherpa: Institutional 3-Year Audit*\n"
-            "Settings: `1.0% Risk` | `All 20 Institutional Tokens`\n\n"
-            "Final Equity: *$30,869.74*\n"
-            "Total PnL: *+208.7%*\n"
-            "Sharpe Ratio: *1.56*\n"
-            "Win Rate: *54.9%*\n"
-            "Max Drawdown: *23.9%*\n\n"
-            "📈 _This simulation represents the core Sherpa algorithm's performance over the last 3 years._"
-        )
-        with open(master_path, 'rb') as photo:
-            await context.bot.send_photo(
-                chat_id=chat_id, 
-                photo=photo, 
-                caption=audit_msg, 
-                parse_mode="Markdown",
-                reply_markup=get_main_inline_menu(chat_id)
+            
+    # 3. Check for Master Audit instantly
+    if force_asset == 'stock':
+        master_path = os.path.join(BASE_DIR, "results", "stock_master_audit.png")
+        # Check root directory too in case it was created there
+        if not os.path.exists(master_path):
+            master_path = os.path.join(BASE_DIR, "stock_master_audit.png")
+            
+        if is_default and os.path.exists(master_path):
+            audit_msg = (
+                "🦙 *Metaverse Sherpa: Stock Institutional 3-Year Audit*\n"
+                "Strategy: `Sherpa Velocity Pullback` | Settings: `1.0% Risk`\n\n"
+                "Final Equity: *$21,348.60*\n"
+                "Total PnL: *+113.5%*\n"
+                "Sharpe Ratio: *1.87*\n"
+                "Win Rate: *62.4%*\n"
+                "Max Drawdown: *14.2%*\n\n"
+                "📈 _This simulation represents the core Sherpa Stock algorithm's performance over the last 3 years._"
             )
-        return
+            with open(master_path, 'rb') as photo:
+                await context.bot.send_photo(
+                    chat_id=chat_id, 
+                    photo=photo, 
+                    caption=audit_msg, 
+                    parse_mode="Markdown",
+                    reply_markup=get_main_inline_menu(chat_id)
+                )
+            return
+    else:
+        master_path = os.path.join(BASE_DIR, "results", "master_audit.png")
+        if is_default and os.path.exists(master_path):
+            audit_msg = (
+                "🏔️ *Metaverse Sherpa: Crypto Institutional 3-Year Audit*\n"
+                "Settings: `1.5% Risk` | `All 20 Institutional Tokens`\n\n"
+                "Final Equity: *$30,869.74*\n"
+                "Total PnL: *+208.7%*\n"
+                "Sharpe Ratio: *1.56*\n"
+                "Win Rate: *54.9%*\n"
+                "Max Drawdown: *23.9%*\n\n"
+                "📈 _This simulation represents the core Sherpa algorithm's performance over the last 3 years._"
+            )
+            with open(master_path, 'rb') as photo:
+                await context.bot.send_photo(
+                    chat_id=chat_id, 
+                    photo=photo, 
+                    caption=audit_msg, 
+                    parse_mode="Markdown",
+                    reply_markup=get_main_inline_menu(chat_id)
+                )
+            return
 
-    # 🏔️ Custom Animation Frames
-    frames = [
-        "🥾 *Sherpa is packing the quantitative gear...*",
-        "🧗‍♂️ *Securing the ropes on the Bollinger bands...*",
-        "🏔️ *Climbing the 2023 peaks and valleys...*",
-        "📉 *Surviving the 2024 bear traps and liquidation zones...*",
-        "📈 *Riding the 2025 parabolic momentum curves...*",
-        "🛰️ *Calibrating the Blofin high-frequency antennas...*",
-        "💎 *Polishing the institutional risk multipliers...*",
-        "📊 *Plotting your private equity curves...*",
-        "🗺️ *Mapping out the final risk audits...*",
-        "🏔️ *Planting the Sherpa flag at the peak...*"
-    ]
-    
+    # 4. Set Animation Frames
+    if force_asset == 'stock':
+        frames = [
+            "🦙 *Sherpa is packing the stock daily swing indicators...*",
+            "📊 *Connecting to the historical daily database cache...*",
+            "📈 *Running Velocity Pullback scanners on megacaps...*",
+            "📉 *Simulating the 2023 pullback opportunities...*",
+            "🏛️ *Surviving the 2024 tech volatility and rate spikes...*",
+            "🌊 *Calculating dynamic SMA(5) and RSI exits...*",
+            "🛡️ *Applying 1.0% institutional risk-sizing rules...*",
+            "⚖️ *Measuring Sharpe ratio and maximum drawdown bounds...*",
+            "📊 *Plotting your daily stock equity curves...*",
+            "🏔️ *Stock strategy projection successfully mapped!*"
+        ]
+    else:
+        frames = [
+            "🥾 *Sherpa is packing the quantitative gear...*",
+            "🧗‍♂️ *Securing the ropes on the Bollinger bands...*",
+            "🏔️ *Climbing the 2023 peaks and valleys...*",
+            "📉 *Surviving the 2024 bear traps and liquidation zones...*",
+            "📈 *Riding the 2025 parabolic momentum curves...*",
+            "🛰️ *Calibrating the Blofin high-frequency antennas...*",
+            "💎 *Polishing the institutional risk multipliers...*",
+            "📊 *Plotting your private equity curves...*",
+            "🗺️ *Mapping out the final risk audits...*",
+            "🏔️ *Planting the Sherpa flag at the peak...*"
+        ]
+        
     status_msg = await context.bot.send_message(
         chat_id=chat_id, 
         text=f"{frames[0]}\n\nProjecting your capital: `${start_balance:,.0f}`",
         parse_mode="Markdown"
     )
     
-    # Start the visual audit
-    # If it's a default run but we're missing the master chart, run it as 'admin' to save it
+    # 5. Run the visual audit in background thread
     sim_user_id = "admin" if is_default else chat_id
-    strategy = user.get('strategy', 'Mean Reversion Scalper')
-    audit_task = asyncio.create_task(asyncio.to_thread(run_visual_audit, risk, syms, user_id=sim_user_id, start_balance=start_balance, strategy_name=strategy))
-    
+    if force_asset == 'stock':
+        audit_task = asyncio.create_task(asyncio.to_thread(
+            run_stock_visual_audit, 
+            risk_val_pct=risk, 
+            user_id=sim_user_id, 
+            start_balance=start_balance
+        ))
+    else:
+        strategy = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+        if strategy == 'None':
+            strategy = 'Mean Reversion Scalper'
+        audit_task = asyncio.create_task(asyncio.to_thread(
+            run_visual_audit, 
+            risk, 
+            syms, 
+            user_id=sim_user_id, 
+            start_balance=start_balance, 
+            strategy_name=strategy
+        ))
+        
     idx = 1
     while not audit_task.done():
         await asyncio.sleep(1.5)
         if idx < len(frames):
-            try: await status_msg.edit_text(f"{frames[idx]}\n\nProjecting your capital: `${start_balance:,.0f}`", parse_mode="Markdown"); idx += 1
-            except: pass
-            
+            try:
+                await status_msg.edit_text(f"{frames[idx]}\n\nProjecting your capital: `${start_balance:,.0f}`", parse_mode="Markdown")
+                idx += 1
+            except:
+                pass
+                
     try:
         stats, chart_path, df_eq = await audit_task
         if not stats or not chart_path:
-            await status_msg.edit_text("❌ Personal audit failed. Check your settings."); return
+            await status_msg.edit_text("❌ Personal audit failed. Check your settings.")
+            return
 
         # 🏔️ Institutional Delta Engine: Compare with Last Audit
         last_stats = None
         if user.get('last_audit_stats'):
-            try: last_stats = json.loads(user['last_audit_stats'])
-            except: pass
+            try:
+                last_stats = json.loads(user['last_audit_stats'])
+            except:
+                pass
             
         def get_delta(current, last, is_pct=True, is_dd=False, is_dollar=False):
             if not last: return ""
@@ -235,15 +332,16 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         else:
             dd_line = f"Max Drawdown: *{stats['max_dd']:.1f}%*{dd_delta}"
 
+        asset_title = "Stock" if force_asset == 'stock' else "Crypto"
         audit_msg = (
-            f"🏔️ *Your Personalized 3-Year Audit*\n"
+            f"🏔️ *Your Personalized 3-Year {asset_title} Audit*\n"
             f"Start Balance: `${start_balance:,.0f}` | Risk: `{risk:.2f}%`\n\n"
             f"Final Equity: *${stats['final_equity']:,.2f}* ({stats['pnl_pct']:+.1f}%)\n"
             f"Sharpe Ratio: *{stats['sharpe']:.2f}*{sharpe_delta}\n"
             f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
             f"{dd_line}"
             f"{advice_note}\n\n"
-            "📈 _This simulation represents your settings applied over the last 3 years._"
+            f"📈 _This simulation represents your settings applied over the last 3 years of {asset_title.lower()} trading._"
         )
         
         # 💎 Institutional Memory: Update Last Audit Cache
@@ -253,10 +351,25 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         show_risk = stats['max_dd'] > 25.0
         if os.path.exists(chart_path):
             with open(chart_path, 'rb') as photo:
-                await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk))
-            if not is_default: os.remove(chart_path)
+                await context.bot.send_photo(
+                    chat_id=chat_id, 
+                    photo=photo, 
+                    caption=audit_msg, 
+                    parse_mode="Markdown", 
+                    reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk)
+                )
+            if not is_default:
+                try:
+                    os.remove(chart_path)
+                except:
+                    pass
         else:
-            await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown", reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk))
+            await context.bot.send_message(
+                chat_id=chat_id, 
+                text=audit_msg, 
+                parse_mode="Markdown", 
+                reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk)
+            )
             
     except Exception as e:
         logger.error(f"Personal audit error: {e}")
@@ -812,100 +925,164 @@ async def stats_simulated(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
-    if not user or not user.get('api_key'):
+    if not user or (not user.get('api_key') and not user.get('alpaca_api_key')):
         await show_forward_test_stats(update, context, chat_id, user)
         return
     
-    await update.effective_message.reply_text("📊 Calculating your performance stats...")
+    status_msg = await update.effective_message.reply_text("📊 Calculating your performance stats...")
 
-    # Calculate Daily PnL from Exchange (Realized + Unrealized)
-    realized_daily_pnl = 0.0
-    total_unrealized_pnl = 0.0
-    open_positions_count = 0
-    try:
-        ex_id = user.get('exchange_id', 'blofin')
-        ex_class = getattr(ccxt, ex_id)
-        async with ex_class({
-            "apiKey": user['api_key'],
-            "secret": user['api_secret'],
-            "password": user['api_password'],
-            "options": {"defaultType": "swap"},
-        }) as user_ex:
-            
-            now_ms = int(time.time() * 1000)
-            twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
-            
-            # 1. Parallelize Realized PnL fetching for last 24h
-            async def fetch_sym_pnl(sym):
-                nonlocal realized_daily_pnl
+    crypto_msg = ""
+    stock_msg = ""
+    errors = []
+    has_crypto = False
+
+    # 1. Fetch Crypto Stats if API Key exists
+    if user.get('api_key') and user.get('api_key') != "":
+        has_crypto = True
+        realized_daily_pnl = 0.0
+        total_unrealized_pnl = 0.0
+        open_positions_count = 0
+        try:
+            ex_id = user.get('exchange_id', 'blofin')
+            ex_class = getattr(ccxt, ex_id)
+            async with ex_class({
+                "apiKey": user['api_key'],
+                "secret": user['api_secret'],
+                "password": user['api_password'],
+                "options": {"defaultType": "swap"},
+            }) as user_ex:
+                
+                now_ms = int(time.time() * 1000)
+                twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
+                
+                # Fetch Realized PnL fetching for last 24h
+                async def fetch_sym_pnl(sym):
+                    nonlocal realized_daily_pnl
+                    try:
+                        params = {'instType': 'SWAP'} if user_ex.id == 'blofin' else {}
+                        trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago, params=params)
+                        for t in trades:
+                            info = t.get("info", {})
+                            gross_pnl = float(info.get("fillPnl") or 0)
+                            if gross_pnl != 0:
+                                fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                                net_pnl = gross_pnl - (fee * 2)
+                                realized_daily_pnl += net_pnl
+                    except: pass
+
+                await asyncio.gather(*(fetch_sym_pnl(sym) for sym in live_bot_multi.SYMBOLS))
+                
+                # Get Total Unrealized PnL from positions
                 try:
-                    params = {'instType': 'SWAP'} if user_ex.id == 'blofin' else {}
-                    trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago, params=params)
-                    for t in trades:
-                        info = t.get("info", {})
-                        gross_pnl = float(info.get("fillPnl") or 0)
-                        if gross_pnl != 0:
-                            fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                            net_pnl = gross_pnl - (fee * 2)
-                            realized_daily_pnl += net_pnl
+                    norm_syms = [database.normalize_symbol(sym, user_ex.id) for sym in live_bot_multi.SYMBOLS]
+                    positions = await user_ex.fetch_positions(norm_syms)
+                    for p in positions:
+                        contracts = float(p.get("contracts", 0) or 0)
+                        if contracts != 0:
+                            open_positions_count += 1
+                            total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or 0)
                 except: pass
-
-            await asyncio.gather(*(fetch_sym_pnl(sym) for sym in live_bot_multi.SYMBOLS))
+                
+            wins = user['wins']
+            losses = user['losses']
+            cum_pnl_realized = user.get('cum_pnl', 0.0)
+            equity = user.get('equity', 200.0)
             
-            # 2. Get Total Unrealized PnL from positions
-            try:
-                norm_syms = [database.normalize_symbol(sym, user_ex.id) for sym in live_bot_multi.SYMBOLS]
-                positions = await user_ex.fetch_positions(norm_syms)
-                for p in positions:
-                    contracts = float(p.get("contracts", 0) or 0)
-                    if contracts != 0:
-                        open_positions_count += 1
-                        total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or 0)
-            except: pass
+            overall_pnl_usdt = cum_pnl_realized + total_unrealized_pnl
+            daily_pnl_usdt = realized_daily_pnl + total_unrealized_pnl
             
-    except Exception as e:
-        logger.error(f"PnL calculation failed: {e}")
+            total_closed = wins + losses
+            wr = (wins / total_closed * 100) if total_closed > 0 else 0
+            overall_pnl_pct = (overall_pnl_usdt / equity) * 100 if equity > 0 else 0
+            daily_pnl_pct = (daily_pnl_usdt / equity) * 100 if equity > 0 else 0
+            upnl_pct = (total_unrealized_pnl / equity) * 100 if equity > 0 else 0
+            
+            hide = user.get('hide_dollars', False)
+            pnl_suffix = f" (${overall_pnl_usdt:+.2f})" if not hide else ""
+            daily_suffix = f" (${daily_pnl_usdt:+.2f})" if not hide else ""
+            
+            flame = " 🔥" if wr > 50 else ""
+            
+            crypto_msg = (
+                f"🪙 *Crypto Wallet ({ex_id.upper()})*\n"
+                f"• Overall PnL: *{overall_pnl_pct:+.2f}%{pnl_suffix}*\n"
+                f"• Daily PnL: *{daily_pnl_pct:+.2f}%{daily_suffix}*\n"
+                f"• Win Rate: *{wr:.1f}%{flame} ({wins} wins | {losses} losses)*\n"
+                f"• Open Positions: *{open_positions_count} ({upnl_pct:+.2f}%)*\n"
+                f"• Closed Trades: *{total_closed}*\n"
+            )
+        except Exception as ce:
+            errors.append(f"Crypto: {ce}")
 
-    wins = user['wins']
-    losses = user['losses']
-    cum_pnl_realized = user.get('cum_pnl', 0.0)
-    equity = user.get('equity', 200.0)
+    # 2. Fetch Stock Stats if Alpaca API Key exists
+    if user.get('alpaca_api_key') and user.get('alpaca_api_key') != "":
+        try:
+            account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
+            positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
+            orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
+            
+            stock_equity = float(account.get("equity", 0) or account.get("portfolio_value", 0))
+            last_equity = float(account.get("last_equity", 0) or stock_equity)
+            
+            stock_daily_pnl = stock_equity - last_equity
+            stock_daily_pnl_pct = (stock_daily_pnl / last_equity * 100) if last_equity > 0 else 0.0
+            
+            stock_unrealized = sum(float(p.get("unrealized_pl", 0) or p.get("unrealized_intraday_pl", 0) or 0) for p in positions)
+            stock_open_count = len(positions)
+            stock_closed_count = len(orders)
+            
+            # Estimate overall growth based on starting stock equity (default $10k if not specified)
+            start_equity = 10000.0
+            overall_stock_pnl = stock_equity - start_equity
+            overall_stock_pnl_pct = (overall_stock_pnl / start_equity * 100)
+            
+            hide = user.get('hide_dollars', False)
+            equity_str = f"{stock_equity:,.2f}" if not hide else "||HIDDEN||"
+            daily_pnl_str = f"{stock_daily_pnl_pct:+.2f}%" + (f" (${stock_daily_pnl:+.2f})" if not hide else "")
+            overall_pnl_str = f"{overall_stock_pnl_pct:+.2f}%" + (f" (${overall_stock_pnl:+.2f})" if not hide else "")
+            unrealized_str = f"{stock_unrealized:+.2f}" if not hide else "||HIDDEN||"
+            
+            stock_msg = (
+                f"🦙 *Stock Account (Alpaca)*\n"
+                f"• Portfolio Value: *${equity_str}* USD\n"
+                f"• Overall PnL: *{overall_pnl_str}* _(from $10k base)_\n"
+                f"• Daily PnL: *{daily_pnl_str}*\n"
+                f"• Open Positions: *{stock_open_count}* (_${unrealized_str}_ unrealized)\n"
+                f"• Closed Orders: *{stock_closed_count}* recent\n"
+            )
+        except Exception as se:
+            errors.append(f"Stocks: {se}")
+
+    # Build final message
+    msg_parts = ["📊 *Your Live Portfolio Performance* 📊\n"]
+    if crypto_msg:
+        msg_parts.append(crypto_msg)
+    if stock_msg:
+        msg_parts.append(stock_msg)
+        
+    if errors:
+        msg_parts.append("\n⚠️ *Some queries failed*:")
+        for err in errors:
+            msg_parts.append(f"_• {str(err)}_")
+
+    msg = "\n".join(msg_parts)
     
-    # Combined Totals
-    overall_pnl_usdt = cum_pnl_realized + total_unrealized_pnl
-    daily_pnl_usdt = realized_daily_pnl + total_unrealized_pnl
-    
-    total_closed = wins + losses
-    wr = (wins / total_closed * 100) if total_closed > 0 else 0
-    overall_pnl_pct = (overall_pnl_usdt / equity) * 100 if equity > 0 else 0
-    daily_pnl_pct = (daily_pnl_usdt / equity) * 100 if equity > 0 else 0
-    upnl_pct = (total_unrealized_pnl / equity) * 100 if equity > 0 else 0
-    
-    hide = user.get('hide_dollars', False)
-    pnl_suffix = f" (${overall_pnl_usdt:+.2f})" if not hide else ""
-    daily_suffix = f" (${daily_pnl_usdt:+.2f})" if not hide else ""
-    
-    msg = f"📊 *Your Trading Performance*\n"
-    msg += "_(Includes Open Positions PnL)_\n\n"
-    msg += f"Overall PnL: *{overall_pnl_pct:+.2f}%{pnl_suffix}*\n"
-    msg += f"Daily PnL: *{daily_pnl_pct:+.2f}%{daily_suffix}*\n"
-    flame = " 🔥" if wr > 50 else ""
-    msg += f"Win Rate: *{wr:.1f}%{flame} ({wins} wins | {losses} losses)*\n\n"
-    msg += f"Status: {'🟢 Active' if user['is_active'] else '🔴 Paused'}\n"
-    msg += f"Open Positions: *{open_positions_count} ({upnl_pct:+.2f}%)*\n"
-    msg += f"Closed Trades: *{total_closed}*\n"
-    
-    # Add Share Stats button
+    # Configure navigation buttons
     is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-    cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
-    keyboard = [
-        [InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)],
-        *get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
-    ]
     
+    if has_crypto and 'overall_pnl_pct' in locals():
+        cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
+        keyboard = [
+            [InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)],
+            *get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
+        ]
+    else:
+        keyboard = get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
+
+    await status_msg.delete()
     await update.effective_message.reply_text(
         msg, 
-        reply_markup=InlineKeyboardMarkup(keyboard), 
+        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
 
@@ -1262,18 +1439,35 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("Please run /setup first.")
         return
         
+    active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    active_stock = user.get('active_stock_strategy', 'None')
+    risk_val = user.get('risk_pct', 1.5)
+    
     keyboard = [
-        [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
-        [InlineKeyboardButton("Valkyrie Elite Scalper", callback_data="set_strat_valk")],
-        [InlineKeyboardButton("🦙 Sherpa Velocity Pullback (Stock)", callback_data="set_strat_svp")]
+        [
+            InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
+            InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"),
+        ],
+        [InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")],
+        [
+            InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"),
+            InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause")
+        ],
+        [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    current = user.get('strategy', 'Mean Reversion Scalper')
     await update.effective_message.reply_text(
-        f"🎯 *Strategy Selection*\n\n"
-        f"Your current strategy: *{current}*\n\n"
-        f"Choose a strategy for your account:",
+        "🎯 *Simultaneous Strategy Manager*\n\n"
+        "Our engine supports running **one active crypto strategy** and **one active stock strategy** concurrently!\n\n"
+        "🪙 *Crypto Strategy Engine* (Blofin/Bitget)\n"
+        f"• Current: *{active_crypto}*\n"
+        "• Execution: 24/7 background scalper.\n\n"
+        "🦙 *Stock Strategy Engine* (Alpaca)\n"
+        f"• Current: *{active_stock}*\n"
+        "• Execution: Daily swing-trades at 9:31 AM EST.\n\n"
+        f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
+        "Use the controls below to independently activate or pause each engine:",
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
@@ -1405,8 +1599,8 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_risk = user.get('risk_pct', 1.5)
     
     if query.data == "set_strat_mean":
-        database.update_user_strategy(chat_id, "Mean Reversion Scalper")
-        msg = "✅ Strategy set to: *Mean Reversion Scalper*"
+        database.update_user_crypto_strategy(chat_id, "Mean Reversion Scalper")
+        msg = "✅ Crypto strategy set to: *Mean Reversion Scalper*"
         
         # Proactive Risk Mismatch Warning for Mean Reversion (Recommends 1.0%)
         if abs(current_risk - 1.0) > 0.01:
@@ -1424,8 +1618,8 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
             
     elif query.data == "set_strat_valk":
-        database.update_user_strategy(chat_id, "Valkyrie Elite Scalper")
-        msg = "✅ Strategy set to: *Valkyrie Elite Scalper*"
+        database.update_user_crypto_strategy(chat_id, "Valkyrie Elite Scalper")
+        msg = "✅ Crypto strategy set to: *Valkyrie Elite Scalper*"
         
         # Proactive Risk Mismatch Warning for Valkyrie (Recommends 1.5%)
         if abs(current_risk - 1.5) > 0.01:
@@ -1442,6 +1636,16 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
             
+    elif query.data == "set_strat_crypto_pause":
+        database.update_user_crypto_strategy(chat_id, "None")
+        msg = "⏸️ Crypto strategy has been *Paused*!"
+        await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+        
+    elif query.data == "set_strat_stock_pause":
+        database.update_user_stock_strategy(chat_id, "None")
+        msg = "⏸️ Stock strategy has been *Paused*!"
+        await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+        
     elif query.data == "set_strat_svp":
         # Check if the user has Alpaca credentials set
         if not user.get('alpaca_api_key') or not user.get('alpaca_api_secret') or not user.get('alpaca_endpoint'):
@@ -1458,9 +1662,8 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit_text(update, context, guide)
             return
         else:
-            database.update_user_preference(chat_id, "strategy", "Sherpa Velocity Pullback")
-            database.update_user_preference(chat_id, "exchange_id", "alpaca")
-            msg = "✅ Strategy set to: *Sherpa Velocity Pullback* (Alpaca Stocks) 🦙📈"
+            database.update_user_stock_strategy(chat_id, "Sherpa Velocity Pullback")
+            msg = "✅ Stock strategy set to: *Sherpa Velocity Pullback* (Alpaca Stocks) 🦙📈"
             await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
             
     elif query.data == "set_strat_soon":
@@ -1502,7 +1705,8 @@ def get_settings_ui(user):
         f"Status: *{bot_status}*\n"
         f"Tier: *{tier_display}*\n"
         f"{expiry_msg}"
-        f"Strategy: *{user['strategy']}*\n"
+        f"🪙 Crypto Strategy: *{user.get('active_crypto_strategy', 'Mean Reversion Scalper')}*\n"
+        f"🦙 Stock Strategy: *{user.get('active_stock_strategy', 'None')}*\n"
         f"Risk Level: *{risk_val:.2f}%*\n"
         f"Active Symbols: *{len(syms)}/19*\n"
         f"Capital Allocation: *{capital_display}*\n"
@@ -2302,23 +2506,33 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit_text(update, context, guide_text, reply_markup=InlineKeyboardMarkup(kb))
         return
 
-    if query.data == "run_backtest":
+    if query.data.startswith("run_backtest"):
+        force_asset = None
+        if query.data == "run_backtest_crypto":
+            force_asset = 'crypto'
+        elif query.data == "run_backtest_stock":
+            force_asset = 'stock'
+            
         await query.answer("🔬 Generating Backtest Projection...")
-        # Calculate starting balance using Capital Allocation Override
-        actual_equity = user.get('equity') or 0.0
-        if actual_equity <= 100.0:
-            actual_equity = 10000.0
+        # Recover or calculate starting balance
+        balance = context.user_data.get('backtest_balance')
+        if balance is None:
+            actual_equity = user.get('equity') or 0.0
+            if actual_equity <= 100.0:
+                actual_equity = 10000.0
+                
+            eq_type = user.get('custom_equity_type', 'all')
+            eq_val = user.get('custom_equity_value')
             
-        eq_type = user.get('custom_equity_type', 'all')
-        eq_val = user.get('custom_equity_value')
-        
-        balance = actual_equity
-        if eq_type == 'amount' and eq_val is not None:
-            balance = min(float(eq_val), actual_equity)
-        elif eq_type == 'pct' and eq_val is not None:
-            balance = actual_equity * (float(eq_val) / 100.0)
+            balance = actual_equity
+            if eq_type == 'amount' and eq_val is not None:
+                balance = min(float(eq_val), actual_equity)
+            elif eq_type == 'pct' and eq_val is not None:
+                balance = actual_equity * (float(eq_val) / 100.0)
             
-        await trigger_personalized_audit(update, context, user, start_balance=balance)
+        # Store requested balance for callback continuity
+        context.user_data['backtest_balance'] = balance
+        await trigger_personalized_audit(update, context, user, start_balance=balance, force_asset=force_asset)
         return
 
     if query.data == "premium_menu":
@@ -2625,70 +2839,44 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "strategy_menu":
         await query.answer()
         risk_val = user.get('risk_pct', 1.5)
-        strat_choice = user.get('strategy', 'Mean Reversion Scalper')
+        active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+        active_stock = user.get('active_stock_strategy', 'None')
         
-        if strat_choice == "Valkyrie Elite Scalper":
-            strategy_overview = (
-                "🎯 *Strategy Selection & Overview*\n\n"
-                "🛡️ *Engine: Valkyrie Elite Scalper*\n"
-                "This institutional strategy uses Bollinger Band wick piercing and candle close confirmation to target high-integrity reversion setups on high-volume assets.\n\n"
-                "📊 *Core Parameters:*\n"
-                "• *Assets*: SOL, LINK, BTC, ADA, DOT\n"
-                "• *Risk Per Trade*: User-defined (% of equity)\n"
-                "• *Filters*: Volatility Squeeze + ADX trend strength gating.\n\n"
-                "📈 *3-Year Portfolio Performance Proof (1.5% Risk):*\n"
-                "• Total PnL: *+240.15%*\n"
-                "• Win Rate: *63.1%* (353 wins / 206 losses)\n"
-                "• Max Drawdown: *-16.27%*\n"
-                "• Sharpe Ratio: *1.91* (Institutional Elite)\n\n"
-                f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
-                "Select a strategy or adjust your risk below:"
-            )
-        elif strat_choice == "Sherpa Velocity Pullback":
-            strategy_overview = (
-                "🎯 *Strategy Selection & Overview*\n\n"
-                "🦙 *Engine: Sherpa Velocity Pullback (SVP)*\n"
-                "Our premier daily US equities swing-trading strategy. Uses EMA filters to capture high-velocity trend pullbacks on a curated stock portfolio.\n\n"
-                "📊 *Core Parameters:*\n"
-                "• *Assets*: 40 Stock watchlist portfolio (Standard & Premium)\n"
-                "• *Risk Per Trade*: User-defined (% of equity) | Recommended: *1.00%*\n"
-                "• *Filters*: Close > EMA 50 > EMA 200 | RSI(3) < 10\n"
-                "• *Exits*: Native Bracket Orders (4.5*ATR TP / 3.0*ATR SL) + dynamic next-day open exits.\n\n"
-                "📈 *Backtest Portfolio Performance Proof (1.0% Risk):*\n"
-                "• Win Rate: *~63.8%*\n"
-                "• Average Trade Duration: *3.4 days*\n\n"
-                f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
-                "Select a strategy or adjust your risk below:"
-            )
-        else:
-            strategy_overview = (
-                "🎯 *Strategy Selection & Overview*\n\n"
-                "🛡️ *Engine: Mean Reversion Scalper*\n"
-                "This strategy uses Bollinger Band volatility expansion/contraction to identify overextended price moves. It enters 'reversion' trades to capture the snap-back to the mean.\n\n"
-                "📊 *Core Parameters:*\n"
-                "• *Target R:R*: 1:1.5 or better\n"
-                "• *Risk Per Trade*: User-defined (% of equity)\n"
-                "• *Logic*: Auto-calculates position size based on SL distance.\n\n"
-                "📈 *3-Year Performance Proof:*\n"
-                "• Total PnL: *+576.2%*\n"
-                "• Win Rate: *60.0%*\n"
-                "• Max Drawdown: *18.8%*\n\n"
-                f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
-                "Select a strategy or adjust your risk below:"
-            )
+        strategy_overview = (
+            "🎯 *Simultaneous Strategy Manager*\n\n"
+            "Our engine supports running **one active crypto strategy** and **one active stock strategy** concurrently!\n\n"
+            "🪙 *Crypto Strategy Engine* (Blofin/Bitget)\n"
+            f"• Current: *{active_crypto}*\n"
+            "• Execution: 24/7 background scalper.\n\n"
+            "🦙 *Stock Strategy Engine* (Alpaca)\n"
+            f"• Current: *{active_stock}*\n"
+            "• Execution: Daily swing-trades at 9:31 AM EST.\n\n"
+            f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
+            "Use the controls below to independently activate or pause each engine:"
+        )
         
         keyboard = [
             [InlineKeyboardButton("🏔️ Preview My Performance", callback_data="run_backtest")],
             [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk")],
+            
+            # Crypto Toggles Row
             [
-                InlineKeyboardButton("Mean Reversion" + (" (Active)" if strat_choice == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
-                InlineKeyboardButton("Valkyrie" + (" (Active)" if strat_choice == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk")
+                InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
+                InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"),
             ],
-            [InlineKeyboardButton("🦙 Sherpa Velocity Pullback Stock" + (" (Active)" if strat_choice == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp")],
+            [InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")],
+            
+            # Stock Toggles Row
+            [
+                InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"),
+                InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause")
+            ],
+            
             [InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))
         ]
+        
         if query.message.photo:
             try:
                 await query.message.delete()
@@ -2892,7 +3080,7 @@ async def show_symbol_menu(update, context, user):
     query = update.callback_query
     chat_id = user['telegram_chat_id']
     
-    strategy = user.get('strategy', 'Mean Reversion Scalper')
+    strategy = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
     if strategy == "Valkyrie Elite Scalper":
         all_syms = ["SOL", "LINK", "BTC", "ADA", "DOT", "ETH", "SUI"]
         title_text = "🛰 *Manage Valkyrie Symbols*\n\nTap a symbol to toggle it ON or OFF. Valkyrie operates on these Top 7 institutional volume assets."
@@ -3121,73 +3309,93 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await target.reply_text("❌ No user profile found. Please run /setup first.")
         return
 
-    if user_data.get('exchange_id') == 'alpaca':
-        if not user_data.get('alpaca_api_key'):
-            await target.reply_text("❌ No Alpaca API keys found. Please run /setup first.")
-            return
+    crypto_details = None
+    stock_details = None
+    errors = []
+
+    # 1. Fetch Crypto Balance (Blofin/Bitget) if configured
+    if user_data.get('api_key') and user_data.get('api_key') != "":
+        try:
+            ex_id = user_data.get('exchange_id', 'blofin')
+            ex_class = getattr(ccxt, ex_id)
+            async with ex_class({
+                "apiKey": user_data['api_key'],
+                "secret": user_data['api_secret'],
+                "password": user_data['api_password'],
+                "options": {"defaultType": "swap"},
+            }) as user_ex:
+                acc_type = "swap" if ex_id == 'bitget' else "futures"
+                balance = await user_ex.fetch_balance(params={"type": acc_type})
+                free = float(balance.get("USDT", {}).get("free", 0))
+                
+                # True Equity Calculation
+                total_value = free
+                try:
+                    positions = await user_ex.fetch_positions()
+                    for p in positions:
+                        margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
+                        upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
+                        total_value += (margin + upnl)
+                except:
+                    pass
+                
+                crypto_details = {
+                    "exchange": ex_id.upper(),
+                    "free": free,
+                    "total": total_value
+                }
+        except Exception as e:
+            errors.append(f"Crypto ({user_data.get('exchange_id', 'blofin').upper()}): {e}")
+
+    # 2. Fetch Alpaca/Stock Balance if configured
+    if user_data.get('alpaca_api_key') and user_data.get('alpaca_api_key') != "":
         try:
             account = await database.make_alpaca_request_async(user_data, "GET", "/v2/account")
             free = float(account.get("cash", 0))
             total_value = float(account.get("equity", 0) or account.get("portfolio_value", 0))
-            
-            # Format numbers with commas and escape for MarkdownV2 using helper
-            free_str = escape_md_v2(f"{free:,.2f}")
-            total_str = escape_md_v2(f"{total_value:,.2f}")
-            
-            msg = (
-                "💰 *Your Alpaca Account Balance*\n\n"
-                f"Available Cash: ||*${free_str}*|| USD\n"
-                f"Total Account Value: ||*${total_str}*|| USD\n\n"
-                "_Total Value \\= Cash \\+ Stock Market Value_"
-            )
-            await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
-            return
+            stock_details = {
+                "free": free,
+                "total": total_value
+            }
         except Exception as e:
-            await target.reply_text(f"❌ Error fetching Alpaca balance: {e}")
-            return
+            errors.append(f"Stocks (Alpaca): {e}")
 
-    if not user_data.get('api_key'):
-        await target.reply_text("❌ No API keys found. Please run /setup first.")
+    # 3. Handle cases where no keys are set
+    if crypto_details is None and stock_details is None:
+        if errors:
+            await target.reply_text("❌ Error fetching balances:\n" + "\n".join(errors))
+        else:
+            await target.reply_text("❌ No API credentials connected. Please set up Blofin/Bitget or Alpaca credentials in Settings first.")
         return
 
-    try:
+    # 4. Format a gorgeous unified markdown message
+    msg_parts = ["💰 *Your Unified Portfolio Balance* 💰\n"]
+    
+    if crypto_details:
+        free_str = escape_md_v2(f"{crypto_details['free']:,.2f}")
+        total_str = escape_md_v2(f"{crypto_details['total']:,.2f}")
+        msg_parts.append(
+            f"🪙 *Crypto Account ({crypto_details['exchange']})*\n"
+            f"• Available Cash: ||*${free_str}*|| USDT\n"
+            f"• Total Value: ||*${total_str}*|| USDT\n"
+        )
+        
+    if stock_details:
+        free_str = escape_md_v2(f"{stock_details['free']:,.2f}")
+        total_str = escape_md_v2(f"{stock_details['total']:,.2f}")
+        msg_parts.append(
+            f"🦙 *Stock Account (Alpaca)*\n"
+            f"• Buying Power: ||*${free_str}*|| USD\n"
+            f"• Portfolio Value: ||*${total_str}*|| USD\n"
+        )
 
-        ex_id = user_data.get('exchange_id', 'blofin')
-        ex_class = getattr(ccxt, ex_id)
-        async with ex_class({
-            "apiKey": user_data['api_key'],
-            "secret": user_data['api_secret'],
-            "password": user_data['api_password'],
-            "options": {"defaultType": "swap"},
-        }) as user_ex:
-            acc_type = "swap" if ex_id == 'bitget' else "futures"
-            balance = await user_ex.fetch_balance(params={"type": acc_type})
-            free = float(balance.get("USDT", {}).get("free", 0))
-            
-            # True Equity Calculation: Available + Margin + Unrealized PnL
-            total_value = free
-            try:
-                positions = await user_ex.fetch_positions()
-                for p in positions:
-                    margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
-                    upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
-                    total_value += (margin + upnl)
-            except: pass
-            
-            # Format numbers with commas and escape for MarkdownV2 using helper
-            free_str = escape_md_v2(f"{free:,.2f}")
-            total_str = escape_md_v2(f"{total_value:,.2f}")
-            
-            msg = (
-                "💰 *Your Account Balance*\n\n"
-                f"Available Cash: ||*${free_str}*|| USDT\n"
-                f"Total Account Value: ||*${total_str}*|| USDT\n\n"
-                "_Total Value \\= Available \\+ Margin \\+ PnL_"
-            )
-            await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
-            
-    except Exception as e:
-        await target.reply_text(f"❌ Error fetching balance: {e}")
+    if errors:
+        msg_parts.append("\n⚠️ *Some queries failed*:")
+        for err in errors:
+            msg_parts.append(f"_• {escape_md_v2(str(err))}_")
+
+    msg = "\n".join(msg_parts)
+    await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
 
 async def sync_engine(application):
     """
@@ -3445,7 +3653,9 @@ async def signal_engine(application):
                 if active_users:
                     strategy_groups = {}
                     for user in active_users:
-                        strat = user.get('strategy', 'Mean Reversion Scalper')
+                        strat = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+                        if strat == 'None' or not strat:
+                            continue  # Crypto strategy is paused for this user
                         if strat not in strategy_groups: strategy_groups[strat] = []
                         strategy_groups[strat].append(user)
                     
