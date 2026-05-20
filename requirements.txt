@@ -9,3 +9,10 @@ matplotlib
 mplfinance
 Pillow
 qrcode[pil]
+
+# Future Implementations
+alpaca-py
+pandas-ta
+yfinance
+scipy
+pytz

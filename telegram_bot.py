@@ -3556,6 +3556,44 @@ async def signal_engine(application):
         logger.info("🏔️ Closing Sherpa Signal Task Market Data Manager...")
         await mdm.close()
 
+async def alpaca_equities_engine(application):
+    """
+    Daily background scheduler for Alpaca Stocks Sherpa Velocity Pullback strategy.
+    Runs daily at 9:31 AM EST.
+    """
+    import live_bot_multi_alpaca
+    from zoneinfo import ZoneInfo
+    from datetime import datetime, timedelta
+
+    logger.info("🦙 Starting Alpaca Stocks Daily Scheduler (9:31 AM EST)...")
+    while True:
+        try:
+            tz = ZoneInfo('US/Eastern')
+            now = datetime.now(tz)
+            
+            # Target is 9:31:00 AM EST today
+            target = now.replace(hour=9, minute=31, second=0, microsecond=0)
+            if now >= target:
+                target += timedelta(days=1)
+                
+            wait_time = (target - now).total_seconds()
+            logger.info(f"Alpaca Stocks Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            
+            await asyncio.sleep(wait_time)
+            
+            logger.info("🦙 Waking up! Running daily stock swing execution...")
+            await live_bot_multi_alpaca.main()
+            
+            # Prevent double-fire by sleeping 60 seconds
+            await asyncio.sleep(60)
+            
+        except asyncio.CancelledError:
+            logger.info("🦙 Alpaca Stocks Daily Scheduler task cancelled.")
+            break
+        except Exception as e:
+            logger.error(f"🦙 Alpaca Stocks Daily Scheduler error: {e}")
+            await asyncio.sleep(60)
+
 async def post_init(application: ApplicationBuilder):
     # Set the bot's command menu (the button in the bottom left of Telegram)
     await application.bot.set_my_commands([
@@ -3600,10 +3638,11 @@ async def post_init(application: ApplicationBuilder):
     except Exception as e:
         logger.error(f"Failed to send startup notification: {e}")
 
-    # 🚀 Start Dual-Heartbeat Engine
+    # 🚀 Start Triple-Heartbeat Engine (including Stocks Daily Scheduler)
     task1 = asyncio.create_task(sync_engine(application))
     task2 = asyncio.create_task(signal_engine(application))
-    application.bot_data['bg_tasks'] = [task1, task2]
+    task3 = asyncio.create_task(alpaca_equities_engine(application))
+    application.bot_data['bg_tasks'] = [task1, task2, task3]
 
 async def post_stop(application: ApplicationBuilder):
     """Gracefully cancel background engines to release TCP sockets safely."""
