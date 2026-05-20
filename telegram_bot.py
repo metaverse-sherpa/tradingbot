@@ -3729,9 +3729,7 @@ async def signal_engine(application):
                             strategy = t.get('strategy', 'Mean Reversion Scalper')
                             if status == 'tp':
                                 cheeky_note = (
-                                    f"\n\n🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆\n"
-                                    f"🔥 *Look what you missed out on!* If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆\n"
-                                    f"🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆"
+                                    f"\n\n🔥 *Look what you missed out on!* If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆"
                                 )
                             elif status == 'sl':
                                 cheeky_note = (

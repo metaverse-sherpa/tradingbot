@@ -172,9 +172,7 @@ async def main():
     # 8. Broadcast simulated exit resolution alert
     # Since trigger_simulated_alert hardcodes a Take Profit exit, we format with the cheeky winning message
     cheeky_note = (
-        f"\n\n🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆\n"
-        f"🔥 *Look what you missed out on!* If you had been trading the *{strategy_name}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆\n"
-        f"🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆"
+        f"\n\n🔥 *Look what you missed out on!* If you had been trading the *{strategy_name}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆"
     )
     
     exit_msg = (
