@@ -26,6 +26,10 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0):
     start_time = pd.to_datetime(open_ts, unit='ms')
     where_mask = (df.index >= start_time)
     
+    # Fallback: if open_ts is in the future or no candles match yet, default to showing from the last candle
+    if not where_mask.any():
+        where_mask[-1] = True
+    
     # Create price level series that are NaN before start_time
     tp_line = pd.Series(np.nan, index=df.index)
     entry_line = pd.Series(np.nan, index=df.index)

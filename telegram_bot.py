@@ -1608,6 +1608,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
                 
+    # Clean up admin simulated trade photos when leaving
+    if query.data != "admin_view_simulated_trades":
+        sim_photo_ids = context.user_data.pop('admin_simulated_photo_ids', [])
+        for photo_id in sim_photo_ids:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=photo_id)
+            except:
+                pass
+                
     if query.data.startswith("set_risk_to_"):
         try:
             val = float(query.data.split("_")[-1])
@@ -1857,8 +1866,94 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         await query.answer("Fetching simulated trades...")
+        open_trades = database.get_open_theoretical_trades()
         trades = database.get_recent_theoretical_trades(10)
         
+        photo_ids = []
+        
+        if open_trades:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"🛰️ *Active Simulated Trades Found: {len(open_trades)}*\nGenerating progress charts...",
+                parse_mode="Markdown"
+            )
+            
+            import live_bot_multi
+            import charting
+            import os
+            
+            mdm = live_bot_multi.MarketDataManager()
+            try:
+                for t in open_trades:
+                    sym = t['symbol']
+                    side = t['side']
+                    entry = t['entry_price']
+                    tp = t['tp_price']
+                    sl = t['sl_price']
+                    open_ts = t['open_time']
+                    pos_size = t['position_size']
+                    strat = t['strategy']
+                    
+                    df_chart = await mdm.fetch_ohlcv(sym, "15m")
+                    if df_chart is None:
+                        continue
+                        
+                    current = df_chart['close'].iloc[-1]
+                    pnl_raw = current - entry if side == 'buy' or side == 'long' else entry - current
+                    pnl_pct = (pnl_raw / entry) * 100
+                    pnl_usdt = pos_size * pnl_raw
+                    
+                    side_str = "LONG" if side == 'buy' or side == 'long' else "SHORT"
+                    
+                    chart_file = None
+                    try:
+                        chart_file = await asyncio.to_thread(
+                            charting.generate_trade_chart,
+                            sym,
+                            df_chart,
+                            entry,
+                            tp,
+                            sl,
+                            side_str,
+                            open_ts=open_ts
+                        )
+                    except Exception as chart_err:
+                        logger.error(f"Simulated chart generation failed for {sym}: {chart_err}")
+                    
+                    caption = (
+                        f"🧪 *ACTIVE SIMULATED POSITION* (Forward Test)\n"
+                        f"🤖 Strategy: *{strat}*\n\n"
+                        f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
+                        f"PnL: ||{pnl_pct:+.2f}% ({pnl_usdt:+.2f} USDT)|| of target\n"
+                        f"• Entry: `{entry:.8f}` | SL: `{sl:.8f}` | TP: `{tp:.8f}`"
+                    )
+                    
+                    kb = [[InlineKeyboardButton("🔙 Back to Admin Control", callback_data="admin_command")]]
+                    
+                    if chart_file and os.path.exists(chart_file):
+                        with open(chart_file, 'rb') as photo:
+                            msg = await context.bot.send_photo(
+                                chat_id=chat_id,
+                                photo=photo,
+                                caption=caption,
+                                parse_mode="Markdown",
+                                reply_markup=InlineKeyboardMarkup(kb)
+                            )
+                            photo_ids.append(msg.message_id)
+                    else:
+                        msg = await context.bot.send_message(
+                            chat_id=chat_id,
+                            text=caption,
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup(kb)
+                        )
+            finally:
+                await mdm.close()
+                
+            if photo_ids:
+                context.user_data['admin_simulated_photo_ids'] = photo_ids
+                
+        # Send historical/summary message
         if not trades:
             msg = (
                 "🔬 *Recent Simulated Forward Trades*\n\n"
@@ -1866,16 +1961,13 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Once the 15-minute engine completes signal passes and places simulated trades, they will be logged here."
             )
         else:
-            msg_parts = ["🔬 *Recent Simulated Forward Trades*\n_Showing last 10 activities_\n"]
+            msg_parts = ["🔬 *Recent Simulated Forward Trades Summary*\n_Showing last 10 activities_\n"]
             for t in trades:
-                # Format opened timestamp
                 open_time_str = "???"
                 if t.get('open_time'):
                     open_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t['open_time'] / 1000))
                 
-                direction = "LONG 📈" if t['side'] == 'buy' else "SHORT 📉"
-                
-                # Format Strategy Label
+                direction = "LONG 📈" if t['side'] == 'buy' or t['side'] == 'long' else "SHORT 📉"
                 strat_icon = "📈" if "Mean Reversion" in t['strategy'] else "🛡️"
                 strat_short = "Mean Rev" if "Mean Reversion" in t['strategy'] else "Valkyrie"
                 
@@ -1898,9 +1990,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             msg = "\n".join(msg_parts)
             
-        # Inline keyboard to return to admin
         kb = [[InlineKeyboardButton("🔙 Back to Admin Control", callback_data="admin_command")]]
-        await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
+        
+        if open_trades:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=msg,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(kb)
+            )
+        else:
+            await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
         return
 
     if query.data == "view_strategy_guide":
