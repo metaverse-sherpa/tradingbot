@@ -16,7 +16,7 @@ import bot_ui
 from bot_ui import escape_md_v2, safe_edit_text, get_nav_buttons, get_main_inline_menu, get_admin_keyboard, get_backtest_inline_menu
 import time
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Add scripts directory to path for imports
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -1171,7 +1171,6 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }) as user_ex:
                 await user_ex.load_markets()
                 
-                import live_bot_multi
                 all_closed = []
                 
                 async def fetch_sym_history(sym):
@@ -1264,8 +1263,7 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
     buttons = []
     
     for i, t in enumerate(last_10):
-        import datetime
-        dt_raw = datetime.datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
+        dt_raw = datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
         dt = escape_md_v2(dt_raw)
         
         sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
@@ -1396,10 +1394,6 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "options": {"defaultType": "swap"},
             }) as user_ex:
                 await user_ex.load_markets()
-                
-                import live_bot_multi
-                import charting
-                import os
                 
                 norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
                 positions = await user_ex.fetch_positions(norm_syms)
@@ -2341,10 +2335,6 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=f"🛰️ *Active Simulated Trades Found: {len(open_trades)}*\nGenerating progress charts...",
                 parse_mode="Markdown"
             )
-            
-            import live_bot_multi
-            import charting
-            import os
             
             mdm = live_bot_multi.MarketDataManager()
             try:
@@ -3871,7 +3861,6 @@ async def alpaca_equities_engine(application):
     """
     import live_bot_multi_alpaca
     from zoneinfo import ZoneInfo
-    from datetime import datetime, timedelta
 
     logger.info("🦙 Starting Alpaca Stocks Daily Scheduler (9:31 AM EST)...")
     while True:
@@ -4102,8 +4091,6 @@ async def panic_close_all(chat_id):
     if has_crypto:
         try:
             async with database.get_exchange_client(user) as user_ex:
-                import live_bot_multi
-                
                 # Normalize all symbols for this exchange
                 norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
                 positions = await user_ex.fetch_positions(norm_syms)
