@@ -3726,6 +3726,20 @@ async def signal_engine(application):
                             
                             database.close_theoretical_trade(trade_id, exit_price, close_time, status, pnl_raw, pnl_pct, pnl_usdt)
                             
+                            strategy = t.get('strategy', 'Mean Reversion Scalper')
+                            if status == 'tp':
+                                cheeky_note = (
+                                    f"\n\n🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆\n"
+                                    f"🔥 *Look what you missed out on!* If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆\n"
+                                    f"🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆"
+                                )
+                            elif status == 'sl':
+                                cheeky_note = (
+                                    f"\n\n🛡️ *No strategy has 100% win rate.* Let's look for the next one!"
+                                )
+                            else:
+                                cheeky_note = ""
+                                
                             # Broadcast EXIT alert
                             all_targets = database.get_all_broadcast_targets()
                             exit_msg = (
@@ -3738,6 +3752,7 @@ async def signal_engine(application):
                                 f"Exit Price: `{exit_price:.8f}`\n"
                                 f"Trade PnL: *{pnl_pct:+.2f}% ({pnl_usdt:+.2f} USDT)*\n\n"
                                 f"Simulated Balance: *${new_bal:,.2f} USDT*"
+                                f"{cheeky_note}"
                             )
                             for target_id in all_targets:
                                 try:

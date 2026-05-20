@@ -163,6 +163,13 @@ async def main():
     print("📝 Settled mock trade inside database as Take Profit (TP).")
     
     # 8. Broadcast simulated exit resolution alert
+    # Since trigger_simulated_alert hardcodes a Take Profit exit, we format with the cheeky winning message
+    cheeky_note = (
+        f"\n\n🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆\n"
+        f"🔥 *Look what you missed out on!* If you had been trading the *{strategy_name}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆\n"
+        f"🏆🏆🏆🏆🏆🏆🏆🏆🏆🏆"
+    )
+    
     exit_msg = (
         f"🔔 *SIMULATED TRADE CLOSED!* (Forward Test)\n"
         f"🏔️ _Global strategy tracker resolution_\n\n"
@@ -173,6 +180,7 @@ async def main():
         f"Exit Price: `{tp:.8f}`\n"
         f"Trade PnL: *{pnl_pct:+.2f}% ({pnl_usdt:+.2f} USDT)*\n\n"
         f"Simulated Balance: *${new_bal:,.2f} USDT*"
+        f"{cheeky_note}"
     )
     
     print("📣 Broadcasting Exit alert to Telegram...")
