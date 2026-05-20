@@ -36,6 +36,8 @@ def get_exchange_client(user):
     Factory function to create a CCXT exchange client for a specific user.
     """
     ex_id = user.get('exchange_id', 'blofin')
+    if ex_id == 'alpaca':
+        ex_id = 'blofin'
     config = {
         "apiKey": user["api_key"],
         "secret": user["api_secret"],
@@ -132,6 +134,12 @@ def init_db():
             # 3. Ensure no NULL values exist for the new fields
             c.execute("UPDATE Users SET active_crypto_strategy = 'Mean Reversion Scalper' WHERE active_crypto_strategy IS NULL")
             c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE active_stock_strategy IS NULL")
+            # 4. Repair exchange_id for users who had it set to 'alpaca' but have crypto keys
+            c.execute("""
+                UPDATE Users
+                SET exchange_id = 'blofin'
+                WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != ''
+            """)
             conn.commit()
         except Exception as migration_err:
             pass

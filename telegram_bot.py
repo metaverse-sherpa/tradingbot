@@ -669,7 +669,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         database.update_user_preference(chat_id, "alpaca_endpoint", context.user_data['alpaca_endpoint'])
         database.update_user_preference(chat_id, "alpaca_api_key", context.user_data['alpaca_api_key'])
         database.update_user_preference(chat_id, "alpaca_api_secret", alpaca_secret)
-        database.update_user_preference(chat_id, "exchange_id", "alpaca")
         database.update_user_preference(chat_id, "strategy", "Sherpa Velocity Pullback")
         database.set_active(chat_id, True)
         
@@ -944,6 +943,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         open_positions_count = 0
         try:
             ex_id = user.get('exchange_id', 'blofin')
+            if ex_id == 'alpaca':
+                ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
             async with ex_class({
                 "apiKey": user['api_key'],
@@ -1102,124 +1103,160 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         except: pass
 
+    has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
+    has_stocks = bool(user.get('alpaca_api_key') and user.get('alpaca_api_key') != "")
+
+    if not has_crypto and not has_stocks:
+        await update.effective_message.reply_text("❌ No API credentials connected. Please set up Blofin/Bitget or Alpaca credentials in Settings first.")
+        return
+
+    # If they only have crypto, and have history cache, show cache immediately
+    if has_crypto and not has_stocks and user.get('history_cache'):
+        try:
+            import json
+            last_10 = json.loads(user['history_cache'])
+            await render_history_dashboard(update, context, last_10, chat_id, user)
+            return
+        except: pass
+
     status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
     
-    if user.get('exchange_id') == 'alpaca':
+    # 1. Fetch Alpaca Stock Orders
+    if has_stocks:
         try:
-            orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 20})
-            if not orders:
-                await status_msg.edit_text("No recently executed stock trades found in your Alpaca account.")
-                return
-            
-            lines = ["🦙 *Recent Alpaca Stock Orders:*"]
-            for o in orders:
-                sym = o.get("symbol")
-                side = o.get("side", "").upper()
-                qty = o.get("filled_qty") or o.get("qty")
-                price = o.get("filled_avg_price") or o.get("limit_price") or "0"
-                t_str = o.get("filled_at") or o.get("updated_at") or ""
-                date_part = t_str.split("T")[0] if "T" in t_str else t_str
-                
-                emoji = "🟢" if side == "BUY" else "🔴"
-                try:
-                    price_val = float(price)
-                except:
-                    price_val = 0.0
-                lines.append(f"{emoji} *{side}* {sym} | Qty: `{qty}` | Price: `${price_val:.2f}` | Date: `{date_part}`")
-                
-            await status_msg.delete()
-            await update.effective_message.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
-            return
-        except Exception as e:
-            await status_msg.edit_text(f"❌ Error fetching Alpaca history: {e}")
-            return
-
-    try:
-        async with database.get_exchange_client(user) as user_ex:
-            await user_ex.load_markets()
-            
-            import live_bot_multi
-            all_closed = []
-            
-            async def fetch_sym_history(sym):
-                try:
-                    norm_sym = database.normalize_symbol(sym, user_ex.id)
-                    trades = await user_ex.fetch_my_trades(norm_sym, limit=50)
+            orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 10})
+            if orders:
+                lines = ["🦙 *Recent Alpaca Stock Orders:*"]
+                for o in orders:
+                    sym = o.get("symbol")
+                    side = o.get("side", "").upper()
+                    qty = o.get("filled_qty") or o.get("qty")
+                    price = o.get("filled_avg_price") or o.get("limit_price") or "0"
+                    t_str = o.get("filled_at") or o.get("updated_at") or ""
+                    date_part = t_str.split("T")[0] if "T" in t_str else t_str
                     
-                    order_groups = {}
-                    for t in trades:
-                        info = t.get("info", {})
-                        gross_pnl = 0
-                        if user_ex.id == 'blofin':
-                            gross_pnl = float(info.get("fillPnl") or 0)
-                        else:
-                            gross_pnl = float(info.get("realizedPnl") or 0)
-                            
-                        if gross_pnl != 0:
-                            fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                            net_pnl = gross_pnl - (fee * 2)
-                            
-                            side_raw = t.get('side', 'buy').lower()
-                            is_long = (side_raw == 'sell')
-                            
-                            order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
-                            if order_id not in order_groups:
-                                order_groups[order_id] = []
-                                
-                            order_groups[order_id].append({
-                                "net_pnl": net_pnl,
-                                "price": t['price'],
-                                "amount": t['amount'],
-                                "timestamp": t['timestamp'],
-                                "is_long": is_long
-                            })
-                            
-                    for order_id, fills in order_groups.items():
-                        total_net_pnl = sum(f['net_pnl'] for f in fills)
-                        total_amount = sum(f['amount'] for f in fills)
-                        total_cost = sum(f['price'] * f['amount'] for f in fills)
-                        avg_price = total_cost / total_amount if total_amount > 0 else fills[0]['price']
-                        
-                        max_timestamp = max(f['timestamp'] for f in fills)
-                        is_long = fills[0]['is_long']
-                        
-                        try:
-                            market = user_ex.market(sym)
-                            contract_size = float(market.get('contractSize', 1))
-                            initial_margin = (avg_price * total_amount * contract_size) / 20
-                            roe_val = (total_net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                        except:
-                            roe_val = 0
-                            
-                        all_closed.append({
-                            "symbol": sym,
-                            "timestamp": max_timestamp,
-                            "net_pnl": total_net_pnl,
-                            "price": avg_price,
-                            "amount": total_amount,
-                            "side": "l" if is_long else "s",
-                            "roe_val": roe_val
-                        })
-                except: pass
-
-            await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
-                 
-            all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
-            last_10 = all_closed[:10]
-            
-            if not last_10:
-                await status_msg.edit_text("No recently closed trades found in your account.")
-                return
+                    emoji = "🟢" if side == "BUY" else "🔴"
+                    try:
+                        price_val = float(price)
+                    except:
+                        price_val = 0.0
+                    lines.append(f"{emoji} *{side}* {sym} | Qty: `{qty}` | Price: `${price_val:.2f}` | Date: `{date_part}`")
                 
-            # Lock into Sherpa Cache
-            database.set_history_cache(chat_id, last_10)
-            
+                # If they also have crypto, send stock history as a standalone message, otherwise send with main menu
+                reply_markup = None if has_crypto else get_main_inline_menu(chat_id)
+                await update.effective_message.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_markup)
+            else:
+                if not has_crypto:
+                    await status_msg.edit_text("No recently executed stock trades found in your Alpaca account.")
+                    return
+        except Exception as e:
+            logger.error(f"Error fetching Alpaca history: {e}")
+            if not has_crypto:
+                await status_msg.edit_text(f"❌ Error fetching Alpaca history: {e}")
+                return
+            await update.effective_message.reply_text(f"⚠️ Failed to fetch Alpaca history: {e}")
+
+    # 2. Fetch Crypto Trades
+    if has_crypto:
+        try:
+            ex_id = user.get('exchange_id', 'blofin')
+            if ex_id == 'alpaca':
+                ex_id = 'blofin'
+            ex_class = getattr(ccxt, ex_id)
+            async with ex_class({
+                "apiKey": user['api_key'],
+                "secret": user['api_secret'],
+                "password": user['api_password'],
+                "options": {"defaultType": "swap"},
+            }) as user_ex:
+                await user_ex.load_markets()
+                
+                import live_bot_multi
+                all_closed = []
+                
+                async def fetch_sym_history(sym):
+                    try:
+                        norm_sym = database.normalize_symbol(sym, user_ex.id)
+                        trades = await user_ex.fetch_my_trades(norm_sym, limit=50)
+                        
+                        order_groups = {}
+                        for t in trades:
+                            info = t.get("info", {})
+                            gross_pnl = 0
+                            if user_ex.id == 'blofin':
+                                gross_pnl = float(info.get("fillPnl") or 0)
+                            else:
+                                gross_pnl = float(info.get("realizedPnl") or 0)
+                                
+                            if gross_pnl != 0:
+                                fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                                net_pnl = gross_pnl - (fee * 2)
+                                
+                                side_raw = t.get('side', 'buy').lower()
+                                is_long = (side_raw == 'sell')
+                                
+                                order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
+                                if order_id not in order_groups:
+                                    order_groups[order_id] = []
+                                    
+                                order_groups[order_id].append({
+                                    "net_pnl": net_pnl,
+                                    "price": t['price'],
+                                    "amount": t['amount'],
+                                    "timestamp": t['timestamp'],
+                                    "is_long": is_long
+                                })
+                                
+                        for order_id, fills in order_groups.items():
+                            total_net_pnl = sum(f['net_pnl'] for f in fills)
+                            total_amount = sum(f['amount'] for f in fills)
+                            total_cost = sum(f['price'] * f['amount'] for f in fills)
+                            avg_price = total_cost / total_amount if total_amount > 0 else fills[0]['price']
+                            
+                            max_timestamp = max(f['timestamp'] for f in fills)
+                            is_long = fills[0]['is_long']
+                            
+                            try:
+                                market = user_ex.market(sym)
+                                contract_size = float(market.get('contractSize', 1))
+                                initial_margin = (avg_price * total_amount * contract_size) / 20
+                                roe_val = (total_net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                            except:
+                                roe_val = 0
+                                
+                            all_closed.append({
+                                "symbol": sym,
+                                "timestamp": max_timestamp,
+                                "net_pnl": total_net_pnl,
+                                "price": avg_price,
+                                "amount": total_amount,
+                                "side": "l" if is_long else "s",
+                                "roe_val": roe_val
+                            })
+                    except: pass
+
+                await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
+                     
+                all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
+                last_10 = all_closed[:10]
+                
+                if not last_10:
+                    await status_msg.edit_text("No recently closed crypto trades found in your account.")
+                    return
+                    
+                # Lock into Sherpa Cache
+                database.set_history_cache(chat_id, last_10)
+                
+                await status_msg.delete()
+                await render_history_dashboard(update, context, last_10, chat_id, user)
+                
+        except Exception as e:
+            logger.error(f"Error fetching Crypto history: {e}")
             await status_msg.delete()
-            await render_history_dashboard(update, context, last_10, chat_id, user)
-            
-    except Exception as e:
-        logger.error(f"Error fetching history: {e}")
-        await update.effective_message.reply_text(f"❌ Error fetching trade history: {e}")
+            await update.effective_message.reply_text(f"❌ Error fetching Crypto trade history: {e}")
+    else:
+        # If they don't have crypto, just delete the status message
+        await status_msg.delete()
 
 async def render_history_dashboard(update, context, last_10, chat_id, user):
     """Renders the final sexy history message from trade data."""
@@ -1267,170 +1304,184 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
-    await update.effective_message.reply_text("🔍 Checking your active trades on the exchange...")
+    has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
+    has_stocks = bool(user.get('alpaca_api_key') and user.get('alpaca_api_key') != "")
+
+    if not has_crypto and not has_stocks:
+        await update.effective_message.reply_text("❌ No API credentials connected. Please set up Blofin/Bitget or Alpaca credentials in Settings first.")
+        return
+
+    status_msg = await update.effective_message.reply_text("🔍 Checking your active trades...")
     
-    if user.get('exchange_id') == 'alpaca':
+    total_trades_count = 0
+    stock_trades_count = 0
+    crypto_trades_count = 0
+
+    # 1. Fetch Alpaca Stock Trades
+    if has_stocks:
         try:
             positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
-            active = [p for p in positions if float(p.get("qty", 0)) != 0]
+            active_stocks = [p for p in positions if float(p.get("qty", 0)) != 0]
             
-            if not active:
-                await update.effective_message.reply_text("🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability stock trade.*\n\nYou have no active stock trades at the moment.", parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
-                return
+            if active_stocks:
+                stock_trades_count = len(active_stocks)
+                total_trades_count += stock_trades_count
+                await update.effective_message.reply_text(
+                    f"🦙 *Active Stock Trades Found: {stock_trades_count}*",
+                    parse_mode="Markdown"
+                )
                 
-            await update.effective_message.reply_text(
-                f"🛰 *Active Stock Trades Found: {len(active)}*",
-                parse_mode="Markdown"
-            )
-            
-            orders = []
-            try:
-                orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "open"})
-            except Exception as e:
-                logger.error(f"Failed to fetch Alpaca open orders: {e}")
-                
-            for p in active:
+                orders = []
                 try:
-                    sym = p['symbol']
-                    qty = float(p['qty'])
-                    entry = float(p['avg_entry_price'])
-                    upnl = float(p['unrealized_pl'])
-                    side = p['side'].upper()
-                    
-                    tp_price = 0
-                    sl_price = 0
-                    for o in orders:
-                        if o.get("symbol") == sym:
-                            if o.get("type") == "stop" and o.get("side") == "sell":
-                                sl_price = float(o.get("stop_price") or 0)
-                            elif o.get("type") == "limit" and o.get("side") == "sell":
-                                tp_price = float(o.get("limit_price") or 0)
-                                
-                    target_roe_str = "N/A"
-                    target_pnl_dollars = 0.0
-                    if tp_price > 0:
-                        target_roe = ((tp_price - entry) / entry) * 100 if side == "LONG" else ((entry - tp_price) / entry) * 100
-                        target_roe_str = f"{target_roe:+.1f}%"
-                        target_pnl_dollars = (entry * qty) * (target_roe / 100)
-                        
-                    initial_margin = entry * qty
-                    roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
-                    
-                    upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
-                    roe_v2 = escape_md_v2(f"{roe:+.2f}")
-                    target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
-                    target_roe_v2 = escape_md_v2(target_roe_str)
-                    sym_v2 = escape_md_v2(sym)
-                    
-                    caption = (
-                        f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
-                        f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
-                    )
-                    
-                    kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
-                    await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                    orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "open"})
                 except Exception as e:
-                    logger.error(f"Error processing Alpaca position: {e}")
-            return
+                    logger.error(f"Failed to fetch Alpaca open orders: {e}")
+                    
+                for p in active_stocks:
+                    try:
+                        sym = p['symbol']
+                        qty = float(p['qty'])
+                        entry = float(p['avg_entry_price'])
+                        upnl = float(p['unrealized_pl'])
+                        side = p['side'].upper()
+                        
+                        tp_price = 0
+                        sl_price = 0
+                        for o in orders:
+                            if o.get("symbol") == sym:
+                                if o.get("type") == "stop" and o.get("side") == "sell":
+                                    sl_price = float(o.get("stop_price") or 0)
+                                elif o.get("type") == "limit" and o.get("side") == "sell":
+                                    tp_price = float(o.get("limit_price") or 0)
+                                    
+                        target_roe_str = "N/A"
+                        target_pnl_dollars = 0.0
+                        if tp_price > 0:
+                            target_roe = ((tp_price - entry) / entry) * 100 if side == "LONG" else ((entry - tp_price) / entry) * 100
+                            target_roe_str = f"{target_roe:+.1f}%"
+                            target_pnl_dollars = (entry * qty) * (target_roe / 100)
+                            
+                        initial_margin = entry * qty
+                        roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
+                        
+                        upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
+                        roe_v2 = escape_md_v2(f"{roe:+.2f}")
+                        target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
+                        target_roe_v2 = escape_md_v2(target_roe_str)
+                        sym_v2 = escape_md_v2(sym)
+                        
+                        caption = (
+                            f"🟢 *{sym_v2} \\({side.upper()}\\)*\n"
+                            f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
+                        )
+                        
+                        kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
+                        await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                    except Exception as e:
+                        logger.error(f"Error processing Alpaca position: {e}")
         except Exception as e:
             await update.effective_message.reply_text(f"❌ Error checking Alpaca positions: {e}")
-            return
 
-    try:
-        async with database.get_exchange_client(user) as user_ex:
-            await user_ex.load_markets()
-            
-            import live_bot_multi
-            import charting
-            import os
-            
-            # Normalize all symbols for this exchange
-            norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
-            positions = await user_ex.fetch_positions(norm_syms)
-            active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
-            
-            if not active:
-                await update.effective_message.reply_text("🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
-                return
+    # 2. Fetch Crypto Trades
+    if has_crypto:
+        try:
+            ex_id = user.get('exchange_id', 'blofin')
+            if ex_id == 'alpaca':
+                ex_id = 'blofin'
+            ex_class = getattr(ccxt, ex_id)
+            async with ex_class({
+                "apiKey": user['api_key'],
+                "secret": user['api_secret'],
+                "password": user['api_password'],
+                "options": {"defaultType": "swap"},
+            }) as user_ex:
+                await user_ex.load_markets()
                 
-            await update.effective_message.reply_text(
-                f"🛰 *Active Trades Found: {len(active)}*\nGenerating charts...",
-                parse_mode="Markdown"
-            )
-
-            async def process_active_position(p):
-                try:
-                    sym = p['symbol']
-                    side = p['side'].upper()
-                    entry = float(p['entryPrice'] or 0)
-                    upnl = float(p['unrealizedPnl'] or 0)
-                    
-                    market = user_ex.market(sym)
-                    contract_size = float(market.get('contractSize', 1))
-                    initial_margin = (entry * float(p['contracts']) * contract_size) / live_bot_multi.LEVERAGE
-                    roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
-                    
-                    # 2. Fetch TP/SL Prices
-                    tp_price = 0
-                    sl_price = 0
-                    target_roe_str = "N/A"
-                    
-                    try:
-                        all_tpsl = await user_ex.private_get_trade_orders_tpsl_pending({"instType": "SWAP"})
-                        if all_tpsl and "data" in all_tpsl:
-                            for o in all_tpsl["data"]:
-                                if o.get('instId') == market['id']:
-                                    tp = float(o.get('tpTriggerPrice') or 0)
-                                    sl = float(o.get('slTriggerPrice') or 0)
-                                    if tp > 0: tp_price = tp
-                                    if sl > 0: sl_price = sl
-                        
-                        if tp_price > 0:
-                            target_roe = ((tp_price - entry) / entry) * live_bot_multi.LEVERAGE * 100 if side == "LONG" else ((entry - tp_price) / entry) * live_bot_multi.LEVERAGE * 100
-                            target_roe_str = f"{target_roe:+.1f}%"
-                    except: pass
-
-                    # 3. Generate the Chart (Async)
-                    try:
-                        open_ts = int(p.get('info', {}).get('createTime') or 0)
-                        ohlcv = await user_ex.fetch_ohlcv(sym, timeframe='15m', limit=100)
-                        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-                        chart_path = await asyncio.to_thread(charting.generate_trade_chart, sym, df, entry, tp_price, sl_price, side, open_ts)
-                    except Exception as e:
-                        logger.error(f"Chart generation failed for {sym}: {e}")
-                        chart_path = None
-
-                    # 4. Final Output
-                    target_pnl_dollars = initial_margin * (float(target_roe_str.strip("%")) / 100) if target_roe_str != "N/A" else 0
-                    upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
-                    roe_v2 = escape_md_v2(f"{roe:+.2f}")
-                    target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
-                    target_roe_v2 = escape_md_v2(target_roe_str)
-                    sym_v2 = escape_md_v2(sym)
-                    
-                    caption = (
-                        f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
-                        f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
+                import live_bot_multi
+                import charting
+                import os
+                
+                norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
+                positions = await user_ex.fetch_positions(norm_syms)
+                active_crypto = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
+                
+                if active_crypto:
+                    crypto_trades_count = len(active_crypto)
+                    total_trades_count += crypto_trades_count
+                    await update.effective_message.reply_text(
+                        f"🪙 *Active Crypto Trades Found: {crypto_trades_count}*\nGenerating charts...",
+                        parse_mode="Markdown"
                     )
-                    
-                    # Keyboard for tactical management
-                    kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
-                    
-                    if chart_path and os.path.exists(chart_path):
-                        with open(chart_path, 'rb') as photo:
-                            await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
-                    else:
-                        await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
-                except Exception as e:
-                    logger.error(f"Position processing error for {p.get('symbol')}: {e}")
 
-            await asyncio.gather(*(process_active_position(p) for p in active))
-            
-    except Exception as e:
-        logger.error(f"Error checking open trades: {e}")
-        await update.effective_message.reply_text(f"❌ Error fetching positions: {e}")
-        # 4. Finally send the footer once
-        await update.effective_message.reply_text("🛰️ *Sherpa Command Center*", reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+                    async def process_active_position(p):
+                        try:
+                            sym = p['symbol']
+                            side = p['side'].upper()
+                            entry = float(p['entryPrice'] or 0)
+                            upnl = float(p['unrealizedPnl'] or 0)
+                            
+                            market = user_ex.market(sym)
+                            contract_size = float(market.get('contractSize', 1))
+                            initial_margin = (entry * float(p['contracts']) * contract_size) / live_bot_multi.LEVERAGE
+                            roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
+                            
+                            # Fetch SL and TP prices from theoretical trade DB
+                            t_trade = database.get_active_theoretical_trade_by_symbol(sym)
+                            sl_price = t_trade['sl_price'] if t_trade else 0.0
+                            tp_price = t_trade['tp_price'] if t_trade else 0.0
+                            
+                            # Clean/Format
+                            upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
+                            roe_v2 = escape_md_v2(f"{roe:+.2f}")
+                            sym_v2 = escape_md_v2(sym.split(":")[0])
+                            
+                            caption = (
+                                f"{'🟢' if side == 'LONG' else '🔴'} *{sym_v2} \\({side}\\)*\n"
+                                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\)\n"
+                                f"SL: `{sl_price:.4f}` | TP: `{tp_price:.4f}`"
+                            )
+                            
+                            # Try to generate live technical chart
+                            try:
+                                ohlcv = await user_ex.fetch_ohlcv(sym, "15m", limit=60)
+                                chart_filename = f"chart_{chat_id}_{sym.replace('/', '_').replace(':', '_')}.png"
+                                chart_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", chart_filename)
+                                os.makedirs(os.path.dirname(chart_path), exist_ok=True)
+                                
+                                charting.generate_trade_chart(ohlcv, sym, side, entry, tp_price, sl_price, chart_path)
+                                
+                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
+                                
+                                with open(chart_path, 'rb') as photo:
+                                    await context.bot.send_photo(
+                                        chat_id=chat_id,
+                                        photo=photo,
+                                        caption=caption,
+                                        parse_mode="MarkdownV2",
+                                        reply_markup=InlineKeyboardMarkup(kb)
+                                    )
+                                # Delete temporary chart image
+                                try: os.remove(chart_path)
+                                except: pass
+                            except Exception as ce:
+                                logger.error(f"Failed to generate position chart for {sym}: {ce}")
+                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
+                                await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                        except Exception as e:
+                            logger.error(f"Error processing position: {e}")
+
+                    await asyncio.gather(*(process_active_position(p) for p in active_crypto))
+        except Exception as e:
+            await update.effective_message.reply_text(f"❌ Error checking Crypto positions: {e}")
+
+    await status_msg.delete()
+
+    if total_trades_count == 0:
+        await update.effective_message.reply_text(
+            "🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", 
+            parse_mode="Markdown", 
+            reply_markup=get_main_inline_menu(chat_id)
+        )
 
 async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -3367,6 +3418,8 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_data.get('api_key') and user_data.get('api_key') != "":
         try:
             ex_id = user_data.get('exchange_id', 'blofin')
+            if ex_id == 'alpaca':
+                ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
             async with ex_class({
                 "apiKey": user_data['api_key'],
@@ -3462,21 +3515,27 @@ async def sync_engine(application):
             async def sync_user(user):
                 try:
                     chat_id = user['telegram_chat_id']
-                    if not user.get('api_key'): return
-
-                    ex_id = user.get('exchange_id', 'blofin')
-                    ex_class = getattr(ccxt, ex_id)
-                    async with ex_class({
-                        "apiKey": user['api_key'],
-                        "secret": user['api_secret'],
-                        "password": user['api_password'],
-                        "options": {"defaultType": "swap"},
-                    }) as user_ex:
-                        # Fetch balance and sync closed trades
-                        acc_type = "swap" if ex_id == 'bitget' else "futures"
-                        balance = await user_ex.fetch_balance(params={"type": acc_type})
-                        equity = float(balance.get("USDT", {}).get("total", 0))
-                        await database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
+                    
+                    # 1. Sync Crypto
+                    if user.get('api_key'):
+                        ex_id = user.get('exchange_id', 'blofin')
+                        if ex_id == 'alpaca': ex_id = 'blofin'
+                        ex_class = getattr(ccxt, ex_id)
+                        async with ex_class({
+                            "apiKey": user['api_key'],
+                            "secret": user['api_secret'],
+                            "password": user['api_password'],
+                            "options": {"defaultType": "swap"},
+                        }) as user_ex:
+                            acc_type = "swap" if ex_id == 'bitget' else "futures"
+                            balance = await user_ex.fetch_balance(params={"type": acc_type})
+                            equity = float(balance.get("USDT", {}).get("total", 0))
+                            await database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
+                            
+                    # 2. Sync Stocks
+                    if user.get('alpaca_api_key'):
+                        # Stocks stats update logic can be minimal as Alpaca provides portfolio value directly
+                        pass
                 except Exception as e:
                     logger.error(f"Sync error for {user.get('telegram_chat_id')}: {e}")
 
@@ -3723,6 +3782,8 @@ async def signal_engine(application):
                                 if not user.get('api_key'): return
                                 
                                 ex_id = user.get('exchange_id', 'blofin')
+                                if ex_id == 'alpaca':
+                                    ex_id = 'blofin'
                                 ex_class = getattr(ccxt, ex_id)
                                 async with ex_class({
                                     "apiKey": user['api_key'],
@@ -3786,19 +3847,6 @@ async def signal_engine(application):
                         await asyncio.gather(*(execute_user_signals(u) for u in users))
                 
                 logger.info(f"Engine pass complete.")
-            except Exception as e:
-                logger.error(f"Engine pass critical failure: {e}")
-                
-                # Notify admins of the critical error
-                admins_to_notify = set(database.get_all_admins() + [SUPER_ADMIN_ID])
-                err_msg = f"🚨 *ENGINE PASS CRITICAL FAILURE*\n\nError: `{e}`\n\nThe engine loop has caught an exception and will pause for 60 seconds before retrying."
-                for admin_id in admins_to_notify:
-                    try:
-                        await application.bot.send_message(chat_id=admin_id, text=err_msg, parse_mode="Markdown")
-                    except Exception as notify_err:
-                        logger.error(f"Failed to send error notification to admin {admin_id}: {notify_err}")
-                
-                await asyncio.sleep(60)
             except Exception as e:
                 logger.error(f"Engine pass critical failure: {e}")
                 
@@ -3988,7 +4036,12 @@ async def close_single_position(chat_id, sym):
     user = database.get_user(chat_id)
     if not user: return False, "User not found."
     
-    if user.get('exchange_id') == 'alpaca':
+    # Intelligently determine if this is a stock symbol or crypto symbol
+    # Stock symbols are plain uppercase strings like "AAPL", "NVDA".
+    # Crypto symbols in this bot have "/" or ":" in them (e.g. "BTC/USDT:USDT").
+    is_stock = "/" not in sym and ":" not in sym
+    
+    if is_stock:
         try:
             await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
             return True, f"Market Closed {sym} stock position."
@@ -3996,7 +4049,16 @@ async def close_single_position(chat_id, sym):
             return False, f"Failed to close {sym} stock position on Alpaca: {e}"
 
     try:
-        async with database.get_exchange_client(user) as user_ex:
+        ex_id = user.get('exchange_id', 'blofin')
+        if ex_id == 'alpaca':
+            ex_id = 'blofin'
+        ex_class = getattr(ccxt, ex_id)
+        async with ex_class({
+            "apiKey": user['api_key'],
+            "secret": user['api_secret'],
+            "password": user['api_password'],
+            "options": {"defaultType": "swap"},
+        }) as user_ex:
             # Fetch the specific position
             positions = await user_ex.fetch_positions([sym])
             pos = next((p for p in positions if float(p.get("contracts", 0) or 0) != 0), None)
@@ -4020,39 +4082,53 @@ async def panic_close_all(chat_id):
     user = database.get_user(chat_id)
     if not user: return False, "User not found."
     
-    if user.get('exchange_id') == 'alpaca':
+    has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
+    has_stocks = bool(user.get('alpaca_api_key') and user.get('alpaca_api_key') != "")
+    
+    if not has_crypto and not has_stocks:
+        return False, "❌ No exchange API credentials connected."
+        
+    results = []
+    
+    # 1. Close stocks if configured
+    if has_stocks:
         try:
             await database.make_alpaca_request_async(user, "DELETE", "/v2/positions", params={"cancel_orders": "true"})
-            return True, "✅ Closed all active stock positions and cancelled all open stock orders on Alpaca."
+            results.append("✅ Closed all active stock positions on Alpaca.")
         except Exception as e:
-            return False, f"Failed to close Alpaca positions: {e}"
-
-    try:
-        async with database.get_exchange_client(user) as user_ex:
-            import live_bot_multi
+            results.append(f"❌ Failed to close stock positions on Alpaca: {e}")
             
-            # Normalize all symbols for this exchange
-            norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
-            positions = await user_ex.fetch_positions(norm_syms)
-            active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
-            
-            if not active:
-                return True, "No active trades to close."
+    # 2. Close crypto if configured
+    if has_crypto:
+        try:
+            async with database.get_exchange_client(user) as user_ex:
+                import live_bot_multi
                 
-            results = []
-            for p in active:
-                try:
-                    sym = p['symbol']
-                    side = p['side'].upper()
-                    contracts = float(p['contracts'])
-                    
-                    # Market close order
-                    order_side = "sell" if side == "LONG" else "buy"
-                    await user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
-                    results.append(f"✅ Closed {sym}")
-                except Exception as e:
-                    results.append(f"❌ Failed {p['symbol']}: {e}")
-                    
-            return True, "\n".join(results)
-    except Exception as e:
-        return False, f"Critical failure: {e}"
+                # Normalize all symbols for this exchange
+                norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
+                positions = await user_ex.fetch_positions(norm_syms)
+                active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
+                
+                if not active:
+                    if not has_stocks:
+                        return True, "No active trades to close."
+                else:
+                    for p in active:
+                        try:
+                            sym = p['symbol']
+                            side = p['side'].upper()
+                            contracts = float(p['contracts'])
+                            
+                            # Market close order
+                            order_side = "sell" if side == "LONG" else "buy"
+                            await user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
+                            results.append(f"✅ Closed crypto {sym}")
+                        except Exception as e:
+                            results.append(f"❌ Failed crypto {p['symbol']}: {e}")
+        except Exception as e:
+            results.append(f"❌ Failed to close crypto positions: {e}")
+            
+    if not results:
+        return True, "No active trades found to close."
+        
+    return True, "\n".join(results)

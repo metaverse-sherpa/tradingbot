@@ -279,6 +279,8 @@ async def run_force_pass():
                         if not user.get('api_key'): return
                         
                         ex_id = user.get('exchange_id', 'blofin')
+                        if ex_id == 'alpaca':
+                            ex_id = 'blofin'
                         ex_class = getattr(ccxt, ex_id)
                         async with ex_class({
                             "apiKey": user['api_key'],
