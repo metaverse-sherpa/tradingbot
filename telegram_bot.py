@@ -2324,21 +2324,21 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         await query.answer("Fetching simulated trades...")
-        open_trades = database.get_open_theoretical_trades()
+        open_sim_trades = database.get_open_theoretical_trades()
         trades = database.get_recent_theoretical_trades(10)
         
         photo_ids = []
         
-        if open_trades:
+        if open_sim_trades:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=f"🛰️ *Active Simulated Trades Found: {len(open_trades)}*\nGenerating progress charts...",
+                text=f"🛰️ *Active Simulated Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
                 parse_mode="Markdown"
             )
             
             mdm = live_bot_multi.MarketDataManager()
             try:
-                for t in open_trades:
+                for t in open_sim_trades:
                     sym = t['symbol']
                     side = t['side']
                     entry = t['entry_price']
@@ -2446,7 +2446,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         kb = [[InlineKeyboardButton("🔙 Back to Admin Control", callback_data="admin_command")]]
         
-        if open_trades:
+        if open_sim_trades:
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=msg,
