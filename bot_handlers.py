@@ -193,6 +193,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
         [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
         [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
+        [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
         [InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]
     ]
     

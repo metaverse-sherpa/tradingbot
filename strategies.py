@@ -148,16 +148,50 @@ class ValkyrieEliteScalper(BaseStrategy):
         if c_p > c_ema and c_low < c_bb_low and c_p >= c_bb_low and c_rsi < cfg["rsi_low"]:
             return "LONG"
             
-        # SHORT: Downtrend + Wick break upper band + Close inside band + RSI overbought
+        # SHORT: Wick break upper band + Close inside band + RSI overbought
         if c_p < c_ema and c_high > c_bb_high and c_p <= c_bb_high and c_rsi > cfg["rsi_high"]:
             return "SHORT"
+            
+        return None
+
+class SherpaVelocityPullback(BaseStrategy):
+    name = "Sherpa Velocity Pullback"
+    description = "Elite daily swing pullback strategy for stock market leaders."
+    
+    def check_signal(self, df, symbol_name="AAPL"):
+        close = df['close']
+        
+        # 1. EMAs for Trend Channel Filter
+        ema_50 = close.ewm(span=50, adjust=False).mean()
+        ema_200 = close.ewm(span=200, adjust=False).mean()
+        
+        # 2. RSI(3) with standard smoothing
+        rsi_period = 3
+        delta = close.diff()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.rolling(window=rsi_period).mean()
+        avg_loss = loss.rolling(window=rsi_period).mean()
+        rs = avg_gain / (avg_loss + 1e-10)
+        rsi = 100 - (100 / (1 + rs))
+        
+        # Calculate signal on last closed bar (index -2)
+        c_close = close.iloc[-2]
+        c_ema50 = ema_50.iloc[-2]
+        c_ema200 = ema_200.iloc[-2]
+        c_rsi = rsi.iloc[-2]
+        
+        # Long pullbacks in high-velocity uptrend
+        if c_close > c_ema50 and c_ema50 > c_ema200 and c_rsi < 10:
+            return "LONG"
             
         return None
 
 # Strategy Registry
 STRATEGIES = {
     "Mean Reversion Scalper": MeanReversionScalper(),
-    "Valkyrie Elite Scalper": ValkyrieEliteScalper()
+    "Valkyrie Elite Scalper": ValkyrieEliteScalper(),
+    "Sherpa Velocity Pullback": SherpaVelocityPullback()
 }
 
 def get_strategy(name):

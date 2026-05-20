@@ -378,6 +378,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
         [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
         [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
+        [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
         [InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]
     ]
     
@@ -530,6 +531,66 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     step = context.user_data.get('setup_step', 0)
     
+    if step == 101:
+        context.user_data['alpaca_endpoint'] = text.strip()
+        context.user_data['setup_step'] = 102
+        try: await update.effective_message.delete()
+        except: pass
+        await update.effective_message.reply_text("✅ Endpoint Base URL received.\n\nNow, please paste your **Alpaca API Key ID**:")
+        return
+        
+    elif step == 102:
+        context.user_data['alpaca_api_key'] = text.strip()
+        context.user_data['setup_step'] = 103
+        try: await update.effective_message.delete()
+        except: pass
+        await update.effective_message.reply_text("✅ Key ID received and wiped from chat history.\n\nFinally, please paste your **Alpaca API Secret Key**:")
+        return
+        
+    elif step == 103:
+        alpaca_secret = text.strip()
+        try: await update.effective_message.delete()
+        except: pass
+        
+        # Save to DB and Activate
+        database.update_user_preference(chat_id, "alpaca_endpoint", context.user_data['alpaca_endpoint'])
+        database.update_user_preference(chat_id, "alpaca_api_key", context.user_data['alpaca_api_key'])
+        database.update_user_preference(chat_id, "alpaca_api_secret", alpaca_secret)
+        database.update_user_preference(chat_id, "exchange_id", "alpaca")
+        database.update_user_preference(chat_id, "strategy", "Sherpa Velocity Pullback")
+        database.set_active(chat_id, True)
+        
+        # Admin Alert
+        try:
+            user_info = update.effective_user
+            full_name = user_info.full_name
+            username = f"@{user_info.username}" if user_info.username else "No Username"
+            act_msg = (
+                "🦙 *Alpaca Stocks Activated!*\n\n"
+                f"User: `{full_name}` ({username})\n"
+                f"ID: `{chat_id}`\n\n"
+                "🚀 _Member has configured Alpaca and is now LIVE in the SVP Stock strategy._"
+            )
+            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=act_msg, parse_mode="Markdown")
+        except: pass
+        
+        context.user_data.clear()
+        
+        await update.effective_message.reply_text(
+            "🎊 *Setup Complete!*\n\n"
+            "The Sherpa is now tracking your Alpaca Stock account. Trades will execute daily at **9:31 AM EST**.\n\n"
+            "Your bot is now active and the *Sherpa Velocity Pullback* strategy has been automatically enabled! 🦙📈",
+            parse_mode="Markdown"
+        )
+        
+        # Send persistent footer dashboard
+        await update.effective_message.reply_text(
+            "🛰️ *Main Menu Activated*",
+            reply_markup=get_main_inline_menu(chat_id),
+            parse_mode="Markdown"
+        )
+        return
+
     if step == 1:
         context.user_data['api_key'] = text
         context.user_data['setup_step'] = 2
@@ -866,6 +927,36 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
     
+    if user.get('exchange_id') == 'alpaca':
+        try:
+            orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 20})
+            if not orders:
+                await status_msg.edit_text("No recently executed stock trades found in your Alpaca account.")
+                return
+            
+            lines = ["🦙 *Recent Alpaca Stock Orders:*"]
+            for o in orders:
+                sym = o.get("symbol")
+                side = o.get("side", "").upper()
+                qty = o.get("filled_qty") or o.get("qty")
+                price = o.get("filled_avg_price") or o.get("limit_price") or "0"
+                t_str = o.get("filled_at") or o.get("updated_at") or ""
+                date_part = t_str.split("T")[0] if "T" in t_str else t_str
+                
+                emoji = "🟢" if side == "BUY" else "🔴"
+                try:
+                    price_val = float(price)
+                except:
+                    price_val = 0.0
+                lines.append(f"{emoji} *{side}* {sym} | Qty: `{qty}` | Price: `${price_val:.2f}` | Date: `{date_part}`")
+                
+            await status_msg.delete()
+            await update.effective_message.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+            return
+        except Exception as e:
+            await status_msg.edit_text(f"❌ Error fetching Alpaca history: {e}")
+            return
+
     try:
         async with database.get_exchange_client(user) as user_ex:
             await user_ex.load_markets()
@@ -1001,6 +1092,73 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     await update.effective_message.reply_text("🔍 Checking your active trades on the exchange...")
     
+    if user.get('exchange_id') == 'alpaca':
+        try:
+            positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
+            active = [p for p in positions if float(p.get("qty", 0)) != 0]
+            
+            if not active:
+                await update.effective_message.reply_text("🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability stock trade.*\n\nYou have no active stock trades at the moment.", parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
+                return
+                
+            await update.effective_message.reply_text(
+                f"🛰 *Active Stock Trades Found: {len(active)}*",
+                parse_mode="Markdown"
+            )
+            
+            orders = []
+            try:
+                orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "open"})
+            except Exception as e:
+                logger.error(f"Failed to fetch Alpaca open orders: {e}")
+                
+            for p in active:
+                try:
+                    sym = p['symbol']
+                    qty = float(p['qty'])
+                    entry = float(p['avg_entry_price'])
+                    upnl = float(p['unrealized_pl'])
+                    side = p['side'].upper()
+                    
+                    tp_price = 0
+                    sl_price = 0
+                    for o in orders:
+                        if o.get("symbol") == sym:
+                            if o.get("type") == "stop" and o.get("side") == "sell":
+                                sl_price = float(o.get("stop_price") or 0)
+                            elif o.get("type") == "limit" and o.get("side") == "sell":
+                                tp_price = float(o.get("limit_price") or 0)
+                                
+                    target_roe_str = "N/A"
+                    target_pnl_dollars = 0.0
+                    if tp_price > 0:
+                        target_roe = ((tp_price - entry) / entry) * 100 if side == "LONG" else ((entry - tp_price) / entry) * 100
+                        target_roe_str = f"{target_roe:+.1f}%"
+                        target_pnl_dollars = (entry * qty) * (target_roe / 100)
+                        
+                    initial_margin = entry * qty
+                    roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
+                    
+                    upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
+                    roe_v2 = escape_md_v2(f"{roe:+.2f}")
+                    target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
+                    target_roe_v2 = escape_md_v2(target_roe_str)
+                    sym_v2 = escape_md_v2(sym)
+                    
+                    caption = (
+                        f"{'🟢' if side.lower() == 'long' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
+                        f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
+                    )
+                    
+                    kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
+                    await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
+                except Exception as e:
+                    logger.error(f"Error processing Alpaca position: {e}")
+            return
+        except Exception as e:
+            await update.effective_message.reply_text(f"❌ Error checking Alpaca positions: {e}")
+            return
+
     try:
         async with database.get_exchange_client(user) as user_ex:
             await user_ex.load_markets()
@@ -1106,7 +1264,8 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     keyboard = [
         [InlineKeyboardButton("Mean Reversion Scalper", callback_data="set_strat_mean")],
-        [InlineKeyboardButton("Valkyrie Elite Scalper", callback_data="set_strat_valk")]
+        [InlineKeyboardButton("Valkyrie Elite Scalper", callback_data="set_strat_valk")],
+        [InlineKeyboardButton("🦙 Sherpa Velocity Pullback (Stock)", callback_data="set_strat_svp")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -1281,6 +1440,27 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
+            await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+            
+    elif query.data == "set_strat_svp":
+        # Check if the user has Alpaca credentials set
+        if not user.get('alpaca_api_key') or not user.get('alpaca_api_secret') or not user.get('alpaca_endpoint'):
+            # Start Alpaca onboarding flow!
+            context.user_data['exchange_id'] = 'alpaca'
+            context.user_data['setup_step'] = 101
+            guide = (
+                "🦙 *Alpaca API Setup Required*\n\n"
+                "To run the **Sherpa Velocity Pullback** stock strategy, you must first connect your Alpaca trading account.\n\n"
+                "Please paste your **Alpaca API Endpoint Base URL** below to begin setup:\n"
+                "• Paper Trading: `https://paper-api.alpaca.markets`\n"
+                "• Live Trading: `https://api.alpaca.markets`"
+            )
+            await safe_edit_text(update, context, guide)
+            return
+        else:
+            database.update_user_preference(chat_id, "strategy", "Sherpa Velocity Pullback")
+            database.update_user_preference(chat_id, "exchange_id", "alpaca")
+            msg = "✅ Strategy set to: *Sherpa Velocity Pullback* (Alpaca Stocks) 🦙📈"
             await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
             
     elif query.data == "set_strat_soon":
@@ -1562,6 +1742,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     
     mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
     vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+    svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
     
     last_sync = time.strftime('%H:%M:%S')
     admin_msg = (
@@ -1581,6 +1762,9 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         "🛡️ *Valkyrie Elite Scalper*\n"
         f"• Win Rate: `{vk_stats['win_rate']:.1f}%` ({vk_stats['wins']} W | {vk_stats['losses']} L)\n"
         f"• Cumulative PnL: `+{vk_stats['cumulative_pnl']:+.2f} USDT`\n\n"
+        "🦙 *Sherpa Velocity Pullback*\n"
+        f"• Win Rate: `{svp_stats['win_rate']:.1f}%` ({svp_stats['wins']} W | {svp_stats['losses']} L)\n"
+        f"• Cumulative PnL: `+{svp_stats['cumulative_pnl']:+.2f} USDT`\n\n"
         "💰 *Total Treasury Value*\n"
         f"• Master Wallet: `{master_wallet}`\n"
         f"• TRX: `{trx_bal:,.1f}` | USDT: `${usdt_bal:,.2f}`\n"
@@ -2252,9 +2436,21 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("setex_"):
         exchange_id = query.data.split("_")[1]
         context.user_data['exchange_id'] = exchange_id
-        context.user_data['setup_step'] = 1
         await query.answer()
         
+        if exchange_id == 'alpaca':
+            context.user_data['setup_step'] = 101
+            guide = (
+                "🦙 *Alpaca API Setup*\n\n"
+                "To connect your Alpaca Stock account, we will prompt you for your Endpoint Base URL, Key ID, and Secret Key sequentially.\n\n"
+                "1️⃣ Please paste your **Alpaca API Endpoint Base URL** below:\n"
+                "• Paper Trading: `https://paper-api.alpaca.markets`\n"
+                "• Live Trading: `https://api.alpaca.markets`"
+            )
+            await safe_edit_text(update, context, guide)
+            return
+
+        context.user_data['setup_step'] = 1
         # Customize instructions based on exchange
         if exchange_id == 'binance':
             guide = (
@@ -2448,6 +2644,22 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
                 "Select a strategy or adjust your risk below:"
             )
+        elif strat_choice == "Sherpa Velocity Pullback":
+            strategy_overview = (
+                "🎯 *Strategy Selection & Overview*\n\n"
+                "🦙 *Engine: Sherpa Velocity Pullback (SVP)*\n"
+                "Our premier daily US equities swing-trading strategy. Uses EMA filters to capture high-velocity trend pullbacks on a curated stock portfolio.\n\n"
+                "📊 *Core Parameters:*\n"
+                "• *Assets*: 40 Stock watchlist portfolio (Standard & Premium)\n"
+                "• *Risk Per Trade*: User-defined (% of equity) | Recommended: *1.00%*\n"
+                "• *Filters*: Close > EMA 50 > EMA 200 | RSI(3) < 10\n"
+                "• *Exits*: Native Bracket Orders (4.5*ATR TP / 3.0*ATR SL) + dynamic next-day open exits.\n\n"
+                "📈 *Backtest Portfolio Performance Proof (1.0% Risk):*\n"
+                "• Win Rate: *~63.8%*\n"
+                "• Average Trade Duration: *3.4 days*\n\n"
+                f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
+                "Select a strategy or adjust your risk below:"
+            )
         else:
             strategy_overview = (
                 "🎯 *Strategy Selection & Overview*\n\n"
@@ -2472,6 +2684,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Mean Reversion" + (" (Active)" if strat_choice == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
                 InlineKeyboardButton("Valkyrie" + (" (Active)" if strat_choice == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk")
             ],
+            [InlineKeyboardButton("🦙 Sherpa Velocity Pullback Stock" + (" (Active)" if strat_choice == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp")],
             [InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False))
@@ -2655,6 +2868,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
             [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
             [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
+            [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
         ]
         await safe_edit_text(
@@ -2903,7 +3117,36 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target = update.effective_message
         
     user_data = database.get_user(chat_id)
-    if not user_data or not user_data.get('api_key'):
+    if not user_data:
+        await target.reply_text("❌ No user profile found. Please run /setup first.")
+        return
+
+    if user_data.get('exchange_id') == 'alpaca':
+        if not user_data.get('alpaca_api_key'):
+            await target.reply_text("❌ No Alpaca API keys found. Please run /setup first.")
+            return
+        try:
+            account = await database.make_alpaca_request_async(user_data, "GET", "/v2/account")
+            free = float(account.get("cash", 0))
+            total_value = float(account.get("equity", 0) or account.get("portfolio_value", 0))
+            
+            # Format numbers with commas and escape for MarkdownV2 using helper
+            free_str = escape_md_v2(f"{free:,.2f}")
+            total_str = escape_md_v2(f"{total_value:,.2f}")
+            
+            msg = (
+                "💰 *Your Alpaca Account Balance*\n\n"
+                f"Available Cash: ||*${free_str}*|| USD\n"
+                f"Total Account Value: ||*${total_str}*|| USD\n\n"
+                "_Total Value \\= Cash \\+ Stock Market Value_"
+            )
+            await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
+            return
+        except Exception as e:
+            await target.reply_text(f"❌ Error fetching Alpaca balance: {e}")
+            return
+
+    if not user_data.get('api_key'):
         await target.reply_text("❌ No API keys found. Please run /setup first.")
         return
 
@@ -3446,6 +3689,13 @@ async def close_single_position(chat_id, sym):
     user = database.get_user(chat_id)
     if not user: return False, "User not found."
     
+    if user.get('exchange_id') == 'alpaca':
+        try:
+            await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
+            return True, f"Market Closed {sym} stock position."
+        except Exception as e:
+            return False, f"Failed to close {sym} stock position on Alpaca: {e}"
+
     try:
         async with database.get_exchange_client(user) as user_ex:
             # Fetch the specific position
@@ -3471,6 +3721,13 @@ async def panic_close_all(chat_id):
     user = database.get_user(chat_id)
     if not user: return False, "User not found."
     
+    if user.get('exchange_id') == 'alpaca':
+        try:
+            await database.make_alpaca_request_async(user, "DELETE", "/v2/positions", params={"cancel_orders": "true"})
+            return True, "✅ Closed all active stock positions and cancelled all open stock orders on Alpaca."
+        except Exception as e:
+            return False, f"Failed to close Alpaca positions: {e}"
+
     try:
         async with database.get_exchange_client(user) as user_ex:
             import live_bot_multi

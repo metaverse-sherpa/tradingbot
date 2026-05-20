@@ -104,7 +104,10 @@ def init_db():
             ("username", "TEXT"),
             ("is_admin", "BOOLEAN DEFAULT 0"),
             ("custom_equity_type", "TEXT DEFAULT 'all'"),
-            ("custom_equity_value", "REAL")
+            ("custom_equity_value", "REAL"),
+            ("alpaca_api_key", "TEXT"),
+            ("alpaca_api_secret", "TEXT"),
+            ("alpaca_endpoint", "TEXT")
         ]
         for col_name, col_def in cols:
             try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
@@ -169,7 +172,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
@@ -202,7 +205,10 @@ def get_user(chat_id):
             "username": row[24] if len(row) > 24 else None,
             "is_admin": bool(row[25]) if len(row) > 25 else False,
             "custom_equity_type": row[26] if len(row) > 26 and row[26] is not None else 'all',
-            "custom_equity_value": row[27] if len(row) > 27 else None
+            "custom_equity_value": row[27] if len(row) > 27 else None,
+            "alpaca_api_key": decrypt(row[28]) if len(row) > 28 and row[28] else None,
+            "alpaca_api_secret": decrypt(row[29]) if len(row) > 29 and row[29] else None,
+            "alpaca_endpoint": row[30] if len(row) > 30 else None
         }
     return None
 
@@ -245,10 +251,15 @@ def update_user_preference(chat_id, key, value):
             "enabled_symbols": "enabled_symbols", 
             "exchange_id": "exchange_id",
             "custom_equity_type": "custom_equity_type",
-            "custom_equity_value": "custom_equity_value"
+            "custom_equity_value": "custom_equity_value",
+            "alpaca_api_key": "alpaca_api_key",
+            "alpaca_api_secret": "alpaca_api_secret",
+            "alpaca_endpoint": "alpaca_endpoint"
         }
         if key in cols:
             col_name = cols[key]
+            if key in ["alpaca_api_key", "alpaca_api_secret"] and value:
+                value = encrypt(value)
             if key == "enabled_symbols" and isinstance(value, list):
                 value = ",".join(value)
             # Use parameter substitution for the value, but we still have to format the column name
@@ -694,10 +705,10 @@ def get_theoretical_stats():
         c.execute("SELECT COUNT(*) FROM TheoreticalTrades")
         total_trades = c.fetchone()[0]
         
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status = 'tp'")
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status != 'open' AND pnl_usdt > 0")
         wins = c.fetchone()[0]
         
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status = 'sl'")
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status != 'open' AND pnl_usdt <= 0")
         losses = c.fetchone()[0]
         
         c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE status != 'open'")
@@ -728,10 +739,10 @@ def get_theoretical_stats_by_strategy(strategy_name):
         c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ?", (strategy_name,))
         total_trades = c.fetchone()[0]
         
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status = 'tp'", (strategy_name,))
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open' AND pnl_usdt > 0", (strategy_name,))
         wins = c.fetchone()[0]
         
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status = 'sl'", (strategy_name,))
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open' AND pnl_usdt <= 0", (strategy_name,))
         losses = c.fetchone()[0]
         
         c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open'", (strategy_name,))
@@ -756,3 +767,28 @@ def get_recent_theoretical_trades(limit=10):
         c.execute("SELECT * FROM TheoreticalTrades ORDER BY id DESC LIMIT ?", (limit,))
         rows = c.fetchall()
     return [dict(r) for r in rows]
+
+def make_alpaca_request(user, method, path, params=None, json_data=None):
+    import requests
+    endpoint = user.get("alpaca_endpoint") or "https://paper-api.alpaca.markets"
+    # Ensure no trailing slash
+    endpoint = endpoint.rstrip('/')
+    url = f"{endpoint}{path}"
+    
+    headers = {
+        "APCA-API-KEY-ID": user.get("alpaca_api_key") or "",
+        "APCA-API-SECRET-KEY": user.get("alpaca_api_secret") or "",
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.request(method, url, headers=headers, params=params, json=json_data, timeout=10)
+    response.raise_for_status()
+    try:
+        return response.json()
+    except Exception:
+        return {"status": "success", "code": response.status_code}
+
+async def make_alpaca_request_async(user, method, path, params=None, json_data=None):
+    import asyncio
+    return await asyncio.to_thread(make_alpaca_request, user, method, path, params, json_data)
+

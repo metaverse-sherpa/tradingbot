@@ -7,19 +7,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Expanded list of 39 Sector-Balanced Blue-Chip Symbols
+# Expanded list of 40 Momentum-Growth Symbols
 SYMBOLS = [
-    # Technology / Megacaps (17)
-    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "AVGO", "TSM", "NFLX",
-    "ADBE", "AMD", "QCOM", "ORCL", "CRM", "INTC", "CSCO",
-    # Financials (6)
-    "JPM", "BAC", "GS", "MS", "V", "MA",
-    # Consumer & Retail (7)
-    "WMT", "COST", "PG", "HD", "KO", "PEP", "NKE",
-    # Healthcare (5)
-    "LLY", "UNH", "JNJ", "MRK", "ABBV",
-    # Industrials & Energy (4)
-    "XOM", "CVX", "GE", "CAT"
+    # Technology & Megacap growth (15)
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "AVGO", "TSM", "NFLX", "AMD", "QCOM", "ORCL", "CRM", "META", "ANET", "NOW",
+    # Semiconductors & Tech Hardware (4)
+    "ASML", "MU", "LRCX", "PANW",
+    # Financials & Tech Hardware (4)
+    "GS", "MS", "CSCO", "AXP",
+    # Consumer Discretionary & Retail (5)
+    "WMT", "COST", "CMG", "TJX", "MELI",
+    # Industrials & Infrastructure (5)
+    "GE", "CAT", "ETN", "URI", "PH",
+    # Healthcare & Biotech (4)
+    "LLY", "JNJ", "VRTX", "ISRG",
+    # Energy (3)
+    "XOM", "CVX", "COP"
 ]
 DB_PATH = "data/stock_daily_cache.db"
 
