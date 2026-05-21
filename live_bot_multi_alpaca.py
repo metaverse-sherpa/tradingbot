@@ -19,8 +19,9 @@ logger = logging.getLogger("AlpacaLiveBot")
 load_dotenv()
 
 TIINGO_API_KEY = os.getenv("TIINGO_API_KEY")
-STOCK_DB_PATH = "data/stock_daily_cache.db"
-USER_DB_PATH = "data/bot_users.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STOCK_DB_PATH = os.path.join(BASE_DIR, "data", "stock_daily_cache.db")
+USER_DB_PATH = os.path.join(BASE_DIR, "data", "bot_users.db")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 async def send_telegram_message(chat_id, text):

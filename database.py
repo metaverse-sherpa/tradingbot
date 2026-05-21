@@ -63,8 +63,47 @@ def decrypt(data):
     return cipher_suite.decrypt(data.encode()).decode()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True)
-DB_PATH = os.path.join(BASE_DIR, 'data', 'bot_users.db')
+ROOT_DB_PATH = os.path.join(BASE_DIR, 'bot_users.db')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+DATA_DB_PATH = os.path.join(DATA_DIR, 'bot_users.db')
+
+# Ensure directory exists with dynamic fallback
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create data directory {DATA_DIR}: {e}")
+
+# Default path is under the data directory
+DB_PATH = DATA_DB_PATH
+
+# 1. Automatic migration from root folder to data/ folder if root exists and data/ is writable
+if os.path.exists(ROOT_DB_PATH) and not os.path.exists(DATA_DB_PATH):
+    try:
+        import shutil
+        shutil.copy2(ROOT_DB_PATH, DATA_DB_PATH)
+        # Rename the root database to a backup to avoid duplicate DB operations
+        os.rename(ROOT_DB_PATH, os.path.join(BASE_DIR, 'bot_users.db.backup'))
+        print(f"Successfully migrated active database from root to {DATA_DB_PATH}")
+    except Exception as e:
+        print(f"Warning: Failed to migrate database to data/ folder: {e}")
+        # Fallback to root database if copy failed
+        DB_PATH = ROOT_DB_PATH
+
+# 2. Test sqlite3 connection to DB_PATH, fallback to ROOT_DB_PATH if it fails (e.g. permission issues on data/)
+try:
+    conn = sqlite3.connect(DB_PATH)
+    conn.close()
+except sqlite3.OperationalError as e:
+    print(f"Warning: DB_PATH {DB_PATH} is not writable or accessible ({e}). Falling back to root database {ROOT_DB_PATH}.")
+    DB_PATH = ROOT_DB_PATH
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.close()
+    except sqlite3.OperationalError as re:
+        print(f"Critical: Root database also inaccessible: {re}")
+        # Revert to DATA_DB_PATH to let the init_db call bubble up standard errors
+        DB_PATH = DATA_DB_PATH
+
 
 def init_db():
     with db_session() as conn:
