@@ -985,9 +985,20 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             sl_val = escape_md_v2(f"{sl_price:.4f}")
                             tp_val = escape_md_v2(f"{tp_price:.4f}")
                             
+                            target_roe_str = "N/A"
+                            target_pnl_usdt = 0.0
+                            if tp_price > 0:
+                                contracts = float(p.get("contracts", 0) or 0)
+                                target_pnl_usdt = (tp_price - entry) * contracts * contract_size if side == "LONG" else (entry - tp_price) * contracts * contract_size
+                                target_roe = (target_pnl_usdt / initial_margin * 100) if initial_margin > 0 else 0.0
+                                target_roe_str = f"{target_roe:+.1f}%"
+                            
+                            target_pnl_v2 = escape_md_v2(f"{target_pnl_usdt:+.2f}")
+                            target_roe_v2 = escape_md_v2(target_roe_str)
+                            
                             caption = (
                                 f"{'🟢' if side == 'LONG' else '🔴'} *{sym_v2} \\({side}\\)*\n"
-                                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\)\n"
+                                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target\n"
                                 f"SL: `{sl_val}` \\| TP: `{tp_val}`"
                             )
                             
