@@ -352,7 +352,8 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
 
 def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, wins, losses, user_id="", bot_username="metaversesherpa_trading_bot"):
     """
-    Generates a premium forward testing performance card for a specific strategy.
+    Generates a premium forward testing performance card for a specific strategy
+    using a professional glassmorphic sidebar layout to prevent text overflow.
     """
     if not os.path.exists(LOGO_PATH):
         return None
@@ -377,36 +378,81 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
                 except: continue
             return ImageFont.load_default()
 
-        font_main = find_font(55)
-        font_sub = find_font(40)
-        font_strategy = find_font(65)
-        font_massive = find_font(90)
+        font_header = find_font(24)
+        
+        # Scale strategy font based on name length
+        strat_len = len(strategy_name)
+        if strat_len > 22:
+            font_strategy = find_font(34)
+        elif strat_len > 18:
+            font_strategy = find_font(38)
+        else:
+            font_strategy = find_font(44)
+            
+        font_massive = find_font(56)
+        font_label = find_font(22)
+        font_val = find_font(44)
+        font_val_sub = find_font(36)
     except:
-        font_main = font_sub = font_strategy = font_massive = ImageFont.load_default()
+        font_header = font_strategy = font_massive = font_label = font_val = font_val_sub = ImageFont.load_default()
 
     color_neon = (0, 255, 150, 255) if pnl_usdt >= 0 else (255, 50, 50, 255)
     color_white = (255, 255, 255, 255)
     
-    def draw_text_shadow(pos, text, font, fill, shadow_fill=(0, 0, 0, 200), offset=(3, 3)):
+    def draw_text_shadow(pos, text, font, fill, shadow_fill=(0, 0, 0, 220), offset=(2, 2)):
         draw.text((pos[0] + offset[0], pos[1] + offset[1]), text, font=font, fill=shadow_fill)
         draw.text(pos, text, font=font, fill=fill)
 
-    margin_x = 50
-    margin_y = 50
+    # Frosted Glass Side Panel Geometry
+    left = 40
+    top = 40
+    right = 580
+    bottom = base_img.height - 40
     
-    draw_text_shadow((margin_x, margin_y), "FORWARD TESTING PERFORMANCE", font=font_main, fill=color_white)
+    # Draw glassmorphic background card
+    try:
+        draw.rounded_rectangle([left, top, right, bottom], radius=24, fill=(10, 15, 30, 210), outline=(255, 255, 255, 40), width=2)
+    except AttributeError:
+        draw.rectangle([left, top, right, bottom], fill=(10, 15, 30, 210), outline=(255, 255, 255, 40), width=2)
+        
+    inner_x = left + 35
+    inner_y = top + 45
     
-    # Strategy Title
-    draw_text_shadow((margin_x, margin_y + 90), strategy_name.upper(), font=font_strategy, fill=color_neon)
+    # 1. Header Title
+    draw_text_shadow((inner_x, inner_y), "FORWARD TESTING PERFORMANCE", font=font_header, fill=(170, 195, 240, 255))
     
-    # Cumulative PnL
+    # Separator Line
+    draw.line([(inner_x, inner_y + 45), (right - 35, inner_y + 45)], fill=(255, 255, 255, 40), width=2)
+    
+    # 2. Strategy Name
+    draw_text_shadow((inner_x, inner_y + 75), strategy_name.upper(), font=font_strategy, fill=color_neon)
+    
+    # Separator Line
+    draw.line([(inner_x, inner_y + 175), (right - 35, inner_y + 175)], fill=(255, 255, 255, 40), width=1)
+    
+    # 3. Cumulative PnL Section
+    draw_text_shadow((inner_x, inner_y + 210), "TOTAL CUMULATIVE PNL", font=font_label, fill=(170, 195, 240, 255))
     pnl_sign = "+" if pnl_usdt >= 0 else "-"
-    draw_text_shadow((margin_x, base_img.height - 350), f"PNL: {pnl_sign}${abs(pnl_usdt):,.2f} USDT", font=font_massive, fill=color_neon)
+    pnl_text = f"{pnl_sign}${abs(pnl_usdt):,.2f} USDT"
+    draw_text_shadow((inner_x, inner_y + 250), pnl_text, font=font_massive, fill=color_neon)
     
-    # Win Rate and Stats
-    draw_text_shadow((margin_x, base_img.height - 230), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 170), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 110), f"Record: {wins} Wins | {losses} Losses", font=font_sub, fill=color_white)
+    # Separator Line
+    draw.line([(inner_x, inner_y + 345), (right - 35, inner_y + 345)], fill=(255, 255, 255, 40), width=1)
+    
+    # 4. Strategy Stats Block
+    stats_y = inner_y + 380
+    
+    # Win Rate
+    draw_text_shadow((inner_x, stats_y), "WIN RATE", font=font_label, fill=(170, 195, 240, 255))
+    draw_text_shadow((inner_x, stats_y + 32), f"{win_rate:.1f}%", font=font_val, fill=color_white)
+    
+    # Total Trades
+    draw_text_shadow((inner_x, stats_y + 105), "TOTAL TRADES", font=font_label, fill=(170, 195, 240, 255))
+    draw_text_shadow((inner_x, stats_y + 137), f"{total_trades}", font=font_val, fill=color_white)
+    
+    # Record Wins / Losses
+    draw_text_shadow((inner_x, stats_y + 210), "RECORD", font=font_label, fill=(170, 195, 240, 255))
+    draw_text_shadow((inner_x, stats_y + 242), f"{wins} Wins | {losses} Losses", font=font_val_sub, fill=color_white)
     
     ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
     
