@@ -13,11 +13,60 @@ from bot.config import TELEGRAM_TOKEN, SUPER_ADMIN_ID, logger
 import database
 from bot.handlers import register_handlers
 from bot.engines import sync_engine, signal_engine, alpaca_equities_engine
+from bot.handlers.system import error_handler
 
 # Backward compatibility imports for downstream charting/audit scripts
 from bot.ui.keyboards import get_nav_buttons
 
 async def post_init(application):
+    # Set the bot's command menu (the button in the bottom left of Telegram)
+    await application.bot.set_my_commands([
+        ("opentrades", "🛰 View live active positions"),
+        ("list", "📜 List last 10 closed trades"),
+        ("stats", "📊 View account performance"),
+        ("balance", "💰 Check available USDT balance"),
+        ("help", "❓ Get help & command guide"),
+        ("settings", "⚙️ Bot settings & privacy"),
+        ("docs", "📖 View user manual & tutorials"),
+        ("contact", "🤝 Contact @metaverse_sherpa"),
+        ("reset", "🔄 Reconfigure API keys"),
+    ])
+
+    # 🚀 Notify Overlord of Deployment Success
+    try:
+        import subprocess
+        from datetime import datetime
+        from bot.ui.keyboards import escape_md_v2
+        
+        # Fetch the latest 3 commit messages for the changelog
+        try:
+            changelog = subprocess.check_output(['git', 'log', '-n', '3', '--pretty=format:• %s (%ar)']).decode('utf-8')
+        except Exception as git_err:
+            logger.error(f"Failed to fetch changelog via git: {git_err}")
+            changelog = "• New deployment (Audit Trail Unavailable)"
+            
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_v2 = escape_md_v2(now)
+        changelog_v2 = escape_md_v2(changelog)
+        msg = (
+            "🚀 *Deployment Success*\n\n"
+            "The MetaverseSherpa Trading Bot has been upgraded and is now online\\.\n\n"
+            f"🕒 *Timestamp:* `{now_v2}`\n\n"
+            "📜 *Recent Fixes:* \n" + changelog_v2 + "\n\n"
+            "🔬 *What to Test Next:*\n"
+            "• Verify 'Close Trade' tactical confirmation on /opentrades\n"
+            "• Audit the new 'Glass Progress Bar' for layout overlap\n"
+            "• Confirm Blofin Tutorial deep\\_link delivers PDF correctly"
+        )
+        await application.bot.send_message(
+            chat_id=SUPER_ADMIN_ID,
+            text=msg,
+            parse_mode="MarkdownV2"
+        )
+        logger.info("Sent startup deployment notification to Super Admin.")
+    except Exception as e:
+        logger.error(f"Failed to send startup notification: {e}")
+
     # Spawn the background loop engines under python-telegram-bot's loop context
     task1 = asyncio.create_task(sync_engine(application))
     task2 = asyncio.create_task(signal_engine(application))
@@ -38,10 +87,6 @@ async def post_stop(application):
     # Give aiohttp a small buffer to sweep the unclosed connectors
     await asyncio.sleep(0.5)
     logger.info("Background engines shut down.")
-
-async def error_handler(update, context):
-    """Log the error and send a telegram message to notify the developer."""
-    logger.error("Exception while handling an update:", exc_info=context.error)
 
 def main():
     try:
