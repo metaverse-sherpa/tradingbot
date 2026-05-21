@@ -1352,7 +1352,17 @@ async def close_single_position(chat_id, sym):
             
             # Market close order
             order_side = "sell" if side == "LONG" else "buy"
-            await user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
+            
+            # Determine positionSide parameter dynamically for the order
+            params = {"reduceOnly": True}
+            raw_info = pos.get('info', {})
+            raw_pos_side = raw_info.get('positionSide') or raw_info.get('posSide')
+            if raw_pos_side:
+                params["positionSide"] = raw_pos_side
+            else:
+                params["positionSide"] = "long" if side == "LONG" else "short"
+                
+            await user_ex.create_market_order(sym, order_side, contracts, params=params)
             
             return True, f"Market Closed {sym} position."
     except Exception as e:
@@ -1397,7 +1407,17 @@ async def panic_close_all(chat_id):
                             contracts = float(p['contracts'])
                             
                             order_side = "sell" if side == "LONG" else "buy"
-                            await user_ex.create_market_order(sym, order_side, contracts, params={"reduceOnly": True})
+                            
+                            # Determine positionSide parameter dynamically for the order
+                            params = {"reduceOnly": True}
+                            raw_info = p.get('info', {})
+                            raw_pos_side = raw_info.get('positionSide') or raw_info.get('posSide')
+                            if raw_pos_side:
+                                params["positionSide"] = raw_pos_side
+                            else:
+                                params["positionSide"] = "long" if side == "LONG" else "short"
+                                
+                            await user_ex.create_market_order(sym, order_side, contracts, params=params)
                             results.append(f"✅ Closed crypto {sym}")
                         except Exception as e:
                             results.append(f"❌ Failed crypto {p['symbol']}: {e}")
