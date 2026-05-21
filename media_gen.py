@@ -444,10 +444,11 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
     # Separator Line
     draw.line([(inner_x, inner_y + 175), (right - 35, inner_y + 175)], fill=(255, 255, 255, 40), width=1)
     
-    # 3. Cumulative PnL Section (Auto-Scaled)
-    draw_text_shadow((inner_x, inner_y + 210), "TOTAL CUMULATIVE PNL", font=font_label, fill=(170, 195, 240, 255))
-    pnl_sign = "+" if pnl_usdt >= 0 else "-"
-    pnl_text = f"{pnl_sign}${abs(pnl_usdt):,.2f} USDT"
+    # 3. Cumulative Return Section (Auto-Scaled as percentage return)
+    draw_text_shadow((inner_x, inner_y + 210), "CUMULATIVE RETURN", font=font_label, fill=(170, 195, 240, 255))
+    pnl_pct = (pnl_usdt / 1000.0) * 100
+    pnl_sign = "+" if pnl_pct >= 0 else "-"
+    pnl_text = f"{pnl_sign}{abs(pnl_pct):.2f}%"
     
     pnl_font_size = 56
     font_massive = None
