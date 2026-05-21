@@ -1,5 +1,6 @@
 import os
 import sys
+import sqlite3
 import logging
 from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -10,7 +11,7 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 import database
-from bot.config import SUPER_ADMIN_ID
+from bot.config import SUPER_ADMIN_ID, get_currency, is_stock
 from bot.ui.keyboards import escape_md_v2, get_nav_buttons
 
 logger = logging.getLogger(__name__)
@@ -52,3 +53,144 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         reply_markup=InlineKeyboardMarkup(grid),
         parse_mode="MarkdownV2"
     )
+
+
+async def build_forward_test_stats_block():
+    """
+    Shared helper that computes simulated forward testing analytics with
+    independent $1,000 allocations per strategy, live unrealized PnL for
+    open trades, and per-trade breakdowns.
+    
+    Returns a formatted Markdown text block ready to embed in any message.
+    """
+    import live_bot_multi
+    
+    open_sim_trades = database.get_open_theoretical_trades()
+    
+    mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
+    vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+    svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
+    
+    # Group open trades by strategy
+    strategy_names = ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"]
+    strategy_open_trades = {s: [] for s in strategy_names}
+    for t in open_sim_trades:
+        strat = t.get('strategy', '')
+        if strat in strategy_open_trades:
+            strategy_open_trades[strat].append(t)
+    
+    # Fetch live prices for open trades to compute unrealized PnL
+    strategy_unrealized = {s: 0.0 for s in strategy_names}
+    strategy_trade_lines = {s: [] for s in strategy_names}
+    
+    mdm = live_bot_multi.MarketDataManager()
+    try:
+        for strat_name in strategy_names:
+            for t in strategy_open_trades[strat_name]:
+                sym = t['symbol']
+                side = t['side']
+                entry = t['entry_price']
+                pos_size = t['position_size']
+                
+                if is_stock(sym):
+                    try:
+                        import pandas as pd
+                        conn = sqlite3.connect("data/stock_daily_cache.db")
+                        df_chart = pd.read_sql_query(
+                            "SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1",
+                            conn, params=(sym,)
+                        )
+                        conn.close()
+                        current = float(df_chart['close'].iloc[0]) if not df_chart.empty else entry
+                    except Exception:
+                        current = entry
+                else:
+                    df = await mdm.fetch_ohlcv(sym, "15m")
+                    current = float(df['close'].iloc[-1]) if df is not None and not df.empty else entry
+                
+                side_lower = str(side).lower()
+                pnl_raw = current - entry if side_lower in ['buy', 'long'] else entry - current
+                pnl_pct = (pnl_raw / entry) * 100
+                
+                currency = get_currency(sym)
+                if is_stock(sym):
+                    pnl_val = pos_size * (pnl_pct / 100)
+                else:
+                    pnl_val = pos_size * pnl_raw
+                
+                strategy_unrealized[strat_name] += pnl_val
+                
+                direction = "⬆️" if side_lower in ['buy', 'long'] else "⬇️"
+                strategy_trade_lines[strat_name].append(
+                    f"  {direction} `{sym}`: {pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})"
+                )
+    except Exception as e:
+        logger.error(f"Error fetching live prices for forward test stats: {e}")
+    finally:
+        await mdm.close()
+    
+    # Each strategy starts with its own $1,000 allocation
+    starting_capital = 1000.0
+    all_stats = {
+        "Mean Reversion Scalper": mr_stats,
+        "Valkyrie Elite Scalper": vk_stats,
+        "Sherpa Velocity Pullback": svp_stats
+    }
+    strategy_icons = {
+        "Mean Reversion Scalper": "📈",
+        "Valkyrie Elite Scalper": "🛡️",
+        "Sherpa Velocity Pullback": "🦙"
+    }
+    
+    balances = {}
+    growths = {}
+    for s in strategy_names:
+        balances[s] = starting_capital + all_stats[s]['cumulative_pnl'] + strategy_unrealized[s]
+        growths[s] = ((balances[s] - starting_capital) / starting_capital) * 100
+    
+    total_balance = sum(balances.values())
+    total_growth = ((total_balance - (starting_capital * 3)) / (starting_capital * 3)) * 100
+    
+    # Build per-strategy sections
+    def _build_strategy_block(name):
+        stats = all_stats[name]
+        icon = strategy_icons[name]
+        balance = balances[name]
+        growth = growths[name]
+        open_trades = strategy_open_trades[name]
+        trade_lines = strategy_trade_lines[name]
+        unrealized = strategy_unrealized[name]
+        open_count = len(open_trades)
+        
+        block = (
+            f"{icon} *{name}*\n"
+            f"• Balance: *${balance:,.2f}* ({growth:+.2f}%)\n"
+            f"• Win Rate: `{stats['win_rate']:.1f}%` ({stats['wins']} W | {stats['losses']} L)\n"
+            f"• Realized PnL: `{stats['cumulative_pnl']:+.2f} USDT`\n"
+        )
+        if open_count > 0:
+            block += f"• Open Trades: `{open_count}`"
+            if unrealized != 0:
+                block += f" (Unrealized: `{unrealized:+.2f} USDT`)"
+            block += "\n"
+            for line in trade_lines:
+                block += f"{line}\n"
+        else:
+            block += "• Open Trades: `0`\n"
+        return block
+    
+    mr_block = _build_strategy_block("Mean Reversion Scalper")
+    vk_block = _build_strategy_block("Valkyrie Elite Scalper")
+    svp_block = _build_strategy_block("Sherpa Velocity Pullback")
+    
+    text = (
+        "🧪 *Simulated Forward Testing*\n"
+        f"• Combined Balance: *${total_balance:,.2f} USDT* ({total_growth:+.2f}%)\n"
+        f"• Open Simulated Trades: `{len(open_sim_trades)}`\n\n"
+        f"{mr_block}\n"
+        f"{vk_block}\n"
+        f"{svp_block}\n"
+        f"_Each strategy starts with an independent $1,000 allocation_"
+    )
+    
+    return text

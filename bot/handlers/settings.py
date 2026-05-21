@@ -22,6 +22,7 @@ from bot.ui.keyboards import (
     get_admin_keyboard,
     get_settings_ui
 )
+from bot.ui.dashboards import build_forward_test_stats_block
 
 # Optional dependencies in root (safe dynamically imported/resolved via sys.path)
 import charting
@@ -1441,128 +1442,5 @@ async def show_virtual_trade_stats(update: Update, context: ContextTypes.DEFAULT
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
 
-    # 🧪 Simulated Forward Testing Analytics — $1,000 independent allocation per strategy
-    open_sim_trades = database.get_open_theoretical_trades()
-    
-    mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
-    vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
-    svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
-    
-    # Group open trades by strategy and compute live unrealized PnL
-    strategy_open_trades = {
-        "Mean Reversion Scalper": [],
-        "Valkyrie Elite Scalper": [],
-        "Sherpa Velocity Pullback": []
-    }
-    for t in open_sim_trades:
-        strat = t.get('strategy', '')
-        if strat in strategy_open_trades:
-            strategy_open_trades[strat].append(t)
-    
-    # Fetch live prices for open trades to compute unrealized PnL
-    strategy_unrealized = {"Mean Reversion Scalper": 0.0, "Valkyrie Elite Scalper": 0.0, "Sherpa Velocity Pullback": 0.0}
-    strategy_trade_lines = {"Mean Reversion Scalper": [], "Valkyrie Elite Scalper": [], "Sherpa Velocity Pullback": []}
-    
-    mdm = live_bot_multi.MarketDataManager()
-    try:
-        for strat_name, trades in strategy_open_trades.items():
-            for t in trades:
-                sym = t['symbol']
-                side = t['side']
-                entry = t['entry_price']
-                pos_size = t['position_size']
-                
-                if is_stock(sym):
-                    try:
-                        import pandas as pd
-                        conn = sqlite3.connect("data/stock_daily_cache.db")
-                        df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", conn, params=(sym,))
-                        conn.close()
-                        current = float(df_chart['close'].iloc[0]) if not df_chart.empty else entry
-                    except Exception:
-                        current = entry
-                else:
-                    df = await mdm.fetch_ohlcv(sym, "15m")
-                    current = float(df['close'].iloc[-1]) if df is not None and not df.empty else entry
-                
-                side_lower = str(side).lower()
-                pnl_raw = current - entry if side_lower in ['buy', 'long'] else entry - current
-                pnl_pct = (pnl_raw / entry) * 100
-                
-                currency = get_currency(sym)
-                if is_stock(sym):
-                    pnl_val = pos_size * (pnl_pct / 100)
-                else:
-                    pnl_val = pos_size * pnl_raw
-                
-                strategy_unrealized[strat_name] += pnl_val
-                
-                direction = "⬆️" if side_lower in ['buy', 'long'] else "⬇️"
-                strategy_trade_lines[strat_name].append(
-                    f"  {direction} `{sym}`: {pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})"
-                )
-    except Exception as e:
-        logger.error(f"Error fetching live prices for virtual trade stats: {e}")
-    finally:
-        await mdm.close()
-    
-    # Each strategy starts with its own $1,000 allocation
-    starting_capital = 1000.0
-    
-    mr_balance = starting_capital + mr_stats['cumulative_pnl'] + strategy_unrealized["Mean Reversion Scalper"]
-    vk_balance = starting_capital + vk_stats['cumulative_pnl'] + strategy_unrealized["Valkyrie Elite Scalper"]
-    svp_balance = starting_capital + svp_stats['cumulative_pnl'] + strategy_unrealized["Sherpa Velocity Pullback"]
-    
-    mr_growth = ((mr_balance - starting_capital) / starting_capital) * 100
-    vk_growth = ((vk_balance - starting_capital) / starting_capital) * 100
-    svp_growth = ((svp_balance - starting_capital) / starting_capital) * 100
-    
-    total_balance = mr_balance + vk_balance + svp_balance
-    total_growth = ((total_balance - (starting_capital * 3)) / (starting_capital * 3)) * 100
-    
-    # Build per-strategy sections
-    def build_strategy_block(icon, name, stats, balance, growth, open_trades, trade_lines, unrealized):
-        open_count = len(open_trades)
-        block = (
-            f"{icon} *{name}*\n"
-            f"• Balance: *${balance:,.2f}* ({growth:+.2f}%)\n"
-            f"• Win Rate: `{stats['win_rate']:.1f}%` ({stats['wins']} W | {stats['losses']} L)\n"
-            f"• Realized PnL: `{stats['cumulative_pnl']:+.2f} USDT`\n"
-        )
-        if open_count > 0:
-            block += f"• Open Trades: `{open_count}`"
-            if unrealized != 0:
-                block += f" (Unrealized: `{unrealized:+.2f} USDT`)"
-            block += "\n"
-            for line in trade_lines:
-                block += f"{line}\n"
-        else:
-            block += "• Open Trades: `0`\n"
-        return block
-    
-    mr_block = build_strategy_block("📈", "Mean Reversion Scalper", mr_stats, mr_balance, mr_growth,
-                                     strategy_open_trades["Mean Reversion Scalper"],
-                                     strategy_trade_lines["Mean Reversion Scalper"],
-                                     strategy_unrealized["Mean Reversion Scalper"])
-    
-    vk_block = build_strategy_block("🛡️", "Valkyrie Elite Scalper", vk_stats, vk_balance, vk_growth,
-                                     strategy_open_trades["Valkyrie Elite Scalper"],
-                                     strategy_trade_lines["Valkyrie Elite Scalper"],
-                                     strategy_unrealized["Valkyrie Elite Scalper"])
-    
-    svp_block = build_strategy_block("🦙", "Sherpa Velocity Pullback", svp_stats, svp_balance, svp_growth,
-                                      strategy_open_trades["Sherpa Velocity Pullback"],
-                                      strategy_trade_lines["Sherpa Velocity Pullback"],
-                                      strategy_unrealized["Sherpa Velocity Pullback"])
-    
-    msg = (
-        "🧪 *Simulated Forward Testing*\n"
-        f"• Combined Balance: *${total_balance:,.2f} USDT* ({total_growth:+.2f}%)\n"
-        f"• Open Simulated Trades: `{len(open_sim_trades)}`\n\n"
-        f"{mr_block}\n"
-        f"{vk_block}\n"
-        f"{svp_block}\n"
-        f"_Each strategy starts with an independent $1,000 allocation_"
-    )
-    
+    msg = await build_forward_test_stats_block()
     await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")

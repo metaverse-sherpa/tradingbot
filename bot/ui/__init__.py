@@ -7,4 +7,4 @@ from bot.ui.keyboards import (
     get_backtest_inline_menu,
     get_settings_ui
 )
-from bot.ui.dashboards import render_history_dashboard
+from bot.ui.dashboards import render_history_dashboard, build_forward_test_stats_block
