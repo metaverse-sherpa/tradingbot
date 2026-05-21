@@ -3655,7 +3655,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         free_str = escape_md_v2(f"{crypto_details['free']:,.2f}")
         total_str = escape_md_v2(f"{crypto_details['total']:,.2f}")
         msg_parts.append(
-            f"🪙 *Crypto Account ({crypto_details['exchange']})*\n"
+            f"🪙 *Crypto Account \\({crypto_details['exchange']}\\)*\n"
             f"• Available Cash: ||*${free_str}*|| USDT\n"
             f"• Total Value: ||*${total_str}*|| USDT\n"
         )
@@ -3664,7 +3664,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         free_str = escape_md_v2(f"{stock_details['free']:,.2f}")
         total_str = escape_md_v2(f"{stock_details['total']:,.2f}")
         msg_parts.append(
-            f"🦙 *Stock Account (Alpaca)*\n"
+            f"🦙 *Stock Account \\(Alpaca\\)*\n"
             f"• Buying Power: ||*${free_str}*|| USD\n"
             f"• Portfolio Value: ||*${total_str}*|| USD\n"
         )
