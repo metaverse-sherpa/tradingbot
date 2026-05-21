@@ -186,4 +186,8 @@ def get_settings_ui(user):
     
     keyboard.append([InlineKeyboardButton("👛 Set/Change Wallet", callback_data="prompt_set_wallet")])
     
+    # 🏔️ Extend settings UI with main navigation footer menu
+    has_active = user.get('has_open_positions', False)
+    keyboard.extend(get_nav_buttons(has_active, is_admin))
+    
     return msg, InlineKeyboardMarkup(keyboard)
