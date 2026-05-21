@@ -37,6 +37,37 @@ def get_master_wallet():
 # --- Institutional Revenue Constants ---
 MASTER_USDT_WALLET = "TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3"
 
+def format_price(price, symbol=""):
+    """Formats price beautifully based on symbol type and magnitude."""
+    if not isinstance(price, (int, float)):
+        try:
+            price = float(price)
+        except Exception:
+            return str(price)
+            
+    symbol_str = str(symbol).upper()
+    if symbol_str and "/" not in symbol_str and ":" not in symbol_str and "USDT" not in symbol_str:
+        return f"{price:,.2f}"
+        
+    if price >= 1000:
+        return f"{price:,.2f}"
+    elif price >= 1:
+        return f"{price:,.4f}"
+    else:
+        return f"{price:.8f}".rstrip('0').rstrip('.') or "0"
+
+def get_currency(symbol):
+    """Determines simulated trade currency base."""
+    symbol_str = str(symbol).upper()
+    if symbol_str and "/" not in symbol_str and ":" not in symbol_str and "USDT" not in symbol_str:
+        return "USD"
+    return "USDT"
+
+def is_stock(symbol):
+    """Determines if a symbol is a stock ticker."""
+    symbol_str = str(symbol).upper()
+    return symbol_str and "/" not in symbol_str and ":" not in symbol_str and "USDT" not in symbol_str
+
 # Setup Logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1426,9 +1457,13 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         target_roe_v2 = escape_md_v2(target_roe_str)
                         sym_v2 = escape_md_v2(sym)
                         
+                        sl_str = escape_md_v2(f"{sl_price:.2f}") if sl_price > 0 else "None"
+                        tp_str = escape_md_v2(f"{tp_price:.2f}") if tp_price > 0 else "None"
+                        entry_str = escape_md_v2(f"{entry:.2f}")
                         caption = (
                             f"🟢 *{sym_v2} \\({side.upper()}\\)*\n"
-                            f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target"
+                            f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target\n"
+                            f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
                         )
                         
                         # Attempt to generate daily stock chart
@@ -2465,19 +2500,43 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pos_size = t['position_size']
                     strat = t['strategy']
                     
-                    df_chart = await mdm.fetch_ohlcv(sym, "15m")
-                    if df_chart is None:
+                    if is_stock(sym):
+                        try:
+                            import pandas as pd
+                            conn = sqlite3.connect("data/stock_daily_cache.db")
+                            df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
+                            conn.close()
+                            if not df_chart.empty:
+                                df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype(int) // 10**6
+                                df_chart = df_chart.tail(60).copy()
+                            else:
+                                df_chart = None
+                        except Exception as stock_db_err:
+                            logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
+                            df_chart = None
+                    else:
+                        df_chart = await mdm.fetch_ohlcv(sym, "15m")
+                        
+                    if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                         continue
                         
-                    current = df_chart['close'].iloc[-1]
-                    pnl_raw = current - entry if side == 'buy' or side == 'long' else entry - current
+                    current = float(df_chart['close'].iloc[-1])
+                    side_lower = str(side).lower()
+                    pnl_raw = current - entry if side_lower in ['buy', 'long'] else entry - current
                     pnl_pct = (pnl_raw / entry) * 100
-                    pnl_usdt = pos_size * pnl_raw
                     
-                    side_str = "LONG" if side == 'buy' or side == 'long' else "SHORT"
+                    currency = get_currency(sym)
+                    if is_stock(sym):
+                        pnl_val = pos_size * (pnl_pct / 100)
+                    else:
+                        pnl_val = pos_size * pnl_raw
+                    
+                    side_str = "LONG" if side_lower in ['buy', 'long'] else "SHORT"
                     
                     chart_file = None
                     try:
+                        tf = "1D" if is_stock(sym) else "15M"
+                        curr = "USD" if is_stock(sym) else "USDT"
                         chart_file = await asyncio.to_thread(
                             charting.generate_trade_chart,
                             sym,
@@ -2486,7 +2545,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             tp,
                             sl,
                             side_str,
-                            open_ts=open_ts
+                            open_ts=open_ts,
+                            timeframe=tf,
+                            currency=curr
                         )
                     except Exception as chart_err:
                         logger.error(f"Simulated chart generation failed for {sym}: {chart_err}")
@@ -2495,8 +2556,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"🧪 *ACTIVE SIMULATED POSITION* (Forward Test)\n"
                         f"🤖 Strategy: *{strat}*\n\n"
                         f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
-                        f"PnL: ||{pnl_pct:+.2f}% ({pnl_usdt:+.2f} USDT)|| of target\n"
-                        f"• Entry: `{entry:.8f}` | SL: `{sl:.8f}` | TP: `{tp:.8f}`"
+                        f"PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})|| of target\n"
+                        f"• Entry: `{format_price(entry, sym)}` | SL: `{format_price(sl, sym)}` | TP: `{format_price(tp, sym)}`"
                     )
                     
                     kb = [[InlineKeyboardButton("🔙 Back to Admin Control", callback_data="admin_command")]]
@@ -2538,20 +2599,29 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if t.get('open_time'):
                     open_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t['open_time'] / 1000))
                 
-                direction = "LONG 📈" if t['side'] == 'buy' or t['side'] == 'long' else "SHORT 📉"
-                strat_icon = "📈" if "Mean Reversion" in t['strategy'] else "🛡️"
-                strat_short = "Mean Rev" if "Mean Reversion" in t['strategy'] else "Valkyrie"
+                direction = "LONG 📈" if t['side'] in ['buy', 'long', 'LONG'] else "SHORT 📉"
+                strat_name = t['strategy']
+                if "Mean Reversion" in strat_name:
+                    strat_icon = "📈"
+                    strat_short = "Mean Rev"
+                elif "Valkyrie" in strat_name:
+                    strat_icon = "🛡️"
+                    strat_short = "Valkyrie"
+                else:
+                    strat_icon = "🏔️"
+                    strat_short = "Pullback"
                 
+                curr = get_currency(t['symbol'])
                 if t['status'] == 'open':
                     status_line = "⏳ *OPEN POSITION*"
                     pnl_line = ""
-                    price_line = f"• Entry: `{t['entry_price']:.8f}` | SL: `{t['sl_price']:.8f}` | TP: `{t['tp_price']:.8f}`"
+                    price_line = f"• Entry: `{format_price(t['entry_price'], t['symbol'])}` | SL: `{format_price(t['sl_price'], t['symbol'])}` | TP: `{format_price(t['tp_price'], t['symbol'])}`"
                 else:
-                    status_icon = "✅ Take Profit" if t['status'] == 'tp' else "❌ Stop Loss"
+                    status_icon = "✅ Take Profit" if t['status'] == 'tp' else ("❌ Stop Loss" if t['status'] == 'sl' else f"⚠️ {t['status'].upper()}")
                     status_line = f"Resolved: *{status_icon}*"
-                    pnl_line = f"\n  PnL: *{t['pnl_pct']:+.2f}% ({t['pnl_usdt']:+.2f} USDT)*"
+                    pnl_line = f"\n  PnL: *{t['pnl_pct']:+.2f}% ({t['pnl_usdt']:+.2f} {curr})*"
                     exit_price = t['tp_price'] if t['status'] == 'tp' else t['sl_price']
-                    price_line = f"• Entry: `{t['entry_price']:.8f}` | Exit: `{exit_price:.8f}`"
+                    price_line = f"• Entry: `{format_price(t['entry_price'], t['symbol'])}` | Exit: `{format_price(exit_price, t['symbol'])}`"
                 
                 msg_parts.append(
                     f"• *{t['symbol']}* ({direction}) | {strat_icon} _{strat_short}_\n"
@@ -3678,6 +3748,8 @@ async def signal_engine(application):
                 open_theory_trades = database.get_open_theoretical_trades()
                 for t in open_theory_trades:
                     symbol = t['symbol']
+                    if is_stock(symbol):
+                        continue
                     side = t['side']
                     entry_price = t['entry_price']
                     tp_price = t['tp_price']
@@ -3727,13 +3799,16 @@ async def signal_engine(application):
                             database.close_theoretical_trade(trade_id, exit_price, close_time, status, pnl_raw, pnl_pct, pnl_usdt)
                             
                             strategy = t.get('strategy', 'Mean Reversion Scalper')
+                            currency = get_currency(symbol)
                             if status == 'tp':
                                 cheeky_note = (
-                                    f"\n\n🔥 *Look what you missed out on!* If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆"
+                                    f"\n\n🏆 *Look what you missed out on!*\n"
+                                    f"If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*!"
                                 )
                             elif status == 'sl':
                                 cheeky_note = (
-                                    f"\n\n🛡️ *No strategy has 100% win rate.* Let's look for the next one!"
+                                    f"\n\n🛡️ *No strategy has a 100% win rate.*\n"
+                                    f"Let's look for the next one!"
                                 )
                             else:
                                 cheeky_note = ""
@@ -3741,15 +3816,17 @@ async def signal_engine(application):
                             # Broadcast EXIT alert
                             all_targets = database.get_all_broadcast_targets()
                             exit_msg = (
-                                f"🔔 *SIMULATED TRADE CLOSED!* (Forward Test)\n"
-                                f"🏔️ _Global strategy tracker resolution_\n\n"
-                                f"Symbol: *{symbol}*\n"
-                                f"Direction: *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
-                                f"Exit Trigger: *{status.upper()}*\n\n"
-                                f"Entry Price: `{entry_price:.8f}`\n"
-                                f"Exit Price: `{exit_price:.8f}`\n"
-                                f"Trade PnL: *{pnl_pct:+.2f}% ({pnl_usdt:+.2f} USDT)*\n\n"
-                                f"Simulated Balance: *${new_bal:,.2f} USDT*"
+                                f"📊 *SIMULATED TRADE CLOSED* (Forward Test)\n"
+                                f"───────────────────────────────\n"
+                                f"Symbol:        *{symbol}*\n"
+                                f"Strategy:      *{strategy}*\n"
+                                f"Direction:     *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
+                                f"Exit Trigger:  *{status.upper()}*\n\n"
+                                f"Entry Price:   `{format_price(entry_price, symbol)}`\n"
+                                f"Exit Price:    `{format_price(exit_price, symbol)}`\n"
+                                f"Trade PnL:     *{pnl_pct:+.2f}%* ({pnl_usdt:+.2f} {currency})\n"
+                                f"───────────────────────────────\n"
+                                f"Simulated Balance:  *${new_bal:,.2f} {currency}*"
                                 f"{cheeky_note}"
                             )
                             for target_id in all_targets:
@@ -3837,17 +3914,20 @@ async def signal_engine(application):
                             logger.error(f"Forward test chart generation failed: {chart_err}")
                         
                         all_targets = database.get_all_broadcast_targets()
+                        currency = get_currency(symbol)
                         entry_msg = (
-                            f"🏔️ *NEW SIMULATED SIGNAL!* (Forward Test)\n"
-                            f"🤖 *Strategy:* `{strategy_name}`\n\n"
-                            f"Symbol: *{symbol}*\n"
-                            f"Direction: *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
-                            f"Risk Setting: `1.5%`\n"
-                            f"Simulated Entry: `{entry:.8f}`\n"
-                            f"Take Profit (TP): `{tp:.8f}`\n"
-                            f"Stop Loss (SL): `{sl:.8f}`\n\n"
-                            f"Simulated Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} USD)\n"
-                            f"Current Simulated Balance: *${sim_balance:,.2f} USDT*"
+                            f"🏔️ *NEW SIMULATED SIGNAL* (Forward Test)\n"
+                            f"───────────────────────────────\n"
+                            f"Symbol:        *{symbol}*\n"
+                            f"Strategy:      *{strategy_name}*\n"
+                            f"Direction:     *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
+                            f"Risk Setting:  `1.5%`\n\n"
+                            f"Simulated Entry: `{format_price(entry, symbol)}`\n"
+                            f"Take Profit (TP): `{format_price(tp, symbol)}`\n"
+                            f"Stop Loss (SL):   `{format_price(sl, symbol)}`\n\n"
+                            f"Simulated Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} {currency})\n"
+                            f"───────────────────────────────\n"
+                            f"Current Simulated Balance: *${sim_balance:,.2f} {currency}*"
                         )
                         
                         for target_id in all_targets:

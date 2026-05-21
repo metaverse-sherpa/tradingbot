@@ -2,6 +2,9 @@ import os
 import sys
 import time
 import asyncio
+import sqlite3
+import pandas as pd
+import numpy as np
 from dotenv import load_dotenv
 
 # Ensure projects directory is in path
@@ -14,7 +17,6 @@ dotenv_path = os.path.join(project_root, ".env")
 load_dotenv(dotenv_path=dotenv_path)
 
 import database
-import live_bot_multi
 import charting
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -53,7 +55,7 @@ def get_currency(symbol):
     return "USDT"
 
 async def main():
-    print("🏔️ Starting manual Forward Test alert trigger script...")
+    print("🏔️ Starting manual Stock Forward Test alert trigger script...")
     
     # 1. Initialize DB and gather targets
     database.init_db()
@@ -71,37 +73,52 @@ async def main():
     bot = Bot(token=token)
     print(f"📡 Found {len(all_targets)} registered target chat(s) to receive alerts.")
     
-    # 2. Setup mock trade params
-    symbol = "SOL/USDT:USDT"
-    strategy_name = "Mean Reversion Scalper"
-    side = "buy"
+    # 2. Setup stock mock trade params
+    symbol = "AAPL"
+    strategy_name = "Sherpa Velocity Pullback"
+    side = "buy"  # LONG
+    currency = "USD"
     
-    # 3. Generate visual chart overlay using public market feed first to resolve open_ts
-    print("📊 Generating simulated signal chart...")
-    mdm = live_bot_multi.MarketDataManager()
-    df_chart = await mdm.fetch_ohlcv(symbol, timeframe='15m')
-    await mdm.close()
+    # 3. Fetch stock daily candles from cache
+    print(f"📊 Fetching {symbol} daily stock bars from database cache...")
+    conn = sqlite3.connect("data/stock_daily_cache.db")
+    df = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
+    conn.close()
     
-    # Resolve dynamic entry, TP, and SL based on the actual current market price of SOL to prevent candle squishing!
-    if df_chart is not None and len(df_chart) > 0:
-        last_close = float(df_chart.iloc[-1]['close'])
-        entry = last_close
-    else:
-        entry = 120.50
+    if df.empty or len(df) < 60:
+        print(f"❌ Not enough daily stock data for {symbol} in data/stock_daily_cache.db! Found {len(df)} bars.")
+        return
         
-    tp = entry * 1.1203  # +12.0% Take Profit
-    sl = entry * 0.9129  # -8.7% Stop Loss
+    # Standardize columns for charting.py
+    df['timestamp'] = pd.to_datetime(df['date']).astype(int) // 10**6
     
-    open_ts = int(df_chart.iloc[-1]['timestamp']) if df_chart is not None and len(df_chart) > 0 else int(time.time() * 1000)
+    # Calculate ATR(14) dynamically
+    high_low = df['high'] - df['low']
+    high_close = (df['high'] - df['close'].shift()).abs()
+    low_close = (df['low'] - df['close'].shift()).abs()
+    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(window=14).mean()
+    
+    # Take the last 60 rows for visualization
+    df_chart = df.tail(60).copy()
+    
+    last_row = df_chart.iloc[-1]
+    entry = float(last_row['close'])
+    atr = float(last_row['atr'])
+    
+    # Calculate strategy TP/SL
+    tp = entry + 4.5 * atr
+    sl = entry - 3.0 * atr
+    
+    open_ts = int(last_row['timestamp'])
     
     # 4. Size and insert theoretical trade
     sim_balance = database.get_theoretical_balance()
-    risk_val = 0.015
-    sl_dist = abs(entry - sl)
-    position_size_usd = (sim_balance * risk_val) / (sl_dist / entry)
-    position_size_units = position_size_usd / entry
+    risk_amt = sim_balance * 0.01  # 1% risk setting
+    shares = risk_amt / (3.0 * atr)
+    position_size_usd = shares * entry
     
-    # Clean previous mock trades on SOL/USDT to avoid state overlap
+    # Clean previous mock trades on AAPL to avoid state overlap
     open_trades = database.get_open_theoretical_trades()
     for t in open_trades:
         if t['symbol'] == symbol:
@@ -115,9 +132,9 @@ async def main():
         tp_price=tp,
         sl_price=sl,
         open_time=open_ts,
-        position_size=position_size_units
+        position_size=position_size_usd
     )
-    print("📝 Opened mock simulated trade SOL/USDT in database.")
+    print(f"📝 Opened mock simulated stock trade {symbol} in database. Entry: {entry:.2f}, SL: {sl:.2f}, TP: {tp:.2f}")
     
     chart_file = None
     try:
@@ -129,25 +146,26 @@ async def main():
             tp,
             sl,
             "LONG",
-            open_ts=open_ts
+            open_ts=open_ts,
+            timeframe="1D",
+            currency="USD"
         )
         print(f"🎨 Visual chart generated successfully: {chart_file}")
     except Exception as e:
         print(f"⚠️ Chart generation failed (falling back to text-only alert): {e}")
 
     # 5. Broadcast simulated entry alert
-    currency = get_currency(symbol)
     entry_msg = (
         f"🏔️ *NEW SIMULATED SIGNAL* (Forward Test)\n"
         f"───────────────────────────────\n"
         f"Symbol:        *{symbol}*\n"
         f"Strategy:      *{strategy_name}*\n"
         f"Direction:     *LONG 📈*\n"
-        f"Risk Setting:  `1.5%`\n\n"
+        f"Risk Setting:  `1.0%`\n\n"
         f"Simulated Entry: `{format_price(entry, symbol)}`\n"
         f"Take Profit (TP): `{format_price(tp, symbol)}`\n"
         f"Stop Loss (SL):   `{format_price(sl, symbol)}`\n\n"
-        f"Simulated Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} {currency})\n"
+        f"Simulated Position Size: `{shares:.4f}` shares (~${position_size_usd:.2f} {currency})\n"
         f"───────────────────────────────\n"
         f"Current Simulated Balance: *${sim_balance:,.2f} {currency}*"
     )
@@ -188,19 +206,17 @@ async def main():
     close_time = int(time.time() * 1000)
     pnl_raw = tp - entry
     pnl_pct = (pnl_raw / entry) * 100
-    pnl_usdt = position_size_units * pnl_raw
-    new_bal = sim_balance + pnl_usdt
+    pnl_usd = shares * pnl_raw
+    new_bal = sim_balance + pnl_usd
     
     database.update_theoretical_balance(new_bal)
     
     open_trades = database.get_open_theoretical_trades()
     mock_trade_id = [t['id'] for t in open_trades if t['symbol'] == symbol][-1]
-    database.close_theoretical_trade(mock_trade_id, tp, close_time, "tp", pnl_raw, pnl_pct, pnl_usdt)
-    print("📝 Settled mock trade inside database as Take Profit (TP).")
+    database.close_theoretical_trade(mock_trade_id, tp, close_time, "tp", pnl_raw, pnl_pct, pnl_usd)
+    print("📝 Settled mock stock trade inside database as Take Profit (TP).")
     
     # 8. Broadcast simulated exit resolution alert
-    # Since trigger_simulated_alert hardcodes a Take Profit exit, we format with the cheeky winning message
-    currency = get_currency(symbol)
     cheeky_note = (
         f"\n\n🏆 *Look what you missed out on!*\n"
         f"If you had been trading the *{strategy_name}* strategy, you would've earned *{pnl_pct:+.2f}%*!"
@@ -215,7 +231,7 @@ async def main():
         f"Exit Trigger:  *TAKE PROFIT (TP)*\n\n"
         f"Entry Price:   `{format_price(entry, symbol)}`\n"
         f"Exit Price:    `{format_price(tp, symbol)}`\n"
-        f"Trade PnL:     *{pnl_pct:+.2f}%* ({pnl_usdt:+.2f} {currency})\n"
+        f"Trade PnL:     *{pnl_pct:+.2f}%* ({pnl_usd:+.2f} {currency})\n"
         f"───────────────────────────────\n"
         f"Simulated Balance:  *${new_bal:,.2f} {currency}*"
         f"{cheeky_note}"
@@ -238,7 +254,7 @@ async def main():
         except Exception as e:
             print(f"⚠️ Failed exit send to {target_id}: {e}")
             
-    print("💎 Manual simulated forward test alerts cycle completed successfully!")
+    print("💎 Manual simulated forward test stock alert completed successfully!")
 
 if __name__ == "__main__":
     asyncio.run(main())

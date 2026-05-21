@@ -32,6 +32,32 @@ import charting
 SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID", "0"))
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+def format_price(price, symbol=""):
+    """Formats price beautifully based on symbol type and magnitude."""
+    if not isinstance(price, (int, float)):
+        try:
+            price = float(price)
+        except Exception:
+            return str(price)
+            
+    symbol_str = str(symbol).upper()
+    if symbol_str and "/" not in symbol_str and ":" not in symbol_str and "USDT" not in symbol_str:
+        return f"{price:,.2f}"
+        
+    if price >= 1000:
+        return f"{price:,.2f}"
+    elif price >= 1:
+        return f"{price:,.4f}"
+    else:
+        return f"{price:.8f}".rstrip('0').rstrip('.') or "0"
+
+def get_currency(symbol):
+    """Determines simulated trade currency base."""
+    symbol_str = str(symbol).upper()
+    if symbol_str and "/" not in symbol_str and ":" not in symbol_str and "USDT" not in symbol_str:
+        return "USD"
+    return "USDT"
+
 if not TELEGRAM_BOT_TOKEN:
     logger.error("❌ TELEGRAM_BOT_TOKEN not found in environment!")
     sys.exit(1)
@@ -116,13 +142,16 @@ async def run_force_pass():
                     logger.info(f"Closed theoretical trade for {symbol} as {status.upper()} (+${pnl_usdt:.2f} PnL)")
                     
                     strategy = t.get('strategy', 'Mean Reversion Scalper')
+                    currency = get_currency(symbol)
                     if status == 'tp':
                         cheeky_note = (
-                            f"\n\n🔥 *Look what you missed out on!* If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*! 🏆"
+                            f"\n\n🏆 *Look what you missed out on!*\n"
+                            f"If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*!"
                         )
                     elif status == 'sl':
                         cheeky_note = (
-                            f"\n\n🛡️ *No strategy has 100% win rate.* Let's look for the next one!"
+                            f"\n\n🛡️ *No strategy has a 100% win rate.*\n"
+                            f"Let's look for the next one!"
                         )
                     else:
                         cheeky_note = ""
@@ -130,15 +159,17 @@ async def run_force_pass():
                     # Broadcast EXIT alert
                     all_targets = database.get_all_broadcast_targets()
                     exit_msg = (
-                        f"🔔 *SIMULATED TRADE CLOSED!* (Forward Test)\n"
-                        f"🏔️ _Global strategy tracker resolution_\n\n"
-                        f"Symbol: *{symbol}*\n"
-                        f"Direction: *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
-                        f"Exit Trigger: *{status.upper()}*\n\n"
-                        f"Entry Price: `{entry_price:.8f}`\n"
-                        f"Exit Price: `{exit_price:.8f}`\n"
-                        f"Trade PnL: *{pnl_pct:+.2f}% ({pnl_usdt:+.2f} USDT)*\n\n"
-                        f"Simulated Balance: *${new_bal:,.2f} USDT*"
+                        f"📊 *SIMULATED TRADE CLOSED* (Forward Test)\n"
+                        f"───────────────────────────────\n"
+                        f"Symbol:        *{symbol}*\n"
+                        f"Strategy:      *{strategy}*\n"
+                        f"Direction:     *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
+                        f"Exit Trigger:  *{status.upper()}*\n\n"
+                        f"Entry Price:   `{format_price(entry_price, symbol)}`\n"
+                        f"Exit Price:    `{format_price(exit_price, symbol)}`\n"
+                        f"Trade PnL:     *{pnl_pct:+.2f}%* ({pnl_usdt:+.2f} {currency})\n"
+                        f"───────────────────────────────\n"
+                        f"Simulated Balance:  *${new_bal:,.2f} {currency}*"
                         f"{cheeky_note}"
                     )
                     for target_id in all_targets:
@@ -228,17 +259,20 @@ async def run_force_pass():
                     logger.error(f"Forward test chart generation failed: {chart_err}")
                 
                 all_targets = database.get_all_broadcast_targets()
+                currency = get_currency(symbol)
                 entry_msg = (
-                    f"🏔️ *NEW SIMULATED SIGNAL!* (Forward Test)\n"
-                    f"🤖 *Strategy:* `{strategy_name}`\n\n"
-                    f"Symbol: *{symbol}*\n"
-                    f"Direction: *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
-                    f"Risk Setting: `1.5%`\n"
-                    f"Simulated Entry: `{entry:.8f}`\n"
-                    f"Take Profit (TP): `{tp:.8f}`\n"
-                    f"Stop Loss (SL): `{sl:.8f}`\n\n"
-                    f"Simulated Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} USD)\n"
-                    f"Current Simulated Balance: *${sim_balance:,.2f} USDT*"
+                    f"🏔️ *NEW SIMULATED SIGNAL* (Forward Test)\n"
+                    f"───────────────────────────────\n"
+                    f"Symbol:        *{symbol}*\n"
+                    f"Strategy:      *{strategy_name}*\n"
+                    f"Direction:     *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
+                    f"Risk Setting:  `1.5%`\n\n"
+                    f"Simulated Entry: `{format_price(entry, symbol)}`\n"
+                    f"Take Profit (TP): `{format_price(tp, symbol)}`\n"
+                    f"Stop Loss (SL):   `{format_price(sl, symbol)}`\n\n"
+                    f"Simulated Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} {currency})\n"
+                    f"───────────────────────────────\n"
+                    f"Current Simulated Balance: *${sim_balance:,.2f} {currency}*"
                 )
                 
                 for target_id in all_targets:
