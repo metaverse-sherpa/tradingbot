@@ -63,7 +63,7 @@ def decrypt(data):
     return cipher_suite.decrypt(data.encode()).decode()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'bot_users.db')
+DB_PATH = os.path.join(BASE_DIR, 'data', 'bot_users.db')
 
 def init_db():
     with db_session() as conn:

@@ -17,6 +17,43 @@ A production-ready, multi-tenant Telegram trading bot for Blofin, Binance, MEXC,
 *   **Tiered Access & Referrals**: Standard (Free, 5 tokens) and Institutional (Premium, 20+ tokens) tiers. Built-in referral system to earn Premium.
 *   **Automated & Forward Testing**: Real-time Win Rate, PnL %, and trade counts updated live (`/stats`), plus simulated forward test tracking (`/forwardtest`).
 
+## 📁 Codebase Architecture & File Reference
+
+This repository is organized into distinct components separating production operations, background engines, database state, and historical research scripts.
+
+### 🐍 Production Root Scripts
+
+The project root contains only active production-critical scripts that drive the Telegram interface and real-time execution engines:
+
+*   **`telegram_bot.py`**: The main application entrypoint. Boots up the Telegram bot daemon using `python-telegram-bot`, maps command callbacks (e.g., `/setup`, `/settings`, `/stats`), manages user interactions, and schedules the async background trading loop.
+*   **`live_bot_multi.py`**: The core multi-exchange execution engine for crypto futures. It acts asynchronously to fetch market feeds, calculate Bollinger Band scalp levels, trigger order submissions (marketable limits) for user tenants, and manage active position lifecycles.
+*   **`live_bot_multi_alpaca.py`**: The production execution engine for equities trading via the Alpaca API. Automates the **Sherpa Velocity Pullback** strategy at the market open, manages orders, and tallies theoretical trade outcomes.
+*   **`database.py`**: The data abstraction layer. Manages SQLite database operations, handles cryptographic symmetric encryption/decryption (Fernet) of exchange API keys at rest, maintains user preferences, and records theoretical backtest logs.
+*   **`charting.py`**: Renders real-time technical analysis charts of active positions (overlaying candles, Bollinger Clouds, entries, and current prices) which are sent directly to users via Telegram.
+*   **`media_gen.py`**: Generates premium visual asset cards (such as P&L performance, portfolio allocation, and dynamic UI panels) using drawing libraries (`PIL/Pillow`) to enhance user reporting.
+*   **`strategies.py`**: Implements technical indicator math and signal triggers (such as BB Scalping, Valkyrie Elite signals, and trend filters) for execution engines.
+*   **`bot_ui.py`**: Houses layout utilities, keyboard formatting helpers, inline button builders, and markdown parsing for the Telegram user interface.
+*   **`stock_backtester_daily.py`** & **`stock_data_cache_daily.py`**: Backtester and caching tools that update historical stock price data feeds for live swing trading evaluation.
+
+---
+
+### 🗄️ Database Architecture (`data/` Directory)
+
+All database engines and SQLite state files are isolated inside the `data/` subdirectory to keep the workspace root tidy, secure, and separated from version control:
+
+*   **`data/bot_users.db`**: **The active user database.** Securely stores Telegram chat profiles, encrypted API keys/secrets, active strategies, tier access states, referral analytics, and open simulated forward-testing trades. *Must never be committed to Git.*
+*   **`data/stock_daily_cache.db`**: Stores cached daily price histories for equities used by the Alpaca live bot.
+*   **`data/stock_cache.db`**: A comprehensive historical stock price cache populated via the Tiingo API for local daily backtesting.
+*   **`data/blofin_stock_cache.db`**: Local caching database storing historical futures data for backtest validations.
+
+---
+
+### 🧪 Supplementary Directories
+
+*   **`scripts/`**: Retained exclusively for historical developer research, ad-hoc audits, and variance-checking scripts (e.g., `sherpa_visual_audit.py`, `blofin_variance_check.py`).
+*   **`results/`**: Stores generated technical analysis equity curves, strategy audit infographics, and premium performance report images.
+*   **`pnl_cards/`**: Serves as a temporary directory for generated user P&L social sharing cards.
+
 ## 🛠️ Initial VPS Setup (GCP/Ubuntu)
 
 If setting up a new `e2-micro` instance, follow these essential steps:
