@@ -868,7 +868,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         caption = (
                             f"🟢 *{sym_v2} \\({side.upper()}\\)*\n"
                             f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target\n"
-                            f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
+                            f"• Entry: `{entry_str}` \\| SL: `{sl_str}` \\| TP: `{tp_str}`"
                         )
                         
                         chart_sent = False
@@ -977,10 +977,13 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             roe_v2 = escape_md_v2(f"{roe:+.2f}")
                             sym_v2 = escape_md_v2(sym.split(":")[0])
                             
+                            sl_val = escape_md_v2(f"{sl_price:.4f}")
+                            tp_val = escape_md_v2(f"{tp_price:.4f}")
+                            
                             caption = (
                                 f"{'🟢' if side == 'LONG' else '🔴'} *{sym_v2} \\({side}\\)*\n"
                                 f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\)\n"
-                                f"SL: `{sl_price:.4f}` | TP: `{tp_price:.4f}`"
+                                f"SL: `{sl_val}` \\| TP: `{tp_val}`"
                             )
                             
                             try:
