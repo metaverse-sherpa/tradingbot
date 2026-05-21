@@ -1347,20 +1347,33 @@ async def close_single_position(chat_id, sym):
             if not pos:
                 return False, f"No active position found for {sym}."
                 
-            side = pos['side'].upper()
-            contracts = float(pos['contracts'])
+            side = str(pos.get('side') or '').upper()
+            contracts = float(pos.get('contracts') or 0)
             
             # Market close order
-            order_side = "sell" if side == "LONG" else "buy"
+            is_long = side in ["LONG", "BUY", "LONG_POSITION"]
+            order_side = "sell" if is_long else "buy"
             
-            # Determine positionSide parameter dynamically for the order
+            # Determine position parameters dynamically for the order
             params = {"reduceOnly": True}
-            raw_info = pos.get('info', {})
-            raw_pos_side = raw_info.get('positionSide') or raw_info.get('posSide')
-            if raw_pos_side:
-                params["positionSide"] = raw_pos_side
+            
+            # Extract marginMode
+            margin_mode = pos.get('marginMode')
+            if not margin_mode and 'info' in pos:
+                margin_mode = pos['info'].get('marginMode')
+            if margin_mode:
+                params["marginMode"] = margin_mode.lower()
             else:
-                params["positionSide"] = "long" if side == "LONG" else "short"
+                params["marginMode"] = "isolated"
+                
+            # Extract positionSide
+            raw_pos_side = None
+            if 'info' in pos:
+                raw_pos_side = pos['info'].get('positionSide') or pos['info'].get('posSide')
+            if raw_pos_side:
+                params["positionSide"] = raw_pos_side.lower()
+            else:
+                params["positionSide"] = "long" if is_long else "short"
                 
             await user_ex.create_market_order(sym, order_side, contracts, params=params)
             
@@ -1403,19 +1416,32 @@ async def panic_close_all(chat_id):
                     for p in active:
                         try:
                             sym = p['symbol']
-                            side = p['side'].upper()
-                            contracts = float(p['contracts'])
+                            side = str(p.get('side') or '').upper()
+                            contracts = float(p.get('contracts') or 0)
                             
-                            order_side = "sell" if side == "LONG" else "buy"
+                            is_long = side in ["LONG", "BUY", "LONG_POSITION"]
+                            order_side = "sell" if is_long else "buy"
                             
-                            # Determine positionSide parameter dynamically for the order
+                            # Determine position parameters dynamically for the order
                             params = {"reduceOnly": True}
-                            raw_info = p.get('info', {})
-                            raw_pos_side = raw_info.get('positionSide') or raw_info.get('posSide')
-                            if raw_pos_side:
-                                params["positionSide"] = raw_pos_side
+                            
+                            # Extract marginMode
+                            margin_mode = p.get('marginMode')
+                            if not margin_mode and 'info' in p:
+                                margin_mode = p['info'].get('marginMode')
+                            if margin_mode:
+                                params["marginMode"] = margin_mode.lower()
                             else:
-                                params["positionSide"] = "long" if side == "LONG" else "short"
+                                params["marginMode"] = "isolated"
+                                
+                            # Extract positionSide
+                            raw_pos_side = None
+                            if 'info' in p:
+                                raw_pos_side = p['info'].get('positionSide') or p['info'].get('posSide')
+                            if raw_pos_side:
+                                params["positionSide"] = raw_pos_side.lower()
+                            else:
+                                params["positionSide"] = "long" if is_long else "short"
                                 
                             await user_ex.create_market_order(sym, order_side, contracts, params=params)
                             results.append(f"✅ Closed crypto {sym}")
