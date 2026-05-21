@@ -186,15 +186,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user_info = update.effective_user
             full_name = user_info.full_name
-            username = f"@{user_info.username}" if user_info.username else "No Username"
+            import html
+            safe_name = html.escape(str(full_name))
+            if user_info.username:
+                username_clean = user_info.username
+                safe_username = html.escape(f"@{username_clean}")
+                user_display = f"<a href=\"https://t.me/{username_clean}\">{safe_username}</a>"
+            else:
+                user_display = "No Username"
             act_msg = (
-                "🦙 *Alpaca Stocks Activated!*\n\n"
-                f"User: `{full_name}` ({username})\n"
-                f"ID: `{chat_id}`\n\n"
-                "🚀 _Member has configured Alpaca and is now LIVE in the SVP Stock strategy._"
+                "🦙 <b>Alpaca Stocks Activated!</b>\n\n"
+                f"User: <b>{safe_name}</b> ({user_display})\n"
+                f"ID: <code>{chat_id}</code>\n\n"
+                "🚀 <i>Member has configured Alpaca and is now LIVE in the SVP Stock strategy.</i>"
             )
-            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=act_msg, parse_mode="Markdown")
-        except: pass
+            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=act_msg, parse_mode="HTML")
+        except Exception as e:
+            logger.error(f"Error sending Alpaca Stocks Activation admin alert: {e}")
         
         context.user_data.clear()
         
@@ -248,15 +256,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user_info = update.effective_user
             full_name = user_info.full_name
-            username = f"@{user_info.username}" if user_info.username else "No Username"
+            import html
+            safe_name = html.escape(str(full_name))
+            if user_info.username:
+                username_clean = user_info.username
+                safe_username = html.escape(f"@{username_clean}")
+                user_display = f"<a href=\"https://t.me/{username_clean}\">{safe_username}</a>"
+            else:
+                user_display = "No Username"
             act_msg = (
-                "💎 *Institutional Access Activated!*\n\n"
-                f"User: `{full_name}` ({username})\n"
-                f"ID: `{chat_id}`\n\n"
-                "🚀 _Member has configured API and is now LIVE in the engine._"
+                "💎 <b>Institutional Access Activated!</b>\n\n"
+                f"User: <b>{safe_name}</b> ({user_display})\n"
+                f"ID: <code>{chat_id}</code>\n\n"
+                "🚀 <i>Member has configured API and is now LIVE in the engine.</i>"
             )
-            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=act_msg, parse_mode="Markdown")
-        except: pass
+            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=act_msg, parse_mode="HTML")
+        except Exception as e:
+            logger.error(f"Error sending Institutional Activation admin alert: {e}")
         
         context.user_data.clear()
         keyboard = [[InlineKeyboardButton("💰 Check My Balance", callback_data="check_balance_setup")]]

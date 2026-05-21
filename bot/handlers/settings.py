@@ -774,13 +774,26 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 # 👑 Notify Overlord of Revenue
                 try:
-                    user_info = f"@{update.effective_user.username}" if update.effective_user.username else f"ID: `{chat_id}`"
+                    import html
+                    if update.effective_user.username:
+                        username_clean = update.effective_user.username
+                        safe_username = html.escape(f"@{username_clean}")
+                        user_display = f"<a href=\"https://t.me/{username_clean}\">{safe_username}</a>"
+                    else:
+                        user_display = f"ID: <code>{chat_id}</code>"
+                    
                     await context.bot.send_message(
                         chat_id=SUPER_ADMIN_ID,
-                        text=f"💰 *INSTITUTIONAL REVENUE CONFIRMED!*\n\nUser: {user_info}\nRequired: *${required_price:.2f} USDT*\n\n📈 _The treasury is growing._",
-                        parse_mode="Markdown"
+                        text=(
+                            "💰 <b>INSTITUTIONAL REVENUE CONFIRMED!</b>\n\n"
+                            f"User: {user_display}\n"
+                            f"Required: <b>${required_price:.2f} USDT</b>\n\n"
+                            "📈 <i>The treasury is growing.</i>"
+                        ),
+                        parse_mode="HTML"
                     )
-                except: pass
+                except Exception as e:
+                    logger.error(f"Error sending institutional revenue admin alert: {e}")
 
                 await query.message.reply_text(
                     "💎 *INSTITUTIONAL ACCESS ACTIVATED!*\n\n"

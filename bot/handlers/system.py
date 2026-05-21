@@ -31,24 +31,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Auto-initialize user in DB immediately
             database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
             
-            ref_info = f" (Referrer: `{context.args[0].split('_')[1]}`)" if context.args and context.args[0].startswith("ref_") else ""
+            import html
+            safe_name = html.escape(str(full_name))
             
+            if update.effective_user.username:
+                username_clean = update.effective_user.username
+                safe_username = html.escape(f"@{username_clean}")
+                user_display = f"<a href=\"https://t.me/{username_clean}\">{safe_username}</a>"
+            else:
+                user_display = "No Username"
+            
+            ref_info = ""
+            if context.args and context.args[0].startswith("ref_"):
+                raw_ref = context.args[0].split('_')[1]
+                ref_info = f" (Referrer: <code>{html.escape(raw_ref)}</code>)"
+                
             admin_msg = (
-                "🏔️ *New Sherpa Scout Spotted!*\n\n"
-                f"Name: `{full_name}`\n"
-                f"User: {username}\n"
-                f"ID: `{chat_id}`{ref_info}\n\n"
-                "📈 _A new recruit has joined the trail. Awaiting setup..._"
+                "🏔️ <b>New Sherpa Scout Spotted!</b>\n\n"
+                f"Name: {safe_name}\n"
+                f"User: {user_display}\n"
+                f"ID: <code>{chat_id}</code>{ref_info}\n\n"
+                "📈 <i>A new recruit has joined the trail. Awaiting setup...</i>"
             )
             try:
-                await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode="Markdown")
-            except Exception as markdown_err:
-                logger.warning(f"Markdown new user notification failed: {markdown_err}. Falling back to plain text.")
+                await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode="HTML")
+            except Exception as html_err:
+                logger.warning(f"HTML new user notification failed: {html_err}. Falling back to plain text.")
                 plain_msg = (
                     "🏔️ New Sherpa Scout Spotted!\n\n"
                     f"Name: {full_name}\n"
                     f"User: {username}\n"
-                    f"ID: {chat_id}{ref_info}\n\n"
+                    f"ID: {chat_id}\n\n"
                     "📈 A new recruit has joined the trail. Awaiting setup..."
                 )
                 await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=plain_msg)
