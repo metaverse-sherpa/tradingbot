@@ -40,7 +40,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"ID: `{chat_id}`{ref_info}\n\n"
                 "📈 _A new recruit has joined the trail. Awaiting setup..._"
             )
-            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode="Markdown")
+            try:
+                await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=admin_msg, parse_mode="Markdown")
+            except Exception as markdown_err:
+                logger.warning(f"Markdown new user notification failed: {markdown_err}. Falling back to plain text.")
+                plain_msg = (
+                    "🏔️ New Sherpa Scout Spotted!\n\n"
+                    f"Name: {full_name}\n"
+                    f"User: {username}\n"
+                    f"ID: {chat_id}{ref_info}\n\n"
+                    "📈 A new recruit has joined the trail. Awaiting setup..."
+                )
+                await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=plain_msg)
         except Exception as e:
             logger.error(f"Error sending admin notification: {e}")
     
