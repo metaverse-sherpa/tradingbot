@@ -462,8 +462,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 # Get Total Unrealized PnL from positions
                 try:
-                    norm_syms = [database.normalize_symbol(sym, user_ex.id) for sym in live_bot_multi.SYMBOLS]
-                    positions = await user_ex.fetch_positions(norm_syms)
+                    positions = await user_ex.fetch_positions()
                     for p in positions:
                         contracts = float(p.get("contracts", 0) or 0)
                         if contracts != 0:
@@ -597,8 +596,10 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("❌ No API credentials connected. Please set up Blofin/Bitget or Alpaca credentials in Settings first.")
         return
 
+    active_exchange = user.get('exchange_id', 'blofin')
+
     # If they only have crypto, and have history cache, show cache immediately
-    if has_crypto and not has_stocks and user.get('history_cache'):
+    if active_exchange != 'alpaca' and user.get('history_cache'):
         try:
             import json
             last_10 = json.loads(user['history_cache'])
@@ -606,10 +607,11 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         except: pass
 
-    status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
-    
-    # 1. Fetch Alpaca Stock Orders
-    if has_stocks:
+    if active_exchange == 'alpaca':
+        if not has_stocks:
+            await update.effective_message.reply_text("❌ No Alpaca credentials connected. Please set them up in Settings first.")
+            return
+        status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from Alpaca...")
         try:
             orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 10})
             if orders:
@@ -629,24 +631,20 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         price_val = 0.0
                     lines.append(f"{emoji} *{side}* {sym} | Qty: `{qty}` | Price: `${price_val:.2f}` | Date: `{date_part}`")
                 
-                # If they also have crypto, send stock history as a standalone message, otherwise send with main menu
-                reply_markup = None if has_crypto else get_main_inline_menu(chat_id)
-                await update.effective_message.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=reply_markup)
+                await status_msg.delete()
+                await update.effective_message.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
             else:
-                if not has_crypto:
-                    await status_msg.edit_text("No recently executed stock trades found in your Alpaca account.")
-                    return
+                await status_msg.edit_text("No recently executed stock trades found in your Alpaca account.")
         except Exception as e:
             logger.error(f"Error fetching Alpaca history: {e}")
-            if not has_crypto:
-                await status_msg.edit_text(f"❌ Error fetching Alpaca history: {e}")
-                return
-            await update.effective_message.reply_text(f"⚠️ Failed to fetch Alpaca history: {e}")
-
-    # 2. Fetch Crypto Trades
-    if has_crypto:
+            await status_msg.edit_text(f"❌ Error fetching Alpaca history: {e}")
+    else:
+        if not has_crypto:
+            await update.effective_message.reply_text("❌ No Blofin/Bitget credentials connected. Please set them up in Settings first.")
+            return
+        status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
         try:
-            ex_id = user.get('exchange_id', 'blofin')
+            ex_id = active_exchange
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
@@ -719,7 +717,8 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 "side": "l" if is_long else "s",
                                 "roe_val": roe_val
                             })
-                    except: pass
+                    except Exception as sym_err:
+                        logger.error(f"Error fetching history for {sym}: {sym_err}")
 
                 await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
                      
@@ -740,9 +739,6 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error fetching Crypto history: {e}")
             await status_msg.delete()
             await update.effective_message.reply_text(f"❌ Error fetching Crypto trade history: {e}")
-    else:
-        # If they don't have crypto, just delete the status message
-        await status_msg.delete()
 
 async def fetch_alpaca_daily_bars_async(user, symbol, limit=60):
     from datetime import datetime, timedelta
@@ -806,28 +802,20 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
-    has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
-    has_stocks = bool(user.get('alpaca_api_key') and user.get('alpaca_api_key') != "")
-
-    if not has_crypto and not has_stocks:
-        await update.effective_message.reply_text("❌ No API credentials connected. Please set up Blofin/Bitget or Alpaca credentials in Settings first.")
-        return
-
-    status_msg = await update.effective_message.reply_text("🔍 Checking your active trades...")
+    active_exchange = user.get('exchange_id', 'blofin')
     
-    total_trades_count = 0
-    stock_trades_count = 0
-    crypto_trades_count = 0
-
     # 1. Fetch Alpaca Stock Trades
-    if has_stocks:
+    if active_exchange == 'alpaca':
+        if not has_stocks:
+            await update.effective_message.reply_text("❌ No Alpaca credentials connected. Please set them up in Settings first.")
+            return
+        status_msg = await update.effective_message.reply_text("🔍 Checking your active stock trades...")
         try:
             positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
             active_stocks = [p for p in positions if float(p.get("qty", 0)) != 0]
             
             if active_stocks:
                 stock_trades_count = len(active_stocks)
-                total_trades_count += stock_trades_count
                 await update.effective_message.reply_text(
                     f"🦙 *Active Stock Trades Found: {stock_trades_count}*",
                     parse_mode="Markdown"
@@ -881,10 +869,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
                         )
                         
-                        # Attempt to generate daily stock chart
                         chart_sent = False
                         try:
-                            # 1. Fetch entry time from closed orders
                             open_ts = 0
                             try:
                                 closed_orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 50})
@@ -898,7 +884,6 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             except Exception as order_err:
                                 logger.error(f"Failed to find entry filled time for stock {sym}: {order_err}")
                                 
-                            # 2. Fetch daily bars
                             df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
                             if df_daily is not None and not df_daily.empty:
                                 chart_path = await asyncio.to_thread(
@@ -934,13 +919,21 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
                     except Exception as e:
                         logger.error(f"Error processing Alpaca position: {e}")
+            else:
+                await update.effective_message.reply_text("You have no active stock trades at the moment.", reply_markup=get_main_inline_menu(chat_id))
         except Exception as e:
             await update.effective_message.reply_text(f"❌ Error checking Alpaca positions: {e}")
+        finally:
+            await status_msg.delete()
 
     # 2. Fetch Crypto Trades
-    if has_crypto:
+    else:
+        if not has_crypto:
+            await update.effective_message.reply_text("❌ No Blofin/Bitget credentials connected. Please set them up in Settings first.")
+            return
+        status_msg = await update.effective_message.reply_text("🔍 Checking your active crypto trades...")
         try:
-            ex_id = user.get('exchange_id', 'blofin')
+            ex_id = active_exchange
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
@@ -952,13 +945,11 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }) as user_ex:
                 await user_ex.load_markets()
                 
-                norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
-                positions = await user_ex.fetch_positions(norm_syms)
+                positions = await user_ex.fetch_positions()
                 active_crypto = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
                 
                 if active_crypto:
                     crypto_trades_count = len(active_crypto)
-                    total_trades_count += crypto_trades_count
                     await update.effective_message.reply_text(
                         f"🪙 *Active Crypto Trades Found: {crypto_trades_count}*\nGenerating charts...",
                         parse_mode="Markdown"
@@ -976,12 +967,10 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             initial_margin = (entry * float(p['contracts']) * contract_size) / live_bot_multi.LEVERAGE
                             roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
                             
-                            # Fetch SL and TP prices from theoretical trade DB
                             t_trade = database.get_active_theoretical_trade_by_symbol(sym)
                             sl_price = t_trade['sl_price'] if t_trade else 0.0
                             tp_price = t_trade['tp_price'] if t_trade else 0.0
                             
-                            # Clean/Format
                             upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
                             roe_v2 = escape_md_v2(f"{roe:+.2f}")
                             sym_v2 = escape_md_v2(sym.split(":")[0])
@@ -992,7 +981,6 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 f"SL: `{sl_price:.4f}` | TP: `{tp_price:.4f}`"
                             )
                             
-                            # Try to generate live technical chart
                             try:
                                 ohlcv = await user_ex.fetch_ohlcv(sym, "15m", limit=60)
                                 import pandas as pd
@@ -1020,7 +1008,6 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         parse_mode="MarkdownV2",
                                         reply_markup=InlineKeyboardMarkup(kb)
                                     )
-                                # Delete temporary chart image
                                 try: os.remove(chart_path)
                                 except: pass
                             except Exception as ce:
@@ -1031,12 +1018,12 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             logger.error(f"Error processing position: {e}")
 
                     await asyncio.gather(*(process_active_position(p) for p in active_crypto))
+                else:
+                    await update.effective_message.reply_text("You have no active crypto trades at the moment.", reply_markup=get_main_inline_menu(chat_id))
         except Exception as e:
             await update.effective_message.reply_text(f"❌ Error checking Crypto positions: {e}")
-
-    await status_msg.delete()
-
-    if total_trades_count == 0:
+        finally:
+            await status_msg.delete()
         await update.effective_message.reply_text(
             "🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", 
             parse_mode="Markdown", 
@@ -1329,8 +1316,8 @@ async def close_single_position(chat_id, sym):
             "options": {"defaultType": "swap"},
         }) as user_ex:
             # Fetch the specific position
-            positions = await user_ex.fetch_positions([sym])
-            pos = next((p for p in positions if float(p.get("contracts", 0) or 0) != 0), None)
+            positions = await user_ex.fetch_positions()
+            pos = next((p for p in positions if p.get('symbol') == sym and float(p.get("contracts", 0) or 0) != 0), None)
             
             if not pos:
                 return False, f"No active position found for {sym}."
@@ -1371,8 +1358,7 @@ async def panic_close_all(chat_id):
     if has_crypto:
         try:
             async with database.get_exchange_client(user) as user_ex:
-                norm_syms = [database.normalize_symbol(s, user_ex.id) for s in live_bot_multi.SYMBOLS]
-                positions = await user_ex.fetch_positions(norm_syms)
+                positions = await user_ex.fetch_positions()
                 active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
                 
                 if not active:

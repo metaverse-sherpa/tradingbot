@@ -368,8 +368,8 @@ async def signal_engine(application):
                                         if symbol.split("/")[0] not in user_enabled: continue
                                         
                                         norm_sym = database.normalize_symbol(symbol, user_ex.id)
-                                        pos = await user_ex.fetch_positions([norm_sym])
-                                        if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                                        pos = await user_ex.fetch_positions()
+                                        if not any(p.get('symbol') == norm_sym and float(p.get("contracts", 0) or 0) != 0 for p in pos):
                                             if live_bot_multi.DRY_RUN: continue
                                                 
                                             res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)

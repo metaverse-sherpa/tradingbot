@@ -250,8 +250,8 @@ async def process_user_on_symbol(user, symbol, signal):
         try:
             norm_sym = normalize_symbol(symbol, ex.id)
             # Check existing positions
-            pos = await ex.fetch_positions([norm_sym])
-            if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+            pos = await ex.fetch_positions()
+            if not any(p.get('symbol') == norm_sym and float(p.get("contracts", 0) or 0) != 0 for p in pos):
                 await place_order(ex, norm_sym, signal, effective_equity, risk_pct=risk_val)
         finally:
             await ex.close()
