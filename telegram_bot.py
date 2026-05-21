@@ -3625,6 +3625,290 @@ async def resume_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     database.set_active(chat_id, True)
     await update.effective_message.reply_text("🟢 Trading is resumed! The engine will pick you up on the next cycle.", reply_markup=get_main_inline_menu(chat_id))
 
+async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    target = update.effective_message
+        
+    user_data = database.get_user(chat_id)
+    if not user_data:
+        await target.reply_text("❌ No user profile found. Please run /setup first.")
+        return
+        
+    status_msg = await target.reply_text(
+        "🔍 *Sherpa Live Diagnostic Engine Initiated...*\n"
+        "Testing database status, strategy configs, and live exchange endpoints...",
+        parse_mode="Markdown"
+    )
+    
+    report_lines = [
+        "📋 *Sherpa Live Diagnostics Report*",
+        f"• Telegram ID: `{chat_id}`",
+        f"• Bot Engine Status: `{'🟢 ACTIVE' if user_data.get('is_active') else '🔴 PAUSED'}`",
+        f"• Undercover Mode: `{'🔒 ON' if user_data.get('undercover_mode') else '👁️ OFF'}`",
+        ""
+    ]
+    
+    # 1. Crypto Strategy Audit
+    crypto_strat = user_data.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    has_crypto_creds = bool(user_data.get('api_key') and user_data.get('api_key') != "")
+    report_lines.append("🪙 *Crypto Strategy Engine*")
+    report_lines.append(f"• Strategy: `{crypto_strat}`")
+    
+    if has_crypto_creds:
+        ex_id = user_data.get('exchange_id', 'blofin')
+        report_lines.append(f"• Exchange: `{ex_id.upper()}`")
+        report_lines.append("• Credentials: `✅ Configured`")
+        report_lines.append("• Live Connection Check: _Testing..._")
+        await status_msg.edit_text("\n".join(report_lines), parse_mode="Markdown")
+        
+        try:
+            ex_class = getattr(ccxt, ex_id)
+            async with ex_class({
+                "apiKey": user_data['api_key'],
+                "secret": user_data['api_secret'],
+                "password": user_data['api_password'] or "",
+                "options": {"defaultType": "swap"},
+                "timeout": 8000
+            }) as user_ex:
+                acc_type = "swap" if ex_id == 'bitget' else "futures"
+                await user_ex.fetch_balance(params={"type": acc_type})
+                report_lines[-1] = "• Live Connection Check: `✅ Connected Successfully`"
+        except Exception as e:
+            err_msg = str(e)
+            if "152406" in err_msg or "whitelist" in err_msg.lower():
+                report_lines[-1] = (
+                    "• Live Connection Check: `❌ BLOCKED BY EXCHANGE`\n"
+                    "  ⚠️ *Error*: IP Whitelist Mismatch!\n"
+                    "  _Your API key has a whitelist enabled, and our server IP is not in it._"
+                )
+            else:
+                clean_err = err_msg.replace("`", "").replace("*", "").replace("_", "")
+                report_lines[-1] = f"• Live Connection Check: `❌ Failed`\n  ⚠️ *Error*: `{clean_err}`"
+    else:
+        report_lines.append("• Credentials: `❌ Not Connected` (Crypto trading disabled)")
+        
+    await status_msg.edit_text("\n".join(report_lines), parse_mode="Markdown")
+        
+    # 2. Stock Strategy Audit
+    stock_strat = user_data.get('active_stock_strategy', 'None')
+    has_stock_creds = bool(user_data.get('alpaca_api_key') and user_data.get('alpaca_api_key') != "")
+    
+    report_lines.append("")
+    report_lines.append("🦙 *Stock Strategy Engine*")
+    report_lines.append(f"• Strategy: `{stock_strat}`")
+    
+    if has_stock_creds:
+        report_lines.append("• Exchange: `ALPACA`")
+        report_lines.append("• Credentials: `✅ Configured`")
+        report_lines.append("• Live Connection Check: _Testing..._")
+        await status_msg.edit_text("\n".join(report_lines), parse_mode="Markdown")
+        
+        try:
+            account = await database.make_alpaca_request_async(user_data, "GET", "/v2/account")
+            report_lines[-1] = "• Live Connection Check: `✅ Connected Successfully`"
+        except Exception as e:
+            clean_err = str(e).replace("`", "").replace("*", "").replace("_", "")
+            report_lines[-1] = f"• Live Connection Check: `❌ Failed`\n  ⚠️ *Error*: `{clean_err}`"
+    else:
+        report_lines.append("• Credentials: `❌ Not Connected` (Stock trading disabled)")
+        
+    await status_msg.edit_text("\n".join(report_lines), parse_mode="Markdown")
+
+async def sql_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    target = update.effective_message
+    
+    # 🔒 STRICT Security Check: Only the SUPER_ADMIN_ID can run this!
+    if chat_id != SUPER_ADMIN_ID:
+        await target.reply_text("❌ Permission Denied: Only the Sherpa Overlord can execute custom database queries.")
+        return
+
+    # Extract the query
+    if not context.args:
+        await target.reply_text(
+            "📖 *Usage*: `/sql <SQL Query>`\n\n"
+            "Example:\n"
+            "`/sql SELECT telegram_chat_id, exchange_id, is_active, active_crypto_strategy, active_stock_strategy FROM Users`",
+            parse_mode="Markdown"
+        )
+        return
+        
+    query = " ".join(context.args)
+    
+    status_msg = await target.reply_text("⏳ *Executing query on VPS Database...*", parse_mode="Markdown")
+    
+    try:
+        # Connect directly to the SQLite database
+        import sqlite3
+        conn = sqlite3.connect(database.DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(query)
+        
+        # Check if it was a SELECT query or other
+        is_select = query.strip().upper().startswith("SELECT")
+        
+        if is_select:
+            rows = cursor.fetchall()
+            if not rows:
+                await status_msg.edit_text("✅ Query executed successfully. *No rows returned.*", parse_mode="Markdown")
+                conn.close()
+                return
+                
+            # Get columns
+            columns = rows[0].keys()
+            
+            # Format rows
+            header = " | ".join(columns)
+            separator = "-|-".join(["---" for _ in columns])
+            
+            result_lines = [f"| {header} |", f"| {separator} |"]
+            
+            # Sensitive columns to mask
+            sensitive_cols = {'blofin_api_key', 'blofin_api_secret', 'blofin_api_password', 
+                              'alpaca_api_key', 'alpaca_api_secret', 'api_key', 'api_secret', 
+                              'api_password', 'password'}
+            
+            for row in rows[:50]: # Limit to 50 rows for Telegram
+                formatted_values = []
+                for col in columns:
+                    val = row[col]
+                    if val is None:
+                        formatted_values.append("NULL")
+                    elif col.lower() in sensitive_cols:
+                        val_str = str(val)
+                        if len(val_str) > 8:
+                            formatted_values.append(f"{val_str[:4]}...{val_str[-4:]}")
+                        else:
+                            formatted_values.append("*****")
+                    else:
+                        formatted_values.append(str(val))
+                result_lines.append(f"| {' | '.join(formatted_values)} |")
+                
+            formatted_table = "\n".join(result_lines)
+            
+            # Split if message exceeds Telegram's 4096 character limit
+            if len(formatted_table) > 4000:
+                formatted_table = formatted_table[:3900] + "\n... (truncated)"
+                
+            await status_msg.edit_text(
+                f"📊 *Query Results (Top 50 rows)*:\n\n```\n{formatted_table}\n```",
+                parse_mode="Markdown"
+            )
+        else:
+            conn.commit()
+            changes = conn.changes()
+            await status_msg.edit_text(f"✅ *Database Updated Successfully.*\n• Rows affected: `{changes}`", parse_mode="Markdown")
+            
+        conn.close()
+    except Exception as e:
+        clean_err = str(e).replace("`", "").replace("*", "").replace("_", "")
+        await status_msg.edit_text(f"❌ *SQLite Error*:\n`{clean_err}`", parse_mode="Markdown")
+
+async def dbinspect_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    target = update.effective_message
+    
+    # 🔒 STRICT Security Check: Only the SUPER_ADMIN_ID can run this!
+    if chat_id != SUPER_ADMIN_ID:
+        await target.reply_text("❌ Permission Denied: Only the Sherpa Overlord can run database diagnostics.")
+        return
+
+    status_msg = await target.reply_text("🕵️ *Running VPS Database Inspection...*", parse_mode="Markdown")
+    
+    try:
+        import sqlite3
+        conn = sqlite3.connect(database.DB_PATH)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        report = ["📋 *Sherpa VPS Database Diagnostic Report*", ""]
+        
+        # 1. Database File Info
+        db_size = os.path.getsize(database.DB_PATH) if os.path.exists(database.DB_PATH) else 0
+        report.append(f"📂 *Database File Details*:")
+        report.append(f"• Path: `{database.DB_PATH}`")
+        report.append(f"• Size: `{db_size / 1024:.2f} KB`")
+        report.append("")
+        
+        # 2. Schema and Tables list
+        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [row['name'] for row in c.fetchall()]
+        report.append(f"📊 *Tables Exist in DB*: `{', '.join(tables)}`")
+        report.append("")
+        
+        # 3. User Statistics
+        c.execute("SELECT COUNT(*) as cnt FROM Users")
+        total_users = c.fetchone()['cnt']
+        c.execute("SELECT COUNT(*) as cnt FROM Users WHERE is_active = 1")
+        active_users = c.fetchone()['cnt']
+        report.append(f"👥 *User Accounts Summary*:")
+        report.append(f"• Total Users: `{total_users}`")
+        report.append(f"• Active Trading Users: `{active_users}`")
+        
+        # 4. Super Admin Profile Verification
+        c.execute("SELECT * FROM Users WHERE telegram_chat_id = ?", (SUPER_ADMIN_ID,))
+        admin_row = c.fetchone()
+        
+        report.append("")
+        report.append("👑 *Super Admin (`1567788633`) Profile State*:")
+        if admin_row:
+            admin_data = dict(admin_row)
+            
+            # Crypto strategy and keys check
+            crypto_strat = admin_data.get('active_crypto_strategy', 'None')
+            has_crypto_key = bool(admin_data.get('blofin_api_key'))
+            report.append(f"• Crypto Strategy: `{crypto_strat}`")
+            report.append(f"• Crypto Keys Configured: `{'✅ Yes' if has_crypto_key else '❌ No'}`")
+            report.append(f"• Exchange: `{admin_data.get('exchange_id', 'blofin').upper()}`")
+            
+            # Stock strategy and keys check
+            stock_strat = admin_data.get('active_stock_strategy', 'None')
+            has_stock_key = bool(admin_data.get('alpaca_api_key'))
+            report.append(f"• Stock Strategy: `{stock_strat}`")
+            report.append(f"• Stock Keys Configured: `{'✅ Yes' if has_stock_key else '❌ No'}`")
+            report.append(f"• Alpaca Endpoint: `{admin_data.get('alpaca_endpoint', 'None')}`")
+            
+            # Connection settings check
+            is_active = bool(admin_data.get('is_active'))
+            report.append(f"• Active Trading Status: `{'🟢 ACTIVE' if is_active else '🔴 PAUSED'}`")
+            
+            # Check key decryption works fine
+            try:
+                decrypted_key = database.decrypt(admin_data['blofin_api_key']) if has_crypto_key else None
+                report.append("• Key Decryption Test: `✅ Passed`")
+            except Exception as dec_err:
+                report.append(f"• Key Decryption Test: `❌ Failed` (Error: {str(dec_err)})")
+        else:
+            report.append("• Super Admin row: `❌ NOT FOUND IN DATABASE` (Run /setup inside the bot first)")
+            
+        # 5. Global Config Checks
+        report.append("")
+        report.append("⚙️ *Global System Configurations*:")
+        c.execute("SELECT key, value FROM Config")
+        configs = c.fetchall()
+        for cfg in configs:
+            report.append(f"• `{cfg['key']}`: `{cfg['value']}`")
+            
+        # 6. Theoretical Trades
+        c.execute("SELECT COUNT(*) as cnt FROM TheoreticalTrades")
+        t_trades = c.fetchone()['cnt']
+        c.execute("SELECT COUNT(*) as cnt FROM TheoreticalTrades WHERE status = 'open'")
+        o_t_trades = c.fetchone()['cnt']
+        report.append("")
+        report.append(f"🔬 *Simulated Trade Engine stats*:")
+        report.append(f"• Total Saved Trades: `{t_trades}`")
+        report.append(f"• Currently Open: `{o_t_trades}`")
+        
+        conn.close()
+        
+        await status_msg.edit_text("\n".join(report), parse_mode="Markdown")
+        
+    except Exception as e:
+        clean_err = str(e).replace("`", "").replace("*", "").replace("_", "")
+        await status_msg.edit_text(f"❌ *Diagnostic Error*:\n`{clean_err}`", parse_mode="Markdown")
+
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     target = update.effective_message
@@ -4240,6 +4524,9 @@ def main():
         app.add_handler(CommandHandler("list", list_trades))
         app.add_handler(CommandHandler("backtest", backtest))
         app.add_handler(CommandHandler("balance", balance_command))
+        app.add_handler(CommandHandler("diagnose", diagnose_command))
+        app.add_handler(CommandHandler("sql", sql_command))
+        app.add_handler(CommandHandler("dbinspect", dbinspect_command))
         app.add_handler(CommandHandler("strategy", strategy_command))
         app.add_handler(CommandHandler("strategyguide", strategy_guide_command))
         app.add_handler(CommandHandler("promote", promote_command))
