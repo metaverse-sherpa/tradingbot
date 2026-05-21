@@ -81,6 +81,11 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("🌍 Global Broadcast", callback_data="admin_broadcast_prompt")],
         [InlineKeyboardButton("📊 Detailed User Report", callback_data="admin_user_audit")],
         [InlineKeyboardButton("🔬 View Simulated Trades", callback_data="admin_view_simulated_trades")],
+        [
+            InlineKeyboardButton("📈 Share MR Stats", callback_data="shf_mr"),
+            InlineKeyboardButton("🛡️ Share VK Stats", callback_data="shf_vk"),
+            InlineKeyboardButton("🦙 Share SVP Stats", callback_data="shf_svp")
+        ],
         [InlineKeyboardButton("🎁 Generate Gift Code", callback_data="admin_gift_prompt")],
         [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
         [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],

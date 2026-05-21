@@ -348,3 +348,80 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     img.save(save_path)
     img.close()
     return save_path
+
+
+def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, wins, losses, user_id="", bot_username="metaversesherpa_trading_bot"):
+    """
+    Generates a premium forward testing performance card for a specific strategy.
+    """
+    if not os.path.exists(LOGO_PATH):
+        return None
+        
+    base_img = Image.open(LOGO_PATH).convert("RGBA")
+    if base_img.width < 1000:
+        base_img = base_img.resize((1024, 1024), Image.Resampling.LANCZOS)
+    
+    overlay = Image.new("RGBA", base_img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    
+    try:
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "Arial"
+        ]
+        def find_font(size):
+            for path in font_paths:
+                try: return ImageFont.truetype(path, size)
+                except: continue
+            return ImageFont.load_default()
+
+        font_main = find_font(55)
+        font_sub = find_font(40)
+        font_strategy = find_font(65)
+        font_massive = find_font(90)
+    except:
+        font_main = font_sub = font_strategy = font_massive = ImageFont.load_default()
+
+    color_neon = (0, 255, 150, 255) if pnl_usdt >= 0 else (255, 50, 50, 255)
+    color_white = (255, 255, 255, 255)
+    
+    def draw_text_shadow(pos, text, font, fill, shadow_fill=(0, 0, 0, 200), offset=(3, 3)):
+        draw.text((pos[0] + offset[0], pos[1] + offset[1]), text, font=font, fill=shadow_fill)
+        draw.text(pos, text, font=font, fill=fill)
+
+    margin_x = 50
+    margin_y = 50
+    
+    draw_text_shadow((margin_x, margin_y), "FORWARD TESTING PERFORMANCE", font=font_main, fill=color_white)
+    
+    # Strategy Title
+    draw_text_shadow((margin_x, margin_y + 90), strategy_name.upper(), font=font_strategy, fill=color_neon)
+    
+    # Cumulative PnL
+    pnl_sign = "+" if pnl_usdt >= 0 else "-"
+    draw_text_shadow((margin_x, base_img.height - 350), f"PNL: {pnl_sign}${abs(pnl_usdt):,.2f} USDT", font=font_massive, fill=color_neon)
+    
+    # Win Rate and Stats
+    draw_text_shadow((margin_x, base_img.height - 230), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 170), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 110), f"Record: {wins} Wins | {losses} Losses", font=font_sub, fill=color_white)
+    
+    ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
+    
+    os.makedirs("pnl_cards", exist_ok=True)
+    combined = Image.alpha_composite(base_img, overlay)
+    combined = add_qr_code(combined, ref_link, size=160)
+    
+    clean_strat = strategy_name.replace(" ", "_").lower()
+    save_filename = f"forward_test_{clean_strat}_{user_id}.png"
+    save_path = os.path.join("pnl_cards", save_filename)
+    
+    rgb_final = combined.convert("RGB")
+    rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
+    
+    base_img.close(); overlay.close(); combined.close(); rgb_final.close()
+    gc.collect()
+    
+    return save_path

@@ -3417,6 +3417,30 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         card_path = media_gen.generate_stats_card(overall, daily, wr, total, user_id=chat_id, bot_username=bot_username)
         share_label = "performance summary"
         
+    elif data.startswith("shf_"): # SHARE FORWARD TESTING STATS
+        parts = data.split("_")
+        strat_key = parts[1]
+        strat_mapping = {
+            "mr": "Mean Reversion Scalper",
+            "vk": "Valkyrie Elite Scalper",
+            "svp": "Sherpa Velocity Pullback"
+        }
+        strat_name = strat_mapping.get(strat_key, "Mean Reversion Scalper")
+        stats = database.get_theoretical_stats_by_strategy(strat_name)
+        pnl = stats['cumulative_pnl']
+        win_rate = stats['win_rate']
+        total = stats['total_trades']
+        wins = stats['wins']
+        losses = stats['losses']
+        
+        bot_username = (await context.bot.get_me()).username
+        card_path = media_gen.generate_forward_test_card(
+            strat_name, pnl, win_rate, total, wins, losses,
+            user_id=chat_id,
+            bot_username=bot_username
+        )
+        share_label = f"forward testing stats for {strat_name}"
+        
     elif data.startswith("sh_") or data.startswith("sha_") or data.startswith("shc_"): # SHARE TRADE
         # Format: sh_{sym}_{side}_{roe}_{entry}_{mark}_{pnl}
         parts = data.split("_")
@@ -3460,6 +3484,29 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     headline = "🛰️ *Another promising looking trade with the Metaverse Sherpa Bot!* 🏔️"
                 else:
                     headline = "📈 *Currently in drawdown, but looking promising because we buy the dip with the Metaverse Sherpa Bot!* 🏔️"
+        elif data.startswith("shf_"):
+            # Forward testing stats
+            parts = data.split("_")
+            strat_key = parts[1]
+            strat_mapping = {
+                "mr": "Mean Reversion Scalper",
+                "vk": "Valkyrie Elite Scalper",
+                "svp": "Sherpa Velocity Pullback"
+            }
+            strat_name = strat_mapping.get(strat_key, "Mean Reversion Scalper")
+            stats = database.get_theoretical_stats_by_strategy(strat_name)
+            is_profit = stats['cumulative_pnl'] >= 0
+            
+            emoji_map = {
+                "mr": "📈",
+                "vk": "🛡️",
+                "svp": "🦙"
+            }
+            strat_emoji = emoji_map.get(strat_key, "🏔️")
+            if is_profit:
+                headline = f"{strat_emoji} *Crushing forward testing with the {strat_name} strategy on the Metaverse Sherpa Bot!* 🏔️"
+            else:
+                headline = f"{strat_emoji} *Forward testing in progress with the {strat_name} strategy on the Metaverse Sherpa Bot!* 🏔️"
         else:
             # Overall Stats
             overall = float(data.split("_")[1])
