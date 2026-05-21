@@ -379,22 +379,11 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
             return ImageFont.load_default()
 
         font_header = find_font(24)
-        
-        # Scale strategy font based on name length
-        strat_len = len(strategy_name)
-        if strat_len > 22:
-            font_strategy = find_font(34)
-        elif strat_len > 18:
-            font_strategy = find_font(38)
-        else:
-            font_strategy = find_font(44)
-            
-        font_massive = find_font(56)
         font_label = find_font(22)
         font_val = find_font(44)
         font_val_sub = find_font(36)
     except:
-        font_header = font_strategy = font_massive = font_label = font_val = font_val_sub = ImageFont.load_default()
+        font_header = font_label = font_val = font_val_sub = ImageFont.load_default()
 
     color_neon = (0, 255, 150, 255) if pnl_usdt >= 0 else (255, 50, 50, 255)
     color_white = (255, 255, 255, 255)
@@ -418,22 +407,69 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
     inner_x = left + 35
     inner_y = top + 45
     
+    # Target maximum text width (with generous margins) inside the panel
+    target_max_width = (right - inner_x) - 45  # ~460px
+    
     # 1. Header Title
     draw_text_shadow((inner_x, inner_y), "FORWARD TESTING PERFORMANCE", font=font_header, fill=(170, 195, 240, 255))
     
     # Separator Line
     draw.line([(inner_x, inner_y + 45), (right - 35, inner_y + 45)], fill=(255, 255, 255, 40), width=2)
     
-    # 2. Strategy Name
+    # 2. Strategy Name (Auto-Scaled)
+    strategy_font_size = 28
+    font_strategy = None
+    strategy_max_width = (right - inner_x) - 120  # ~385px max width for an elegant fit and gorgeous right-side margin
+    while strategy_font_size > 14:
+        try:
+            font_strategy = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", strategy_font_size)
+        except:
+            font_strategy = find_font(strategy_font_size)
+            
+        try:
+            bbox = draw.textbbox((0, 0), strategy_name.upper(), font=font_strategy)
+            text_width = bbox[2] - bbox[0]
+        except AttributeError:
+            text_width = draw.textsize(strategy_name.upper(), font=font_strategy)[0]
+            
+        if text_width <= strategy_max_width:
+            break
+        strategy_font_size -= 2
+        
+    if not font_strategy:
+        font_strategy = ImageFont.load_default()
+        
     draw_text_shadow((inner_x, inner_y + 75), strategy_name.upper(), font=font_strategy, fill=color_neon)
     
     # Separator Line
     draw.line([(inner_x, inner_y + 175), (right - 35, inner_y + 175)], fill=(255, 255, 255, 40), width=1)
     
-    # 3. Cumulative PnL Section
+    # 3. Cumulative PnL Section (Auto-Scaled)
     draw_text_shadow((inner_x, inner_y + 210), "TOTAL CUMULATIVE PNL", font=font_label, fill=(170, 195, 240, 255))
     pnl_sign = "+" if pnl_usdt >= 0 else "-"
     pnl_text = f"{pnl_sign}${abs(pnl_usdt):,.2f} USDT"
+    
+    pnl_font_size = 56
+    font_massive = None
+    while pnl_font_size > 18:
+        try:
+            font_massive = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", pnl_font_size)
+        except:
+            font_massive = find_font(pnl_font_size)
+            
+        try:
+            bbox = draw.textbbox((0, 0), pnl_text, font=font_massive)
+            text_width = bbox[2] - bbox[0]
+        except AttributeError:
+            text_width = draw.textsize(pnl_text, font=font_massive)[0]
+            
+        if text_width <= target_max_width:
+            break
+        pnl_font_size -= 2
+        
+    if not font_massive:
+        font_massive = ImageFont.load_default()
+        
     draw_text_shadow((inner_x, inner_y + 250), pnl_text, font=font_massive, fill=color_neon)
     
     # Separator Line
