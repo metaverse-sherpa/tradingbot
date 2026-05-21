@@ -970,8 +970,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
                             
                             t_trade = database.get_active_theoretical_trade_by_symbol(sym)
-                            sl_price = t_trade['sl_price'] if t_trade else 0.0
-                            tp_price = t_trade['tp_price'] if t_trade else 0.0
+                            sl_price = t_trade['sl_price'] if (t_trade and t_trade.get('sl_price') is not None) else 0.0
+                            tp_price = t_trade['tp_price'] if (t_trade and t_trade.get('tp_price') is not None) else 0.0
                             
                             upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
                             roe_v2 = escape_md_v2(f"{roe:+.2f}")
