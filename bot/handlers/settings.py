@@ -100,8 +100,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
                 
-    # Clean up admin simulated trade photos when leaving
-    if query.data != "admin_view_simulated_trades":
+    # Clean up admin/user simulated trade photos when leaving either of those views
+    if query.data not in ["admin_view_simulated_trades", "virtual_active"]:
         sim_photo_ids = context.user_data.pop('admin_simulated_photo_ids', [])
         for photo_id in sim_photo_ids:
             try:
@@ -895,6 +895,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await list_trades(update, context)
         return
+    elif query.data == "dummy_spacer":
+        await query.answer()
+        return
+    elif query.data == "virtual_active":
+        await query.answer()
+        await open_virtual_trades(update, context)
+        return
+    elif query.data == "virtual_closed":
+        await query.answer()
+        await list_virtual_trades(update, context)
+        return
     elif query.data == "stats_menu":
         await query.answer()
         await stats(update, context)
@@ -1216,3 +1227,204 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = database.get_user(chat_id)
     msg, reply_markup = get_settings_ui(user)
     await safe_edit_text(update, context, msg, reply_markup=reply_markup)
+
+
+async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    if not user:
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
+        return
+
+    open_sim_trades = database.get_open_theoretical_trades()
+    
+    if not open_sim_trades:
+        msg = (
+            "🛰️ *Active Virtual Positions*\n\n"
+            "No active simulated/virtual trades are open at this time. "
+            "The Sherpa is constantly scanning the markets for new virtual trade setups! ⏳"
+        )
+        await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+        return
+
+    # Delete previous messages/photos if any
+    query = update.callback_query
+    if query:
+        try:
+            await query.message.delete()
+        except Exception as e:
+            logger.error(f"Failed to delete original message in open_virtual_trades: {e}")
+
+    status_msg = await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"🛰️ *Active Simulated Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
+        parse_mode="Markdown"
+    )
+
+    photo_ids = []
+    mdm = live_bot_multi.MarketDataManager()
+    try:
+        for t in open_sim_trades:
+            sym = t['symbol']
+            side = t['side']
+            entry = t['entry_price']
+            tp = t['tp_price']
+            sl = t['sl_price']
+            open_ts = t['open_time']
+            pos_size = t['position_size']
+            strat = t['strategy']
+            
+            if is_stock(sym):
+                try:
+                    import pandas as pd
+                    conn = sqlite3.connect("data/stock_daily_cache.db")
+                    df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
+                    conn.close()
+                    if not df_chart.empty:
+                        df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype(int) // 10**6
+                        df_chart = df_chart.tail(60).copy()
+                    else:
+                        df_chart = None
+                except Exception as stock_db_err:
+                    logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
+                    df_chart = None
+            else:
+                df_chart = await mdm.fetch_ohlcv(sym, "15m")
+                
+            if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
+                continue
+                
+            current = float(df_chart['close'].iloc[-1])
+            side_lower = str(side).lower()
+            pnl_raw = current - entry if side_lower in ['buy', 'long'] else entry - current
+            pnl_pct = (pnl_raw / entry) * 100
+            
+            currency = get_currency(sym)
+            if is_stock(sym):
+                pnl_val = pos_size * (pnl_pct / 100)
+            else:
+                pnl_val = pos_size * pnl_raw
+            
+            side_str = "LONG" if side_lower in ['buy', 'long'] else "SHORT"
+            
+            chart_file = None
+            try:
+                tf = "1D" if is_stock(sym) else "15M"
+                curr = "USD" if is_stock(sym) else "USDT"
+                chart_file = await asyncio.to_thread(
+                    charting.generate_trade_chart,
+                    sym,
+                    df_chart,
+                    entry,
+                    tp,
+                    sl,
+                    side_str,
+                    open_ts=open_ts,
+                    timeframe=tf,
+                    currency=curr
+                )
+            except Exception as chart_err:
+                logger.error(f"Simulated chart generation failed for {sym}: {chart_err}")
+            
+            caption = (
+                f"🛰️ *ACTIVE VIRTUAL POSITION* (Forward Test)\n"
+                f"🤖 Strategy: *{strat}*\n\n"
+                f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
+                f"PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})|| of target\n"
+                f"• Entry: `{format_price(entry, sym)}` | SL: `{format_price(sl, sym)}` | TP: `{format_price(tp, sym)}`"
+            )
+            
+            if chart_file and os.path.exists(chart_file):
+                with open(chart_file, 'rb') as photo:
+                    msg = await context.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption=caption,
+                        parse_mode="Markdown"
+                    )
+                    photo_ids.append(msg.message_id)
+                try: os.remove(chart_file)
+                except: pass
+            else:
+                msg = await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=caption,
+                    parse_mode="Markdown"
+                )
+                photo_ids.append(msg.message_id)
+    except Exception as e:
+        logger.error(f"Error in open_virtual_trades: {e}")
+        await context.bot.send_message(chat_id=chat_id, text=f"❌ Error displaying virtual trades: {e}")
+    finally:
+        await mdm.close()
+        try:
+            await status_msg.delete()
+        except:
+            pass
+
+    if photo_ids:
+        context.user_data['admin_simulated_photo_ids'] = photo_ids
+
+    # Send navigation footer at the very end
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="🏔️ *Sherpa Navigation*",
+        reply_markup=get_main_inline_menu(chat_id),
+        parse_mode="Markdown"
+    )
+
+
+async def list_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    if not user:
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
+        return
+
+    # Fetch last 20 theoretical trades to ensure we can get 10 closed ones
+    trades = database.get_recent_theoretical_trades(20)
+    closed_trades = [t for t in trades if t.get('status') != 'open'][:10]
+
+    if not closed_trades:
+        msg = (
+            "📜 *Closed Virtual Trades History*\n\n"
+            "No resolved simulated/virtual trades found on this platform yet! ⏳\n\n"
+            "Once simulated trades are resolved via Take Profit or Stop Loss, they will appear here."
+        )
+        await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+        return
+
+    msg_parts = ["📜 *Closed Virtual Trades History*\n_Showing last 10 activities_\n"]
+    for t in closed_trades:
+        open_time_str = "???"
+        if t.get('open_time'):
+            open_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t['open_time'] / 1000))
+        
+        direction = "LONG 📈" if t['side'] in ['buy', 'long', 'LONG'] else "SHORT 📉"
+        strat_name = t['strategy']
+        if "Mean Reversion" in strat_name:
+            strat_icon = "📈"
+            strat_short = "Mean Rev"
+        elif "Valkyrie" in strat_name:
+            strat_icon = "🛡️"
+            strat_short = "Valkyrie"
+        else:
+            strat_icon = "🏔️"
+            strat_short = "Pullback"
+        
+        curr = get_currency(t['symbol'])
+        status_icon = "🟢 Take Profit" if t['status'] == 'tp' else ("🔴 Stop Loss" if t['status'] == 'sl' else f"⚠️ {t['status'].upper()}")
+        status_line = f"Resolved: *{status_icon}*"
+        pnl_line = f"\n  PnL: *{t['pnl_pct']:+.2f}% ({t['pnl_usdt']:+.2f} {curr})*"
+        exit_price = t['tp_price'] if t['status'] == 'tp' else t['sl_price']
+        price_line = f"• Entry: `{format_price(t['entry_price'], t['symbol'])}` | Exit: `{format_price(exit_price, t['symbol'])}`"
+        
+        msg_parts.append(
+            f"• *{t['symbol']}* ({direction}) | {strat_icon} _{strat_short}_\n"
+            f"  {status_line}{pnl_line}\n"
+            f"  {price_line}\n"
+            f"  Opened: _{open_time_str}_\n"
+        )
+    msg = "\n".join(msg_parts)
+
+    await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
