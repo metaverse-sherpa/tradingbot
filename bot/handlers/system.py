@@ -133,12 +133,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # --- 2. High-Authority Welcome Message ---
     welcome_msg = (
         "🏔️ *Metaverse Sherpa Trading Bot*\n\n"
-        "The elite automated trading solution for institutional-grade professionals. We currently support **Blofin**, **Binance**, and **MEXC**.\n\n"
+        "The elite automated trading solution for institutional-grade professionals. We now support automated trading of both **Crypto** (via **Blofin**, **Binance**, and **MEXC**) and **Stocks** (via **Alpaca**).\n\n"
         "🛡️ *Security & Control*\n"
         "Your exchange API credentials are **fully encrypted** and isolated. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit.\n\n"
         "📊 *Access Tiers*\n"
-        "• **Standard (Free)**: 5 core tokens | 1% risk.\n"
-        "• **Institutional (Premium)**: 20+ tokens | Custom risk. **$20/mo**.\n\n"
+        "• **Standard (Always Free)**: Receive real-time virtual trade signals directly in your Telegram chat as the Sherpa scans the markets.\n"
+        "• **Institutional (Premium)**: Full autopilot mode. The Sherpa connects directly to your exchange accounts (Blofin, Alpaca, etc.) to automatically execute and manage actual trades in real-time, with custom size, risk controls, and priority heartbeat processing. **$20/mo**.\n\n"
         "🏆 Tap /setup to link your account and start your climb."
     )
     

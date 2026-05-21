@@ -69,15 +69,15 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     master_path = os.path.join(BASE_DIR, "results", "upsell_comparison.png")
     audit_msg = (
         "🏔️ *Metaverse Sherpa: Institutional Wealth Gap*\n"
-        "Comparison: `Standard (5 Tokens)` vs `Institutional (Full 20-Token Basket)`\n"
+        "Comparison: `Standard (Free Signals)` vs `Institutional (Exchange Autopilot)`\n"
         "_Both running at a conservative 1.0% Institutional Risk._\n\n"
         "📊 *Standard Tier (Always Free)*\n"
-        "• PnL: *+27.5%* | Sharpe: *3.90*\n"
-        "• Assets: 5 Core Institutional Tokens\n\n"
+        "• Highly-accurate virtual trade signals delivered straight to your Telegram.\n"
+        "• Core performance metrics dashboard & manual ledger access.\n\n"
         "💎 *Institutional Tier (Premium Access)*\n"
-        "• PnL: *+208.7%* | Sharpe: *1.56*\n"
-        "• Assets: Full 20+ 'Sherpa Basket' Tokens\n\n"
-        "📈 _Institutional access delivers a **7.6x profit multiplier** by unlocking the full 20-token basket without increasing your risk per trade._"
+        "• Full autopilot: real-time execution directly on your connected exchange accounts (Blofin, Alpaca Stocks, Binance, MEXC).\n"
+        "• Full 19+ symbol basket, custom sizing limits, and priority heartbeat processing.\n\n"
+        "📈 _Institutional access delivers a **7.6x profit multiplier** by executing the full 20-token basket on autopilot without increasing your risk per trade._"
     )
     
     if os.path.exists(master_path):
