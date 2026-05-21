@@ -332,4 +332,14 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     )
     try:
         await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=err_msg, parse_mode="Markdown")
-    except: pass
+    except Exception as markdown_err:
+        try:
+            plain_err_msg = (
+                f"🚨 HANDLER CRASH (Plain Text Fallback)\n\n"
+                f"Update: {update}\n\n"
+                f"Error: {context.error}\n\n"
+                f"Traceback:\n{tb_string[:3500]}"
+            )
+            await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=plain_err_msg)
+        except Exception as fallback_err:
+            logger.error(f"Failed to send plain crash report to super admin: {fallback_err}")

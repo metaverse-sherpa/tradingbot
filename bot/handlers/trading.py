@@ -921,6 +921,11 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
                     except Exception as e:
                         logger.error(f"Error processing Alpaca position: {e}")
+                
+                await update.effective_message.reply_text(
+                    "🏔️ *Sherpa Navigation*",
+                    reply_markup=get_main_inline_menu(chat_id)
+                )
             else:
                 await update.effective_message.reply_text("You have no active stock trades at the moment.", reply_markup=get_main_inline_menu(chat_id))
         except Exception as e:
@@ -1023,6 +1028,11 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             logger.error(f"Error processing position: {e}")
 
                     await asyncio.gather(*(process_active_position(p) for p in active_crypto))
+                    
+                    await update.effective_message.reply_text(
+                        "🏔️ *Sherpa Navigation*",
+                        reply_markup=get_main_inline_menu(chat_id)
+                    )
                 else:
                     await update.effective_message.reply_text(
                         "🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", 
