@@ -906,6 +906,10 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await list_virtual_trades(update, context)
         return
+    elif query.data == "virtual_stats":
+        await query.answer()
+        await show_virtual_trade_stats(update, context)
+        return
     elif query.data == "stats_menu":
         await query.answer()
         await stats(update, context)
@@ -1428,3 +1432,41 @@ async def list_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
     msg = "\n".join(msg_parts)
 
     await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+
+
+async def show_virtual_trade_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    if not user:
+        await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
+        return
+
+    # 🧪 Simulated Forward Testing Analytics
+    theory_stats = database.get_theoretical_stats()
+    open_theory_count = len(database.get_open_theoretical_trades())
+    growth_pct = ((theory_stats['current_balance'] - 1000.0) / 1000.0) * 100
+    
+    mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
+    vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+    svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
+    
+    msg = (
+        "🧪 *Simulated Forward Testing*\n"
+        f"• Compounding Balance: *${theory_stats['current_balance']:,.2f} USDT* ({growth_pct:+.2f}%)\n"
+        f"• Open Simulated Trades: `{open_theory_count} open`\n\n"
+        
+        "📈 *Mean Reversion Scalper*\n"
+        f"• Win Rate: `{mr_stats['win_rate']:.1f}%` ({mr_stats['wins']} W | {mr_stats['losses']} L)\n"
+        f"• Cumulative PnL: `{mr_stats['cumulative_pnl']:+.2f} USDT`\n\n"
+        
+        "🛡️ *Valkyrie Elite Scalper*\n"
+        f"• Win Rate: `{vk_stats['win_rate']:.1f}%` ({vk_stats['wins']} W | {vk_stats['losses']} L)\n"
+        f"• Cumulative PnL: `{vk_stats['cumulative_pnl']:+.2f} USDT`\n\n"
+        
+        "🦙 *Sherpa Velocity Pullback*\n"
+        f"• Win Rate: `{svp_stats['win_rate']:.1f}%` ({svp_stats['wins']} W | {svp_stats['losses']} L)\n"
+        f"• Cumulative PnL: `{svp_stats['cumulative_pnl']:+.2f} USDT`"
+    )
+    
+    await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
+

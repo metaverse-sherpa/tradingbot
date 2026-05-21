@@ -68,6 +68,9 @@ def get_nav_buttons(has_active_trades=False, is_admin=False):
         [
             InlineKeyboardButton("🛰️ Active Trades", callback_data="virtual_active"),
             InlineKeyboardButton("📜 Closed Trades", callback_data="virtual_closed")
+        ],
+        [
+            InlineKeyboardButton("📊 Virtual Trade Stats", callback_data="virtual_stats")
         ]
     ]
     if is_admin:
