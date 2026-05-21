@@ -748,6 +748,14 @@ def get_open_theoretical_trades():
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
+def get_active_theoretical_trade_by_symbol(symbol):
+    """Returns the currently open theoretical trade for a specific symbol."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM TheoreticalTrades WHERE symbol = ? AND status = 'open' LIMIT 1", (symbol,))
+        row = c.fetchone()
+    return dict(row) if row else None
+
 def add_theoretical_trade(symbol, strategy, side, entry_price, tp_price, sl_price, open_time, position_size):
     """Inserts a new open theoretical trade in the database."""
     with db_session() as conn:
