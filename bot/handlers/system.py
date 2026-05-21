@@ -139,14 +139,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📊 *Access Tiers*\n"
         "• **Standard (Always Free)**: Receive real-time virtual trade signals directly in your Telegram chat as the Sherpa scans the markets.\n"
         "• **Institutional (Premium)**: Full autopilot mode. The Sherpa connects directly to your exchange accounts (Blofin, Alpaca, etc.) to automatically execute and manage actual trades in real-time, with custom size, risk controls, and priority heartbeat processing. **$20/mo**.\n\n"
+        "📖 Tap /strategyguide to view different trading strategies.\n\n"
         "🏆 Tap /setup to link your account and start your climb."
     )
     
-    await update.effective_message.reply_text(welcome_msg, parse_mode="Markdown")
-
-    # 4. Institutional Master Audit (Strictly Static Hook)
-    from bot.handlers.trading import send_master_audit
-    await send_master_audit(update, context, chat_id)
+    await update.effective_message.reply_text(
+        welcome_msg, 
+        parse_mode="Markdown",
+        reply_markup=get_main_inline_menu(chat_id)
+    )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
