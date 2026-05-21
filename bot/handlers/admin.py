@@ -205,14 +205,25 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
 
     admin_status = "🕵️‍♂️ Undercover" if user.get('undercover_mode') else "👑 Overlord"
     
-    # 🧪 Simulated Forward Testing Analytics
-    theory_stats = database.get_theoretical_stats()
+    # 🧪 Simulated Forward Testing Analytics — $1,000 independent allocation per strategy
     open_theory_count = len(database.get_open_theoretical_trades())
-    growth_pct = ((theory_stats['current_balance'] - 1000.0) / 1000.0) * 100
     
     mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
     vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
     svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
+    
+    starting_capital = 1000.0
+    mr_balance = starting_capital + mr_stats['cumulative_pnl']
+    vk_balance = starting_capital + vk_stats['cumulative_pnl']
+    svp_balance = starting_capital + svp_stats['cumulative_pnl']
+    
+    mr_growth = (mr_stats['cumulative_pnl'] / starting_capital) * 100
+    vk_growth = (vk_stats['cumulative_pnl'] / starting_capital) * 100
+    svp_growth = (svp_stats['cumulative_pnl'] / starting_capital) * 100
+    
+    total_balance = mr_balance + vk_balance + svp_balance
+    total_pnl = mr_stats['cumulative_pnl'] + vk_stats['cumulative_pnl'] + svp_stats['cumulative_pnl']
+    total_growth = (total_pnl / (starting_capital * 3)) * 100
     
     last_sync = time.strftime('%H:%M:%S')
     admin_msg = (
@@ -224,17 +235,20 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         f"• Active Premium: `{stats['premium_users']}`\n"
         f"• Last Deploy: *2026-05-14 10:08*\n\n"
         "🧪 *Simulated Forward Testing*\n"
-        f"• Compounding Balance: *${theory_stats['current_balance']:,.2f} USDT* ({growth_pct:+.2f}%)\n"
+        f"• Combined Balance: *${total_balance:,.2f} USDT* ({total_growth:+.2f}%)\n"
         f"• Open Simulated Trades: `{open_theory_count} open`\n\n"
         "📈 *Mean Reversion Scalper*\n"
+        f"• Balance: *${mr_balance:,.2f}* ({mr_growth:+.2f}%)\n"
         f"• Win Rate: `{mr_stats['win_rate']:.1f}%` ({mr_stats['wins']} W | {mr_stats['losses']} L)\n"
-        f"• Cumulative PnL: `+{mr_stats['cumulative_pnl']:+.2f} USDT`\n\n"
+        f"• Cumulative PnL: `{mr_stats['cumulative_pnl']:+.2f} USDT`\n\n"
         "🛡️ *Valkyrie Elite Scalper*\n"
+        f"• Balance: *${vk_balance:,.2f}* ({vk_growth:+.2f}%)\n"
         f"• Win Rate: `{vk_stats['win_rate']:.1f}%` ({vk_stats['wins']} W | {vk_stats['losses']} L)\n"
-        f"• Cumulative PnL: `+{vk_stats['cumulative_pnl']:+.2f} USDT`\n\n"
+        f"• Cumulative PnL: `{vk_stats['cumulative_pnl']:+.2f} USDT`\n\n"
         "🦙 *Sherpa Velocity Pullback*\n"
+        f"• Balance: *${svp_balance:,.2f}* ({svp_growth:+.2f}%)\n"
         f"• Win Rate: `{svp_stats['win_rate']:.1f}%` ({svp_stats['wins']} W | {svp_stats['losses']} L)\n"
-        f"• Cumulative PnL: `+{svp_stats['cumulative_pnl']:+.2f} USDT`\n\n"
+        f"• Cumulative PnL: `{svp_stats['cumulative_pnl']:+.2f} USDT`\n\n"
         "💰 *Total Treasury Value*\n"
         f"• Master Wallet: `{master_wallet}`\n"
         f"• TRX: `{trx_bal:,.1f}` | USDT: `${usdt_bal:,.2f}`\n"
