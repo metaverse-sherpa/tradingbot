@@ -994,9 +994,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"🚨 Closing {sym}...")
         success, report = await close_single_position(chat_id, sym)
         
+        # Escape markdown characters to prevent parsing errors from API exception messages
+        safe_report = str(report).replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace('`', '\\`')
+        
         icon = "✅" if success else "❌"
         await query.message.reply_text(
-            f"{icon} *Trade Close Report*\n\n{report}",
+            f"{icon} *Trade Close Report*\n\n{safe_report}",
             parse_mode="Markdown",
             reply_markup=get_main_inline_menu(chat_id)
         )
