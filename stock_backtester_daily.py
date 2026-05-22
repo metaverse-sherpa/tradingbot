@@ -442,7 +442,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=1
             entry_fee = position_notional * FEE_RATE
             
             # Min shares threshold to avoid micro-trades
-            if shares > 0.01 and position_notional > 100.0 and cash >= (position_notional + entry_fee if sig_type == "LONG" else entry_fee):
+            if shares > 0.01 and position_notional > 10.0 and cash >= (position_notional + entry_fee if sig_type == "LONG" else entry_fee):
                 # Execute Trade
                 if sig_type == "LONG":
                     cash -= (position_notional + entry_fee)
@@ -559,7 +559,7 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
     )
     
     if not metrics:
-        return None, None, None
+        raise Exception("Simulation completed but generated 0 trades. Your starting balance or risk % is too low to meet the minimum trade size limits ($10.00).")
         
     # 4. Generate premium neon chart similar to sherpa_visual_audit.py
     import matplotlib
