@@ -1350,10 +1350,14 @@ async def close_single_position(chat_id, sym):
             await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
             
             # Mark the trade as closed in our local database
-            trades = database.get_user_alpaca_trades(chat_id)
+            trades = database.get_open_alpaca_trades_by_user(chat_id)
             import time
+            now_ts = int(time.time() * 1000)
+            
+            found_local = False
             for t in trades:
                 if t['symbol'] == sym:
+                    found_local = True
                     qty = t.get('qty', 0)
                     entry_price = t.get('entry_price', 0)
                     if current_price > 0 and entry_price > 0:
@@ -1362,7 +1366,25 @@ async def close_single_position(chat_id, sym):
                     else:
                         pnl_raw = pnl_pct = 0
                         
-                    database.close_alpaca_trade(t['id'], int(time.time() * 1000), current_price, pnl_raw, pnl_pct)
+                    database.close_alpaca_trade(t['id'], now_ts, current_price, pnl_raw, pnl_pct)
+                    
+            if not found_local and 'pos' in locals():
+                qty = float(pos.get("qty", 0))
+                entry_price = float(pos.get("avg_entry_price", 0))
+                if current_price > 0 and entry_price > 0:
+                    pnl_raw = (current_price - entry_price) * qty
+                    pnl_pct = ((current_price - entry_price) / entry_price) * 100
+                else:
+                    pnl_raw = pnl_pct = 0
+                
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    c.execute('''
+                        INSERT INTO AlpacaActiveTrades (telegram_chat_id, symbol, qty, entry_price, status, close_time, close_price, pnl_raw, pnl_pct)
+                        VALUES (?, ?, ?, ?, 'closed', ?, ?, ?, ?)
+                    ''', (chat_id, sym, qty, entry_price, now_ts, current_price, pnl_raw, pnl_pct))
+                database.clear_history_cache(chat_id)
+
                     
             return True, f"Market Closed {sym} stock position."
         except Exception as e:
@@ -1438,17 +1460,28 @@ async def panic_close_all(chat_id):
         try:
             # Fetch prices before closing
             positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
-            pos_dict = {p['symbol']: float(p.get('current_price', 0)) for p in positions}
+            pos_dict = {
+                p['symbol']: {
+                    'price': float(p.get('current_price', 0)),
+                    'qty': float(p.get('qty', 0)),
+                    'entry': float(p.get('avg_entry_price', 0))
+                } 
+                for p in positions
+            }
             
             await database.make_alpaca_request_async(user, "DELETE", "/v2/positions", params={"cancel_orders": "true"})
             
             # Update local database
             import time
-            trades = database.get_user_alpaca_trades(chat_id)
+            now_ts = int(time.time() * 1000)
+            trades = database.get_open_alpaca_trades_by_user(chat_id)
+            
+            processed_symbols = set()
             for t in trades:
                 sym = t['symbol']
+                processed_symbols.add(sym)
                 if sym in pos_dict:
-                    current_price = pos_dict[sym]
+                    current_price = pos_dict[sym]['price']
                     qty = t.get('qty', 0)
                     entry = t.get('entry_price', 0)
                     if current_price > 0 and entry > 0:
@@ -1456,9 +1489,30 @@ async def panic_close_all(chat_id):
                         pnl_pct = ((current_price - entry) / entry) * 100
                     else:
                         pnl_raw = pnl_pct = 0
-                    database.close_alpaca_trade(t['id'], int(time.time() * 1000), current_price, pnl_raw, pnl_pct)
+                    database.close_alpaca_trade(t['id'], now_ts, current_price, pnl_raw, pnl_pct)
                 else:
-                    database.close_alpaca_trade(t['id'], int(time.time() * 1000), 0, 0, 0)
+                    database.close_alpaca_trade(t['id'], now_ts, 0, 0, 0)
+                    
+            # Handle untracked positions
+            for sym, p_data in pos_dict.items():
+                if sym not in processed_symbols:
+                    current_price = p_data['price']
+                    qty = p_data['qty']
+                    entry = p_data['entry']
+                    if current_price > 0 and entry > 0:
+                        pnl_raw = (current_price - entry) * qty
+                        pnl_pct = ((current_price - entry) / entry) * 100
+                    else:
+                        pnl_raw = pnl_pct = 0
+                        
+                    with database.db_session() as conn:
+                        c = conn.cursor()
+                        c.execute('''
+                            INSERT INTO AlpacaActiveTrades (telegram_chat_id, symbol, qty, entry_price, status, close_time, close_price, pnl_raw, pnl_pct)
+                            VALUES (?, ?, ?, ?, 'closed', ?, ?, ?, ?)
+                        ''', (chat_id, sym, qty, entry, now_ts, current_price, pnl_raw, pnl_pct))
+                    database.clear_history_cache(chat_id)
+
                     
             results.append("✅ Closed all active stock positions on Alpaca.")
         except Exception as e:
