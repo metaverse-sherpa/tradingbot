@@ -550,7 +550,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             stock_msg = (
                 f"🦙 *Stock Account (Alpaca)*\n"
                 f"• Portfolio Value: *${equity_str}* USD\n"
-                f"• Overall PnL: *{overall_pnl_str}* _(from $10k base)_\n"
+                f"• Overall PnL: *{overall_pnl_str}* _(from ${start_equity:,.0f} base)_\n"
                 f"• Daily PnL: *{daily_pnl_str}*\n"
                 f"• Open Positions: *{stock_open_count}* (_${unrealized_str}_ unrealized)\n"
                 f"• Closed Orders: *{stock_closed_count}* recent\n"
