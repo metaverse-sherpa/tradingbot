@@ -1369,6 +1369,11 @@ async def close_single_position(chat_id, sym):
     if is_stock:
         try:
             await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
+            # Mark the trade as closed in our local database
+            trades = database.get_user_alpaca_trades(chat_id)
+            for t in trades:
+                if t['symbol'] == sym:
+                    database.close_alpaca_trade(t['id'])
             return True, f"Market Closed {sym} stock position."
         except Exception as e:
             return False, f"Failed to close {sym} stock position on Alpaca: {e}"
