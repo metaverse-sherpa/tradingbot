@@ -1,3 +1,18 @@
+"""
+Telegram Trading Bot - Main Entry Point
+
+This module serves as the primary initialization script for the application. It bootstraps the
+python-telegram-bot application, sets up error handlers, registers routing handlers, and crucially,
+launches the core background asynchronous trading engines (`sync_engine`, `signal_engine`, `alpaca_equities_engine`).
+
+Architecture Overview:
+- The bot runs entirely within the `asyncio` event loop provided by the `python-telegram-bot` ApplicationBuilder.
+- It leverages Telegram's `post_init` and `post_stop` hooks to safely spin up and tear down long-running 
+  API connection tasks (e.g., CCXT web sockets or REST polling) without blocking the main thread.
+- Upon a fatal crash, it uses a synchronous requests fallback to alert the Super Admin to bypass 
+  the event loop if it becomes entirely compromised.
+"""
+
 import sys
 import os
 import asyncio
@@ -19,6 +34,14 @@ from bot.handlers.system import error_handler
 from bot.ui.keyboards import get_nav_buttons
 
 async def post_init(application):
+    """
+    Hook executed after the bot application is initialized but before it starts polling.
+    
+    Responsibilities:
+    1. Register the standard Telegram Command Menu for the UI.
+    2. Dispatch a deployment success notification to the Super Admin (reading git history).
+    3. Spawn the core trading background loops as concurrent asyncio tasks.
+    """
     # Set the bot's command menu (the button in the bottom left of Telegram)
     await application.bot.set_my_commands([
         ("opentrades", "🛰 View live active positions"),
@@ -67,14 +90,19 @@ async def post_init(application):
     except Exception as e:
         logger.error(f"Failed to send startup notification: {e}")
 
-    # Spawn the background loop engines under python-telegram-bot's loop context
+    # Spawn the background loop engines under python-telegram-bot's loop context.
+    # By storing these tasks in `bot_data`, we can gracefully cancel them in the `post_stop` hook.
     task1 = asyncio.create_task(sync_engine(application))
     task2 = asyncio.create_task(signal_engine(application))
     task3 = asyncio.create_task(alpaca_equities_engine(application))
     application.bot_data['bg_tasks'] = [task1, task2, task3]
 
 async def post_stop(application):
-    """Gracefully cancel background engines to release TCP sockets safely."""
+    """
+    Hook executed when the application receives a shutdown signal (SIGINT/SIGTERM).
+    Gracefully cancels background engines to release TCP sockets safely and prevent 
+    dangling tasks from holding ports or generating messy traceback errors on exit.
+    """
     logger.info("Gracefully shutting down background engines...")
     bg_tasks = application.bot_data.get('bg_tasks', [])
     for task in bg_tasks:
@@ -89,8 +117,13 @@ async def post_stop(application):
     logger.info("Background engines shut down.")
 
 def main():
+    """
+    Main application runner. 
+    Bootstraps the database, configures the Telegram Application instance, attaches background hooks, 
+    and initiates the long-polling loop. Also includes a hard fail-safe to alert admins on fatal loops.
+    """
     try:
-        # Ensure database table exists
+        # Ensure database table exists before allowing any bot interactions
         database.init_db()
 
         # Initialize Bot Application with the post_init and post_stop hooks

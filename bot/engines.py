@@ -1,3 +1,17 @@
+"""
+Background Execution Engines
+
+This module contains the asynchronous background loops that run concurrently with the 
+Telegram bot polling process. These engines are responsible for non-blocking periodic 
+tasks such as balance synchronization, crypto signal evaluation, and stock market scheduling.
+
+Key Components:
+1. sync_engine: A 60-second polling loop that fetches live account equity from connected exchanges.
+2. signal_engine: A 15-minute scheduled loop that evaluates crypto OHLCV data, manages theoretical 
+   (forward-testing) trades, and executes live positions for active users.
+3. alpaca_equities_engine: A daily scheduler that wakes up at 9:31 AM EST to execute stock swing trades.
+"""
+
 import os
 import sys
 import time
@@ -32,7 +46,13 @@ from bot.ui.keyboards import get_nav_buttons
 
 async def sync_engine(application):
     """
-    High-speed task (60s) for trade notifications and PnL syncing.
+    Sentinel Sync Task (60s loop)
+    
+    Responsibilities:
+    - Iterates over all active users with connected API keys.
+    - Asynchronously fetches their current futures/swap account balance via CCXT.
+    - Updates the database with their current equity to ensure PnL stats in the UI are accurate.
+    - Uses asyncio.gather for parallel network requests to prevent blocking.
     """
     logger.info("📡 Starting Sentinel Sync Task (60s Notifications)...")
     while True:
@@ -77,7 +97,23 @@ async def sync_engine(application):
 
 async def signal_engine(application):
     """
-    Institutional task (15m) for Signal Generation and Trade Execution.
+    Sherpa Signal Task (15m Precision Loop)
+    
+    This is the core engine for Crypto trading. It operates on a strict 15-minute schedule
+    aligned with global candle closures (e.g., 00:00, 00:15, 00:30, 00:45).
+    
+    Execution Flow:
+    1. Timer Math: Calculates the exact seconds remaining until the next 15m candle close + 30s buffer.
+    2. Data Ingestion: Uses MarketDataManager to concurrently fetch the latest 100 15m OHLCV candles 
+       for all tracked crypto symbols.
+    3. Forward Testing (Simulation):
+       a. Resolves open theoretical trades (checking if high/low hit TP/SL).
+       b. Computes new signals and opens simulated trades for broadcast.
+    4. Live Execution:
+       a. Groups active users by their chosen strategy.
+       b. Computes live signals.
+       c. Places market limit orders with calculated risk constraints via CCXT.
+       d. Broadcasts entry notifications with dynamically generated neon charts.
     """
     logger.info("🏔️ Starting Sherpa Signal Task (15m Precision)...")
     mdm = live_bot_multi.MarketDataManager()
@@ -421,8 +457,14 @@ async def signal_engine(application):
 
 async def alpaca_equities_engine(application):
     """
-    Daily background scheduler for Alpaca Stocks Sherpa Velocity Pullback strategy.
-    Runs daily at 9:31 AM EST.
+    Alpaca Stocks Daily Scheduler
+    
+    Unlike crypto which trades 24/7, this engine targets traditional market hours.
+    It calculates the time until the next US market open (9:31 AM EST) and sleeps 
+    asynchronously until that exact moment.
+    
+    Upon waking, it offloads the heavy lifting to `live_bot_multi_alpaca.main()`, 
+    which handles the daily swing trading logic (selling previous positions and buying new ones).
     """
     import live_bot_multi_alpaca
     from zoneinfo import ZoneInfo

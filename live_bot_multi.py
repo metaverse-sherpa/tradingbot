@@ -78,7 +78,12 @@ from database import get_exchange_client, normalize_symbol
 
 class MarketDataManager:
     """
-    Centralized market data fetcher to save rate limits and ensure consistency.
+    Centralized Market Data Manager (MDM)
+    
+    Architecture:
+    - Fetches OHLCV data once per symbol and caches it in memory.
+    - Prevents rate-limiting (HTTP 429) that would occur if each user individually fetched the data.
+    - Used by both the background `signal_engine` and forward-testing routines.
     """
     def __init__(self, exchange_id='blofin'):
         self.exchange_id = exchange_id
@@ -111,7 +116,14 @@ import strategies
 
 def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
     """
-    Modular signal computation using the selected strategy.
+    Modular Signal Generator
+    
+    Flow:
+    1. Routes the DataFrame through the requested strategy algorithm (e.g., Mean Reversion or Valkyrie).
+    2. If a signal triggers (LONG/SHORT), pulls the risk constraints (ATR multipliers, TP/SL Ratios) 
+       for that specific asset from the global CONFIG dictionaries.
+    3. Calculates dynamic Stop Loss distance using rolling Average True Range (ATR).
+    4. Evaluates `BAD_HOURS_UTC` to suppress trading during low-liquidity institutional rollover windows.
     """
     strat = strategies.get_strategy(strategy_name)
     side = strat.check_signal(df, symbol_name)
@@ -146,6 +158,16 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
 
 
 async def place_order(exchange, symbol, signal, equity, risk_pct=None):
+    """
+    Core Order Execution Engine
+    
+    Responsibilities:
+    1. Position Sizing: Converts user's equity and risk % into a raw contract size based on Stop Loss distance.
+    2. Max Constraints: Ensures position size respects exchange max limits and account leverage constraints.
+    3. Leverage Sync: Forces the target leverage (e.g., 20x) on the exchange before placing the order.
+    4. Liquidation Defense: Projects the liquidation price. If the Stop Loss is behind the liquidation 
+       price (meaning the user would get liquidated before the SL triggers), the trade is rejected.
+    """
     try:
         # Use user-specific risk or fallback to global default
         risk_val = (risk_pct / 100.0) if risk_pct is not None else RISK_PER_TRADE
@@ -218,7 +240,16 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
 
 async def process_user_on_symbol(user, symbol, signal):
     """
-    Processes a single user's trade logic for a specific symbol.
+    User Trade Router
+    
+    This function processes an individual user for a generated signal.
+    
+    Logic:
+    1. Institutional Gating: Checks premium tier. Standard users are restricted to Top 5 assets.
+    2. Symbol Check: Verifies the user has manually enabled the symbol in their settings.
+    3. Equity Override: Applies the user's custom capital allocation limits (e.g., only trade with 50% of equity).
+    4. Position Check: Queries CCXT to prevent double-entry if the user is already in a trade for this symbol.
+    5. Dispatches to `place_order`.
     """
     try:
         # 💎 Institutional Gating
