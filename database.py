@@ -123,7 +123,8 @@ def init_db():
                       last_fetch_timestamp INTEGER DEFAULT 0,
                       strategy TEXT DEFAULT 'Mean Reversion Scalper',
                       source_wallet TEXT,
-                      stock_risk_pct REAL DEFAULT 1.0)'''
+                      stock_risk_pct REAL DEFAULT 1.0,
+                      alpaca_start_equity REAL)'''
         )
         
         # Ensure columns exist for older databases
@@ -154,7 +155,8 @@ def init_db():
             ("alpaca_endpoint", "TEXT"),
             ("active_crypto_strategy", "TEXT DEFAULT 'Mean Reversion Scalper'"),
             ("active_stock_strategy", "TEXT DEFAULT 'None'"),
-            ("stock_risk_pct", "REAL DEFAULT 1.0")
+            ("stock_risk_pct", "REAL DEFAULT 1.0"),
+            ("alpaca_start_equity", "REAL")
         ]
         for col_name, col_def in cols:
             try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
@@ -227,6 +229,29 @@ def init_db():
         # Set default theoretical balance
         c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('theoretical_balance', '1000.0')")
 
+def reset_crypto_stats(chat_id):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('''
+            UPDATE Users 
+            SET starting_equity = NULL, 
+                cumulative_pnl = 0.0, 
+                total_wins = 0, 
+                total_losses = 0, 
+                total_trades_opened = 0, 
+                last_audit_stats = NULL 
+            WHERE telegram_chat_id = ?
+        ''', (chat_id,))
+
+def reset_stock_stats(chat_id):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('''
+            UPDATE Users 
+            SET alpaca_start_equity = NULL
+            WHERE telegram_chat_id = ?
+        ''', (chat_id,))
+
 def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=False, full_name=None, username=None):
     with db_session() as conn:
         c = conn.cursor()
@@ -237,6 +262,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
                 SET blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, exchange_id = ?, is_active = ?, full_name = ?, username = ?
                 WHERE telegram_chat_id = ?
             ''', (encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username, chat_id))
+            reset_crypto_stats(chat_id)
         else:
             c.execute('''
                 INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id, is_active, full_name, username)
@@ -246,7 +272,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct, alpaca_start_equity FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"

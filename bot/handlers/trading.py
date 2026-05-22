@@ -532,8 +532,12 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             stock_open_count = len(positions)
             stock_closed_count = len(orders)
             
-            # Estimate overall growth based on starting stock equity (default $10k if not specified)
-            start_equity = 10000.0
+            # Estimate overall growth based on starting stock equity
+            start_equity = user.get('alpaca_start_equity')
+            if not start_equity or start_equity == 0:
+                start_equity = stock_equity if stock_equity > 0 else 10000.0
+                if stock_equity > 0:
+                    database.update_user_preference(chat_id, "alpaca_start_equity", start_equity)
             overall_stock_pnl = stock_equity - start_equity
             overall_stock_pnl_pct = (overall_stock_pnl / start_equity * 100)
             

@@ -181,6 +181,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         database.update_user_preference(chat_id, "alpaca_api_secret", alpaca_secret)
         database.update_user_preference(chat_id, "strategy", "Sherpa Velocity Pullback")
         database.set_active(chat_id, True)
+        database.reset_stock_stats(chat_id)
         
         # Admin Alert
         try:
