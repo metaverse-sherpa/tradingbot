@@ -911,7 +911,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         
                         caption = (
                             f"{'🟢' if side == 'LONG' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
-                            f"Current PnL: {roe_v2} \\({upnl_v2}\\) of {target_roe_v2} \\({target_pnl_v2}\\)\n"
+                            f"Current PnL: {roe_v2} \\(||{upnl_v2}||\\) of {target_roe_v2} \\(||{target_pnl_v2}||\\)\n"
                             f"• Entry: `{entry_str}` \\| SL: `{sl_str}` \\| TP: `{tp_str}`"
                         )
                         
