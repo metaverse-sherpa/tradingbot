@@ -32,7 +32,13 @@ def load_data_from_db():
     import stock_data_cache_daily
     stock_data_cache_daily.init_db()
     
-    conn = sqlite3.connect(DB_PATH)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    actual_db_path = os.path.join(base_dir, "data", "stock_daily_cache.db")
+    
+    if not os.path.exists(actual_db_path):
+        raise Exception(f"Database file does not exist at {actual_db_path}")
+        
+    conn = sqlite3.connect(actual_db_path)
     query = "SELECT * FROM StockDailyData ORDER BY date ASC"
     df = pd.read_sql_query(query, conn)
     conn.close()
@@ -522,20 +528,13 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
     import os
     
     # 1. Load data
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(base_dir, "data", "stock_daily_cache.db")
-    
-    global DB_PATH
-    old_db_path = DB_PATH
-    DB_PATH = db_path
-    
     try:
         data_dict = load_data_from_db()
-    finally:
-        DB_PATH = old_db_path
+    except Exception as e:
+        raise Exception(f"Error loading DB: {e}")
         
     if not data_dict:
-        raise Exception(f"Failed to load data from DB. DB_PATH={DB_PATH}")
+        raise Exception("Failed to load data from DB: data_dict is empty after querying StockDailyData.")
         
     # 2. Set best params for Velocity_Pullback
     best_params = {

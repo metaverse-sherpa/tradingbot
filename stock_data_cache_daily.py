@@ -28,8 +28,12 @@ DB_PATH = "data/stock_daily_cache.db"
 
 def init_db():
     """Initializes the local daily stock database."""
-    os.makedirs("data", exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, "data")
+    actual_db_path = os.path.join(data_dir, "stock_daily_cache.db")
+    
+    os.makedirs(data_dir, exist_ok=True)
+    conn = sqlite3.connect(actual_db_path)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS StockDailyData
                  (symbol TEXT, date TEXT, open REAL, high REAL, low REAL, close REAL, volume REAL,
