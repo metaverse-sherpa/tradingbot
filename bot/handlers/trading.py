@@ -504,12 +504,14 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             flame = " 🔥" if wr > 50 else ""
             
+            equity_str_crypto = f"{equity:,.2f}" if not hide else "||HIDDEN||"
             crypto_msg = (
                 f"🪙 *Crypto Wallet ({ex_id.upper()})*\n"
+                f"• Portfolio Value: *${equity_str_crypto}* USD\n"
                 f"• Overall PnL: *{overall_pnl_pct:+.2f}%{pnl_suffix}*\n"
                 f"• Daily PnL: *{daily_pnl_pct:+.2f}%{daily_suffix}*\n"
                 f"• Win Rate: *{wr:.1f}%{flame} ({wins} wins | {losses} losses)*\n"
-                f"• Open Positions: *{open_positions_count} ({upnl_pct:+.2f}%)*\n"
+                f"• Open Positions: *{open_positions_count} ({upnl_pct:+.2f}% unrealized)*\n"
                 f"• Closed Trades: *{total_closed}*\n"
             )
         except Exception as ce:
@@ -552,8 +554,9 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"• Portfolio Value: *${equity_str}* USD\n"
                 f"• Overall PnL: *{overall_pnl_str}* _(from ${start_equity:,.0f} base)_\n"
                 f"• Daily PnL: *{daily_pnl_str}*\n"
-                f"• Open Positions: *{stock_open_count}* (_${unrealized_str}_ unrealized)\n"
-                f"• Closed Orders: *{stock_closed_count}* recent\n"
+                f"• Win Rate: *N/A (Broker Tracked)*\n"
+                f"• Open Positions: *{stock_open_count} ({unrealized_str} unrealized)*\n"
+                f"• Closed Trades: *{stock_closed_count}*\n"
             )
         except Exception as se:
             errors.append(f"Stocks: {se}")
