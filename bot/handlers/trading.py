@@ -95,8 +95,9 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user, start_balance=10000.0, force_asset=None):
     """Runs a 3-year backtest for a specific user's risk and symbols with animation, supporting stock daily backtests."""
     chat_id = user['telegram_chat_id']
-    risk = user['risk_pct']
-    syms = user['enabled_symbols']
+    crypto_risk = user.get('risk_pct', 1.5)
+    stock_risk = user.get('stock_risk_pct', 1.0)
+    syms = user.get('enabled_symbols', [])
     
     active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
     active_stock = user.get('active_stock_strategy', 'None')
@@ -128,11 +129,24 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         else:
             force_asset = 'crypto'
             
-    # 2. Check Premium gate based on target asset class
+    # 2. Check Premium gate and fetch correct balance based on target asset class
     if force_asset == 'stock':
-        is_default = (risk == 1.0 and start_balance == 10000.0)
+        target_risk = stock_risk
+        
+        # Override start_balance with Alpaca equity if available and not overridden
+        if user.get('alpaca_api_key'):
+            try:
+                acc = await database.make_alpaca_request_async(user, "GET", "/v2/account")
+                alpaca_equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
+                if alpaca_equity > 100.0:
+                    start_balance = alpaca_equity
+            except:
+                pass
+                
+        is_default = (target_risk == 1.0 and start_balance == 10000.0)
     else:
-        is_default = (risk == 1.5 and len(syms) >= 18 and start_balance == 10000.0)
+        target_risk = crypto_risk
+        is_default = (target_risk == 1.5 and len(syms) >= 18 and start_balance == 10000.0)
         
     if not is_default:
         # 💎 Premium Gate with Killer Comparison Visual
@@ -252,7 +266,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
     if force_asset == 'stock':
         audit_task = asyncio.create_task(asyncio.to_thread(
             run_stock_visual_audit, 
-            risk_val_pct=risk, 
+            risk_val_pct=target_risk, 
             user_id=sim_user_id, 
             start_balance=start_balance
         ))
@@ -262,7 +276,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             strategy = 'Mean Reversion Scalper'
         audit_task = asyncio.create_task(asyncio.to_thread(
             run_visual_audit, 
-            risk, 
+            target_risk, 
             syms, 
             user_id=sim_user_id, 
             start_balance=start_balance, 
@@ -318,15 +332,15 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         advice_note = ""
         if stats['max_dd'] > 25.0:
             dd_line = f"⚠️ *Max Drawdown: {stats['max_dd']:.1f}%{dd_delta}*"
-            rec_risk = 1.0 if risk >= 1.49 else max(0.5, round(risk * 0.67 * 2) / 2)
-            advice_note = f"\n\n💡 *Risk Management Tip*:\nYour drawdown exceeds the **25.0% cap**. Consider lowering your risk allocation (e.g. **{rec_risk:.2f}%** instead of your current **{risk:.2f}%**) to keep capital drawdowns safely compressed."
+            rec_risk = 1.0 if target_risk >= 1.49 else max(0.5, round(target_risk * 0.67 * 2) / 2)
+            advice_note = f"\n\n💡 *Risk Management Tip*:\nYour drawdown exceeds the **25.0% cap**. Consider lowering your risk allocation (e.g. **{rec_risk:.2f}%** instead of your current **{target_risk:.2f}%**) to keep capital drawdowns safely compressed."
         else:
             dd_line = f"Max Drawdown: *{stats['max_dd']:.1f}%*{dd_delta}"
 
         asset_title = "Stock" if force_asset == 'stock' else "Crypto"
         audit_msg = (
             f"🏔️ *Your Personalized 3-Year {asset_title} Audit*\n"
-            f"Start Balance: `${start_balance:,.0f}` | Risk: `{risk:.2f}%`\n\n"
+            f"Start Balance: `${start_balance:,.0f}` | Risk: `{target_risk:.2f}%`\n\n"
             f"Final Equity: *${stats['final_equity']:,.2f}* ({stats['pnl_pct']:+.1f}%)\n"
             f"Sharpe Ratio: *{stats['sharpe']:.2f}*{sharpe_delta}\n"
             f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
