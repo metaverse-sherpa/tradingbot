@@ -14,6 +14,8 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     """
     df = df.copy()
     df.index = pd.to_datetime(df['timestamp'], unit='ms')
+    if df.index.tz is not None:
+        df.index = df.index.tz_localize(None)
     
     # 1. Calculate Indicators & Setup Vibrant Neon Addplots
     ap = []

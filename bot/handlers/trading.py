@@ -910,6 +910,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 
                             df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
                             if df_daily is not None and not df_daily.empty:
+                                if hasattr(df_daily['timestamp'].dt, 'tz') and df_daily['timestamp'].dt.tz is not None:
+                                    df_daily['timestamp'] = df_daily['timestamp'].dt.tz_localize(None)
                                 chart_path = await asyncio.to_thread(
                                     charting.generate_trade_chart,
                                     sym,
