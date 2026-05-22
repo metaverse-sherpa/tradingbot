@@ -229,9 +229,9 @@ async def process_user_on_symbol(user, symbol, signal):
         if not is_prem:
             if sym_name not in ["BTC", "ETH", "SOL", "XRP", "BNB"]:
                 return
-            risk_val = 0.01
+            risk_val = 1.0
         else:
-            risk_val = user.get('risk_pct', 0.015)
+            risk_val = user.get('risk_pct', 1.5)
 
         if sym_name not in user.get('enabled_symbols', []):
             return
