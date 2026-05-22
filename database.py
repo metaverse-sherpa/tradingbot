@@ -333,7 +333,8 @@ def update_user_preference(chat_id, key, value):
             "alpaca_api_secret": "alpaca_api_secret",
             "alpaca_endpoint": "alpaca_endpoint",
             "active_crypto_strategy": "active_crypto_strategy",
-            "active_stock_strategy": "active_stock_strategy"
+            "active_stock_strategy": "active_stock_strategy",
+            "stock_risk_pct": "stock_risk_pct"
         }
         if key in cols:
             col_name = cols[key]
