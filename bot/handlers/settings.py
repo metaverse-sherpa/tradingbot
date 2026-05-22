@@ -1306,19 +1306,28 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
             strat = t['strategy']
             
             if is_stock(sym):
-                try:
-                    import pandas as pd
-                    conn = sqlite3.connect("data/stock_daily_cache.db")
-                    df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
-                    conn.close()
-                    if not df_chart.empty:
-                        df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype(int) // 10**6
-                        df_chart = df_chart.tail(60).copy()
-                    else:
+                df_chart = None
+                if user.get("alpaca_api_key"):
+                    try:
+                        from bot.handlers.trading import fetch_alpaca_daily_bars_async
+                        df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
+                    except Exception as live_err:
+                        logger.error(f"Failed to fetch live virtual trade data for {sym}: {live_err}")
+                
+                if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
+                    try:
+                        import pandas as pd
+                        conn = sqlite3.connect("data/stock_daily_cache.db")
+                        df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
+                        conn.close()
+                        if not df_chart.empty:
+                            df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype(int) // 10**6
+                            df_chart = df_chart.tail(60).copy()
+                        else:
+                            df_chart = None
+                    except Exception as stock_db_err:
+                        logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
                         df_chart = None
-                except Exception as stock_db_err:
-                    logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
-                    df_chart = None
             else:
                 df_chart = await mdm.fetch_ohlcv(sym, "15m")
                 
