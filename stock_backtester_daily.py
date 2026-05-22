@@ -621,6 +621,7 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
     fig.patch.set_facecolor("#121212")
     plt.tight_layout()
     
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     results_dir = os.path.join(base_dir, "results")
     os.makedirs(results_dir, exist_ok=True)
     
