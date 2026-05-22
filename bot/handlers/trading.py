@@ -361,7 +361,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
                     photo=photo, 
                     caption=audit_msg, 
                     parse_mode="Markdown", 
-                    reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk)
+                    reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=True, asset_type=force_asset)
                 )
             if not is_default:
                 try:
@@ -373,7 +373,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
                 chat_id=chat_id, 
                 text=audit_msg, 
                 parse_mode="Markdown", 
-                reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=show_risk)
+                reply_markup=get_backtest_inline_menu(chat_id, show_risk_button=True, asset_type=force_asset)
             )
             
     except Exception as e:

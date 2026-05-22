@@ -109,7 +109,7 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="close_admin")]
     ]
 
-def get_backtest_inline_menu(chat_id=None, show_risk_button=False):
+def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='crypto'):
     """Generates the navigation menu markup with a 'Change Strategy' button above the nav buttons."""
     has_active = False
     is_admin = False
@@ -123,8 +123,13 @@ def get_backtest_inline_menu(chat_id=None, show_risk_button=False):
     
     kb = []
     if show_risk_button:
-        risk_label = f"⚖️ Set Risk % {'🔒' if not is_premium else ''}"
-        kb.append([InlineKeyboardButton(risk_label, callback_data="set_risk")])
+        if asset_type == 'stock':
+            risk_label = f"⚖️ Set Stock Risk % {'🔒' if not is_premium else ''}"
+            callback = "set_stock_risk"
+        else:
+            risk_label = f"⚖️ Set Crypto Risk % {'🔒' if not is_premium else ''}"
+            callback = "set_crypto_risk"
+        kb.append([InlineKeyboardButton(risk_label, callback_data=callback)])
         
     kb.append([InlineKeyboardButton("⚖️ Change Strategy", callback_data="strategy_menu")])
     kb.extend(get_nav_buttons(has_active, is_admin))
