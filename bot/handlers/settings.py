@@ -1390,7 +1390,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"🛰️ *ACTIVE VIRTUAL POSITION* (Forward Test)\n"
                 f"🤖 Strategy: *{strat}*\n\n"
                 f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
-                f"Current PnL: ||{pnl_pct:+.2f}% ({upnl_str})|| of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
+                f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
                 f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
             )
             
