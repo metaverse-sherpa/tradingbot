@@ -1375,13 +1375,23 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
             except Exception as chart_err:
                 logger.error(f"Simulated chart generation failed for {sym}: {chart_err}")
             
+            # Calculate percentages
+            sl_pct_val = (((sl - entry) / entry) * 100 if side_str == 'LONG' else ((entry - sl) / entry) * 100) if sl > 0 else 0
+            tp_pct_val = (((tp - entry) / entry) * 100 if side_str == 'LONG' else ((entry - tp) / entry) * 100) if tp > 0 else 0
+            
+            upnl_str = f"{'+' if pnl_val >= 0 else '-'}${abs(pnl_val):.2f}"
+            target_pnl_str = f"{'+' if target_pnl_val >= 0 else '-'}${abs(target_pnl_val):.2f}"
+            
+            sl_str = f"${sl:.2f} ({sl_pct_val:+.0f}%)" if sl > 0 else "None"
+            tp_str = f"${tp:.2f} ({tp_pct_val:+.0f}%)" if tp > 0 else "None"
+            entry_str = f"${entry:.2f}"
+            
             caption = (
                 f"🛰️ *ACTIVE VIRTUAL POSITION* (Forward Test)\n"
                 f"🤖 Strategy: *{strat}*\n\n"
                 f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
-                f"Current PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})||\n"
-                f"Target PnL: `{target_pnl_pct:+.2f}% ({target_pnl_val:+.2f} {currency})`\n"
-                f"• Entry: `{format_price(entry, sym)}` | SL: `{format_price(sl, sym)}` | TP: `{format_price(tp, sym)}`"
+                f"Current PnL: ||{pnl_pct:+.2f}% ({upnl_str})|| of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
+                f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
             )
             
             btn = InlineKeyboardMarkup([[InlineKeyboardButton(f"▶️ Open Live Trade", callback_data=f"manual_exec_{t['id']}")]])

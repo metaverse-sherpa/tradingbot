@@ -880,26 +880,38 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     
                         target_roe_str = "N/A"
                         target_pnl_dollars = 0.0
+                        tp_pct_val = 0
                         if tp_price > 0:
                             target_roe = ((tp_price - entry) / entry) * 100 if side == "LONG" else ((entry - tp_price) / entry) * 100
-                            target_roe_str = f"{target_roe:+.1f}%"
+                            target_roe_str = f"{target_roe:+.2f}%"
                             target_pnl_dollars = (entry * qty) * (target_roe / 100)
+                            tp_pct_val = target_roe
                             
                         initial_margin = entry * qty
                         roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
                         
-                        upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
-                        roe_v2 = escape_md_v2(f"{roe:+.2f}")
-                        target_pnl_v2 = escape_md_v2(f"{target_pnl_dollars:+.2f}")
+                        sl_pct_val = (((sl_price - entry) / entry) * 100 if side == "LONG" else ((entry - sl_price) / entry) * 100) if sl_price > 0 else 0
+                        
+                        upnl_str = f"{'+' if upnl >= 0 else '-'}${abs(upnl):.2f}"
+                        target_pnl_str = f"{'+' if target_pnl_dollars >= 0 else '-'}${abs(target_pnl_dollars):.2f}"
+                        
+                        sl_str_formatted = f"${sl_price:.2f} ({sl_pct_val:+.0f}%)" if sl_price > 0 else "None"
+                        tp_str_formatted = f"${tp_price:.2f} ({tp_pct_val:+.0f}%)" if tp_price > 0 else "None"
+                        entry_str_formatted = f"${entry:.2f}"
+                        
+                        upnl_v2 = escape_md_v2(upnl_str)
+                        roe_v2 = escape_md_v2(f"{roe:+.2f}%")
+                        target_pnl_v2 = escape_md_v2(target_pnl_str)
                         target_roe_v2 = escape_md_v2(target_roe_str)
                         sym_v2 = escape_md_v2(sym)
                         
-                        sl_str = escape_md_v2(f"{sl_price:.2f}") if sl_price > 0 else "None"
-                        tp_str = escape_md_v2(f"{tp_price:.2f}") if tp_price > 0 else "None"
-                        entry_str = escape_md_v2(f"{entry:.2f}")
+                        sl_str = escape_md_v2(sl_str_formatted)
+                        tp_str = escape_md_v2(tp_str_formatted)
+                        entry_str = escape_md_v2(entry_str_formatted)
+                        
                         caption = (
-                            f"🟢 *{sym_v2} \\({side.upper()}\\)*\n"
-                            f"PnL: ||{upnl_v2}|| USD \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target\n"
+                            f"{'🟢' if side == 'LONG' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
+                            f"Current PnL: ||{roe_v2} \\({upnl_v2}\\)|| of {target_roe_v2} \\({target_pnl_v2}\\)\n"
                             f"• Entry: `{entry_str}` \\| SL: `{sl_str}` \\| TP: `{tp_str}`"
                         )
                         
