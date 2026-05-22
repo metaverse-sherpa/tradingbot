@@ -1543,7 +1543,10 @@ async def execute_manual_trade_callback(update: Update, context: ContextTypes.DE
         return
         
     # Check if price has moved beyond SL/TP
-    if side == 'buy':
+    is_long = side.lower() in ['buy', 'long', 'l']
+    exec_side = 'buy' if is_long else 'sell'
+    
+    if is_long:
         if current_price <= sl_price or current_price >= tp_price:
             await context.bot.send_message(chat_id=chat_id, text="⚠️ Price has already crossed the Stop Loss or Take Profit. Trade cancelled.")
             return
@@ -1576,7 +1579,7 @@ async def execute_manual_trade_callback(update: Update, context: ContextTypes.DE
         order_payload = {
             "symbol": sym,
             "qty": str(qty),
-            "side": side,
+            "side": exec_side,
             "type": "market",
             "time_in_force": "day"
         }
@@ -1636,10 +1639,10 @@ async def execute_manual_trade_callback(update: Update, context: ContextTypes.DE
                 await context.bot.send_message(chat_id=chat_id, text=f"⚠️ Your position size ({qty}) is below the exchange minimum for {sym}.")
                 return
                 
-            await exchange.create_order(sym, "market", side, qty)
+            await exchange.create_order(sym, "market", exec_side, qty)
             
             # Place TP and SL
-            opposite_side = 'sell' if side == 'buy' else 'buy'
+            opposite_side = 'sell' if exec_side == 'buy' else 'buy'
             try:
                 await exchange.create_order(sym, "limit", opposite_side, qty, tp_price, params={"reduceOnly": True})
             except Exception as e:
