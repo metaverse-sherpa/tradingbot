@@ -1293,6 +1293,44 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
     photo_ids = []
+    
+    active_live_symbols = set()
+    # Fetch active Alpaca stock symbols
+    if user.get("alpaca_api_key"):
+        try:
+            positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
+            for p in positions:
+                if float(p.get("qty", 0)) != 0:
+                    active_live_symbols.add(p['symbol'])
+        except Exception as e:
+            logger.error(f"Failed to fetch Alpaca positions for simulated stats check: {e}")
+            
+    # Fetch active Crypto symbols
+    has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
+    if has_crypto:
+        ex_id = user.get('exchange_id', 'blofin')
+        if ex_id != 'alpaca':
+            try:
+                import ccxt.async_support as ccxt
+                ex_class = getattr(ccxt, ex_id)
+                exchange = ex_class({
+                    "apiKey": user['api_key'],
+                    "secret": user['api_secret'],
+                    "password": user['api_password'],
+                    "options": {"defaultType": "swap"},
+                    "enableRateLimit": True,
+                })
+                await exchange.load_markets()
+                pos = await exchange.fetch_positions()
+                for p in pos:
+                    if float(p.get('contracts', 0) or 0) != 0:
+                        raw_sym = p.get('symbol', '')
+                        clean_sym = raw_sym.split(':')[0].replace('/', '')
+                        active_live_symbols.add(clean_sym)
+                await exchange.close()
+            except Exception as e:
+                logger.error(f"Failed to fetch Crypto positions for simulated stats check: {e}")
+
     mdm = live_bot_multi.MarketDataManager()
     try:
         for t in open_sim_trades:
@@ -1394,7 +1432,11 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
             )
             
-            btn = InlineKeyboardMarkup([[InlineKeyboardButton(f"▶️ Open Live Trade", callback_data=f"manual_exec_{t['id']}")]])
+            # Conditionally generate the 'Open Live Trade' button
+            reply_markup = None
+            clean_t_sym = sym.replace('/', '')
+            if clean_t_sym not in active_live_symbols:
+                reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(f"▶️ Open Live Trade", callback_data=f"manual_exec_{t['id']}")]])
             
             if chart_file and os.path.exists(chart_file):
                 with open(chart_file, 'rb') as photo:
@@ -1402,7 +1444,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                         chat_id=chat_id,
                         photo=photo,
                         caption=caption,
-                        reply_markup=btn,
+                        reply_markup=reply_markup,
                         parse_mode="Markdown"
                     )
                     photo_ids.append(msg.message_id)
