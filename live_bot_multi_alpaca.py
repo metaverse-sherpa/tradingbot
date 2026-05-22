@@ -396,14 +396,10 @@ async def run_real_trader_execution(today_opens):
                         risk_amt = equity * user_risk
                         
                         qty = risk_amt / (3.0 * atr)
+                        qty = round(qty, 4)
                         
-                        if qty >= 1:
-                            qty = int(qty)
-                        else:
-                            qty = round(qty, 4)
-                            
                         if qty <= 0:
-                            logger.warning(f"Sizing quantity is 0 for {sym} (Chat ID: {chat_id}). Equity might be too small.")
+                            logger.warning(f"Sizing quantity is 0 for {sym} (Chat ID: {chat_id}). Risk amount ${risk_amt:.2f} is too small.")
                             continue
                             
                         order_payload = {
@@ -411,18 +407,23 @@ async def run_real_trader_execution(today_opens):
                             "qty": str(qty),
                             "side": "buy",
                             "type": "market",
-                            "time_in_force": "gtc",
-                            "order_class": "bracket",
-                            "take_profit": {
-                                "limit_price": f"{tp_price:.2f}"
-                            },
-                            "stop_loss": {
-                                "stop_price": f"{sl_price:.2f}"
-                            }
+                            "time_in_force": "day"
                         }
                         
-                        logger.info(f"Submitting real bracket order for user {chat_id} symbol {sym}: {order_payload}")
-                        await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
+                        logger.info(f"Submitting fractional market order for user {chat_id} symbol {sym}: {order_payload}")
+                        res = await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
+                        
+                        # Store in local tracking DB
+                        open_ts = int(time.time() * 1000)
+                        database.add_alpaca_active_trade(
+                            chat_id=chat_id,
+                            symbol=sym,
+                            qty=qty,
+                            entry_price=o_price,
+                            tp_price=tp_price,
+                            sl_price=sl_price,
+                            open_time=open_ts
+                        )
                         
                         msg = (
                             "🦙 *Alpaca Stock Strategy: Buy Signal Triggered* 🦙\n\n"

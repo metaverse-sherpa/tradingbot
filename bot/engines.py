@@ -497,3 +497,115 @@ async def alpaca_equities_engine(application):
         except Exception as e:
             logger.error(f"🦙 Alpaca Stocks Daily Scheduler error: {e}")
             await asyncio.sleep(60)
+
+async def alpaca_fractional_monitor_engine(application):
+    """
+    Monitors active fractional stock trades via Alpaca Data API.
+    Checks if the recent High or Low crossed TP/SL, and executes an exit.
+    """
+    import aiohttp
+    logger.info("🦙 Starting Alpaca Fractional Shares Monitor Task (5m Loop)...")
+    
+    while True:
+        try:
+            # Sleep 5 minutes between checks
+            await asyncio.sleep(300)
+            
+            open_trades = database.get_open_alpaca_trades()
+            if not open_trades:
+                continue
+                
+            # Group by user to use their respective API keys
+            trades_by_user = {}
+            for t in open_trades:
+                cid = t['telegram_chat_id']
+                if cid not in trades_by_user:
+                    trades_by_user[cid] = []
+                trades_by_user[cid].append(t)
+                
+            for chat_id, user_trades in trades_by_user.items():
+                user = database.get_user(chat_id)
+                if not user or not user.get('alpaca_api_key'):
+                    continue
+                    
+                symbols = [t['symbol'] for t in user_trades]
+                sym_str = ",".join(symbols)
+                
+                url = f"https://data.alpaca.markets/v2/stocks/bars/latest?symbols={sym_str}"
+                headers = {
+                    "APCA-API-KEY-ID": user.get('alpaca_api_key'),
+                    "APCA-API-SECRET-KEY": user.get('alpaca_api_secret')
+                }
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=headers) as resp:
+                        if resp.status != 200:
+                            logger.error(f"Alpaca data fetch failed for user {chat_id}: {resp.status}")
+                            continue
+                        data = await resp.json()
+                        bars = data.get("bars", {})
+                        
+                        for trade in user_trades:
+                            sym = trade['symbol']
+                            if sym not in bars:
+                                continue
+                            
+                            bar = bars[sym]
+                            high_price = bar.get('h', 0)
+                            low_price = bar.get('l', 0)
+                            close_price = bar.get('c', 0)
+                            
+                            tp = trade['tp_price']
+                            sl = trade['sl_price']
+                            qty = trade['qty']
+                            
+                            exit_reason = None
+                            exit_price = None
+                            
+                            if high_price >= tp:
+                                exit_reason = "TAKE PROFIT"
+                                exit_price = tp
+                            elif low_price <= sl:
+                                exit_reason = "STOP LOSS"
+                                exit_price = sl
+                                
+                            if exit_reason:
+                                logger.info(f"Closing fractional {sym} for {chat_id}. Reason: {exit_reason} at {exit_price}")
+                                order_payload = {
+                                    "symbol": sym,
+                                    "qty": str(qty),
+                                    "side": "sell",
+                                    "type": "market",
+                                    "time_in_force": "day"
+                                }
+                                try:
+                                    # Execute market sell
+                                    await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
+                                    
+                                    # Close in DB
+                                    database.close_alpaca_trade(trade['id'])
+                                    
+                                    # Notify
+                                    pnl_raw = (exit_price - trade['entry_price']) * qty
+                                    pnl_pct = ((exit_price - trade['entry_price']) / trade['entry_price']) * 100
+                                    
+                                    msg = (
+                                        f"🦙 *Alpaca Stock Strategy: Dynamic Exit Triggered* 🦙\n\n"
+                                        f"Exited **{sym}** LONG position.\n"
+                                        f"• Trigger: `{exit_reason}`\n"
+                                        f"• Qty: `{qty}` shares\n"
+                                        f"• Entry Price: `${trade['entry_price']:.2f}`\n"
+                                        f"• Approximate Exit Price: `${close_price:.2f}`\n"
+                                        f"• Estimated Trade PnL: *{pnl_pct:+.2f}%* (${pnl_raw:+.2f})\n"
+                                    )
+                                    # We need to import send_telegram_message or use application.bot.send_message
+                                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                                except Exception as e:
+                                    logger.error(f"Failed to close fractional trade {sym} for {chat_id}: {e}")
+                                    
+        except asyncio.CancelledError:
+            logger.info("🦙 Alpaca Monitor task cancelled.")
+            break
+        except Exception as e:
+            logger.error(f"Alpaca monitor error: {e}")
+            await asyncio.sleep(60)

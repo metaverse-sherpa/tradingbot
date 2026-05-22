@@ -1475,3 +1475,198 @@ async def panic_close_all(chat_id):
         return True, "No active trades found to close."
         
     return True, "\n".join(results)
+
+
+async def execute_manual_trade_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, trade_id: str):
+    """
+    Executes a theoretical trade on a user's live account using current market prices 
+    to dynamically recalculate the correct position size and risk allocation.
+    """
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    if not user:
+        return
+        
+    t = database.get_theoretical_trade(trade_id)
+    if not t:
+        await context.bot.send_message(chat_id=chat_id, text="❌ Error: Trade not found in database.")
+        return
+        
+    if t['status'] != 'open':
+        await context.bot.send_message(chat_id=chat_id, text="⚠️ This trade is no longer active.")
+        return
+        
+    sym = t['symbol']
+    side = t['side']
+    tp_price = t['tp_price']
+    sl_price = t['sl_price']
+    
+    # 1. Fetch Current Price
+    current_price = None
+    from bot.config import is_stock
+    import live_bot_multi
+    
+    if is_stock(sym):
+        import aiohttp
+        url = f"https://data.alpaca.markets/v2/stocks/bars/latest?symbols={sym}"
+        headers = {
+            "APCA-API-KEY-ID": user.get('alpaca_api_key', ''),
+            "APCA-API-SECRET-KEY": user.get('alpaca_api_secret', '')
+        }
+        if not headers["APCA-API-KEY-ID"]:
+            await context.bot.send_message(chat_id=chat_id, text="❌ Alpaca API keys are missing. Please setup your stock account first.")
+            return
+            
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    bars = data.get("bars", {})
+                    if sym in bars:
+                        current_price = bars[sym].get('c')
+    else:
+        # Crypto
+        if not user.get('api_key'):
+            await context.bot.send_message(chat_id=chat_id, text="❌ Crypto API keys are missing. Please setup your exchange account first.")
+            return
+            
+        mdm = live_bot_multi.MarketDataManager()
+        try:
+            df = await mdm.fetch_ohlcv(sym, "1m", limit=2)
+            if df is not None and not df.empty:
+                current_price = float(df['close'].iloc[-1])
+        finally:
+            await mdm.close()
+            
+    if not current_price:
+        await context.bot.send_message(chat_id=chat_id, text="❌ Failed to fetch the current market price. Cannot execute trade.")
+        return
+        
+    # Check if price has moved beyond SL/TP
+    if side == 'buy':
+        if current_price <= sl_price or current_price >= tp_price:
+            await context.bot.send_message(chat_id=chat_id, text="⚠️ Price has already crossed the Stop Loss or Take Profit. Trade cancelled.")
+            return
+        sl_dist = current_price - sl_price
+    else:
+        if current_price >= sl_price or current_price <= tp_price:
+            await context.bot.send_message(chat_id=chat_id, text="⚠️ Price has already crossed the Stop Loss or Take Profit. Trade cancelled.")
+            return
+        sl_dist = sl_price - current_price
+
+    if sl_dist <= 0:
+         await context.bot.send_message(chat_id=chat_id, text="❌ Stop Loss distance calculation error. Cancelling trade.")
+         return
+
+    # 2. Execution Logic
+    if is_stock(sym):
+        # Alpaca Logic
+        equity = user.get('alpaca_start_equity')
+        if not equity:
+            equity = user.get('equity', 1000)
+            
+        user_risk = float(user.get('stock_risk_pct', 1.0)) / 100.0
+        risk_amt = equity * user_risk
+        qty = round(risk_amt / sl_dist, 4)
+        
+        if qty <= 0:
+            await context.bot.send_message(chat_id=chat_id, text=f"⚠️ Your allocated risk (${risk_amt:.2f}) is too small to open a fractional position for {sym}.")
+            return
+            
+        order_payload = {
+            "symbol": sym,
+            "qty": str(qty),
+            "side": side,
+            "type": "market",
+            "time_in_force": "day"
+        }
+        try:
+            await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
+            open_ts = int(time.time() * 1000)
+            database.add_alpaca_active_trade(
+                chat_id=chat_id,
+                symbol=sym,
+                qty=qty,
+                entry_price=current_price,
+                tp_price=tp_price,
+                sl_price=sl_price,
+                open_time=open_ts
+            )
+            msg = (
+                "✅ *MANUAL TRADE EXECUTED (Alpaca)* 🦙\n\n"
+                f"Successfully opened a `{qty}` share {side.upper()} position on **{sym}**!\n"
+                f"• Target Entry: `{t['entry_price']}`\n"
+                f"• Actual Entry: `{current_price}`\n"
+                f"• Target TP: `{tp_price}`\n"
+                f"• Target SL: `{sl_price}`\n\n"
+                f"_The internal monitor engine will actively track this position._"
+            )
+            await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"Alpaca manual exec error: {e}")
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ Failed to execute trade: {e}")
+            
+    else:
+        # Crypto Logic
+        equity = user.get('equity', 1000)
+        user_risk = float(user.get('risk_pct', 1.5)) / 100.0
+        risk_amt = equity * user_risk
+        qty = risk_amt / sl_dist
+        
+        ex_id = user.get('exchange_id', 'blofin')
+        ex_class = getattr(ccxt, ex_id)
+        
+        exchange = ex_class({
+            "apiKey": user['api_key'],
+            "secret": user['api_secret'],
+            "password": user['api_password'],
+            "options": {"defaultType": "swap"},
+            "enableRateLimit": True,
+        })
+        try:
+            await exchange.load_markets()
+            if sym not in exchange.markets:
+                # Fix symbol formatting for exchange
+                sym = sym.replace("/", "")
+            
+            market = exchange.market(sym)
+            qty = float(exchange.amount_to_precision(sym, qty))
+            
+            if qty < market['limits']['amount']['min']:
+                await context.bot.send_message(chat_id=chat_id, text=f"⚠️ Your position size ({qty}) is below the exchange minimum for {sym}.")
+                return
+                
+            await exchange.create_order(sym, "market", side, qty)
+            
+            # Place TP and SL
+            opposite_side = 'sell' if side == 'buy' else 'buy'
+            try:
+                await exchange.create_order(sym, "limit", opposite_side, qty, tp_price, params={"reduceOnly": True})
+            except Exception as e:
+                logger.error(f"Manual TP failed: {e}")
+            try:
+                if ex_id == 'bitget':
+                    await exchange.create_order(sym, "market", opposite_side, qty, params={
+                        "stopLossPrice": sl_price,
+                        "reduceOnly": True
+                    })
+                else:
+                    await exchange.create_order(sym, "stop", opposite_side, qty, sl_price, params={"reduceOnly": True})
+            except Exception as e:
+                logger.error(f"Manual SL failed: {e}")
+                
+            msg = (
+                "✅ *MANUAL TRADE EXECUTED (Crypto)* 🪙\n\n"
+                f"Successfully opened a `{qty}` unit {side.upper()} position on **{sym}**!\n"
+                f"• Target Entry: `{t['entry_price']}`\n"
+                f"• Actual Entry: `{current_price}`\n"
+                f"• Target TP: `{tp_price}`\n"
+                f"• Target SL: `{sl_price}`\n\n"
+                f"_Take Profit and Stop Loss brackets have been submitted to {ex_id.capitalize()}._"
+            )
+            await context.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"Crypto manual exec error: {e}")
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ Failed to execute trade on {ex_id}: {e}")
+        finally:
+            await exchange.close()

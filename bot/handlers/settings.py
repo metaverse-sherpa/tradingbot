@@ -911,6 +911,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await show_virtual_trade_stats(update, context)
         return
+    elif query.data.startswith("manual_exec_"):
+        await query.answer("Initiating live execution...")
+        trade_id = query.data.split("_")[-1]
+        from bot.handlers.trading import execute_manual_trade_callback
+        await execute_manual_trade_callback(update, context, trade_id)
+        return
     elif query.data == "stats_menu":
         await query.answer()
         await stats(update, context)
@@ -1359,12 +1365,15 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"• Entry: `{format_price(entry, sym)}` | SL: `{format_price(sl, sym)}` | TP: `{format_price(tp, sym)}`"
             )
             
+            btn = InlineKeyboardMarkup([[InlineKeyboardButton(f"▶️ Open Live Trade", callback_data=f"manual_exec_{t['id']}")]])
+            
             if chart_file and os.path.exists(chart_file):
                 with open(chart_file, 'rb') as photo:
                     msg = await context.bot.send_photo(
                         chat_id=chat_id,
                         photo=photo,
                         caption=caption,
+                        reply_markup=btn,
                         parse_mode="Markdown"
                     )
                     photo_ids.append(msg.message_id)
@@ -1374,6 +1383,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 msg = await context.bot.send_message(
                     chat_id=chat_id,
                     text=caption,
+                    reply_markup=btn,
                     parse_mode="Markdown"
                 )
                 photo_ids.append(msg.message_id)

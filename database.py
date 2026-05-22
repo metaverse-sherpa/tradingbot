@@ -226,6 +226,18 @@ def init_db():
                       pnl_pct REAL DEFAULT 0.0,
                       pnl_usdt REAL DEFAULT 0.0)''')
                       
+        # 🦙 Real Alpaca Fractional Trades Table
+        c.execute('''CREATE TABLE IF NOT EXISTS AlpacaActiveTrades
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      telegram_chat_id INTEGER,
+                      symbol TEXT,
+                      qty REAL,
+                      entry_price REAL,
+                      tp_price REAL,
+                      sl_price REAL,
+                      open_time INTEGER,
+                      status TEXT DEFAULT 'open')''')
+                      
         # Set default theoretical balance
         c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('theoretical_balance', '1000.0')")
 
@@ -888,6 +900,43 @@ def get_recent_theoretical_trades(limit=10):
         c.execute("SELECT * FROM TheoreticalTrades ORDER BY id DESC LIMIT ?", (limit,))
         rows = c.fetchall()
     return [dict(r) for r in rows]
+
+def get_theoretical_trade(trade_id):
+    """Returns a theoretical trade by ID."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM TheoreticalTrades WHERE id = ?", (trade_id,))
+        row = c.fetchone()
+    return dict(row) if row else None
+
+# --- Alpaca Active Trades Helpers ---
+
+def add_alpaca_active_trade(chat_id, symbol, qty, entry_price, tp_price, sl_price, open_time):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO AlpacaActiveTrades (telegram_chat_id, symbol, qty, entry_price, tp_price, sl_price, open_time, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'open')
+        ''', (chat_id, symbol, float(qty), float(entry_price), float(tp_price), float(sl_price), open_time))
+
+def get_open_alpaca_trades():
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'open'")
+        rows = c.fetchall()
+    return [dict(r) for r in rows]
+
+def get_open_alpaca_trades_by_user(chat_id):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'open' AND telegram_chat_id = ?", (chat_id,))
+        rows = c.fetchall()
+    return [dict(r) for r in rows]
+
+def close_alpaca_trade(trade_id):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE AlpacaActiveTrades SET status = 'closed' WHERE id = ?", (trade_id,))
 
 def make_alpaca_request(user, method, path, params=None, json_data=None):
     import requests
