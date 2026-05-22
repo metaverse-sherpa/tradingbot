@@ -56,16 +56,19 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     entry_line = pd.Series(np.nan, index=df.index)
     sl_line = pd.Series(np.nan, index=df.index)
     
-    tp_line.loc[where_mask] = tp
+    if tp > 0:
+        tp_line.loc[where_mask] = tp
+        # TP Line (Neon Green) - Only starts from trade open
+        ap.append(mpf.make_addplot(tp_line, color='#00C853', width=1.8, linestyle='-'))
+
     entry_line.loc[where_mask] = entry
-    sl_line.loc[where_mask] = sl
-    
-    # TP Line (Neon Green) - Only starts from trade open
-    ap.append(mpf.make_addplot(tp_line, color='#00C853', width=1.8, linestyle='-'))
     # Entry Line (White) - Only starts from trade open
     ap.append(mpf.make_addplot(entry_line, color='#FFFFFF', width=1.2, linestyle='--'))
-    # SL Line (Neon Red) - Only starts from trade open
-    ap.append(mpf.make_addplot(sl_line, color='#FF1744', width=1.8, linestyle='-'))
+    
+    if sl > 0:
+        sl_line.loc[where_mask] = sl
+        # SL Line (Neon Red) - Only starts from trade open
+        ap.append(mpf.make_addplot(sl_line, color='#FF1744', width=1.8, linestyle='-'))
 
     # Pro-Grade Dark Style
     style = mpf.make_mpf_style(
@@ -81,8 +84,13 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     filepath = os.path.join(os.getcwd(), "pnl_cards", filename)
     
     # Shaded Areas (R:R Boxes)
-    fb_tp = dict(y1=entry, y2=tp, where=where_mask, color='#00C853', alpha=0.10)
-    fb_sl = dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.10)
+    fill_areas = []
+    if tp > 0:
+        fill_areas.append(dict(y1=entry, y2=tp, where=where_mask, color='#00C853', alpha=0.10))
+    if sl > 0:
+        fill_areas.append(dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.10))
+    if 'fb_bb' in locals():
+        fill_areas.append(fb_bb)
     
     # Generate the chart
     fig, axlist = mpf.plot(df, type='candle', 
@@ -90,7 +98,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
              title=f"\n{symbol} ({side}) - {timeframe} Strategy Setup",
              ylabel=f'Price ({currency})',
              addplot=ap,
-             fill_between=[fb for fb in [fb_tp, fb_sl, fb_bb] if fb is not None],
+             fill_between=fill_areas,
              volume=False,
              figratio=(16,10),
              figscale=1.3,

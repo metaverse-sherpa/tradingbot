@@ -861,6 +861,16 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         
                         tp_price = 0
                         sl_price = 0
+                        
+                        # Fallback: check our local tracking since free Alpaca tier can't use bracket orders
+                        local_alpaca_trades = database.get_user_alpaca_trades(chat_id)
+                        for t in local_alpaca_trades:
+                            if t.get('symbol') == sym:
+                                tp_price = float(t.get('tp_price') or 0)
+                                sl_price = float(t.get('sl_price') or 0)
+                                break
+                                
+                        # If the user actually has open bracket orders on Alpaca, they take priority
                         for o in orders:
                             if o.get("symbol") == sym:
                                 if o.get("type") == "stop" and o.get("side") == "sell":
