@@ -958,6 +958,12 @@ def get_closed_alpaca_trades_by_user(chat_id, limit=10):
 def close_alpaca_trade(trade_id, close_time=None, close_price=None, pnl_raw=None, pnl_pct=None):
     with db_session() as conn:
         c = conn.cursor()
+        
+        # Get chat_id to clear cache
+        c.execute("SELECT telegram_chat_id FROM AlpacaActiveTrades WHERE id = ?", (trade_id,))
+        row = c.fetchone()
+        chat_id = row[0] if row else None
+        
         c.execute("""
             UPDATE AlpacaActiveTrades 
             SET status = 'closed', 
@@ -967,6 +973,9 @@ def close_alpaca_trade(trade_id, close_time=None, close_price=None, pnl_raw=None
                 pnl_pct = ? 
             WHERE id = ?
         """, (close_time, close_price, pnl_raw, pnl_pct, trade_id))
+        
+        if chat_id:
+            c.execute("UPDATE Users SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
 
 def make_alpaca_request(user, method, path, params=None, json_data=None):
     import requests
