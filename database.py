@@ -122,7 +122,9 @@ def init_db():
                       cumulative_pnl REAL DEFAULT 0.0,
                       last_fetch_timestamp INTEGER DEFAULT 0,
                       strategy TEXT DEFAULT 'Mean Reversion Scalper',
-                      source_wallet TEXT)''')
+                      source_wallet TEXT,
+                      stock_risk_pct REAL DEFAULT 1.0)'''
+        )
         
         # Ensure columns exist for older databases
         cols = [
@@ -151,7 +153,8 @@ def init_db():
             ("alpaca_api_secret", "TEXT"),
             ("alpaca_endpoint", "TEXT"),
             ("active_crypto_strategy", "TEXT DEFAULT 'Mean Reversion Scalper'"),
-            ("active_stock_strategy", "TEXT DEFAULT 'None'")
+            ("active_stock_strategy", "TEXT DEFAULT 'None'"),
+            ("stock_risk_pct", "REAL DEFAULT 1.0")
         ]
         for col_name, col_def in cols:
             try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
@@ -243,7 +246,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
@@ -281,7 +284,8 @@ def get_user(chat_id):
             "alpaca_api_secret": decrypt(row[29]) if len(row) > 29 and row[29] else None,
             "alpaca_endpoint": row[30] if len(row) > 30 else None,
             "active_crypto_strategy": row[31] if len(row) > 31 and row[31] else 'Mean Reversion Scalper',
-            "active_stock_strategy": row[32] if len(row) > 32 and row[32] else 'None'
+            "active_stock_strategy": row[32] if len(row) > 32 and row[32] else 'None',
+            "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 1.0
         }
     return None
 

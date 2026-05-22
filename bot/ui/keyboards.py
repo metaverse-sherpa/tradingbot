@@ -134,6 +134,7 @@ def get_settings_ui(user):
     privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
     bot_status = "🟢 ACTIVE" if user['is_active'] else "🔴 PAUSED"
     risk_val = user.get('risk_pct', 1.5)
+    stock_risk_val = user.get('stock_risk_pct', 1.0)
     syms = user.get('enabled_symbols', [])
     wallet_val = user.get('source_wallet')
     wallet_display = f"{wallet_val[:6]}...{wallet_val[-4:]}" if wallet_val else "(Not Set)"
@@ -168,7 +169,8 @@ def get_settings_ui(user):
         f"{expiry_msg}"
         f"🪙 Crypto Strategy: *{user.get('active_crypto_strategy', 'Mean Reversion Scalper')}*\n"
         f"🦙 Stock Strategy: *{user.get('active_stock_strategy', 'None')}*\n"
-        f"Risk Level: *{risk_val:.2f}%*\n"
+        f"🪙 Crypto Risk: *{risk_val:.2f}%*\n"
+        f"🦙 Stock Risk: *{stock_risk_val:.2f}%*\n"
         f"Active Symbols: *{len(syms)}/19*\n"
         f"Capital Allocation: *{capital_display}*\n"
         f"Dollar PnL: *{privacy_status}*\n"
@@ -176,8 +178,9 @@ def get_settings_ui(user):
     )
     
     keyboard = [
-        [InlineKeyboardButton(f"⚖️ Set Risk % {'🔒' if not is_premium else ''}", callback_data="set_risk"),
-         InlineKeyboardButton(f"🛰 Symbols {'🔒' if not is_premium else ''}", callback_data="manage_symbols")],
+        [InlineKeyboardButton(f"🪙 Set Crypto Risk % {'🔒' if not is_premium else ''}", callback_data="set_crypto_risk"),
+         InlineKeyboardButton(f"🦙 Set Stock Risk % {'🔒' if not is_premium else ''}", callback_data="set_stock_risk")],
+        [InlineKeyboardButton(f"🛰 Symbols {'🔒' if not is_premium else ''}", callback_data="manage_symbols")],
         [InlineKeyboardButton("💰 Capital Allocation", callback_data="capital_menu")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],

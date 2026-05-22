@@ -292,13 +292,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    elif context.user_data.get('setting_risk'):
+    elif context.user_data.get('setting_crypto_risk'):
         try:
             val = float(text.replace("%", ""))
             if 0.01 <= val <= 100.0:
                 database.update_user_preference(chat_id, "risk_pct", val)
-                context.user_data.pop('setting_risk', None)
-                await update.effective_message.reply_text(f"✅ Risk updated to *{val:.2f}%*", parse_mode="Markdown")
+                context.user_data.pop('setting_crypto_risk', None)
+                await update.effective_message.reply_text(f"✅ Crypto Risk updated to *{val:.2f}%*", parse_mode="Markdown")
+                # Show settings again
+                user = database.get_user(chat_id)
+                msg, reply_markup = get_settings_ui(user)
+                await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+            else:
+                await update.effective_message.reply_text("❌ Please enter a value between 0.01 and 100.")
+        except:
+            await update.effective_message.reply_text("❌ Invalid number. Please enter a value like `1.5`.")
+
+    elif context.user_data.get('setting_stock_risk'):
+        try:
+            val = float(text.replace("%", ""))
+            if 0.01 <= val <= 100.0:
+                database.update_user_preference(chat_id, "stock_risk_pct", val)
+                context.user_data.pop('setting_stock_risk', None)
+                await update.effective_message.reply_text(f"✅ Stock Risk updated to *{val:.2f}%*", parse_mode="Markdown")
                 # Show settings again
                 user = database.get_user(chat_id)
                 msg, reply_markup = get_settings_ui(user)

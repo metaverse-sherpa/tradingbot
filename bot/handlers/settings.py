@@ -31,7 +31,7 @@ import media_gen
 
 def clear_input_states(context):
     """Clears all mutually exclusive interactive input states from user_data."""
-    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'setting_risk', 'setup_step', 'setting_cap_amount', 'setting_cap_pct']:
+    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'setting_crypto_risk', 'setting_stock_risk', 'setup_step', 'setting_cap_amount', 'setting_cap_pct']:
         context.user_data.pop(key, None)
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1026,6 +1026,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "strategy_menu":
         await query.answer()
         risk_val = user.get('risk_pct', 1.5)
+        stock_risk_val = user.get('stock_risk_pct', 1.0)
         active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
         active_stock = user.get('active_stock_strategy', 'None')
         
@@ -1038,13 +1039,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🦙 *Stock Strategy Engine* (Alpaca)\n"
             f"• Current: *{active_stock}*\n"
             "• Execution: Daily swing-trades at 9:31 AM EST.\n\n"
-            f"⚖️ *Current Risk*: `{risk_val:.2f}% per trade`\n\n"
+            f"⚖️ *Current Crypto Risk*: `{risk_val:.2f}% per trade`\n"
+            f"⚖️ *Current Stock Risk*: `{stock_risk_val:.2f}% per trade`\n\n"
             "Use the controls below to independently activate or pause each engine:"
         )
         
         keyboard = [
             [InlineKeyboardButton("🏔️ Preview My Performance", callback_data="run_backtest")],
-            [InlineKeyboardButton("⚖️ Set Risk %", callback_data="set_risk")],
+            [InlineKeyboardButton("🪙 Set Crypto Risk %", callback_data="set_crypto_risk"),
+             InlineKeyboardButton("🦙 Set Stock Risk %", callback_data="set_stock_risk")],
             
             # Crypto Toggles Row
             [
@@ -1079,20 +1082,36 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit_text(update, context, strategy_overview, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    elif query.data == "set_risk":
+    elif query.data == "set_crypto_risk":
         await query.answer()
         clear_input_states(context)
-        context.user_data['setting_risk'] = True
+        context.user_data['setting_crypto_risk'] = True
         keyboard = [
             [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
             *get_nav_buttons(user.get('has_open_positions', False), is_admin=(chat_id == SUPER_ADMIN_ID and not user.get('undercover_mode')))
         ]
         await safe_edit_text(
             update, context,
-            "⚖️ *Set Risk Percentage*\n\n"
-            "Please type your preferred risk-per-trade as a number (e.g., `1.5` or `2.0`).\n\n"
-            "This percentage of your equity will be risked on every trade based on the SL distance.\n\n"
+            "🪙 *Set Crypto Risk Percentage*\n\n"
+            "Please type your preferred risk-per-trade for crypto as a number (e.g., `1.5` or `2.0`).\n\n"
             "_Current: " + f"{user['risk_pct']:.2f}%_",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    elif query.data == "set_stock_risk":
+        await query.answer()
+        clear_input_states(context)
+        context.user_data['setting_stock_risk'] = True
+        keyboard = [
+            [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
+            *get_nav_buttons(user.get('has_open_positions', False), is_admin=(chat_id == SUPER_ADMIN_ID and not user.get('undercover_mode')))
+        ]
+        await safe_edit_text(
+            update, context,
+            "🦙 *Set Stock Risk Percentage*\n\n"
+            "Please type your preferred risk-per-trade for stocks as a number (e.g., `1.0` or `1.5`).\n\n"
+            "_Current: " + f"{user.get('stock_risk_pct', 1.0):.2f}%_",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
@@ -1225,7 +1244,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     elif query.data == "back_to_settings":
-        context.user_data.pop('setting_risk', None)
+        context.user_data.pop('setting_crypto_risk', None)
+        context.user_data.pop('setting_stock_risk', None)
         await query.answer()
 
     # Refresh and show settings UI
