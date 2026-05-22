@@ -705,16 +705,55 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if has_stocks:
         try:
             closed_stock_trades = database.get_closed_alpaca_trades_by_user(chat_id, limit=20)
-            for t in closed_stock_trades:
-                all_closed.append({
-                    "symbol": t['symbol'],
-                    "timestamp": t.get('close_time', 0) or 0,
-                    "net_pnl": t.get('pnl_raw') or 0,
-                    "price": t.get('close_price') or 0,
-                    "amount": t.get('qty') or 0,
-                    "side": "l",
-                    "roe_val": t.get('pnl_pct') or 0
-                })
+            if not closed_stock_trades:
+                # Fallback to API if local db is empty
+                orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 40})
+                if isinstance(orders, list):
+                    for o in orders:
+                        qty = float(o.get("filled_qty", 0) or 0)
+                        if qty > 0 and o.get("side") == "sell":
+                            price = float(o.get("filled_avg_price", 0))
+                            # rough pnl, try finding corresponding buy
+                            entry = price * 0.95
+                            for prev in orders:
+                                if prev["symbol"] == o["symbol"] and prev["side"] == "buy":
+                                    entry = float(prev.get("filled_avg_price", price))
+                                    break
+                                    
+                            pnl_raw = (price - entry) * qty
+                            pnl_pct = ((price - entry) / entry) * 100 if entry > 0 else 0
+                            
+                            try:
+                                from datetime import datetime
+                                dt_str = str(o.get("filled_at", "")).split(".")[0].replace("Z", "")
+                                if dt_str:
+                                    dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S")
+                                    ts = int(dt.timestamp() * 1000)
+                                else:
+                                    ts = 0
+                            except:
+                                ts = 0
+                                
+                            all_closed.append({
+                                "symbol": o['symbol'],
+                                "timestamp": ts,
+                                "net_pnl": pnl_raw,
+                                "price": price,
+                                "amount": qty,
+                                "side": "l",
+                                "roe_val": pnl_pct
+                            })
+            else:
+                for t in closed_stock_trades:
+                    all_closed.append({
+                        "symbol": t['symbol'],
+                        "timestamp": t.get('close_time', 0) or 0,
+                        "net_pnl": t.get('pnl_raw') or 0,
+                        "price": t.get('close_price') or 0,
+                        "amount": t.get('qty') or 0,
+                        "side": "l",
+                        "roe_val": t.get('pnl_pct') or 0
+                    })
         except Exception as e:
             logger.error(f"Error fetching Alpaca history: {e}")
 
