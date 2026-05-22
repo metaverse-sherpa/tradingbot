@@ -535,7 +535,7 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
         DB_PATH = old_db_path
         
     if not data_dict:
-        return None, None, None
+        raise Exception(f"Failed to load data from DB. DB_PATH={DB_PATH}")
         
     # 2. Set best params for Velocity_Pullback
     best_params = {
