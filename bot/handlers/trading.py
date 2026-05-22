@@ -601,15 +601,6 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
-    # 🏔️ Sherpa Cache: Check for instant local results first
-    if user.get('history_cache'):
-        try:
-            import json
-            last_10 = json.loads(user['history_cache'])
-            await render_history_dashboard(update, context, last_10, chat_id, user)
-            return
-        except: pass
-
     has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
     has_stocks = bool(user.get('alpaca_api_key') and user.get('alpaca_api_key') != "")
 
@@ -617,22 +608,110 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("❌ No API credentials connected. Please set up Blofin/Bitget or Alpaca credentials in Settings first.")
         return
 
-    active_exchange = user.get('exchange_id', 'blofin')
+    status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
 
-    # If they only have crypto, and have history cache, show cache immediately
-    if active_exchange != 'alpaca' and user.get('history_cache'):
-        try:
-            import json
-            last_10 = json.loads(user['history_cache'])
-            await render_history_dashboard(update, context, last_10, chat_id, user)
-            return
-        except: pass
+    # 1. Fetch Crypto History
+    if has_crypto:
+        if user.get('history_cache'):
+            try:
+                import json
+                last_10 = json.loads(user['history_cache'])
+                await render_history_dashboard(update, context, last_10, chat_id, user)
+            except: pass
+        else:
+            try:
+                ex_id = user.get('exchange_id', 'blofin')
+                if ex_id == 'alpaca':
+                    ex_id = 'blofin'
+                ex_class = getattr(ccxt, ex_id)
+                async with ex_class({
+                    "apiKey": user['api_key'],
+                    "secret": user['api_secret'],
+                    "password": user['api_password'],
+                    "options": {"defaultType": "swap"},
+                }) as user_ex:
+                    await user_ex.load_markets()
+                    
+                    all_closed = []
+                    async def fetch_sym_history(sym):
+                        try:
+                            norm_sym = database.normalize_symbol(sym, user_ex.id)
+                            trades = await user_ex.fetch_my_trades(norm_sym, limit=50)
+                            
+                            order_groups = {}
+                            for t in trades:
+                                info = t.get("info", {})
+                                gross_pnl = 0
+                                if user_ex.id == 'blofin':
+                                    gross_pnl = float(info.get("fillPnl") or 0)
+                                else:
+                                    gross_pnl = float(info.get("realizedPnl") or 0)
+                                    
+                                if gross_pnl != 0:
+                                    fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                                    net_pnl = gross_pnl - (fee * 2)
+                                    
+                                    side_raw = t.get('side', 'buy').lower()
+                                    is_long = (side_raw == 'sell')
+                                    
+                                    order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
+                                    if order_id not in order_groups:
+                                        order_groups[order_id] = []
+                                        
+                                    order_groups[order_id].append({
+                                        "net_pnl": net_pnl,
+                                        "price": t['price'],
+                                        "amount": t['amount'],
+                                        "timestamp": t['timestamp'],
+                                        "is_long": is_long
+                                    })
+                                    
+                            for order_id, fills in order_groups.items():
+                                total_net_pnl = sum(f['net_pnl'] for f in fills)
+                                total_amount = sum(f['amount'] for f in fills)
+                                total_cost = sum(f['price'] * f['amount'] for f in fills)
+                                avg_price = total_cost / total_amount if total_amount > 0 else fills[0]['price']
+                                
+                                max_timestamp = max(f['timestamp'] for f in fills)
+                                is_long = fills[0]['is_long']
+                                
+                                try:
+                                    market = user_ex.market(sym)
+                                    contract_size = float(market.get('contractSize', 1))
+                                    initial_margin = (avg_price * total_amount * contract_size) / 20
+                                    roe_val = (total_net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                                except:
+                                    roe_val = 0
+                                    
+                                all_closed.append({
+                                    "symbol": sym,
+                                    "timestamp": max_timestamp,
+                                    "net_pnl": total_net_pnl,
+                                    "price": avg_price,
+                                    "amount": total_amount,
+                                    "side": "l" if is_long else "s",
+                                    "roe_val": roe_val
+                                })
+                        except Exception as sym_err:
+                            logger.error(f"Error fetching history for {sym}: {sym_err}")
+    
+                    await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
+                         
+                    all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
+                    last_10 = all_closed[:10]
+                    
+                    if not last_10:
+                        await update.effective_message.reply_text("No recently closed crypto trades found in your account.")
+                    else:
+                        database.set_history_cache(chat_id, last_10)
+                        await render_history_dashboard(update, context, last_10, chat_id, user)
+                        
+            except Exception as e:
+                logger.error(f"Error fetching Crypto history: {e}")
+                await update.effective_message.reply_text(f"❌ Error fetching Crypto trade history: {e}")
 
-    if active_exchange == 'alpaca':
-        if not has_stocks:
-            await update.effective_message.reply_text("❌ No Alpaca credentials connected. Please set them up in Settings first.")
-            return
-        status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from Alpaca...")
+    # 2. Fetch Alpaca History
+    if has_stocks:
         try:
             orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 10})
             if orders:
@@ -652,114 +731,16 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         price_val = 0.0
                     lines.append(f"{emoji} *{side}* {sym} | Qty: `{qty}` | Price: `${price_val:.2f}` | Date: `{date_part}`")
                 
-                await status_msg.delete()
                 await update.effective_message.reply_text("\n".join(lines), parse_mode="Markdown", reply_markup=get_main_inline_menu(chat_id))
             else:
-                await status_msg.edit_text("No recently executed stock trades found in your Alpaca account.")
+                await update.effective_message.reply_text("No recently executed stock trades found in your Alpaca account.")
         except Exception as e:
             logger.error(f"Error fetching Alpaca history: {e}")
-            await status_msg.edit_text(f"❌ Error fetching Alpaca history: {e}")
-    else:
-        if not has_crypto:
-            await update.effective_message.reply_text("❌ No Blofin/Bitget credentials connected. Please set them up in Settings first.")
-            return
-        status_msg = await update.effective_message.reply_text("🔄 Fetching your recent trades directly from the exchange...")
-        try:
-            ex_id = active_exchange
-            if ex_id == 'alpaca':
-                ex_id = 'blofin'
-            ex_class = getattr(ccxt, ex_id)
-            async with ex_class({
-                "apiKey": user['api_key'],
-                "secret": user['api_secret'],
-                "password": user['api_password'],
-                "options": {"defaultType": "swap"},
-            }) as user_ex:
-                await user_ex.load_markets()
-                
-                all_closed = []
-                
-                async def fetch_sym_history(sym):
-                    try:
-                        norm_sym = database.normalize_symbol(sym, user_ex.id)
-                        trades = await user_ex.fetch_my_trades(norm_sym, limit=50)
-                        
-                        order_groups = {}
-                        for t in trades:
-                            info = t.get("info", {})
-                            gross_pnl = 0
-                            if user_ex.id == 'blofin':
-                                gross_pnl = float(info.get("fillPnl") or 0)
-                            else:
-                                gross_pnl = float(info.get("realizedPnl") or 0)
-                                
-                            if gross_pnl != 0:
-                                fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                                net_pnl = gross_pnl - (fee * 2)
-                                
-                                side_raw = t.get('side', 'buy').lower()
-                                is_long = (side_raw == 'sell')
-                                
-                                order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
-                                if order_id not in order_groups:
-                                    order_groups[order_id] = []
-                                    
-                                order_groups[order_id].append({
-                                    "net_pnl": net_pnl,
-                                    "price": t['price'],
-                                    "amount": t['amount'],
-                                    "timestamp": t['timestamp'],
-                                    "is_long": is_long
-                                })
-                                
-                        for order_id, fills in order_groups.items():
-                            total_net_pnl = sum(f['net_pnl'] for f in fills)
-                            total_amount = sum(f['amount'] for f in fills)
-                            total_cost = sum(f['price'] * f['amount'] for f in fills)
-                            avg_price = total_cost / total_amount if total_amount > 0 else fills[0]['price']
-                            
-                            max_timestamp = max(f['timestamp'] for f in fills)
-                            is_long = fills[0]['is_long']
-                            
-                            try:
-                                market = user_ex.market(sym)
-                                contract_size = float(market.get('contractSize', 1))
-                                initial_margin = (avg_price * total_amount * contract_size) / 20
-                                roe_val = (total_net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                            except:
-                                roe_val = 0
-                                
-                            all_closed.append({
-                                "symbol": sym,
-                                "timestamp": max_timestamp,
-                                "net_pnl": total_net_pnl,
-                                "price": avg_price,
-                                "amount": total_amount,
-                                "side": "l" if is_long else "s",
-                                "roe_val": roe_val
-                            })
-                    except Exception as sym_err:
-                        logger.error(f"Error fetching history for {sym}: {sym_err}")
+            await update.effective_message.reply_text(f"❌ Error fetching Alpaca history: {e}")
 
-                await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
-                     
-                all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
-                last_10 = all_closed[:10]
-                
-                if not last_10:
-                    await status_msg.edit_text("No recently closed crypto trades found in your account.")
-                    return
-                    
-                # Lock into Sherpa Cache
-                database.set_history_cache(chat_id, last_10)
-                
-                await status_msg.delete()
-                await render_history_dashboard(update, context, last_10, chat_id, user)
-                
-        except Exception as e:
-            logger.error(f"Error fetching Crypto history: {e}")
-            await status_msg.delete()
-            await update.effective_message.reply_text(f"❌ Error fetching Crypto trade history: {e}")
+    try:
+        await status_msg.delete()
+    except: pass
 
 async def fetch_alpaca_daily_bars_async(user, symbol, limit=60):
     from datetime import datetime, timedelta
