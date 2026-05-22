@@ -89,20 +89,28 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         fill_areas.append(dict(y1=entry, y2=tp, where=where_mask, color='#00C853', alpha=0.10))
     if sl > 0:
         fill_areas.append(dict(y1=entry, y2=sl, where=where_mask, color='#FF1744', alpha=0.10))
-    if 'fb_bb' in locals():
+    if 'fb_bb' in locals() and fb_bb is not None:
         fill_areas.append(fb_bb)
     
     # Generate the chart
-    fig, axlist = mpf.plot(df, type='candle', 
-             style=style,
-             title=f"\n{symbol} ({side}) - {timeframe} Strategy Setup",
-             ylabel=f'Price ({currency})',
-             addplot=ap,
-             fill_between=fill_areas,
-             volume=False,
-             figratio=(16,10),
-             figscale=1.3,
-             returnfig=True)
+    kwargs = dict(
+        type='candle',
+        style=style,
+        title=f"\n{symbol} ({side}) - {timeframe} Strategy Setup",
+        ylabel=f'Price ({currency})',
+        addplot=ap,
+        volume=False,
+        figratio=(16,10),
+        figscale=1.3,
+        returnfig=True
+    )
+    
+    if fill_areas:
+        valid_areas = [fb for fb in fill_areas if fb is not None]
+        if valid_areas:
+            kwargs['fill_between'] = valid_areas
+
+    fig, axlist = mpf.plot(df, **kwargs)
              
     # Save final figure
     fig.savefig(filepath, dpi=100, bbox_inches='tight')
