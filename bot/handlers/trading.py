@@ -783,7 +783,8 @@ async def fetch_alpaca_daily_bars_async(user, symbol, limit=60):
         "start": start_str,
         "end": end_str,
         "limit": 1000,
-        "adjustment": "all"
+        "adjustment": "all",
+        "feed": "iex"
     }
     
     try:
