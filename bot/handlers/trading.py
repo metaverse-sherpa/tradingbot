@@ -827,11 +827,11 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
     has_stocks = bool(user.get('alpaca_api_key') and user.get('alpaca_api_key') != "")
     
+    # Fetch Trades
+    found_any = False
+    
     # 1. Fetch Alpaca Stock Trades
-    if active_exchange == 'alpaca':
-        if not has_stocks:
-            await update.effective_message.reply_text("❌ No Alpaca credentials connected. Please set them up in Settings first.")
-            return
+    if has_stocks:
         status_msg = await update.effective_message.reply_text("🔍 Checking your active stock trades...")
         try:
             positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
@@ -943,22 +943,14 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except Exception as e:
                         logger.error(f"Error processing Alpaca position: {e}")
                 
-                await update.effective_message.reply_text(
-                    "🏔️ *Sherpa Navigation*",
-                    reply_markup=get_main_inline_menu(chat_id)
-                )
-            else:
-                await update.effective_message.reply_text("You have no active stock trades at the moment.", reply_markup=get_main_inline_menu(chat_id))
+                found_any = True
         except Exception as e:
             await update.effective_message.reply_text(f"❌ Error checking Alpaca positions: {e}")
         finally:
             await status_msg.delete()
 
     # 2. Fetch Crypto Trades
-    else:
-        if not has_crypto:
-            await update.effective_message.reply_text("❌ No Blofin/Bitget credentials connected. Please set them up in Settings first.")
-            return
+    if has_crypto:
         status_msg = await update.effective_message.reply_text("🔍 Checking your active crypto trades...")
         try:
             ex_id = active_exchange
@@ -1061,20 +1053,26 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                     await asyncio.gather(*(process_active_position(p) for p in active_crypto))
                     
-                    await update.effective_message.reply_text(
-                        "🏔️ *Sherpa Navigation*",
-                        reply_markup=get_main_inline_menu(chat_id)
-                    )
-                else:
-                    await update.effective_message.reply_text(
-                        "🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", 
-                        parse_mode="Markdown", 
-                        reply_markup=get_main_inline_menu(chat_id)
-                    )
+                    found_any = True
         except Exception as e:
             await update.effective_message.reply_text(f"❌ Error checking Crypto positions: {e}")
         finally:
             await status_msg.delete()
+
+    if not found_any:
+        if not has_stocks and not has_crypto:
+            await update.effective_message.reply_text("❌ No exchange credentials connected. Please set them up in Settings first.")
+        else:
+            await update.effective_message.reply_text(
+                "🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", 
+                parse_mode="Markdown", 
+                reply_markup=get_main_inline_menu(chat_id)
+            )
+    else:
+        await update.effective_message.reply_text(
+            "🏔️ *Sherpa Navigation*",
+            reply_markup=get_main_inline_menu(chat_id)
+        )
 
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
