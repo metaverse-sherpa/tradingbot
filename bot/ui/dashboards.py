@@ -109,7 +109,8 @@ async def build_forward_test_stats_block():
                     current = float(df['close'].iloc[-1]) if df is not None and not df.empty else entry
                 
                 side_lower = str(side).lower()
-                pnl_raw = current - entry if side_lower in ['buy', 'long'] else entry - current
+                is_long = side_lower in ['buy', 'long', 'l']
+                pnl_raw = current - entry if is_long else entry - current
                 pnl_pct = (pnl_raw / entry) * 100
                 
                 currency = get_currency(sym)
@@ -120,7 +121,7 @@ async def build_forward_test_stats_block():
                 
                 strategy_unrealized[strat_name] += pnl_val
                 
-                direction = "⬆️" if side_lower in ['buy', 'long'] else "⬇️"
+                direction = "⬆️" if is_long else "⬇️"
                 strategy_trade_lines[strat_name].append(
                     f"  {direction} `{sym}`: {pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})"
                 )

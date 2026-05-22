@@ -1327,16 +1327,22 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 
             current = float(df_chart['close'].iloc[-1])
             side_lower = str(side).lower()
-            pnl_raw = current - entry if side_lower in ['buy', 'long'] else entry - current
+            is_long = side_lower in ['buy', 'long', 'l']
+            pnl_raw = current - entry if is_long else entry - current
             pnl_pct = (pnl_raw / entry) * 100
+            
+            target_pnl_raw = tp - entry if is_long else entry - tp
+            target_pnl_pct = (target_pnl_raw / entry) * 100
             
             currency = get_currency(sym)
             if is_stock(sym):
                 pnl_val = pos_size * (pnl_pct / 100)
+                target_pnl_val = pos_size * (target_pnl_pct / 100)
             else:
                 pnl_val = pos_size * pnl_raw
+                target_pnl_val = pos_size * target_pnl_raw
             
-            side_str = "LONG" if side_lower in ['buy', 'long'] else "SHORT"
+            side_str = "LONG" if is_long else "SHORT"
             
             chart_file = None
             try:
@@ -1361,7 +1367,8 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"🛰️ *ACTIVE VIRTUAL POSITION* (Forward Test)\n"
                 f"🤖 Strategy: *{strat}*\n\n"
                 f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
-                f"PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})|| of target\n"
+                f"Current PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})||\n"
+                f"Target PnL: `{target_pnl_pct:+.2f}% ({target_pnl_val:+.2f} {currency})`\n"
                 f"• Entry: `{format_price(entry, sym)}` | SL: `{format_price(sl, sym)}` | TP: `{format_price(tp, sym)}`"
             )
             
