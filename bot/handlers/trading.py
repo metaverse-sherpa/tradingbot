@@ -863,7 +863,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         sl_price = 0
                         
                         # Fallback: check our local tracking since free Alpaca tier can't use bracket orders
-                        local_alpaca_trades = database.get_user_alpaca_trades(chat_id)
+                        local_alpaca_trades = database.get_open_alpaca_trades_by_user(chat_id)
                         for t in local_alpaca_trades:
                             if t.get('symbol') == sym:
                                 tp_price = float(t.get('tp_price') or 0)
