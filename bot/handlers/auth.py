@@ -298,11 +298,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if 0.01 <= val <= 100.0:
                 database.update_user_preference(chat_id, "risk_pct", val)
                 context.user_data.pop('setting_crypto_risk', None)
-                await update.effective_message.reply_text(f"✅ Crypto Risk updated to *{val:.2f}%*", parse_mode="Markdown")
-                # Show settings again
-                user = database.get_user(chat_id)
-                msg, reply_markup = get_settings_ui(user)
-                await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+                keyboard = [
+                    [InlineKeyboardButton("🔬 Run Crypto Backtest", callback_data="run_backtest_crypto")],
+                    [InlineKeyboardButton("🔙 Skip and Return to Settings", callback_data="back_to_settings")]
+                ]
+                await update.effective_message.reply_text(
+                    f"✅ Crypto Risk updated to *{val:.2f}%*\n\n"
+                    "Would you like to run a backtest on your crypto strategy to see how this new risk level performs?", 
+                    reply_markup=InlineKeyboardMarkup(keyboard), 
+                    parse_mode="Markdown"
+                )
             else:
                 await update.effective_message.reply_text("❌ Please enter a value between 0.01 and 100.")
         except:
@@ -314,11 +319,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if 0.01 <= val <= 100.0:
                 database.update_user_preference(chat_id, "stock_risk_pct", val)
                 context.user_data.pop('setting_stock_risk', None)
-                await update.effective_message.reply_text(f"✅ Stock Risk updated to *{val:.2f}%*", parse_mode="Markdown")
-                # Show settings again
-                user = database.get_user(chat_id)
-                msg, reply_markup = get_settings_ui(user)
-                await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+                keyboard = [
+                    [InlineKeyboardButton("🔬 Run Stock Backtest", callback_data="run_backtest_stock")],
+                    [InlineKeyboardButton("🔙 Skip and Return to Settings", callback_data="back_to_settings")]
+                ]
+                await update.effective_message.reply_text(
+                    f"✅ Stock Risk updated to *{val:.2f}%*\n\n"
+                    "Would you like to run a backtest on your stock strategy to see how this new risk level performs?", 
+                    reply_markup=InlineKeyboardMarkup(keyboard), 
+                    parse_mode="Markdown"
+                )
             else:
                 await update.effective_message.reply_text("❌ Please enter a value between 0.01 and 100.")
         except:

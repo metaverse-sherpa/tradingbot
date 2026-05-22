@@ -29,6 +29,9 @@ SYMBOLS = [
 
 def load_data_from_db():
     """Loads all daily stock data from the local database."""
+    import stock_data_cache_daily
+    stock_data_cache_daily.init_db()
+    
     conn = sqlite3.connect(DB_PATH)
     query = "SELECT * FROM StockDailyData ORDER BY date ASC"
     df = pd.read_sql_query(query, conn)
@@ -643,6 +646,7 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
     }
     
     return stats, chart_path, h_df
+
 
 def main():
     print("🏔️ Loading 3-Year Daily Historical Stock Data...")
