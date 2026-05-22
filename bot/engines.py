@@ -582,12 +582,13 @@ async def alpaca_fractional_monitor_engine(application):
                                     # Execute market sell
                                     await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
                                     
-                                    # Close in DB
-                                    database.close_alpaca_trade(trade['id'])
-                                    
                                     # Notify
                                     pnl_raw = (exit_price - trade['entry_price']) * qty
                                     pnl_pct = ((exit_price - trade['entry_price']) / trade['entry_price']) * 100
+                                    
+                                    import time
+                                    database.close_alpaca_trade(trade['id'], int(time.time() * 1000), exit_price, pnl_raw, pnl_pct)
+
                                     
                                     msg = (
                                         f"🦙 *Alpaca Stock Strategy: Dynamic Exit Triggered* 🦙\n\n"

@@ -236,7 +236,22 @@ def init_db():
                       tp_price REAL,
                       sl_price REAL,
                       open_time INTEGER,
+                      close_time INTEGER,
+                      close_price REAL,
+                      pnl_raw REAL,
+                      pnl_pct REAL,
                       status TEXT DEFAULT 'open')''')
+                      
+        # 🩹 Migration: Ensure new AlpacaActiveTrades columns exist
+        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN close_time INTEGER")
+        except: pass
+        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN close_price REAL")
+        except: pass
+        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN pnl_raw REAL")
+        except: pass
+        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN pnl_pct REAL")
+        except: pass
+
                       
         # Set default theoretical balance
         c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('theoretical_balance', '1000.0')")
@@ -933,10 +948,25 @@ def get_open_alpaca_trades_by_user(chat_id):
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
-def close_alpaca_trade(trade_id):
+def get_closed_alpaca_trades_by_user(chat_id, limit=10):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE AlpacaActiveTrades SET status = 'closed' WHERE id = ?", (trade_id,))
+        c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'closed' AND telegram_chat_id = ? ORDER BY close_time DESC LIMIT ?", (chat_id, limit))
+        rows = c.fetchall()
+    return [dict(r) for r in rows]
+
+def close_alpaca_trade(trade_id, close_time=None, close_price=None, pnl_raw=None, pnl_pct=None):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("""
+            UPDATE AlpacaActiveTrades 
+            SET status = 'closed', 
+                close_time = ?, 
+                close_price = ?, 
+                pnl_raw = ?, 
+                pnl_pct = ? 
+            WHERE id = ?
+        """, (close_time, close_price, pnl_raw, pnl_pct, trade_id))
 
 def make_alpaca_request(user, method, path, params=None, json_data=None):
     import requests
