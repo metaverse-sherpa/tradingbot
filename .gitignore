@@ -17,6 +17,7 @@ venv/
 # Data & Logs (Private)
 # csv/ (Tracked for pre-loaded backtesting)
 *.db
+!data/stock_daily_cache.db
 *.log
 *.png
 *.jpg
