@@ -359,7 +359,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.warning(f"UNAUTHORIZED FREE TRADES ACCESS ATTEMPT: {chat_id}")
             return
         
-        await query.answer("Fetching free trades...")
+        await query.answer("Fetching free signals...")
         open_sim_trades = database.get_open_theoretical_trades()
         trades = database.get_recent_theoretical_trades(10)
         
@@ -368,7 +368,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if open_sim_trades:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=f"🛰️ *Live Free Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
+                text=f"🛰️ *Live Free Signals Found: {len(open_sim_trades)}*\nGenerating progress charts...",
                 parse_mode="Markdown"
             )
             
@@ -437,7 +437,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         logger.error(f"Free chart generation failed for {sym}: {chart_err}")
                     
                     caption = (
-                        f"🧪 *ACTIVE FREE POSITION* (Forward Test)\n"
+                        f"🧪 *ACTIVE FREE SIGNAL* (Forward Test)\n"
                         f"🤖 Strategy: *{strat}*\n\n"
                         f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
                         f"PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})|| of target\n"
@@ -473,8 +473,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not trades:
             msg = (
                 "🔬 *Recent Free Forward Trades*\n\n"
-                "No free trades have been opened or resolved yet on this platform! ⏳\n\n"
-                "Once the 15-minute engine completes signal passes and places free trades, they will be logged here."
+                "No free signals have been opened or resolved yet on this platform! ⏳\n\n"
+                "Once the 15-minute engine completes signal passes and places free signals, they will be logged here."
             )
         else:
             msg_parts = ["🔬 *Recent Free Forward Trades Summary*\n_Showing last 10 activities_\n"]
@@ -1283,9 +1283,9 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not open_sim_trades:
         msg = (
-            "🛰️ *Live Free Positions*\n\n"
-            "No active free trades are open at this time. "
-            "The Sherpa is constantly scanning the markets for new free trade setups! ⏳"
+            "🛰️ *Live Free Signals*\n\n"
+            "No active free signals are open at this time. "
+            "The Sherpa is constantly scanning the markets for new free signal setups! ⏳"
         )
         await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
         return
@@ -1300,7 +1300,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     status_msg = await context.bot.send_message(
         chat_id=chat_id,
-        text=f"🛰️ *Live Free Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
+        text=f"🛰️ *Live Free Signals Found: {len(open_sim_trades)}*\nGenerating progress charts...",
         parse_mode="Markdown"
     )
 
@@ -1365,7 +1365,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
                                 df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
                     except Exception as live_err:
-                        logger.error(f"Failed to fetch live free trade data for {sym}: {live_err}")
+                        logger.error(f"Failed to fetch live free signal data for {sym}: {live_err}")
                 
                 if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                     try:
@@ -1437,7 +1437,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             entry_str = f"${entry:.2f}"
             
             caption = (
-                f"🛰️ *ACTIVE FREE POSITION* (Forward Test)\n"
+                f"🛰️ *ACTIVE FREE SIGNAL* (Forward Test)\n"
                 f"🤖 Strategy: *{strat}*\n\n"
                 f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
                 f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
@@ -1472,7 +1472,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 photo_ids.append(msg.message_id)
     except Exception as e:
         logger.error(f"Error in open_free_trades: {e}")
-        await context.bot.send_message(chat_id=chat_id, text=f"❌ Error displaying free trades: {e}")
+        await context.bot.send_message(chat_id=chat_id, text=f"❌ Error displaying free signals: {e}")
     finally:
         await mdm.close()
         try:
@@ -1505,14 +1505,14 @@ async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not closed_trades:
         msg = (
-            "📜 *Closed Free Trades History*\n\n"
-            "No resolved free trades found on this platform yet! ⏳\n\n"
-            "Once free trades are resolved via Take Profit or Stop Loss, they will appear here."
+            "📜 *Closed Free Signals History*\n\n"
+            "No resolved free signals found on this platform yet! ⏳\n\n"
+            "Once free signals are resolved via Take Profit or Stop Loss, they will appear here."
         )
         await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
         return
 
-    msg_parts = ["📜 *Closed Free Trades History*\n_Showing last 10 activities_\n"]
+    msg_parts = ["📜 *Closed Free Signals History*\n_Showing last 10 activities_\n"]
     for t in closed_trades:
         open_time_str = "???"
         if t.get('open_time'):

@@ -187,7 +187,7 @@ async def build_forward_test_stats_block():
     text = (
         "🧪 *Free Forward Testing*\n"
         f"• Combined Balance: *${total_balance:,.2f} USDT* ({total_growth:+.2f}%)\n"
-        f"• Open Free Trades: `{len(open_sim_trades)}`\n\n"
+        f"• Open Free Signals: `{len(open_sim_trades)}`\n\n"
         f"{mr_block}\n"
         f"{vk_block}\n"
         f"{svp_block}\n"

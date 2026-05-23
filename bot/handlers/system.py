@@ -137,7 +137,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🛡️ *Security & Control*\n"
         "Your exchange API credentials are **fully encrypted** and isolated. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit.\n\n"
         "📊 *Access Tiers*\n"
-        "• **Standard (Always Free)**: Receive real-time free trade signals directly in your Telegram chat as the Sherpa scans the markets.\n"
+        "• **Standard (Always Free)**: Receive real-time free signal signals directly in your Telegram chat as the Sherpa scans the markets.\n"
         "• **Institutional (Premium)**: Full autopilot mode. The Sherpa connects directly to your exchange accounts (Blofin, Alpaca, etc.) to automatically execute and manage actual trades in real-time, with custom size, risk controls, and priority heartbeat processing. **$20/mo**.\n\n"
         "📖 Tap /strategyguide to view different trading strategies.\n\n"
         "🏆 Tap /setup to link your account and start your climb."

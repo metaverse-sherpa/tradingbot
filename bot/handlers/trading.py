@@ -72,7 +72,7 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         "Comparison: `Standard (Free Signals)` vs `Institutional (Exchange Autopilot)`\n"
         "_Both running at a conservative 1.0% Institutional Risk._\n\n"
         "📊 *Standard Tier (Always Free)*\n"
-        "• Highly-accurate free trade signals delivered straight to your Telegram.\n"
+        "• Highly-accurate free signal signals delivered straight to your Telegram.\n"
         "• Core performance metrics dashboard & manual ledger access.\n\n"
         "💎 *Institutional Tier (Premium Access)*\n"
         "• Full autopilot: real-time execution directly on your connected exchange accounts (Blofin, Alpaca Stocks, Binance, MEXC).\n"

@@ -96,7 +96,7 @@ def get_admin_keyboard(master_wallet):
     return [
         [InlineKeyboardButton("🌍 Global Broadcast", callback_data="admin_broadcast_prompt")],
         [InlineKeyboardButton("📊 Detailed User Report", callback_data="admin_user_audit")],
-        [InlineKeyboardButton("🔬 View Free Trades", callback_data="admin_view_free_trades")],
+        [InlineKeyboardButton("🔬 View Free Signals", callback_data="admin_view_free_trades")],
         [
             InlineKeyboardButton("📈 Share MR Stats", callback_data="shf_mr"),
             InlineKeyboardButton("🛡️ Share VK Stats", callback_data="shf_vk"),
