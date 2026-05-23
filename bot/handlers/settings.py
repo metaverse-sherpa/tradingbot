@@ -867,6 +867,14 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "4️⃣ (Optional) Whitelist the VPS IP for security.\n\n"
                 "Please paste your **Bitget API Key** below:"
             )
+        elif exchange_id == 'bingx':
+            guide = (
+                "🟦 *BingX API Setup*\n\n"
+                "1️⃣ Go to **API Management** on BingX.\n"
+                "2️⃣ Create Key -> Enable **'Perpetual Futures Trading'**.\n"
+                "3️⃣ (Optional) Whitelist the VPS IP for security.\n\n"
+                "Please paste your **BingX API Key** below:"
+            )
         else:
             guide = (
                 "🏔️ *Blofin API Setup*\n\n"
@@ -1241,6 +1249,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
             [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
             [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
+            [InlineKeyboardButton("🟦 BingX", callback_data="setex_bingx")],
             [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
         ]

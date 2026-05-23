@@ -77,7 +77,7 @@ async def sync_engine(application):
                             "password": user['api_password'],
                             "options": {"defaultType": "swap"},
                         }) as user_ex:
-                            acc_type = "swap" if ex_id == 'bitget' else "futures"
+                            acc_type = "swap" if ex_id in ['bitget', 'bingx'] else "futures"
                             balance = await user_ex.fetch_balance(params={"type": acc_type})
                             equity = float(balance.get("USDT", {}).get("total", 0))
                             await database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
@@ -383,7 +383,7 @@ async def signal_engine(application):
                                     "options": {"defaultType": "swap"},
                                 }) as user_ex:
                                     
-                                    acc_type = "swap" if ex_id == 'bitget' else "futures"
+                                    acc_type = "swap" if ex_id in ['bitget', 'bingx'] else "futures"
                                     balance = await user_ex.fetch_balance(params={"type": acc_type})
                                     actual_equity = float(balance.get("USDT", {}).get("total", 0))
                                     

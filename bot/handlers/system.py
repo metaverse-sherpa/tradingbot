@@ -296,7 +296,7 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "options": {"defaultType": "swap"},
                 "timeout": 8000
             }) as user_ex:
-                acc_type = "swap" if ex_id == 'bitget' else "futures"
+                acc_type = "swap" if ex_id in ['bitget', 'bingx'] else "futures"
                 await user_ex.fetch_balance(params={"type": acc_type})
                 report_lines[-1] = "• Live Connection Check: `✅ Connected Successfully`"
         except Exception as e:

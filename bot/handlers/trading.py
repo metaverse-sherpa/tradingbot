@@ -1144,7 +1144,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "password": user_data['api_password'],
                 "options": {"defaultType": "swap"},
             }) as user_ex:
-                acc_type = "swap" if ex_id == 'bitget' else "futures"
+                acc_type = "swap" if ex_id in ['bitget', 'bingx'] else "futures"
                 balance = await user_ex.fetch_balance(params={"type": acc_type})
                 free = float(balance.get("USDT", {}).get("free", 0))
                 
