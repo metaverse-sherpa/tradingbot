@@ -1747,8 +1747,6 @@ async def execute_manual_trade_callback(update: Update, context: ContextTypes.DE
         # Crypto Logic
         equity = user.get('equity', 1000)
         user_risk = float(user.get('risk_pct', 1.5)) / 100.0
-        risk_amt = equity * user_risk
-        qty = risk_amt / sl_dist
         
         ex_id = user.get('exchange_id', 'blofin')
         ex_class = getattr(ccxt, ex_id)
@@ -1767,28 +1765,50 @@ async def execute_manual_trade_callback(update: Update, context: ContextTypes.DE
                 sym = sym.replace("/", "")
             
             market = exchange.market(sym)
-            qty = float(exchange.amount_to_precision(sym, qty))
+            contract_size = float(market.get('contractSize', 1))
+            
+            leverage = 20
+            margin_mode = "isolated"
+            try:
+                positions = await exchange.fetch_positions()
+                pos = next((p for p in positions if p.get('symbol') == sym), None)
+                if pos:
+                    if pos.get('leverage'):
+                        leverage = float(pos['leverage'])
+                    elif 'info' in pos and pos['info'].get('leverage'):
+                        leverage = float(pos['info']['leverage'])
+                        
+                    mode = pos.get('marginMode') or pos.get('info', {}).get('marginMode')
+                    if mode:
+                        margin_mode = mode.lower()
+            except Exception as e:
+                logger.warning(f"Could not fetch positions to determine leverage/margin mode, using defaults: {e}")
+                
+            target_margin = equity * user_risk
+            raw_qty = (target_margin * leverage) / (current_price * contract_size)
+            qty = float(exchange.amount_to_precision(sym, raw_qty))
             
             if qty < market['limits']['amount']['min']:
                 await context.bot.send_message(chat_id=chat_id, text=f"⚠️ Your position size ({qty}) is below the exchange minimum for {sym}.")
                 return
                 
-            await exchange.create_order(sym, "market", exec_side, qty)
+            await exchange.create_order(sym, "market", exec_side, qty, params={"marginMode": margin_mode})
             
             # Place TP and SL
             opposite_side = 'sell' if exec_side == 'buy' else 'buy'
             try:
-                await exchange.create_order(sym, "limit", opposite_side, qty, tp_price, params={"reduceOnly": True})
+                await exchange.create_order(sym, "limit", opposite_side, qty, tp_price, params={"reduceOnly": True, "marginMode": margin_mode})
             except Exception as e:
                 logger.error(f"Manual TP failed: {e}")
             try:
                 if ex_id == 'bitget':
                     await exchange.create_order(sym, "market", opposite_side, qty, params={
                         "stopLossPrice": sl_price,
-                        "reduceOnly": True
+                        "reduceOnly": True,
+                        "marginMode": margin_mode
                     })
                 else:
-                    await exchange.create_order(sym, "stop", opposite_side, qty, sl_price, params={"reduceOnly": True})
+                    await exchange.create_order(sym, "stop", opposite_side, qty, sl_price, params={"reduceOnly": True, "marginMode": margin_mode})
             except Exception as e:
                 logger.error(f"Manual SL failed: {e}")
                 
