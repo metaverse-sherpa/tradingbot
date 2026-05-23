@@ -63,14 +63,14 @@ def get_nav_buttons(has_active_trades=False, is_admin=False):
             InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
         ],
         [
-            InlineKeyboardButton("---- Free Trades ----", callback_data="dummy_spacer")
+            InlineKeyboardButton("---- Free Signals ----", callback_data="dummy_spacer")
         ],
         [
-            InlineKeyboardButton("🛰️ Live Trades", callback_data="free_active"),
-            InlineKeyboardButton("📜 Closed Trades", callback_data="free_closed")
+            InlineKeyboardButton("🛰️ Active Signals", callback_data="free_active"),
+            InlineKeyboardButton("📜 Closed Signals", callback_data="free_closed")
         ],
         [
-            InlineKeyboardButton("📊 Free Trade Stats", callback_data="free_stats")
+            InlineKeyboardButton("📊 Free Signal Stats", callback_data="free_stats")
         ]
     ]
     if is_admin:
