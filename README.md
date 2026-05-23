@@ -14,7 +14,7 @@ A production-ready, multi-tenant Telegram trading bot for Blofin, Binance, MEXC,
 *   **Advanced Algorithmic Strategies**: Switch between multiple brains, including the *Mean Reversion Scalper* and the *Valkyrie Elite Scalper* (`/strategy`).
 *   **Tactical Controls**: Manual overrides including One-Click Close and Panic Close functionality directly from Telegram.
 *   **Capital Allocation**: Granular control over position sizing (trade with full balance, fixed $ amount, or % isolation) via `/settings`.
-*   **Tiered Access & Referrals**: Standard (Free virtual trade signals) and Institutional (Premium exchange autopilot) tiers. Built-in referral system to earn Premium.
+*   **Tiered Access & Referrals**: Standard (Free trade signals) and Institutional (Premium exchange autopilot) tiers. Built-in referral system to earn Premium.
 *   **Automated & Forward Testing**: Real-time Win Rate, PnL %, and trade counts updated live (`/stats`), plus simulated forward test tracking (`/forwardtest`).
 
 ## 📁 Codebase Architecture & File Reference

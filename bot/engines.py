@@ -205,7 +205,7 @@ async def signal_engine(application):
                             # Broadcast EXIT alert
                             all_targets = database.get_all_broadcast_targets()
                             exit_msg = (
-                                f"📊 *SIMULATED TRADE CLOSED* (Forward Test)\n"
+                                f"📊 *FREE TRADE CLOSED* (Forward Test)\n"
                                 f"───────────────────────────────\n"
                                 f"Symbol:        *{symbol}*\n"
                                 f"Strategy:      *{strategy}*\n"
@@ -215,7 +215,7 @@ async def signal_engine(application):
                                 f"Exit Price:    `{format_price(exit_price, symbol)}`\n"
                                 f"Trade PnL:     *{pnl_pct:+.2f}%* ({pnl_usdt:+.2f} {currency})\n"
                                 f"───────────────────────────────\n"
-                                f"Simulated Balance:  *${new_bal:,.2f} {currency}*"
+                                f"Free Balance:  *${new_bal:,.2f} {currency}*"
                                 f"{cheeky_note}"
                             )
                             for target_id in all_targets:
@@ -307,18 +307,18 @@ async def signal_engine(application):
                         all_targets = database.get_all_broadcast_targets()
                         currency = get_currency(symbol)
                         entry_msg = (
-                            f"🏔️ *NEW SIMULATED SIGNAL* (Forward Test)\n"
+                            f"🏔️ *NEW FREE SIGNAL* (Forward Test)\n"
                             f"───────────────────────────────\n"
                             f"Symbol:        *{symbol}*\n"
                             f"Strategy:      *{strategy_name}*\n"
                             f"Direction:     *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
                             f"Risk Setting:  `1.5%`\n\n"
-                            f"Simulated Entry: `{format_price(entry, symbol)}`\n"
+                            f"Free Entry: `{format_price(entry, symbol)}`\n"
                             f"Take Profit (TP): `{format_price(tp, symbol)}`\n"
                             f"Stop Loss (SL):   `{format_price(sl, symbol)}`\n\n"
-                            f"Simulated Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} {currency})\n"
+                            f"Free Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} {currency})\n"
                             f"───────────────────────────────\n"
-                            f"Current Simulated Balance: *${sim_balance:,.2f} {currency}*"
+                            f"Current Free Balance: *${sim_balance:,.2f} {currency}*"
                         )
                         
                         for target_id in all_targets:

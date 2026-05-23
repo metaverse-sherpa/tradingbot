@@ -185,9 +185,9 @@ async def build_forward_test_stats_block():
     svp_block = _build_strategy_block("Sherpa Velocity Pullback")
     
     text = (
-        "🧪 *Simulated Forward Testing*\n"
+        "🧪 *Free Forward Testing*\n"
         f"• Combined Balance: *${total_balance:,.2f} USDT* ({total_growth:+.2f}%)\n"
-        f"• Open Simulated Trades: `{len(open_sim_trades)}`\n\n"
+        f"• Open Free Trades: `{len(open_sim_trades)}`\n\n"
         f"{mr_block}\n"
         f"{vk_block}\n"
         f"{svp_block}\n"

@@ -51,7 +51,7 @@ def get_nav_buttons(has_active_trades=False, is_admin=False):
     """Returns a standardized grid of inline navigation buttons."""
     kb = [
         [
-            InlineKeyboardButton("🛰️ Active Trades", callback_data="opentrades_menu"),
+            InlineKeyboardButton("🛰️ Live Trades", callback_data="opentrades_menu"),
             InlineKeyboardButton("📜 History", callback_data="history_menu")
         ],
         [
@@ -63,14 +63,14 @@ def get_nav_buttons(has_active_trades=False, is_admin=False):
             InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
         ],
         [
-            InlineKeyboardButton("---- Virtual Trades ----", callback_data="dummy_spacer")
+            InlineKeyboardButton("---- Free Trades ----", callback_data="dummy_spacer")
         ],
         [
-            InlineKeyboardButton("🛰️ Active Trades", callback_data="virtual_active"),
-            InlineKeyboardButton("📜 Closed Trades", callback_data="virtual_closed")
+            InlineKeyboardButton("🛰️ Live Trades", callback_data="free_active"),
+            InlineKeyboardButton("📜 Closed Trades", callback_data="free_closed")
         ],
         [
-            InlineKeyboardButton("📊 Virtual Trade Stats", callback_data="virtual_stats")
+            InlineKeyboardButton("📊 Free Trade Stats", callback_data="free_stats")
         ]
     ]
     if is_admin:
@@ -96,7 +96,7 @@ def get_admin_keyboard(master_wallet):
     return [
         [InlineKeyboardButton("🌍 Global Broadcast", callback_data="admin_broadcast_prompt")],
         [InlineKeyboardButton("📊 Detailed User Report", callback_data="admin_user_audit")],
-        [InlineKeyboardButton("🔬 View Simulated Trades", callback_data="admin_view_simulated_trades")],
+        [InlineKeyboardButton("🔬 View Free Trades", callback_data="admin_view_free_trades")],
         [
             InlineKeyboardButton("📈 Share MR Stats", callback_data="shf_mr"),
             InlineKeyboardButton("🛡️ Share VK Stats", callback_data="shf_vk"),

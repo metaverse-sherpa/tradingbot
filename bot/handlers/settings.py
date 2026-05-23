@@ -102,8 +102,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
                 
     # Clean up admin/user simulated trade photos when leaving either of those views
-    if query.data not in ["admin_view_simulated_trades", "virtual_active"]:
-        sim_photo_ids = context.user_data.pop('admin_simulated_photo_ids', [])
+    if query.data not in ["admin_view_free_trades", "free_active"]:
+        sim_photo_ids = context.user_data.pop('admin_free_photo_ids', [])
         for photo_id in sim_photo_ids:
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=photo_id)
@@ -354,12 +354,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_admin_dashboard(update, context)
         return
 
-    if query.data == "admin_view_simulated_trades":
+    if query.data == "admin_view_free_trades":
         if chat_id != SUPER_ADMIN_ID and not (user and user.get('is_admin')):
-            logger.warning(f"UNAUTHORIZED SIMULATED TRADES ACCESS ATTEMPT: {chat_id}")
+            logger.warning(f"UNAUTHORIZED FREE TRADES ACCESS ATTEMPT: {chat_id}")
             return
         
-        await query.answer("Fetching simulated trades...")
+        await query.answer("Fetching free trades...")
         open_sim_trades = database.get_open_theoretical_trades()
         trades = database.get_recent_theoretical_trades(10)
         
@@ -368,7 +368,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if open_sim_trades:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=f"🛰️ *Active Simulated Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
+                text=f"🛰️ *Live Free Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
                 parse_mode="Markdown"
             )
             
@@ -434,10 +434,10 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             currency=curr
                         )
                     except Exception as chart_err:
-                        logger.error(f"Simulated chart generation failed for {sym}: {chart_err}")
+                        logger.error(f"Free chart generation failed for {sym}: {chart_err}")
                     
                     caption = (
-                        f"🧪 *ACTIVE SIMULATED POSITION* (Forward Test)\n"
+                        f"🧪 *ACTIVE FREE POSITION* (Forward Test)\n"
                         f"🤖 Strategy: *{strat}*\n\n"
                         f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
                         f"PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})|| of target\n"
@@ -467,17 +467,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await mdm.close()
                 
             if photo_ids:
-                context.user_data['admin_simulated_photo_ids'] = photo_ids
+                context.user_data['admin_free_photo_ids'] = photo_ids
                 
         # Send historical/summary message
         if not trades:
             msg = (
-                "🔬 *Recent Simulated Forward Trades*\n\n"
-                "No simulated trades have been opened or resolved yet on this platform! ⏳\n\n"
-                "Once the 15-minute engine completes signal passes and places simulated trades, they will be logged here."
+                "🔬 *Recent Free Forward Trades*\n\n"
+                "No free trades have been opened or resolved yet on this platform! ⏳\n\n"
+                "Once the 15-minute engine completes signal passes and places free trades, they will be logged here."
             )
         else:
-            msg_parts = ["🔬 *Recent Simulated Forward Trades Summary*\n_Showing last 10 activities_\n"]
+            msg_parts = ["🔬 *Recent Free Forward Trades Summary*\n_Showing last 10 activities_\n"]
             for t in trades:
                 open_time_str = "???"
                 if t.get('open_time'):
@@ -907,17 +907,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "dummy_spacer":
         await query.answer()
         return
-    elif query.data == "virtual_active":
+    elif query.data == "free_active":
         await query.answer()
-        await open_virtual_trades(update, context)
+        await open_free_trades(update, context)
         return
-    elif query.data == "virtual_closed":
+    elif query.data == "free_closed":
         await query.answer()
-        await list_virtual_trades(update, context)
+        await list_free_trades(update, context)
         return
-    elif query.data == "virtual_stats":
+    elif query.data == "free_stats":
         await query.answer()
-        await show_virtual_trade_stats(update, context)
+        await show_free_trade_stats(update, context)
         return
     elif query.data.startswith("manual_exec_"):
         await query.answer("Initiating live execution...")
@@ -1272,7 +1272,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await safe_edit_text(update, context, msg, reply_markup=reply_markup)
 
 
-async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
@@ -1283,9 +1283,9 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     if not open_sim_trades:
         msg = (
-            "🛰️ *Active Virtual Positions*\n\n"
-            "No active simulated/virtual trades are open at this time. "
-            "The Sherpa is constantly scanning the markets for new virtual trade setups! ⏳"
+            "🛰️ *Live Free Positions*\n\n"
+            "No active free trades are open at this time. "
+            "The Sherpa is constantly scanning the markets for new free trade setups! ⏳"
         )
         await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
         return
@@ -1296,11 +1296,11 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
         try:
             await query.message.delete()
         except Exception as e:
-            logger.error(f"Failed to delete original message in open_virtual_trades: {e}")
+            logger.error(f"Failed to delete original message in open_free_trades: {e}")
 
     status_msg = await context.bot.send_message(
         chat_id=chat_id,
-        text=f"🛰️ *Active Simulated Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
+        text=f"🛰️ *Live Free Trades Found: {len(open_sim_trades)}*\nGenerating progress charts...",
         parse_mode="Markdown"
     )
 
@@ -1315,7 +1315,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 if float(p.get("qty", 0)) != 0:
                     active_live_symbols.add(p['symbol'])
         except Exception as e:
-            logger.error(f"Failed to fetch Alpaca positions for simulated stats check: {e}")
+            logger.error(f"Failed to fetch Alpaca positions for free stats check: {e}")
             
     # Fetch active Crypto symbols
     has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
@@ -1341,7 +1341,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                         active_live_symbols.add(clean_sym)
                 await exchange.close()
             except Exception as e:
-                logger.error(f"Failed to fetch Crypto positions for simulated stats check: {e}")
+                logger.error(f"Failed to fetch Crypto positions for free stats check: {e}")
 
     mdm = live_bot_multi.MarketDataManager()
     try:
@@ -1365,7 +1365,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                             if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
                                 df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
                     except Exception as live_err:
-                        logger.error(f"Failed to fetch live virtual trade data for {sym}: {live_err}")
+                        logger.error(f"Failed to fetch live free trade data for {sym}: {live_err}")
                 
                 if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                     try:
@@ -1423,7 +1423,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                     currency=curr
                 )
             except Exception as chart_err:
-                logger.error(f"Simulated chart generation failed for {sym}: {chart_err}")
+                logger.error(f"Free chart generation failed for {sym}: {chart_err}")
             
             # Calculate percentages
             sl_pct_val = (((sl - entry) / entry) * 100 if side_str == 'LONG' else ((entry - sl) / entry) * 100) if sl > 0 else 0
@@ -1437,7 +1437,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
             entry_str = f"${entry:.2f}"
             
             caption = (
-                f"🛰️ *ACTIVE VIRTUAL POSITION* (Forward Test)\n"
+                f"🛰️ *ACTIVE FREE POSITION* (Forward Test)\n"
                 f"🤖 Strategy: *{strat}*\n\n"
                 f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
                 f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
@@ -1471,8 +1471,8 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
                 )
                 photo_ids.append(msg.message_id)
     except Exception as e:
-        logger.error(f"Error in open_virtual_trades: {e}")
-        await context.bot.send_message(chat_id=chat_id, text=f"❌ Error displaying virtual trades: {e}")
+        logger.error(f"Error in open_free_trades: {e}")
+        await context.bot.send_message(chat_id=chat_id, text=f"❌ Error displaying free trades: {e}")
     finally:
         await mdm.close()
         try:
@@ -1481,7 +1481,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
             pass
 
     if photo_ids:
-        context.user_data['admin_simulated_photo_ids'] = photo_ids
+        context.user_data['admin_free_photo_ids'] = photo_ids
 
     # Send navigation footer at the very end
     await context.bot.send_message(
@@ -1492,7 +1492,7 @@ async def open_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
 
-async def list_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
@@ -1505,14 +1505,14 @@ async def list_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if not closed_trades:
         msg = (
-            "📜 *Closed Virtual Trades History*\n\n"
-            "No resolved simulated/virtual trades found on this platform yet! ⏳\n\n"
-            "Once simulated trades are resolved via Take Profit or Stop Loss, they will appear here."
+            "📜 *Closed Free Trades History*\n\n"
+            "No resolved free trades found on this platform yet! ⏳\n\n"
+            "Once free trades are resolved via Take Profit or Stop Loss, they will appear here."
         )
         await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
         return
 
-    msg_parts = ["📜 *Closed Virtual Trades History*\n_Showing last 10 activities_\n"]
+    msg_parts = ["📜 *Closed Free Trades History*\n_Showing last 10 activities_\n"]
     for t in closed_trades:
         open_time_str = "???"
         if t.get('open_time'):
@@ -1548,7 +1548,7 @@ async def list_virtual_trades(update: Update, context: ContextTypes.DEFAULT_TYPE
     await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")
 
 
-async def show_virtual_trade_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_free_trade_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
