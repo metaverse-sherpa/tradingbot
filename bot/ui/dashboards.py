@@ -170,14 +170,14 @@ async def build_forward_test_stats_block():
             f"• Realized PnL: `{stats['cumulative_pnl']:+.2f} USDT`\n"
         )
         if open_count > 0:
-            block += f"• Open Trades: `{open_count}`"
+            block += f"• Active Signals: `{open_count}`"
             if unrealized != 0:
                 block += f" (Unrealized: `{unrealized:+.2f} USDT`)"
             block += "\n"
             for line in trade_lines:
                 block += f"{line}\n"
         else:
-            block += "• Open Trades: `0`\n"
+            block += "• Active Signals: `0`\n"
         return block
     
     mr_block = _build_strategy_block("Mean Reversion Scalper")
