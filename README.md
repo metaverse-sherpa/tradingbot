@@ -98,6 +98,7 @@ If setting up a new `e2-micro` instance, follow these essential steps:
     sudo systemctl start tradingbot
     ```
 
+
 ## 🔐 Google Cloud Secret Manager Setup
 
 To securely run the bot on GCP without hardcoding API keys in `.env` files, the bot uses Google Cloud Secret Manager.
