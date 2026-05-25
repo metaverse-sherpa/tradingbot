@@ -67,7 +67,7 @@ def get_symbol_link(symbol, text=None):
     if is_stk:
         url = f"https://marketmasters.ai/stocks/{symbol_str}"
     else:
-        clean_sym = symbol_str.replace("/", "")
+        clean_sym = symbol_str.split(":")[0].replace("/", "")
         url = f"https://marketmasters.ai/currency/{clean_sym}"
         
     display_text = text if text else symbol_str
