@@ -146,11 +146,20 @@ async def build_forward_test_stats_block():
                     pnl_pct *= CRYPTO_LEVERAGE
                     pnl_val = pos_size * pnl_raw
                 
+                tp_price = t.get('tp_price', 0)
+                target_pct_str = ""
+                if tp_price and tp_price > 0:
+                    target_pnl_raw = tp_price - entry if is_long else entry - tp_price
+                    target_pct = (target_pnl_raw / entry) * 100
+                    if not is_stock(sym):
+                        target_pct *= CRYPTO_LEVERAGE
+                    target_pct_str = f" of {target_pct:+.2f}% (target)"
+
                 strategy_unrealized[strat_name] += pnl_val
                 
                 direction = "⬆️" if is_long else "⬇️"
                 strategy_trade_lines[strat_name].append(
-                    f"  {direction} `{sym}`: {pnl_pct:+.2f}%"
+                    f"  {direction} `{sym}`: {pnl_pct:+.2f}%{target_pct_str}"
                 )
     except Exception as e:
         logger.error(f"Error fetching live prices for forward test stats: {e}")
