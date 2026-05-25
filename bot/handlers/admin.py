@@ -100,37 +100,33 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     premium_msg = (
         "💎 *Go Premium: Unlock the 23x Wealth Gap*\n\n"
-        "Unlock the full power of the Metaverse Sherpa engine. Moving from Standard to Premium tier grants you access to professional-grade tools used by elite traders:\n\n"
+        "Unlock professional-grade tools used by elite traders:\n\n"
         "🏔️ *Premium Tier Benefits:*\n"
-        "• **Full Autopilot**: The Sherpa executes and manages live trades directly on your exchange.\n"
-        "• **The Full Sherpa Basket**: Trade all 19+ premium symbols (Standard only gets free signals).\n"
-        "• **Advanced Risk Control**: Set custom risk-per-trade percentages.\n"
-        "• **Priority Execution**: Your trades are prioritized in the engine's background loop.\n"
-        "• **Zero Friction**: Automated on-chain audits keep your access active.\n\n"
+        "• **Full Autopilot**: Live auto-trading directly on your exchange.\n"
+        "• **Full Sherpa Basket**: Trade all 19+ premium symbols.\n"
+        "• **Advanced Risk**: Set custom risk-per-trade percentages.\n"
+        "• **Priority Execution**: Priority in the engine's background loop.\n\n"
         "🎁 *Get it for FREE!*\n"
-        "Invite 3 friends to join the trail and unlock **1 Month Free** of Premium Access. Tap /refer to get your custom invite link!\n\n"
+        "Invite 3 friends to unlock **1 Month Free**. Tap /refer!\n\n"
         f"{credit_msg}"
-        f"{price_msg}\n"
         f"{price_msg}\n"
     )
 
     if not wallet_val:
         premium_msg += (
             "⚠️ *Source Wallet Required*\n\n"
-            "To unlock Premium access, you must first set your **Source Wallet Address** so the Sherpa can verify your payment.\n\n"
-            "Tap the button below to link your wallet first."
+            "To unlock Premium, set your **Source Wallet Address** so the Sherpa can verify payment.\n"
+            "Tap the button below."
         )
         kb = [[InlineKeyboardButton("👛 Set Wallet", callback_data="prompt_set_wallet")]]
     else:
         premium_msg += (
-            "📥 *The Step-by-Step Upgrade Path:*\n"
-            "1. **Copy the Treasury Address** below (Tap to copy).\n"
-            f"2. **Send exactly ${final_price:.2f} USDT** via the **TRON (TRC-20)** network.\n"
-            "3. **Tap 'Audit My Payment'** below once sent.\n\n"
-            "🏛️ *Master Treasury Address (TRC-20):*\n"
-            f"`{get_master_wallet()}`\n\n"
-            f"🕵️‍♂️ *Verifying Transfer From:* `{wallet_val}`\n\n"
-            "⚠️ _Note: Activation is fully automated. The Sherpa's audit engine will scan the blockchain for your transaction and unlock your access within 1-3 minutes of on-chain confirmation._"
+            "📥 *Upgrade Path:*\n"
+            "1. Copy the Treasury Address below.\n"
+            f"2. Send **${final_price:.2f} USDT** via **TRON (TRC-20)**.\n"
+            "3. Tap 'Audit My Payment'.\n\n"
+            "🏛️ *Treasury (TRC-20):* `{get_master_wallet()}`\n\n"
+            "⚠️ _Activation is automated within 1-3 mins._"
         )
         
         kb = []
@@ -150,14 +146,19 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.effective_message.delete()
             except: pass
         with open(photo_path, 'rb') as photo:
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo,
-                caption=premium_msg,
-                reply_markup=InlineKeyboardMarkup(kb),
-                parse_mode="Markdown"
-            )
+            try:
+                await context.bot.send_photo(
+                    chat_id=chat_id,
+                    photo=photo,
+                    caption=premium_msg,
+                    reply_markup=InlineKeyboardMarkup(kb),
+                    parse_mode="Markdown"
+                )
+            except Exception as e:
+                logger.error(f"Failed to send infographic: {e}")
+                await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
     else:
+        logger.error(f"Infographic not found at {photo_path}")
         await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
