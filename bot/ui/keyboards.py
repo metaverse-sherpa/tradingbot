@@ -274,7 +274,7 @@ def get_settings_ui(user):
     stock_risk_val = user.get('stock_risk_pct', 1.0)
     syms = user.get('enabled_symbols', [])
     wallet_val = user.get('source_wallet')
-    wallet_display = f"{wallet_val[:6]}...{wallet_val[-4:]}" if wallet_val else "(Not Set)"
+    wallet_line = f"Source Wallet: `{wallet_val[:6]}...{wallet_val[-4:]}`\n" if wallet_val else "Source Wallet: Not Set (Use button below)\n"
     
     is_premium = database.is_premium(user)
     is_admin = (user.get('telegram_chat_id') == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
@@ -308,20 +308,23 @@ def get_settings_ui(user):
         f"🦙 Stock Strategy: *{user.get('active_stock_strategy', 'None')}*\n"
         f"🪙 Crypto Risk: *{risk_val:.2f}%*\n"
         f"🦙 Stock Risk: *{stock_risk_val:.2f}%*\n"
-        f"Active Symbols: *{len(syms)}/19*\n"
         f"Capital Allocation: *{capital_display}*\n"
         f"Dollar PnL: *{privacy_status}*\n"
-        f"Source Wallet: `{wallet_display}`\n"
+        f"{wallet_line}"
     )
     
     keyboard = [
-        [InlineKeyboardButton(f"🪙 Set Crypto Risk % {'⚙️' if not is_premium else ''}", callback_data="set_crypto_risk")],
-        [InlineKeyboardButton(f"🦙 Set Stock Risk % {'⚙️' if not is_premium else ''}", callback_data="set_stock_risk")],
+        [
+            InlineKeyboardButton(f"🪙 Crypto Risk % {'⚙️' if not is_premium else ''}", callback_data="set_crypto_risk"),
+            InlineKeyboardButton(f"🦙 Stock Risk % {'⚙️' if not is_premium else ''}", callback_data="set_stock_risk")
+        ],
         [InlineKeyboardButton(f"🛰 Symbols {'⚙️' if not is_premium else ''}", callback_data="manage_symbols")],
         [InlineKeyboardButton("💰 Capital Allocation", callback_data="capital_menu")],
-        [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
-        [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
-        [InlineKeyboardButton("🔬 Backtest Your Strategy", callback_data="run_backtest")],
+        [InlineKeyboardButton("Privacy On 🔒" if user['hide_dollars'] else "Privacy Off 👁️", callback_data="toggle_privacy")],
+        [
+            InlineKeyboardButton("Change Strategy", callback_data="strategy_menu"),
+            InlineKeyboardButton("🔬 Backtest", callback_data="run_backtest")
+        ],
         [InlineKeyboardButton("🔌 Switch Exchange", callback_data="switch_exchange_prompt")],
     ]
     
@@ -337,7 +340,11 @@ def get_settings_ui(user):
     keyboard.append([InlineKeyboardButton("👛 Set/Change Wallet", callback_data="prompt_set_wallet")])
     
     # 🏔️ Extend settings UI with main navigation footer menu
+    crypto_connected = bool(user.get('exchange_id') and user.get('api_key') and user.get('api_secret'))
+    alpaca_connected = bool(user.get('alpaca_api_key') and user.get('alpaca_api_secret'))
+    has_exchange = crypto_connected or alpaca_connected
+    
     has_active = user.get('has_open_positions', False)
-    keyboard.extend(get_nav_buttons(has_active, is_admin))
+    keyboard.extend(get_nav_buttons(has_active, is_admin, has_exchange))
     
     return msg, InlineKeyboardMarkup(keyboard)
