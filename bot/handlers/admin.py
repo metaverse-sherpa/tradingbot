@@ -112,6 +112,9 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{price_msg}\n"
     )
 
+    from bot.ui.keyboards import send_cached_photo
+    premium_photo_path = os.path.join(BASE_DIR, "images", "premium_infographic.png")
+
     if not wallet_val:
         premium_msg += (
             "⚠️ *Source Wallet Required*\n\n"
@@ -119,9 +122,14 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Tap the button below."
         )
         kb = [[InlineKeyboardButton("👛 Set Wallet", callback_data="prompt_set_wallet")]]
-        photo_filename = "premium_infographic.png"
+        kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
+        await send_cached_photo(update, context, premium_photo_path, caption=premium_msg, reply_markup=InlineKeyboardMarkup(kb))
     else:
-        premium_msg += (
+        # Send top features infographic
+        await send_cached_photo(update, context, premium_photo_path, caption=premium_msg)
+        
+        # Send bottom payment infographic with action buttons
+        payment_msg = (
             "📥 *Upgrade Path:*\n"
             "1. Copy the Treasury Address below.\n"
             f"2. Send **${final_price:.2f} USDT** via **TRON (TRC-20)**.\n"
@@ -137,13 +145,10 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             kb.append([InlineKeyboardButton("🔎 Audit My Payment & Unlock", callback_data="check_payment")])
         
         kb.append([InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")])
-        photo_filename = "payment_steps_infographic.png"
+        kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
         
-    kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
-    
-    photo_path = os.path.join(BASE_DIR, "images", photo_filename)
-    from bot.ui.keyboards import send_cached_photo
-    await send_cached_photo(update, context, photo_path, caption=premium_msg, reply_markup=InlineKeyboardMarkup(kb))
+        payment_photo_path = os.path.join(BASE_DIR, "images", "payment_steps_infographic.png")
+        await send_cached_photo(update, context, payment_photo_path, caption=payment_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a Telegram message to the Super Admin."""
