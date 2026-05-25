@@ -84,8 +84,8 @@ def save_to_db(ticker, data):
 
 def main():
     parser = argparse.ArgumentParser(description="Sherpa Stock Data Cacher")
-    parser.add_argument("--key", default=utils_gcp.get_secret("alpaca-api-key"), help="Your Alpaca API Key ID (defaults to GCP/env)")
-    parser.add_argument("--secret", default=utils_gcp.get_secret("alpaca-api-secret"), help="Your Alpaca API Secret Key (defaults to GCP/env)")
+    parser.add_argument("--key", default=utils_gcp.get_secret("ALPACA_API_KEY"), help="Your Alpaca API Key ID (defaults to GCP/env)")
+    parser.add_argument("--secret", default=utils_gcp.get_secret("ALPACA_API_SECRET"), help="Your Alpaca API Secret Key (defaults to GCP/env)")
     parser.add_argument("--start", default="2023-01-01", help="Start date (YYYY-MM-DD)")
     args = parser.parse_args()
 

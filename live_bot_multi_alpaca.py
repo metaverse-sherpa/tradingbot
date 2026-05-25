@@ -18,8 +18,8 @@ logger = logging.getLogger("AlpacaLiveBot")
 
 import utils_gcp
 
-ALPACA_API_KEY = utils_gcp.get_secret("alpaca-api-key")
-ALPACA_API_SECRET = utils_gcp.get_secret("alpaca-api-secret")
+ALPACA_API_KEY = utils_gcp.get_secret("ALPACA_API_KEY")
+ALPACA_API_SECRET = utils_gcp.get_secret("ALPACA_API_SECRET")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STOCK_DB_PATH = os.path.join(BASE_DIR, "data", "stock_daily_cache.db")
 USER_DB_PATH = os.path.join(BASE_DIR, "data", "bot_users.db")

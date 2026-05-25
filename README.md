@@ -98,6 +98,19 @@ If setting up a new `e2-micro` instance, follow these essential steps:
     sudo systemctl start tradingbot
     ```
 
+## 🔐 Google Cloud Secret Manager Setup
+
+To securely run the bot on GCP without hardcoding API keys in `.env` files, the bot uses Google Cloud Secret Manager.
+
+1.  **Create Secrets**: Go to **Security > Secret Manager** in the Google Cloud Console and create your secrets (e.g., `ALPACA_API_KEY`, `ALPACA_API_SECRET`).
+2.  **Grant Permissions**: Give your VM's Service Account the **Secret Manager Secret Accessor** role in IAM.
+3.  **Enable VM Scopes**: 
+    * Stop your VM instance.
+    * Click **Edit**.
+    * Under **Identity and API access**, change the **Access scopes** to **"Allow full access to all Cloud APIs"**.
+    * Save and restart the VM.
+4.  **Local Fallback**: When running locally on your own machine (outside of GCP), the bot will gracefully fall back to checking your local `.env` file for uppercase equivalents (e.g., `ALPACA_API_KEY` and `ALPACA_API_SECRET`).
+
 ## 🔄 Updates & Maintenance
 
 Follow these steps each time you push new code to Github:

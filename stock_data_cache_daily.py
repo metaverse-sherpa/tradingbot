@@ -106,8 +106,8 @@ def save_to_db(ticker, data):
 import utils_gcp
 
 def main():
-    api_key = utils_gcp.get_secret("alpaca-api-key")
-    api_secret = utils_gcp.get_secret("alpaca-api-secret")
+    api_key = utils_gcp.get_secret("ALPACA_API_KEY")
+    api_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
     if not api_key or not api_secret:
         print("❌ Error: ALPACA_API_KEY or ALPACA_API_SECRET not found in .env.")
         return
