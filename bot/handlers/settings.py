@@ -1568,7 +1568,7 @@ async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             strat_short = "Pullback"
         
         curr = get_currency(t['symbol'])
-        status_icon = "🟢 Take Profit" if t['status'] == 'tp' else ("🔴 Stop Loss" if t['status'] == 'sl' else f"⚠️ {t['status'].upper()}")
+        status_icon = "✅ Take Profit" if t['status'] == 'tp' else ("❌ Stop Loss" if t['status'] == 'sl' else f"⚠️ {t['status'].upper()}")
         status_line = f"Resolved: *{status_icon}*"
         pnl_line = f"\n  PnL: *{t['pnl_pct']:+.2f}% ({t['pnl_usdt']:+.2f} {curr})*"
         exit_price = t['tp_price'] if t['status'] == 'tp' else t['sl_price']
