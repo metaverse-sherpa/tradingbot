@@ -187,12 +187,17 @@ async def signal_engine(application):
                             
                             database.close_theoretical_trade(trade_id, exit_price, close_time, status, pnl_raw, pnl_pct, pnl_usdt)
                             
+                            display_pnl_pct = pnl_pct
+                            from bot.config import is_stock, CRYPTO_LEVERAGE
+                            if not is_stock(symbol):
+                                display_pnl_pct *= CRYPTO_LEVERAGE
+
                             strategy = t.get('strategy', 'Mean Reversion Scalper')
                             currency = get_currency(symbol)
                             if status == 'tp':
                                 cheeky_note = (
                                     f"\n\n🏆 *Look what you missed out on!*\n"
-                                    f"If you had been trading the *{strategy}* strategy, you would've earned *{pnl_pct:+.2f}%*!"
+                                    f"If you had been trading the *{strategy}* strategy, you would've earned *{display_pnl_pct:+.2f}%*!"
                                 )
                             elif status == 'sl':
                                 cheeky_note = (
@@ -214,7 +219,7 @@ async def signal_engine(application):
                                 f"Exit Trigger:  {status.upper()}\n\n"
                                 f"Entry Price:   {format_price(entry_price, symbol)}\n"
                                 f"Exit Price:    {format_price(exit_price, symbol)}\n"
-                                f"Trade PnL:     {pnl_pct:+.2f}% ({pnl_usdt:+.2f} {currency})\n"
+                                f"Trade PnL:     {display_pnl_pct:+.2f}% ({pnl_usdt:+.2f} {currency})\n"
                                 f"───────────────────────────────\n"
                                 f"Free Balance:  ${new_bal:,.2f} {currency}"
                                 f"{cheeky_note}\n\n"

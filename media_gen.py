@@ -291,6 +291,9 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
 
     # Calculate ROE
     roe = ((current - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - current) / entry * 100)
+    from bot.config import is_stock, CRYPTO_LEVERAGE
+    if not is_stock(symbol):
+        roe *= CRYPTO_LEVERAGE
     color_neon = (0, 255, 150, 255) if roe >= 0 else (255, 50, 50, 255)
     
     # Progress Bar Geometry
@@ -324,6 +327,11 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     # SL/TP Percentages
     sl_roe = ((sl - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - sl) / entry * 100)
     tp_roe = ((tp - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - tp) / entry * 100)
+    
+    if not is_stock(symbol):
+        sl_roe *= CRYPTO_LEVERAGE
+        tp_roe *= CRYPTO_LEVERAGE
+
     draw.text((get_x(sl), bar_y + 40), f"{sl_roe:.1f}%", font=font_sub, fill=(255, 100, 100, 255), anchor="mm")
     draw.text((get_x(tp), bar_y + 40), f"{tp_roe:+.1f}%", font=font_sub, fill=(0, 255, 150, 255), anchor="mm")
     

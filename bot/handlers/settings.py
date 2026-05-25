@@ -13,7 +13,7 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 import database
-from bot.config import SUPER_ADMIN_ID, logger, get_master_wallet, format_price, get_currency, is_stock
+from bot.config import SUPER_ADMIN_ID, logger, get_master_wallet, format_price, get_currency, is_stock, CRYPTO_LEVERAGE
 from bot.ui.keyboards import (
     escape_md_v2,
     safe_edit_text,
@@ -460,6 +460,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if is_stock(sym):
                         pnl_val = pos_size * (pnl_pct / 100)
                     else:
+                        pnl_pct *= CRYPTO_LEVERAGE
                         pnl_val = pos_size * pnl_raw
                     
                     side_str = "LONG" if side_lower in ['buy', 'long'] else "SHORT"
@@ -1433,13 +1434,14 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target_pnl_raw = tp - entry if is_long else entry - tp
             target_pnl_pct = (target_pnl_raw / entry) * 100
             
-            currency = get_currency(sym)
-            if is_stock(sym):
-                pnl_val = pos_size * (pnl_pct / 100)
-                target_pnl_val = pos_size * (target_pnl_pct / 100)
-            else:
+            if not is_stock(sym):
+                pnl_pct *= CRYPTO_LEVERAGE
+                target_pnl_pct *= CRYPTO_LEVERAGE
                 pnl_val = pos_size * pnl_raw
                 target_pnl_val = pos_size * target_pnl_raw
+            else:
+                pnl_val = pos_size * (pnl_pct / 100)
+                target_pnl_val = pos_size * (target_pnl_pct / 100)
             
             side_str = "LONG" if is_long else "SHORT"
             
@@ -1568,9 +1570,14 @@ async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             strat_short = "Pullback"
         
         curr = get_currency(t['symbol'])
+        
+        display_pnl_pct = t['pnl_pct']
+        if not is_stock(t['symbol']):
+            display_pnl_pct *= CRYPTO_LEVERAGE
+            
         status_icon = "✅ Take Profit" if t['status'] == 'tp' else ("❌ Stop Loss" if t['status'] == 'sl' else f"⚠️ {t['status'].upper()}")
         status_line = f"Resolved: *{status_icon}*"
-        pnl_line = f"\n  PnL: *{t['pnl_pct']:+.2f}% ({t['pnl_usdt']:+.2f} {curr})*"
+        pnl_line = f"\n  PnL: *{display_pnl_pct:+.2f}% ({t['pnl_usdt']:+.2f} {curr})*"
         exit_price = t['tp_price'] if t['status'] == 'tp' else t['sl_price']
         price_line = f"• Entry: `{format_price(t['entry_price'], t['symbol'])}` | Exit: `{format_price(exit_price, t['symbol'])}`"
         

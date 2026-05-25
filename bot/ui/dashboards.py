@@ -11,7 +11,7 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 import database
-from bot.config import SUPER_ADMIN_ID, get_currency, is_stock
+from bot.config import SUPER_ADMIN_ID, get_currency, is_stock, CRYPTO_LEVERAGE
 from bot.ui.keyboards import escape_md_v2, get_nav_buttons
 
 logger = logging.getLogger(__name__)
@@ -128,6 +128,7 @@ async def build_forward_test_stats_block():
                 if is_stock(sym):
                     pnl_val = pos_size * (pnl_pct / 100)
                 else:
+                    pnl_pct *= CRYPTO_LEVERAGE
                     pnl_val = pos_size * pnl_raw
                 
                 strategy_unrealized[strat_name] += pnl_val
