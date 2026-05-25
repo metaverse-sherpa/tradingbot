@@ -218,6 +218,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         cards = []
+        user_lookup = {u['telegram_chat_id']: u for u in report}
+        
         for i, u in enumerate(report, 1):
             tier_icon = "💎" if u['is_premium'] else "🥈"
             tier_label = "Premium" if u['is_premium'] else "Free"
@@ -240,6 +242,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"│  `{u['telegram_chat_id']}`  ·  {uname}\n"
                 f"│  {status_icon} {status_label}  ·  {tier_icon} {tier_label}\n"
             )
+
+            if u.get('referred_by'):
+                referrer = user_lookup.get(u['referred_by'])
+                if referrer:
+                    ref_name = escape_md_v2(referrer.get('full_name') or "Unknown")
+                    ref_uname = escape_md_v2(f"@{referrer['username']}") if referrer.get('username') else ""
+                    ref_id = escape_md_v2(str(referrer['telegram_chat_id']))
+                    card += f"│  🔗 *Referred by:* {ref_name} {ref_uname} `{ref_id}`\n"
+                else:
+                    ref_id = escape_md_v2(str(u['referred_by']))
+                    card += f"│  🔗 *Referred by:* `{ref_id}`\n"
 
             if u.get('recruit_list'):
                 card += f"│  🤝 *Recruits \\({len(u['recruit_list'])}\\):*\n"
