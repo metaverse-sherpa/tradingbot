@@ -42,7 +42,7 @@ from bot.config import (
     get_currency,
     format_price
 )
-from bot.ui.keyboards import get_nav_buttons
+from bot.ui.keyboards import get_nav_buttons, build_datetime_entity_message
 
 async def sync_engine(application):
     """
@@ -204,19 +204,22 @@ async def signal_engine(application):
                                 
                             # Broadcast EXIT alert
                             all_targets = database.get_all_broadcast_targets()
-                            exit_msg = (
+                            now_ts = int(time.time())
+                            exit_text, exit_entities = build_datetime_entity_message(
                                 f"📊 *FREE TRADE CLOSED* (Forward Test)\n"
                                 f"───────────────────────────────\n"
-                                f"Symbol:        *{symbol}*\n"
-                                f"Strategy:      *{strategy}*\n"
-                                f"Direction:     *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
-                                f"Exit Trigger:  *{status.upper()}*\n\n"
-                                f"Entry Price:   `{format_price(entry_price, symbol)}`\n"
-                                f"Exit Price:    `{format_price(exit_price, symbol)}`\n"
-                                f"Trade PnL:     *{pnl_pct:+.2f}%* ({pnl_usdt:+.2f} {currency})\n"
+                                f"Symbol:        {symbol}\n"
+                                f"Strategy:      {strategy}\n"
+                                f"Direction:     {'LONG 📈' if side == 'buy' else 'SHORT 📉'}\n"
+                                f"Exit Trigger:  {status.upper()}\n\n"
+                                f"Entry Price:   {format_price(entry_price, symbol)}\n"
+                                f"Exit Price:    {format_price(exit_price, symbol)}\n"
+                                f"Trade PnL:     {pnl_pct:+.2f}% ({pnl_usdt:+.2f} {currency})\n"
                                 f"───────────────────────────────\n"
-                                f"Free Balance:  *${new_bal:,.2f} {currency}*"
-                                f"{cheeky_note}"
+                                f"Free Balance:  ${new_bal:,.2f} {currency}"
+                                f"{cheeky_note}\n\n"
+                                f"Closed at: ",
+                                now_ts
                             )
                             for target_id in all_targets:
                                 try:
@@ -227,9 +230,9 @@ async def signal_engine(application):
                                     kb = get_nav_buttons(is_admin=is_adm)
                                     await application.bot.send_message(
                                         chat_id=target_id,
-                                        text=exit_msg,
+                                        text=exit_text,
+                                        entities=exit_entities,
                                         reply_markup=InlineKeyboardMarkup(kb),
-                                        parse_mode="Markdown"
                                     )
                                 except Exception as e:
                                     logger.warning(f"Failed forward test exit broadcast to {target_id}: {e}")
@@ -306,19 +309,22 @@ async def signal_engine(application):
                         
                         all_targets = database.get_all_broadcast_targets()
                         currency = get_currency(symbol)
-                        entry_msg = (
+                        signal_ts = open_ts // 1000  # convert ms to seconds
+                        entry_text, entry_entities = build_datetime_entity_message(
                             f"🏔️ *NEW FREE SIGNAL* (Forward Test)\n"
                             f"───────────────────────────────\n"
-                            f"Symbol:        *{symbol}*\n"
-                            f"Strategy:      *{strategy_name}*\n"
-                            f"Direction:     *{'LONG 📈' if side == 'buy' else 'SHORT 📉'}*\n"
-                            f"Risk Setting:  `1.5%`\n\n"
-                            f"Free Entry: `{format_price(entry, symbol)}`\n"
-                            f"Take Profit (TP): `{format_price(tp, symbol)}`\n"
-                            f"Stop Loss (SL):   `{format_price(sl, symbol)}`\n\n"
-                            f"Free Position Size: `{position_size_units:.4f}` units (~${position_size_usd:.2f} {currency})\n"
+                            f"Symbol:        {symbol}\n"
+                            f"Strategy:      {strategy_name}\n"
+                            f"Direction:     {'LONG 📈' if side == 'buy' else 'SHORT 📉'}\n"
+                            f"Risk Setting:  1.5%\n\n"
+                            f"Free Entry: {format_price(entry, symbol)}\n"
+                            f"Take Profit (TP): {format_price(tp, symbol)}\n"
+                            f"Stop Loss (SL):   {format_price(sl, symbol)}\n\n"
+                            f"Free Position Size: {position_size_units:.4f} units (~${position_size_usd:.2f} {currency})\n"
                             f"───────────────────────────────\n"
-                            f"Current Free Balance: *${sim_balance:,.2f} {currency}*"
+                            f"Current Free Balance: ${sim_balance:,.2f} {currency}\n\n"
+                            f"Signal time: ",
+                            signal_ts
                         )
                         
                         for target_id in all_targets:
@@ -334,16 +340,16 @@ async def signal_engine(application):
                                         await application.bot.send_photo(
                                             chat_id=target_id,
                                             photo=photo,
-                                            caption=entry_msg,
+                                            caption=entry_text,
                                             reply_markup=InlineKeyboardMarkup(kb),
-                                            parse_mode="Markdown"
+                                            caption_entities=entry_entities,
                                         )
                                 else:
                                     await application.bot.send_message(
                                         chat_id=target_id,
-                                        text=entry_msg,
+                                        text=entry_text,
+                                        entities=entry_entities,
                                         reply_markup=InlineKeyboardMarkup(kb),
-                                        parse_mode="Markdown"
                                     )
                             except Exception as e:
                                 logger.warning(f"Failed forward test entry broadcast to {target_id}: {e}")

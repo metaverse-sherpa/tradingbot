@@ -25,7 +25,7 @@ STOCK_DB_PATH = os.path.join(BASE_DIR, "data", "stock_daily_cache.db")
 USER_DB_PATH = os.path.join(BASE_DIR, "data", "bot_users.db")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-async def send_telegram_message(chat_id, text):
+async def send_telegram_message(chat_id, text, entities=None):
     if not TELEGRAM_TOKEN:
         logger.error("TELEGRAM_TOKEN not found in environment.")
         return
@@ -33,8 +33,20 @@ async def send_telegram_message(chat_id, text):
     payload = {
         "chat_id": chat_id,
         "text": text,
-        "parse_mode": "Markdown"
     }
+    if entities:
+        # entities is a list of MessageEntity objects — serialise to dicts for the raw HTTP call
+        payload["entities"] = [
+            {
+                "type": e.type,
+                "offset": e.offset,
+                "length": e.length,
+                **({"value": e.value} if getattr(e, "value", None) is not None else {}),
+            }
+            for e in entities
+        ]
+    else:
+        payload["parse_mode"] = "Markdown"
     try:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: requests.post(url, json=payload, timeout=10))
@@ -361,16 +373,29 @@ async def run_real_trader_execution(today_opens):
                             await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
                             
                             close_price = today_opens.get(sym, float(pos['avg_entry_price']))
-                            msg = (
+                            from telegram import MessageEntity
+                            from datetime import datetime, timezone
+                            now_ts = int(time.time())
+                            now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+                            close_text_before = (
                                 "🦙 *Alpaca Stock Strategy: Dynamic Exit Triggered* 🦙\n\n"
                                 f"Exited **{sym}** LONG position at today's open.\n"
                                 f"• Symbol: `{sym}`\n"
                                 f"• Qty: `{pos['qty']}` shares\n"
                                 f"• Entry Price: `${float(pos['avg_entry_price']):.2f}`\n"
                                 f"• Approximate Exit Price: `${close_price:.2f}`\n"
-                                "🚀 _Associated Stop-Loss and Take-Profit orders have been automatically cancelled._"
+                                "🚀 _Associated Stop-Loss and Take-Profit orders have been automatically cancelled._\n\n"
+                                "Closed at: "
                             )
-                            await send_telegram_message(chat_id, msg)
+                            placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
+                            close_entity = MessageEntity(
+                                type=MessageEntity.DATE_TIME,
+                                offset=len(close_text_before),
+                                length=len(placeholder),
+                                unix_time=now_dt,
+                            )
+                            msg_close = close_text_before + placeholder
+                            await send_telegram_message(chat_id, msg_close, entities=[close_entity])
                         except Exception as e:
                             logger.error(f"Failed to liquidate real user {chat_id} position {sym}: {e}")
                             await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} dynamically: {e}")
@@ -428,7 +453,11 @@ async def run_real_trader_execution(today_opens):
                             open_time=open_ts
                         )
                         
-                        msg = (
+                        from telegram import MessageEntity
+                        from datetime import datetime, timezone
+                        now_ts = int(time.time())
+                        now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+                        buy_text_before = (
                             "🦙 *Alpaca Stock Strategy: Buy Signal Triggered* 🦙\n\n"
                             f"Entered **{sym}** LONG at today's open.\n"
                             f"• Symbol: `{sym}`\n"
@@ -436,9 +465,18 @@ async def run_real_trader_execution(today_opens):
                             f"• Entry Price: `${o_price:.2f}`\n"
                             f"• Take Profit: `${tp_price:.2f}`\n"
                             f"• Stop Loss: `${sl_price:.2f}`\n"
-                            f"• Risk Allocated: `${risk_amt:.2f}` ({user.get('stock_risk_pct', 1.0)}% of equity)"
+                            f"• Risk Allocated: `${risk_amt:.2f}` ({user.get('stock_risk_pct', 1.0)}% of equity)\n\n"
+                            "Signal time: "
                         )
-                        await send_telegram_message(chat_id, msg)
+                        placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
+                        buy_entity = MessageEntity(
+                            type=MessageEntity.DATE_TIME,
+                            offset=len(buy_text_before),
+                            length=len(placeholder),
+                            unix_time=now_dt,
+                        )
+                        buy_msg = buy_text_before + placeholder
+                        await send_telegram_message(chat_id, buy_msg, entities=[buy_entity])
                         
                     except Exception as e:
                         logger.error(f"Failed to execute real trade for user {chat_id} symbol {sym}: {e}")

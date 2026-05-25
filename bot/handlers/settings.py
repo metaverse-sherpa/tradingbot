@@ -965,8 +965,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "confirm_panic":
         await query.answer()
         kb = [
-            [InlineKeyboardButton("✅ YES, CLOSE ALL TRADES NOW!", callback_data="panic_execute")],
-            [InlineKeyboardButton("❌ NO, ABORT", callback_data="back_to_settings")]
+            [InlineKeyboardButton("✅ YES, CLOSE ALL TRADES NOW!", callback_data="panic_execute", style="destructive")],
+            [InlineKeyboardButton("❌ NO, ABORT", callback_data="back_to_settings", style="positive")]
         ]
         await safe_edit_text(
             update, context,
@@ -983,8 +983,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sym = query.data.replace("confirm_close_", "")
         await query.answer()
         kb = [
-            [InlineKeyboardButton("✅ YES, CLOSE NOW", callback_data=f"execute_close_{sym}")],
-            [InlineKeyboardButton("❌ NO, KEEP OPEN", callback_data="opentrades_menu")]
+            [InlineKeyboardButton("✅ YES, CLOSE NOW", callback_data=f"execute_close_{sym}", style="destructive")],
+            [InlineKeyboardButton("❌ NO, KEEP OPEN", callback_data="opentrades_menu", style="positive")]
         ]
         warn_msg = (
             f"⚠️ *CLOSE {sym} CONFIRMATION*\n\n"

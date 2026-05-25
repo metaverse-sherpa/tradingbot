@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 import time
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MessageEntity
 from telegram.ext import ContextTypes
 
 # Base directory definitions
@@ -23,6 +23,41 @@ def escape_md_v2(text):
     for char in reserved:
         text = str(text).replace(char, f"\\{char}")
     return text
+
+def build_datetime_entity_message(text_before: str, unix_ts: int, text_after: str = "") -> tuple:
+    """
+    Builds a (text, entities) tuple for a message that embeds a date_time entity.
+    Telegram clients will auto-format the placeholder timestamp text into the user's
+    local timezone and locale (Bot API 9.5+). Falls back gracefully on older clients.
+
+    Args:
+        text_before: Plain text that appears before the timestamp.
+        unix_ts: Unix timestamp in seconds (NOT milliseconds).
+        text_after: Plain text that appears after the timestamp.
+
+    Returns:
+        A tuple (full_text, entities_list) ready to pass to send_message().
+    """
+    # Use a readable placeholder so older clients still show something sensible
+    from datetime import datetime, timezone
+    try:
+        dt = datetime.fromtimestamp(unix_ts, tz=timezone.utc)
+        placeholder = dt.strftime("%Y-%m-%d %H:%M UTC")
+    except Exception:
+        dt = None
+        placeholder = str(unix_ts)
+
+    offset = len(text_before)
+    length = len(placeholder)
+    full_text = f"{text_before}{placeholder}{text_after}"
+
+    entity = MessageEntity(
+        type=MessageEntity.DATE_TIME,
+        offset=offset,
+        length=length,
+        unix_time=dt,
+    )
+    return full_text, [entity]
 
 async def safe_edit_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, reply_markup: InlineKeyboardMarkup = None, parse_mode: str = "Markdown"):
     """Surgically edits a message or sends a fresh one if media conflict exists."""
@@ -77,7 +112,7 @@ def get_nav_buttons(has_active_trades=False, is_admin=False):
         kb.append([InlineKeyboardButton("👑 Admin Console", callback_data="admin_command")])
     
     if has_active_trades:
-        kb.append([InlineKeyboardButton("🚨 CLOSE ALL TRADES", callback_data="confirm_panic")])
+        kb.append([InlineKeyboardButton("🚨 CLOSE ALL TRADES", callback_data="confirm_panic", style="destructive")])
     return kb
 
 def get_main_inline_menu(chat_id=None):
