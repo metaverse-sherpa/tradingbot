@@ -144,36 +144,58 @@ async def safe_edit_text(update: Update, context: ContextTypes.DEFAULT_TYPE, tex
         except Exception as e2:
             logger.error(f"SafeEdit Fatal Error: {e2}")
 
-def get_nav_buttons(has_active_trades=False, is_admin=False):
+def get_nav_buttons(has_active_trades=False, is_admin=False, has_exchange=True):
     """Returns a standardized grid of inline navigation buttons."""
-    kb = [
-        [
-            InlineKeyboardButton("🛰️ Live Trades", callback_data="opentrades_menu"),
-            InlineKeyboardButton("📜 History", callback_data="history_menu")
-        ],
-        [
-            InlineKeyboardButton("📊 Your Stats", callback_data="stats_menu"),
-            InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
-        ],
-        [
-            InlineKeyboardButton("❓ Help", callback_data="help_menu"),
-            InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
-        ],
-        [
-            InlineKeyboardButton("---- Free Signals ----", callback_data="dummy_spacer")
-        ],
-        [
-            InlineKeyboardButton("🛰️ Active Signals", callback_data="free_active"),
-            InlineKeyboardButton("📜 Closed Signals", callback_data="free_closed")
-        ],
-        [
-            InlineKeyboardButton("📊 Free Signal Stats", callback_data="free_stats")
+    if has_exchange:
+        kb = [
+            [
+                InlineKeyboardButton("🛰️ Live Trades", callback_data="opentrades_menu"),
+                InlineKeyboardButton("📜 History", callback_data="history_menu")
+            ],
+            [
+                InlineKeyboardButton("📊 Your Stats", callback_data="stats_menu"),
+                InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
+            ],
+            [
+                InlineKeyboardButton("❓ Help", callback_data="help_menu"),
+                InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
+            ],
+            [
+                InlineKeyboardButton("---- Free Signals ----", callback_data="dummy_spacer")
+            ],
+            [
+                InlineKeyboardButton("🛰️ Active Signals", callback_data="free_active"),
+                InlineKeyboardButton("📜 Closed Signals", callback_data="free_closed")
+            ],
+            [
+                InlineKeyboardButton("📊 Free Signal Stats", callback_data="free_stats")
+            ]
         ]
-    ]
+    else:
+        kb = [
+            [
+                InlineKeyboardButton("---- Free Signals ----", callback_data="dummy_spacer")
+            ],
+            [
+                InlineKeyboardButton("🛰️ Active Signals", callback_data="free_active"),
+                InlineKeyboardButton("📜 Closed Signals", callback_data="free_closed")
+            ],
+            [
+                InlineKeyboardButton("📊 Free Signal Stats", callback_data="free_stats")
+            ],
+            [
+                InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu"),
+                InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
+            ],
+            [
+                InlineKeyboardButton("❓ Help", callback_data="help_menu")
+            ]
+        ]
+        
     if is_admin:
         kb.append([InlineKeyboardButton("👑 Admin Console", callback_data="admin_command")])
     
-    if has_active_trades:
+    if has_active_trades and has_exchange:
         kb.append([InlineKeyboardButton("🚨 CLOSE ALL TRADES", callback_data="confirm_panic")])
     return kb
 
@@ -181,12 +203,17 @@ def get_main_inline_menu(chat_id=None):
     """Generates the main navigation menu markup."""
     has_active = False
     is_admin = False
+    has_exchange = True
     if chat_id:
         user = database.get_user(chat_id)
         if user:
             has_active = user.get('has_open_positions', False)
             is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-    return InlineKeyboardMarkup(get_nav_buttons(has_active, is_admin))
+            crypto_connected = bool(user.get('exchange_id') and user.get('api_key') and user.get('api_secret'))
+            alpaca_connected = bool(user.get('alpaca_api_key') and user.get('alpaca_api_secret'))
+            has_exchange = crypto_connected or alpaca_connected
+            
+    return InlineKeyboardMarkup(get_nav_buttons(has_active, is_admin, has_exchange))
 
 def get_admin_keyboard(master_wallet):
     """Generates the specialized keyboard for the Sherpa Overlord."""
@@ -211,12 +238,16 @@ def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='cr
     has_active = False
     is_admin = False
     is_premium = False
+    has_exchange = True
     if chat_id:
         user = database.get_user(chat_id)
         if user:
             has_active = user.get('has_open_positions', False)
             is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
             is_premium = database.is_premium(user)
+            crypto_connected = bool(user.get('exchange_id') and user.get('api_key') and user.get('api_secret'))
+            alpaca_connected = bool(user.get('alpaca_api_key') and user.get('alpaca_api_secret'))
+            has_exchange = crypto_connected or alpaca_connected
     
     kb = []
     if show_risk_button:
@@ -229,7 +260,7 @@ def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='cr
         kb.append([InlineKeyboardButton(risk_label, callback_data=callback)])
         
     kb.append([InlineKeyboardButton("⚖️ Change Strategy", callback_data="strategy_menu")])
-    kb.extend(get_nav_buttons(has_active, is_admin))
+    kb.extend(get_nav_buttons(has_active, is_admin, has_exchange))
     return InlineKeyboardMarkup(kb)
 
 def get_settings_ui(user):
