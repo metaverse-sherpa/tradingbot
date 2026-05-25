@@ -90,15 +90,7 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wallet_val = user.get('source_wallet')
     is_premium = database.is_premium(user)
     
-    if not wallet_val:
-        await update.effective_message.reply_text(
-            "⚠️ *Source Wallet Required*\n\n"
-            "To unlock Institutional access, you must first set your **Source Wallet Address** so the Sherpa can verify your payment.\n\n"
-            "Tap the button below to link your wallet first.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("👛 Set Wallet", callback_data="prompt_set_wallet")]])
-        )
-        return
+    # We no longer return early here, so the user can always see the infographic and benefits
 
     credits = user.get('referral_credits', 0.0)
     final_price = max(0.0, 20.0 - credits)
@@ -119,23 +111,36 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Invite 3 friends to join the trail and unlock **1 Month Free** of Premium Access. Tap /refer to get your custom invite link!\n\n"
         f"{credit_msg}"
         f"{price_msg}\n"
-        "📥 *The Step-by-Step Upgrade Path:*\n"
-        "1. **Copy the Treasury Address** below (Tap to copy).\n"
-        f"2. **Send exactly ${final_price:.2f} USDT** via the **TRON (TRC-20)** network.\n"
-        "3. **Tap 'Audit My Payment'** below once sent.\n\n"
-        "🏛️ *Master Treasury Address (TRC-20):*\n"
-        f"`{get_master_wallet()}`\n\n"
-        f"🕵️‍♂️ *Verifying Transfer From:* `{wallet_val}`\n\n"
-        "⚠️ _Note: Activation is fully automated. The Sherpa's audit engine will scan the blockchain for your transaction and unlock your access within 1-3 minutes of on-chain confirmation._"
+        f"{price_msg}\n"
     )
-    
-    kb = []
-    if final_price == 0:
-        kb.append([InlineKeyboardButton("🚀 Activate with Credits", callback_data="activate_with_credits")])
+
+    if not wallet_val:
+        premium_msg += (
+            "⚠️ *Source Wallet Required*\n\n"
+            "To unlock Premium access, you must first set your **Source Wallet Address** so the Sherpa can verify your payment.\n\n"
+            "Tap the button below to link your wallet first."
+        )
+        kb = [[InlineKeyboardButton("👛 Set Wallet", callback_data="prompt_set_wallet")]]
     else:
-        kb.append([InlineKeyboardButton("🔎 Audit My Payment & Unlock", callback_data="check_payment")])
-    
-    kb.append([InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")])
+        premium_msg += (
+            "📥 *The Step-by-Step Upgrade Path:*\n"
+            "1. **Copy the Treasury Address** below (Tap to copy).\n"
+            f"2. **Send exactly ${final_price:.2f} USDT** via the **TRON (TRC-20)** network.\n"
+            "3. **Tap 'Audit My Payment'** below once sent.\n\n"
+            "🏛️ *Master Treasury Address (TRC-20):*\n"
+            f"`{get_master_wallet()}`\n\n"
+            f"🕵️‍♂️ *Verifying Transfer From:* `{wallet_val}`\n\n"
+            "⚠️ _Note: Activation is fully automated. The Sherpa's audit engine will scan the blockchain for your transaction and unlock your access within 1-3 minutes of on-chain confirmation._"
+        )
+        
+        kb = []
+        if final_price == 0:
+            kb.append([InlineKeyboardButton("🚀 Activate with Credits", callback_data="activate_with_credits")])
+        else:
+            kb.append([InlineKeyboardButton("🔎 Audit My Payment & Unlock", callback_data="check_payment")])
+        
+        kb.append([InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")])
+        
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
     
     photo_path = os.path.join(BASE_DIR, "assets", "premium_infographic.png")
