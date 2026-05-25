@@ -537,7 +537,7 @@ async def alpaca_fractional_monitor_engine(application):
                 symbols = [t['symbol'] for t in user_trades]
                 sym_str = ",".join(symbols)
                 
-                url = f"https://data.alpaca.markets/v2/stocks/bars/latest?symbols={sym_str}"
+                url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
                 headers = {
                     "APCA-API-KEY-ID": user.get('alpaca_api_key'),
                     "APCA-API-SECRET-KEY": user.get('alpaca_api_secret')
@@ -549,17 +549,20 @@ async def alpaca_fractional_monitor_engine(application):
                             logger.error(f"Alpaca data fetch failed for user {chat_id}: {resp.status}")
                             continue
                         data = await resp.json()
-                        bars = data.get("bars", {})
                         
                         for trade in user_trades:
                             sym = trade['symbol']
-                            if sym not in bars:
+                            if sym not in data:
                                 continue
                             
-                            bar = bars[sym]
-                            high_price = bar.get('h', 0)
-                            low_price = bar.get('l', 0)
-                            close_price = bar.get('c', 0)
+                            snapshot = data[sym]
+                            daily_bar = snapshot.get("dailyBar", {})
+                            if not daily_bar:
+                                continue
+                                
+                            high_price = daily_bar.get('h', 0)
+                            low_price = daily_bar.get('l', 0)
+                            close_price = daily_bar.get('c', 0)
                             
                             tp = trade['tp_price']
                             sl = trade['sl_price']
