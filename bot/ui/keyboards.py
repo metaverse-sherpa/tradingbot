@@ -153,12 +153,15 @@ def get_nav_buttons(has_active_trades=False, is_admin=False, has_exchange=True):
                 InlineKeyboardButton("📜 History", callback_data="history_menu")
             ],
             [
-                InlineKeyboardButton("📊 Your Stats", callback_data="stats_menu"),
-                InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
+                InlineKeyboardButton("📊 Your Stats", callback_data="stats_menu")
             ],
             [
-                InlineKeyboardButton("❓ Help", callback_data="help_menu"),
-                InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu")
+                InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu"),
+                InlineKeyboardButton("💎 Get Premium", callback_data="premium_menu")
+            ],
+            [
+                InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu"),
+                InlineKeyboardButton("❓ Help", callback_data="help_menu")
             ],
             [
                 InlineKeyboardButton("---- Free Signals ----", callback_data="dummy_spacer")
@@ -185,9 +188,10 @@ def get_nav_buttons(has_active_trades=False, is_admin=False, has_exchange=True):
             ],
             [
                 InlineKeyboardButton("🤝 Refer & Earn", callback_data="refer_menu"),
-                InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu")
+                InlineKeyboardButton("💎 Get Premium", callback_data="premium_menu")
             ],
             [
+                InlineKeyboardButton("⚙️ Settings", callback_data="settings_menu"),
                 InlineKeyboardButton("❓ Help", callback_data="help_menu")
             ]
         ]
