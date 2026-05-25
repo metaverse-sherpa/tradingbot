@@ -25,14 +25,25 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         dt_raw = datetime.fromtimestamp(t['timestamp']/1000).strftime('%m-%d %H:%M')
         dt = escape_md_v2(dt_raw)
         
-        sym_v2 = escape_md_v2(t['symbol'].split("/")[0])
+        sym_raw = t['symbol'].split("/")[0]
+        sym_v2 = escape_md_v2(sym_raw)
+        
+        is_stk = is_stock(sym_raw)
+        asset_icon = "🦙" if is_stk else "🪙"
+        
+        strat = user.get('active_stock_strategy') if is_stk else user.get('active_crypto_strategy')
+        if not strat or strat == 'None':
+            strat = "Manual"
+        strat_v2 = escape_md_v2(strat)
+
         dir_icon = "📈" if t['side'] == "l" else "📉"
         roe_v2 = escape_md_v2(f"{t['roe_val']:+.1f}%")
         pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
         status_icon = "🏆" if t['net_pnl'] > 0 else "❌"
         
         history_text += (
-            f"{i+1}\\. *{sym_v2}* {dir_icon} \\| _{dt}_\n"
+            f"{i+1}\\. {asset_icon} *{sym_v2}* {dir_icon} \\| _{dt}_\n"
+            f"🧠 _{strat_v2}_\n"
             f"{status_icon} PnL: ||{pnl_val_v2}|| \\(*{roe_v2}*\\)\n"
             f"\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n"
         )
