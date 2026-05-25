@@ -119,6 +119,7 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Tap the button below."
         )
         kb = [[InlineKeyboardButton("👛 Set Wallet", callback_data="prompt_set_wallet")]]
+        photo_filename = "premium_infographic.png"
     else:
         premium_msg += (
             "📥 *Upgrade Path:*\n"
@@ -136,10 +137,11 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             kb.append([InlineKeyboardButton("🔎 Audit My Payment & Unlock", callback_data="check_payment")])
         
         kb.append([InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")])
+        photo_filename = "payment_steps_infographic.png"
         
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
     
-    photo_path = os.path.join(BASE_DIR, "images", "premium_infographic.png")
+    photo_path = os.path.join(BASE_DIR, "images", photo_filename)
     from bot.ui.keyboards import send_cached_photo
     await send_cached_photo(update, context, photo_path, caption=premium_msg, reply_markup=InlineKeyboardMarkup(kb))
 
