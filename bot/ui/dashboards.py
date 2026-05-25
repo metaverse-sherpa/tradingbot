@@ -28,7 +28,7 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         sym_raw = t['symbol'].split("/")[0]
         sym_v2 = escape_md_v2(sym_raw)
         
-        is_stk = is_stock(sym_raw)
+        is_stk = is_stock(t['symbol'])
         asset_icon = "🦙" if is_stk else "🪙"
         
         strat = user.get('active_stock_strategy') if is_stk else user.get('active_crypto_strategy')
