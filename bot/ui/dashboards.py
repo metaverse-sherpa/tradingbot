@@ -94,6 +94,30 @@ async def build_forward_test_stats_block():
     strategy_unrealized = {s: 0.0 for s in strategy_names}
     strategy_trade_lines = {s: [] for s in strategy_names}
     
+    stock_symbols = [t['symbol'] for t in open_sim_trades if is_stock(t['symbol'])]
+    stock_prices = {}
+    if stock_symbols:
+        try:
+            import aiohttp
+            sym_str = ",".join(set(stock_symbols))
+            url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
+            headers = {
+                "APCA-API-KEY-ID": live_bot_multi.ALPACA_API_KEY,
+                "APCA-API-SECRET-KEY": live_bot_multi.ALPACA_API_SECRET
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        for sym, snapshot in data.items():
+                            daily_bar = snapshot.get("dailyBar", {})
+                            latest_trade = snapshot.get("latestTrade", {})
+                            close_price = daily_bar.get("c") or latest_trade.get("p")
+                            if close_price:
+                                stock_prices[sym] = float(close_price)
+        except Exception as e:
+            logger.error(f"Error fetching Alpaca snapshots for stats: {e}")
+
     mdm = live_bot_multi.MarketDataManager()
     try:
         for strat_name in strategy_names:
@@ -104,17 +128,7 @@ async def build_forward_test_stats_block():
                 pos_size = t['position_size']
                 
                 if is_stock(sym):
-                    try:
-                        import pandas as pd
-                        conn = sqlite3.connect("data/stock_daily_cache.db")
-                        df_chart = pd.read_sql_query(
-                            "SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1",
-                            conn, params=(sym,)
-                        )
-                        conn.close()
-                        current = float(df_chart['close'].iloc[0]) if not df_chart.empty else entry
-                    except Exception:
-                        current = entry
+                    current = stock_prices.get(sym, entry)
                 else:
                     df = await mdm.fetch_ohlcv(sym, "15m")
                     current = float(df['close'].iloc[-1]) if df is not None and not df.empty else entry
@@ -135,7 +149,7 @@ async def build_forward_test_stats_block():
                 
                 direction = "⬆️" if is_long else "⬇️"
                 strategy_trade_lines[strat_name].append(
-                    f"  {direction} `{sym}`: {pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})"
+                    f"  {direction} `{sym}`: {pnl_pct:+.2f}%"
                 )
     except Exception as e:
         logger.error(f"Error fetching live prices for forward test stats: {e}")
@@ -155,36 +169,27 @@ async def build_forward_test_stats_block():
         "Sherpa Velocity Pullback": "🦙"
     }
     
-    balances = {}
-    growths = {}
-    for s in strategy_names:
-        balances[s] = starting_capital + all_stats[s]['cumulative_pnl'] + strategy_unrealized[s]
-        growths[s] = ((balances[s] - starting_capital) / starting_capital) * 100
-    
-    total_balance = sum(balances.values())
-    total_growth = ((total_balance - (starting_capital * 3)) / (starting_capital * 3)) * 100
-    
     # Build per-strategy sections
     def _build_strategy_block(name):
         stats = all_stats[name]
         icon = strategy_icons[name]
-        balance = balances[name]
-        growth = growths[name]
         open_trades = strategy_open_trades[name]
         trade_lines = strategy_trade_lines[name]
         unrealized = strategy_unrealized[name]
         open_count = len(open_trades)
         
+        realized_pct = (stats['cumulative_pnl'] / starting_capital) * 100
+        
         block = (
             f"{icon} *{name}*\n"
-            f"• Balance: *${balance:,.2f}* ({growth:+.2f}%)\n"
             f"• Win Rate: `{stats['win_rate']:.1f}%` ({stats['wins']} W | {stats['losses']} L)\n"
-            f"• Realized PnL: `{stats['cumulative_pnl']:+.2f} USDT`\n"
+            f"• Realized PnL: `{realized_pct:+.2f}%`\n"
         )
         if open_count > 0:
+            unrealized_pct = (unrealized / starting_capital) * 100
             block += f"• Active Signals: `{open_count}`"
-            if unrealized != 0:
-                block += f" (Unrealized: `{unrealized:+.2f} USDT`)"
+            if unrealized_pct != 0:
+                block += f" (Unrealized: `{unrealized_pct:+.2f}%`)"
             block += "\n"
             for line in trade_lines:
                 block += f"{line}\n"
@@ -198,7 +203,6 @@ async def build_forward_test_stats_block():
     
     text = (
         "🧪 *Free Forward Testing*\n"
-        f"• Combined Balance: *${total_balance:,.2f} USDT* ({total_growth:+.2f}%)\n"
         f"• Open Free Signals: `{len(open_sim_trades)}`\n\n"
         f"{mr_block}\n"
         f"{vk_block}\n"
