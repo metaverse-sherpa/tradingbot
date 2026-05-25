@@ -40,7 +40,8 @@ from bot.config import (
     logger,
     is_stock,
     get_currency,
-    format_price
+    format_price,
+    get_symbol_link
 )
 from bot.ui.keyboards import get_nav_buttons, build_datetime_entity_message
 
@@ -213,7 +214,7 @@ async def signal_engine(application):
                             exit_text, exit_entities = build_datetime_entity_message(
                                 f"📊 *FREE TRADE CLOSED* (Forward Test)\n"
                                 f"───────────────────────────────\n"
-                                f"Symbol:        {symbol}\n"
+                                f"Symbol:        {get_symbol_link(symbol)}\n"
                                 f"Strategy:      {strategy}\n"
                                 f"Direction:     {'LONG 📈' if side == 'buy' else 'SHORT 📉'}\n"
                                 f"Exit Trigger:  {status.upper()}\n\n"
@@ -317,7 +318,7 @@ async def signal_engine(application):
                         entry_text, entry_entities = build_datetime_entity_message(
                             f"🏔️ *NEW FREE SIGNAL* (Forward Test)\n"
                             f"───────────────────────────────\n"
-                            f"Symbol:        {symbol}\n"
+                            f"Symbol:        {get_symbol_link(symbol)}\n"
                             f"Strategy:      {strategy_name}\n"
                             f"Direction:     {'LONG 📈' if side == 'buy' else 'SHORT 📉'}\n"
                             f"Risk Setting:  1.5%\n\n"
@@ -424,7 +425,7 @@ async def signal_engine(application):
                                                 side_icon = "📈" if sig['side'] == 'buy' else "📉"
                                                 msg = (
                                                     f"{side_icon} *{strat_name}* SIGNAL!\n\n"
-                                                    f"Symbol: *{res['symbol']}*\n"
+                                                    f"Symbol: {get_symbol_link(res['symbol'])}\n"
                                                     f"Risk: `{user_risk:.2f}%`\n"
                                                     f"Entry: `{res['entry']:.8f}`\n"
                                                     f"TP: `{res['tp']:.8f}`\n"

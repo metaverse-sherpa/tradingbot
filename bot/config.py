@@ -59,6 +59,25 @@ def is_stock(symbol):
     symbol_str = str(symbol).upper()
     return symbol_str and "/" not in symbol_str and ":" not in symbol_str and "USDT" not in symbol_str
 
+def get_symbol_link(symbol, text=None):
+    """Returns a clickable Markdown link for the given symbol."""
+    symbol_str = str(symbol).upper()
+    is_stk = is_stock(symbol_str)
+    
+    if is_stk:
+        url = f"https://marketmasters.ai/stocks/{symbol_str}"
+    else:
+        clean_sym = symbol_str.replace("/", "")
+        url = f"https://marketmasters.ai/currency/{clean_sym}"
+        
+    display_text = text if text else symbol_str
+    
+    # Use standard Markdown link formatting.
+    # Note: Telegram MarkdownV2 requires escaping the URL parenthesis if there's any, but these URLs don't have them.
+    # However, to avoid parsing issues in MarkdownV2 when `display_text` is already escaped, 
+    # we just wrap it directly. It works in both Markdown and MarkdownV2.
+    return f"[{display_text}]({url})"
+
 # Setup Logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger("bot")

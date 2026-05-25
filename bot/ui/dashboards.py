@@ -11,7 +11,7 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 import database
-from bot.config import SUPER_ADMIN_ID, get_currency, is_stock, CRYPTO_LEVERAGE
+from bot.config import SUPER_ADMIN_ID, get_currency, is_stock, CRYPTO_LEVERAGE, get_symbol_link
 from bot.ui.keyboards import escape_md_v2, get_nav_buttons
 
 logger = logging.getLogger(__name__)
@@ -41,8 +41,10 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
         status_icon = "🏆" if t['net_pnl'] > 0 else "❌"
         
+        sym_link = get_symbol_link(t['symbol'], text=sym_v2)
+        
         history_text += (
-            f"{i+1}\\. {asset_icon} *{sym_v2}* {dir_icon} \\| _{dt}_\n"
+            f"{i+1}\\. {asset_icon} *{sym_link}* {dir_icon} \\| _{dt}_\n"
             f"🧠 _{strat_v2}_\n"
             f"{status_icon} PnL: ||{pnl_val_v2}|| \\(*{roe_v2}*\\)\n"
             f"\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n"
@@ -158,8 +160,9 @@ async def build_forward_test_stats_block():
                 strategy_unrealized[strat_name] += pnl_val
                 
                 direction = "⬆️" if is_long else "⬇️"
+                sym_link = get_symbol_link(sym)
                 strategy_trade_lines[strat_name].append(
-                    f"  {direction} `{sym}`: {pnl_pct:+.2f}%{target_pct_str}"
+                    f"  {direction} {sym_link}: `{pnl_pct:+.2f}%`{target_pct_str}"
                 )
     except Exception as e:
         logger.error(f"Error fetching live prices for forward test stats: {e}")
