@@ -201,40 +201,65 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if chat_id != SUPER_ADMIN_ID: return
         await query.answer("📊 Generating Audit...")
         report = database.get_detailed_user_report()
-        
-        msg = "🏔️ *Sherpa Institutional User Audit*\n\n"
-        for u in report:
-            tier = "💎 Paid" if u['is_premium'] else "🥈 Free"
+
+        total = len(report)
+        premium_count = sum(1 for u in report if u['is_premium'])
+        active_count = sum(1 for u in report if u['is_active'])
+        free_count = total - premium_count
+
+        header = (
+            "🏔️ *Sherpa Institutional User Audit*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👥 Total Users: *{total}*  •  "
+            f"🟢 Active: *{active_count}*\n"
+            f"💎 Premium: *{premium_count}*  •  "
+            f"🥈 Free: *{free_count}*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        )
+
+        cards = []
+        for i, u in enumerate(report, 1):
+            tier_icon = "💎" if u['is_premium'] else "🥈"
+            tier_label = "Premium" if u['is_premium'] else "Free"
+            status_icon = "🟢" if u['is_active'] else "⚫"
+            status_label = "Active" if u['is_active'] else "Setup"
+
             name = escape_md_v2(u.get('full_name') or "Unknown")
-            uname = escape_md_v2(f" (@{u['username']})") if u.get('username') else ""
-            
-            # 🕵️‍♂️ Last-Mile Identity Fetch (if Unknown)
+            uname = escape_md_v2(f"@{u['username']}") if u.get('username') else escape_md_v2("no username")
+
+            # 🕵️ Last-Mile Identity Fetch
             if name == "Unknown":
                 try:
                     member = await context.bot.get_chat_member(chat_id=u['telegram_chat_id'], user_id=u['telegram_chat_id'])
                     name = escape_md_v2(member.user.full_name)
-                    uname = escape_md_v2(f" (@{member.user.username})") if member.user.username else ""
+                    uname = escape_md_v2(f"@{member.user.username}") if member.user.username else escape_md_v2("no username")
                 except: pass
 
-            status = "🟢 Active" if u['is_active'] else "⚪️ Setup"
-            msg += f"• `{u['telegram_chat_id']}` \\| *{name}*{uname}\n  Status: {status} \\| Tier: {tier}\n"
-            
-            # 🤝 Display Referral Tree
+            card = (
+                f"┌─ *{name}*\n"
+                f"│  `{u['telegram_chat_id']}`  ·  {uname}\n"
+                f"│  {status_icon} {status_label}  ·  {tier_icon} {tier_label}\n"
+            )
+
             if u.get('recruit_list'):
-                msg += "  *Recruits:* \n"
+                card += f"│  🤝 *Recruits \\({len(u['recruit_list'])}\\):*\n"
                 for rec in u['recruit_list']:
                     r_name = escape_md_v2(rec.get('full_name') or "Unknown")
-                    r_uname = escape_md_v2(f" (@{rec['username']})") if rec.get('username') else ""
-                    msg += f"  └\\─ {r_name}{r_uname} \\(`{rec['telegram_chat_id']}`\\)\n"
+                    r_uname = escape_md_v2(f"@{rec['username']}") if rec.get('username') else ""
+                    r_id = escape_md_v2(str(rec['telegram_chat_id']))
+                    card += f"│  └ {r_name} {r_uname} `{r_id}`\n"
             else:
-                msg += "  *Recruits:* None\n"
-            msg += "\n"
-        
+                card += "│  🤝 No recruits yet\n"
+
+            card += "└─────────────────────"
+            cards.append(card)
+
+        msg = header + "\n\n".join(cards)
+
         # Split message if too long
-        # 👑 UX Persistence: Append Divider and Command Center to the LAST part
-        footer = "\n\n───────────────────\n👑 *Sherpa Overlord Mission Control*"
+        footer = "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👑 *Sherpa Overlord Mission Control*"
         footer_kb = InlineKeyboardMarkup(get_admin_keyboard(get_master_wallet()))
-        
+
         if len(msg) > 4000:
             parts = [msg[i:i+4000] for i in range(0, len(msg), 4000)]
             for i, p in enumerate(parts):
@@ -244,8 +269,9 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await context.bot.send_message(chat_id=chat_id, text=p, parse_mode="MarkdownV2")
         else:
             await query.message.reply_text(msg + footer, parse_mode="MarkdownV2", reply_markup=footer_kb)
-        
+
         return
+
 
     if query.data == "admin_broadcast_prompt":
         if chat_id != SUPER_ADMIN_ID: return
