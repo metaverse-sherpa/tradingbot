@@ -1536,11 +1536,11 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             tp_str = f"${tp:.2f} ({tp_pct_val:+.0f}%)" if tp > 0 else "None"
             entry_str = f"${entry:.2f}"
             
-            sym_link = get_symbol_link(sym)
+            sym_link = get_symbol_link(sym, text=f"*{sym}*")
             caption = (
                 f"🛰️ *ACTIVE FREE SIGNAL* (Forward Test)\n"
                 f"🤖 Strategy: *{strat}*\n\n"
-                f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym_link} ({side_str})*\n"
+                f"{'🟢' if side_str == 'LONG' else '🔴'} {sym_link} ({side_str})\n"
                 f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
                 f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
             )
@@ -1653,7 +1653,7 @@ async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         price_line = f"• Entry: `{format_price(t['entry_price'], t['symbol'])}` | Exit: `{format_price(exit_price, t['symbol'])}`"
         
         msg_parts.append(
-            f"• *{get_symbol_link(t['symbol'])}* ({direction}) | {strat_icon} _{strat_short}_\n"
+            f"• {get_symbol_link(t['symbol'])} ({direction}) | {strat_icon} _{strat_short}_\n"
             f"  {status_line}{pnl_line}\n"
             f"  {price_line}\n"
             f"  Opened: _{open_time_str}_\n"

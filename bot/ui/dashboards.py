@@ -41,10 +41,10 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
         pnl_val_v2 = escape_md_v2(f"${t['net_pnl']:+.2f}")
         status_icon = "🏆" if t['net_pnl'] > 0 else "❌"
         
-        sym_link = get_symbol_link(t['symbol'], text=sym_v2)
+        sym_link = get_symbol_link(t['symbol'], text=f"*{sym_v2}*")
         
         history_text += (
-            f"{i+1}\\. {asset_icon} *{sym_link}* {dir_icon} \\| _{dt}_\n"
+            f"{i+1}\\. {asset_icon} {sym_link} {dir_icon} \\| _{dt}_\n"
             f"🧠 _{strat_v2}_\n"
             f"{status_icon} PnL: ||{pnl_val_v2}|| \\(*{roe_v2}*\\)\n"
             f"\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\n"
