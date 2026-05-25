@@ -874,6 +874,11 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['exchange_id'] = exchange_id
         await query.answer()
         
+        user = database.get_user(chat_id)
+        warning_text = ""
+        if not user or not database.is_premium(user):
+            warning_text = "⚠️ *Note:* You can configure your exchange settings now, but live auto-trading will only activate once you sign up for /premium.\n\n"
+        
         if exchange_id == 'alpaca':
             context.user_data['setup_step'] = 101
             guide = (
@@ -883,7 +888,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "• Paper Trading: `https://paper-api.alpaca.markets`\n"
                 "• Live Trading: `https://api.alpaca.markets`"
             )
-            await safe_edit_text(update, context, guide)
+            await safe_edit_text(update, context, f"{warning_text}{guide}")
             return
 
         context.user_data['setup_step'] = 1
@@ -928,11 +933,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "🏔️ *Blofin API Setup*\n\n"
                 "1️⃣ Go to **API Management** on Blofin.\n"
                 "2️⃣ Create Key with **'Read'** & **'Trade'** permissions.\n"
-                "3️⃣ Note your passphrase for the final step.\n\n"
+                "3️⃣ Note your passphrase for the final step.\n"
+                "4️⃣ Do **not** bind the VPS IP during setup.\n\n"
                 "Please paste your **Blofin API Key** below:"
             )
             
-        await safe_edit_text(update, context, guide)
+        await safe_edit_text(update, context, f"{warning_text}{guide}")
         return
 
     if not user:

@@ -146,6 +146,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user = database.get_user(chat_id)
+    
+    warning_text = ""
+    if not user or not database.is_premium(user):
+        warning_text = "⚠️ *Note:* You can configure your exchange settings now, but live auto-trading will only activate once you sign up for /premium.\n\n"
+
     keyboard = [
         [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
         [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
@@ -157,7 +164,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     
     await update.effective_message.reply_text(
-        "🌍 *Select Your Exchange*\n\n"
+        f"{warning_text}🌍 *Select Your Exchange*\n\n"
         "Which exchange would you like to link to the Metaverse Sherpa?",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
