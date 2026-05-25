@@ -969,6 +969,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     df_daily = None
                                     
                             if df_daily is not None and not df_daily.empty:
+                                import os
                                 chart_path = None
                                 cached_chart_path = f"data/cached_charts/live_{sym}_{entry:.2f}_{tp_price:.2f}_{sl_price:.2f}.jpg"
                                 use_cache = False
@@ -992,7 +993,6 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         currency="USD"
                                     )
                                     if not is_mkt_open and chart_path and os.path.exists(chart_path):
-                                        import os
                                         os.makedirs("data/cached_charts", exist_ok=True)
                                         import shutil
                                         shutil.copy(chart_path, cached_chart_path)
