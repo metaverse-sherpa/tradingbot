@@ -99,11 +99,12 @@ async def build_forward_test_stats_block():
     if stock_symbols:
         try:
             import aiohttp
+            from utils_gcp import get_secret
             sym_str = ",".join(set(stock_symbols))
             url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
             headers = {
-                "APCA-API-KEY-ID": live_bot_multi.ALPACA_API_KEY,
-                "APCA-API-SECRET-KEY": live_bot_multi.ALPACA_API_SECRET
+                "APCA-API-KEY-ID": get_secret("ALPACA_API_KEY"),
+                "APCA-API-SECRET-KEY": get_secret("ALPACA_API_SECRET")
             }
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as resp:
