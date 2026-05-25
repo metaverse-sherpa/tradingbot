@@ -843,6 +843,9 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Fetch Trades
     found_any = False
     
+    from live_bot_multi_alpaca import check_is_market_open
+    is_mkt_open = check_is_market_open()
+    
     # 1. Fetch Alpaca Stock Trades
     if has_stocks:
         status_msg = await update.effective_message.reply_text("🔍 Checking your active stock trades...")
@@ -942,22 +945,57 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             except Exception as order_err:
                                 logger.error(f"Failed to find entry filled time for stock {sym}: {order_err}")
                                 
-                            df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
+                            df_daily = None
+                            if is_mkt_open:
+                                df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
+                                if df_daily is not None and not df_daily.empty:
+                                    if hasattr(df_daily['timestamp'].dt, 'tz') and df_daily['timestamp'].dt.tz is not None:
+                                        df_daily['timestamp'] = df_daily['timestamp'].dt.tz_localize(None)
+                                        
+                            if df_daily is None or (hasattr(df_daily, 'empty') and df_daily.empty):
+                                try:
+                                    import sqlite3
+                                    import pandas as pd
+                                    conn = sqlite3.connect("data/stock_daily_cache.db")
+                                    df_daily = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
+                                    conn.close()
+                                    if not df_daily.empty:
+                                        df_daily['timestamp'] = pd.to_datetime(df_daily['date']).astype(int) // 10**6
+                                        df_daily = df_daily.tail(60).copy()
+                                    else:
+                                        df_daily = None
+                                except Exception as stock_db_err:
+                                    logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
+                                    df_daily = None
+                                    
                             if df_daily is not None and not df_daily.empty:
-                                if hasattr(df_daily['timestamp'].dt, 'tz') and df_daily['timestamp'].dt.tz is not None:
-                                    df_daily['timestamp'] = df_daily['timestamp'].dt.tz_localize(None)
-                                chart_path = await asyncio.to_thread(
-                                    charting.generate_trade_chart,
-                                    sym,
-                                    df_daily,
-                                    entry,
-                                    tp_price,
-                                    sl_price,
-                                    side,
-                                    open_ts=open_ts,
-                                    timeframe="1D",
-                                    currency="USD"
-                                )
+                                chart_path = None
+                                cached_chart_path = f"data/cached_charts/live_{sym}_{entry:.2f}_{tp_price:.2f}_{sl_price:.2f}.jpg"
+                                use_cache = False
+                                
+                                if not is_mkt_open:
+                                    if os.path.exists(cached_chart_path):
+                                        chart_path = cached_chart_path
+                                        use_cache = True
+                                        
+                                if not use_cache:
+                                    chart_path = await asyncio.to_thread(
+                                        charting.generate_trade_chart,
+                                        sym,
+                                        df_daily,
+                                        entry,
+                                        tp_price,
+                                        sl_price,
+                                        side,
+                                        open_ts=open_ts,
+                                        timeframe="1D",
+                                        currency="USD"
+                                    )
+                                    if not is_mkt_open and chart_path and os.path.exists(chart_path):
+                                        import os
+                                        os.makedirs("data/cached_charts", exist_ok=True)
+                                        import shutil
+                                        shutil.copy(chart_path, cached_chart_path)
                                 
                                 kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
                                 with open(chart_path, 'rb') as photo:
@@ -968,8 +1006,9 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         parse_mode="MarkdownV2",
                                         reply_markup=InlineKeyboardMarkup(kb)
                                     )
-                                try: os.remove(chart_path)
-                                except: pass
+                                if chart_path != cached_chart_path:
+                                    try: os.remove(chart_path)
+                                    except: pass
                                 chart_sent = True
                         except Exception as chart_err:
                             logger.error(f"Failed to generate Alpaca daily chart for {sym}: {chart_err}")
