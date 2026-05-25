@@ -102,12 +102,12 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💎 *Go Premium: Unlock the 23x Wealth Gap*\n\n"
         "Unlock professional-grade tools used by elite traders:\n\n"
         "🏔️ *Premium Tier Benefits:*\n"
-        "• **Full Autopilot**: Live auto-trading directly on your exchange.\n"
-        "• **Full Sherpa Basket**: Trade all 19+ premium symbols.\n"
-        "• **Advanced Risk**: Set custom risk-per-trade percentages.\n"
-        "• **Priority Execution**: Priority in the engine's background loop.\n\n"
+        "• *Full Autopilot*: Live auto-trading directly on your exchange.\n"
+        "• *Full Sherpa Basket*: Trade all 19+ premium symbols.\n"
+        "• *Advanced Risk*: Set custom risk-per-trade percentages.\n"
+        "• *Priority Execution*: Priority in the engine's background loop.\n\n"
         "🎁 *Get it for FREE!*\n"
-        "Invite 3 friends to unlock **1 Month Free**. Tap /refer!\n\n"
+        "Invite 3 friends to unlock *1 Month Free*. Tap /refer!\n\n"
         f"{credit_msg}"
         f"{price_msg}\n"
     )
@@ -139,7 +139,7 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
     
-    photo_path = os.path.join(BASE_DIR, "assets", "premium_infographic.png")
+    photo_path = os.path.join(BASE_DIR, "images", "premium_infographic.png")
     if os.path.exists(photo_path):
         if update.callback_query:
             try:
