@@ -219,9 +219,8 @@ async def signal_engine(application):
                                 f"Exit Trigger:  {status.upper()}\n\n"
                                 f"Entry Price:   {format_price(entry_price, symbol)}\n"
                                 f"Exit Price:    {format_price(exit_price, symbol)}\n"
-                                f"Trade PnL:     {display_pnl_pct:+.2f}% ({pnl_usdt:+.2f} {currency})\n"
-                                f"───────────────────────────────\n"
-                                f"Free Balance:  ${new_bal:,.2f} {currency}"
+                                f"Trade PnL:     {display_pnl_pct:+.2f}%\n"
+                                f"───────────────────────────────"
                                 f"{cheeky_note}\n\n"
                                 f"Closed at: ",
                                 now_ts
