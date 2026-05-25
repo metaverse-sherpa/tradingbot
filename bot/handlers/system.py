@@ -79,7 +79,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if success:
                 # Refresh view
                 await update.effective_message.reply_text(
-                    "💎 *Institutional Access Activated!*\n\nYour dashboard has been upgraded.",
+                    "💎 *Premium access Activated!*\n\nYour dashboard has been upgraded.",
                     reply_markup=get_main_inline_menu(chat_id),
                     parse_mode="Markdown"
                 )
@@ -93,26 +93,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     username = f"@{update.effective_user.username}" if update.effective_user.username else None
                     database.upsert_user(chat_id, "", "", "", "blofin", is_active=False, full_name=full_name, username=username)
                     
-                    # Link and check for bonus
-                    reward_granted = database.set_referrer(chat_id, referrer_id)
+                    # Link
+                    linked = database.set_referrer(chat_id, referrer_id)
                     
                     # Notify Referrer
                     try:
-                        if reward_granted:
+                        if linked:
                             await context.bot.send_message(
                                 chat_id=referrer_id,
-                                text=(
-                                    "🎉 *INSTITUTIONAL MILESTONE REACHED!*\n\n"
-                                    "You've successfully recruited 3 new members to the trail. Your **Premium Institutional Access** has been activated for 30 days!\n\n"
-                                    "🏔️ _The Sherpa honors your leadership._"
-                                ),
-                                parse_mode="Markdown"
-                            )
-                        else:
-                            stats = database.get_referral_stats(referrer_id)
-                            await context.bot.send_message(
-                                chat_id=referrer_id,
-                                text=f"🤝 *New Institutional Recruit!*\nSomeone just joined via your link. Progress: *{stats % 3}/3* toward your next Premium month!",
+                                text=f"🤝 *New Recruit!*\nSomeone just joined via your link. They must upgrade to Premium access to count towards your 3-referral bonus.",
                                 parse_mode="Markdown"
                             )
                     except Exception as e:
@@ -131,14 +120,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
 
     # --- 2. High-Authority Welcome Message ---
+    # Check if they have an expired premium
+    user = database.get_user(chat_id)
+    expired_alert = ""
+    if user and user.get('had_premium_before') and not database.is_premium(user):
+        expired_alert = "⚠️ *Your Premium Access Has Expired*\nYour autopilot is currently paused. Please renew to resume live trading.\n\n"
+
     welcome_msg = (
+        f"{expired_alert}"
         "🏔️ *Metaverse Sherpa Trading Bot*\n\n"
         "The elite automated trading solution for institutional-grade professionals. We now support automated trading of both **Crypto** (via **Blofin**, **Binance**, and **MEXC**) and **Stocks** (via **Alpaca**).\n\n"
         "🛡️ *Security & Control*\n"
         "Your exchange API credentials are **fully encrypted** and isolated. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit.\n\n"
         "📊 *Access Tiers*\n"
         "• **Standard (Always Free)**: Receive real-time free signal signals directly in your Telegram chat as the Sherpa scans the markets.\n"
-        "• **Institutional (Premium)**: Full autopilot mode. The Sherpa connects directly to your exchange accounts (Blofin, Alpaca, etc.) to automatically execute and manage actual trades in real-time, with custom size, risk controls, and priority heartbeat processing. **$20/mo**.\n\n"
+        "• **Premium**: Full autopilot mode. The Sherpa connects directly to your exchange accounts to automatically execute and manage actual trades in real-time. **$20/mo**.\n\n"
         "📖 Tap /strategyguide to view different trading strategies.\n\n"
         "🏆 Tap /setup to link your account and start your climb."
     )

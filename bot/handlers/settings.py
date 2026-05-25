@@ -41,7 +41,14 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
         
+    expired_alert = ""
+    if user.get('had_premium_before') and not database.is_premium(user):
+        expired_alert = "⚠️ *Your Premium Access Has Expired*\nYour autopilot is currently paused. Please renew to resume live trading.\n\n"
+        
     msg, reply_markup = get_settings_ui(user)
+    if expired_alert:
+        msg = f"{expired_alert}{msg}"
+        
     await update.effective_message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def show_symbol_menu(update, context, user):
@@ -146,19 +153,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         database.add_premium_days(chat_id, 30)
         database.set_active(chat_id, True)
         
-        # 🤝 Referral Reward: Grant $5 to the person who referred THIS user
+        # 🤝 Referral Reward: Grant 1 premium referral to the person who referred THIS user
         referrer_id = user.get('referred_by')
         if referrer_id:
-            database.add_referral_credit(referrer_id, 5.0)
-            try:
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text="💰 *Institutional Referral Reward!*\nOne of your recruits just activated Premium Access. You've earned a **$5.00 Credit** on your next month!",
-                    parse_mode="Markdown"
-                )
-            except: pass
+            reward_granted = database.award_premium_referral(referrer_id)
+            if reward_granted:
+                try:
+                    await context.bot.send_message(
+                        chat_id=referrer_id,
+                        text="🎉 *PREMIUM MILESTONE REACHED!*\n\nYou've successfully recruited 3 Premium members. Your **Premium access** has been activated/extended for 30 days!\n\n🏔️ _The Sherpa honors your leadership._",
+                        parse_mode="Markdown"
+                    )
+                except: pass
 
-        await query.message.reply_text("💎 *INSTITUTIONAL ACCESS ACTIVATED!*\nSuccessfully used $20.00 in referral credits.", parse_mode="Markdown")
+        await query.message.reply_text("💎 *PREMIUM ACCESS ACTIVATED!*\nSuccessfully used $20.00 in referral credits.", parse_mode="Markdown")
         msg, rm = get_settings_ui(user)
         await safe_edit_text(update, context, msg, reply_markup=rm)
         return
@@ -800,18 +808,19 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if credits > 0:
                     database.consume_referral_credits(chat_id, 20.0)
                 
-                # 🤝 Referral Reward: Grant $5 to the person who referred THIS user
+                # 🤝 Referral Reward: Grant 1 premium referral to the person who referred THIS user
                 referrer_id = user.get('referred_by')
                 if referrer_id:
-                    database.add_referral_credit(referrer_id, 5.0)
-                    try:
-                        await context.bot.send_message(
-                            chat_id=referrer_id,
-                            text="💰 *Institutional Referral Reward!*\nOne of your recruits just activated Premium Access. You've earned a **$5.00 Credit** on your next month!",
-                            parse_mode="Markdown"
-                        )
-                    except: pass
-                
+                    reward_granted = database.award_premium_referral(referrer_id)
+                    if reward_granted:
+                        try:
+                            await context.bot.send_message(
+                                chat_id=referrer_id,
+                                text="🎉 *PREMIUM MILESTONE REACHED!*\n\nYou've successfully recruited 3 Premium members. Your **Premium access** has been activated/extended for 30 days!\n\n🏔️ _The Sherpa honors your leadership._",
+                                parse_mode="Markdown"
+                            )
+                        except: pass
+
                 # 👑 Notify Overlord of Revenue
                 try:
                     import html
@@ -836,8 +845,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     logger.error(f"Error sending institutional revenue admin alert: {e}")
 
                 await query.message.reply_text(
-                    "💎 *INSTITUTIONAL ACCESS ACTIVATED!*\n\n"
-                    "Congratulations. Your account has been upgraded to the Institutional Tier for **30 days**.\n\n"
+                    "💎 *PREMIUM ACCESS ACTIVATED!*\n\n"
+                    "Congratulations. Your account has been upgraded to the Premium Tier for **30 days**.\n\n"
                     "🏔️ *Power Unlocked:*\n"
                     "• Full 19+ Symbol Basket enabled.\n"
                     "• Custom Risk Management enabled.\n"

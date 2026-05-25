@@ -323,69 +323,82 @@ async def run_force_pass():
                 async def execute_user_signals(user):
                     try:
                         chat_id = user['telegram_chat_id']
-                        if not user.get('api_key'): return
+                        is_prem = database.is_premium(user)
                         
-                        ex_id = user.get('exchange_id', 'blofin')
-                        if ex_id == 'alpaca':
-                            ex_id = 'blofin'
-                        ex_class = getattr(ccxt, ex_id)
-                        async with ex_class({
-                            "apiKey": user['api_key'],
-                            "secret": user['api_secret'],
-                            "password": user['api_password'],
-                            "options": {"defaultType": "swap"},
-                        }) as user_ex:
-                            
-                            balance = await user_ex.fetch_balance(params={"type": "futures"})
-                            actual_equity = float(balance.get("USDT", {}).get("total", 0))
-                            
-                            eq_type = user.get('custom_equity_type', 'all')
-                            eq_val = user.get('custom_equity_value')
-                            
-                            equity = actual_equity
-                            if eq_type == 'amount' and eq_val is not None:
-                                equity = min(float(eq_val), actual_equity)
-                            elif eq_type == 'pct' and eq_val is not None:
-                                equity = actual_equity * (float(eq_val) / 100.0)
-                            
-                            user_enabled = user.get('enabled_symbols', [])
-                            user_risk = user.get('risk_pct', 1.5)
-                            
-                            for symbol, sig in user_signals.items():
-                                if symbol.split("/")[0] not in user_enabled: continue
-                                
-                                norm_sym = database.normalize_symbol(symbol, user_ex.id)
-                                pos = await user_ex.fetch_positions([norm_sym])
-                                if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                                    if live_bot_multi.DRY_RUN:
-                                        logger.info(f"Dry Run: Would place trade on {norm_sym} for chat {chat_id}")
-                                        continue
-                                        
-                                    res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
-                                    if res:
-                                        database.increment_opened(chat_id)
-                                        side_icon = "📈" if sig['side'] == 'buy' else "📉"
-                                        msg = (
-                                            f"{side_icon} *{strat_name}* SIGNAL!\n\n"
-                                            f"Symbol: *{res['symbol']}*\n"
-                                            f"Risk: `{user_risk:.2f}%`\n"
-                                            f"Entry: `{res['entry']:.8f}`\n"
-                                            f"TP: `{res['tp']:.8f}`\n"
-                                            f"SL: `{res['sl']:.8f}`"
-                                        )
-                                        logger.info(f"Live trade placed successfully on {norm_sym} for user {chat_id}!")
-                                        try:
-                                            df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
-                                            side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
-                                            open_ts = int(time.time() * 1000)
-                                            chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
-                                            is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-                                            keyboard = get_nav_buttons(True, is_admin=is_admin)
-                                            with open(chart_file, 'rb') as photo:
-                                                await bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-                                        except Exception as chart_err:
-                                            logger.error(f"Chart generation failed: {chart_err}")
-                                            await bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                        user_enabled = user.get('enabled_symbols', [])
+                        user_risk = user.get('risk_pct', 1.5) if is_prem else 1.0
+
+                        for symbol, sig in user_signals.items():
+                            sym_name = symbol.split("/")[0]
+                            # Free users only get top 5 signals. Premium users get their enabled symbols.
+                            if not is_prem and sym_name not in ["BTC", "ETH", "SOL", "XRP", "BNB"]:
+                                continue
+                            if is_prem and sym_name not in user_enabled:
+                                continue
+
+                            # Setup Signal Telegram Message
+                            side_icon = "📈" if sig['side'] == 'buy' else "📉"
+                            tp = sig['entry'] + (sig['sl_dist'] * sig['rr']) if sig['side'] == 'buy' else sig['entry'] - (sig['sl_dist'] * sig['rr'])
+                            sl = sig['entry'] - sig['sl_dist'] if sig['side'] == 'buy' else sig['entry'] + sig['sl_dist']
+                            msg = (
+                                f"{side_icon} *{strat_name}* SIGNAL!\n\n"
+                                f"Symbol: *{sym_name}*\n"
+                                f"Risk: `{user_risk:.2f}%`\n"
+                                f"Entry: `{sig['entry']:.8f}`\n"
+                                f"TP: `{tp:.8f}`\n"
+                                f"SL: `{sl:.8f}`"
+                            )
+                            if not is_prem:
+                                msg += "\n\n⚠️ _Live execution skipped. Upgrade to Premium to auto-trade this signal!_"
+
+                            # Send Telegram Message
+                            try:
+                                df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
+                                side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
+                                open_ts = int(time.time() * 1000)
+                                chart_file = await asyncio.to_thread(charting.generate_trade_chart, sym_name, df, sig['entry'], tp, sl, side_str, open_ts=open_ts)
+                                is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
+                                keyboard = get_nav_buttons(True, is_admin=is_admin)
+                                if chart_file and os.path.exists(chart_file):
+                                    with open(chart_file, 'rb') as photo:
+                                        await bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                                else:
+                                    await bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                            except Exception as chart_err:
+                                logger.error(f"Telegram signal broadcast failed: {chart_err}")
+
+                            # Execute Live Trade (Premium Only)
+                            if is_prem and user.get('api_key'):
+                                ex_id = user.get('exchange_id', 'blofin')
+                                if ex_id == 'alpaca': ex_id = 'blofin'
+                                ex_class = getattr(ccxt, ex_id)
+                                async with ex_class({
+                                    "apiKey": user['api_key'],
+                                    "secret": user['api_secret'],
+                                    "password": user['api_password'],
+                                    "options": {"defaultType": "swap"},
+                                }) as user_ex:
+                                    norm_sym = database.normalize_symbol(symbol, user_ex.id)
+                                    pos = await user_ex.fetch_positions([norm_sym])
+                                    if not any(float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                                        if live_bot_multi.DRY_RUN:
+                                            logger.info(f"Dry Run: Would place trade on {norm_sym} for chat {chat_id}")
+                                            continue
+                                            
+                                        balance = await user_ex.fetch_balance(params={"type": "futures"})
+                                        actual_equity = float(balance.get("USDT", {}).get("total", 0))
+                                        eq_type = user.get('custom_equity_type', 'all')
+                                        eq_val = user.get('custom_equity_value')
+                                        equity = actual_equity
+                                        if eq_type == 'amount' and eq_val is not None:
+                                            equity = min(float(eq_val), actual_equity)
+                                        elif eq_type == 'pct' and eq_val is not None:
+                                            equity = actual_equity * (float(eq_val) / 100.0)
+
+                                        res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
+                                        if res:
+                                            database.increment_opened(chat_id)
+                                            logger.info(f"Live trade placed successfully on {norm_sym} for user {chat_id}!")
                     except Exception as e:
                         logger.error(f"Signal execution error for {user.get('telegram_chat_id')}: {e}")
 

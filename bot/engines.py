@@ -616,3 +616,48 @@ async def alpaca_fractional_monitor_engine(application):
         except Exception as e:
             logger.error(f"Alpaca monitor error: {e}")
             await asyncio.sleep(60)
+
+async def premium_expiration_engine(application):
+    """
+    Daily loop to check and alert users whose premium has expired.
+    Checks once every 12 hours.
+    """
+    logger.info("⏳ Starting Premium Expiration Engine (12h Loop)...")
+    
+    while True:
+        try:
+            # Short initial delay to not block startup
+            await asyncio.sleep(10)
+            
+            expired_users = database.get_expired_unnotified_users()
+            if expired_users:
+                logger.info(f"📬 Found {len(expired_users)} users whose premium expired. Sending alerts...")
+                
+                msg = (
+                    "⚠️ *Your Premium Access Has Expired!*\n\n"
+                    "Your Metaverse Sherpa autopilot has been paused, and live trade execution is no longer active for your account.\n\n"
+                    "However, you will continue to receive free trading signals directly in Telegram!\n\n"
+                    "To reactivate auto-trading across all your assets and return to autopilot mode, please renew your Premium Access by typing /settings or /premium."
+                )
+                
+                for chat_id in expired_users:
+                    try:
+                        await application.bot.send_message(
+                            chat_id=chat_id,
+                            text=msg,
+                            parse_mode="Markdown"
+                        )
+                        database.set_premium_expired_notified(chat_id, True)
+                        logger.info(f"Notified {chat_id} of expiration.")
+                    except Exception as e:
+                        logger.error(f"Failed to send expiration notice to {chat_id}: {e}")
+                        
+            # Sleep 12 hours
+            await asyncio.sleep(43200)
+            
+        except asyncio.CancelledError:
+            logger.info("⏳ Premium Expiration Engine cancelled.")
+            break
+        except Exception as e:
+            logger.error(f"⏳ Premium Expiration Engine error: {e}")
+            await asyncio.sleep(3600)

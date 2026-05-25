@@ -245,7 +245,7 @@ async def process_user_on_symbol(user, symbol, signal):
     This function processes an individual user for a generated signal.
     
     Logic:
-    1. Institutional Gating: Checks premium tier. Standard users are restricted to Top 5 assets.
+    1. Institutional Gating: Checks premium tier. Standard users do not execute live trades.
     2. Symbol Check: Verifies the user has manually enabled the symbol in their settings.
     3. Equity Override: Applies the user's custom capital allocation limits (e.g., only trade with 50% of equity).
     4. Position Check: Queries CCXT to prevent double-entry if the user is already in a trade for this symbol.
@@ -254,15 +254,11 @@ async def process_user_on_symbol(user, symbol, signal):
     try:
         # 💎 Institutional Gating
         is_prem = database.is_premium(user)
-        sym_name = symbol.split("/")[0]
-        
-        # 🥈 Standard Tier Limits
         if not is_prem:
-            if sym_name not in ["BTC", "ETH", "SOL", "XRP", "BNB"]:
-                return
-            risk_val = 1.0
-        else:
-            risk_val = user.get('risk_pct', 1.5)
+            return  # Standard users do not execute live trades
+            
+        sym_name = symbol.split("/")[0]
+        risk_val = user.get('risk_pct', 1.5)
 
         if sym_name not in user.get('enabled_symbols', []):
             return

@@ -156,7 +156,10 @@ def init_db():
             ("active_crypto_strategy", "TEXT DEFAULT 'Mean Reversion Scalper'"),
             ("active_stock_strategy", "TEXT DEFAULT 'None'"),
             ("stock_risk_pct", "REAL DEFAULT 1.0"),
-            ("alpaca_start_equity", "REAL")
+            ("alpaca_start_equity", "REAL"),
+            ("premium_referrals", "INTEGER DEFAULT 0"),
+            ("premium_expired_notified", "BOOLEAN DEFAULT 0"),
+            ("had_premium_before", "BOOLEAN DEFAULT 0")
         ]
         for col_name, col_def in cols:
             try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
@@ -299,7 +302,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct, alpaca_start_equity FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct, alpaca_start_equity, premium_referrals, premium_expired_notified, had_premium_before FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
@@ -338,7 +341,10 @@ def get_user(chat_id):
             "alpaca_endpoint": row[30] if len(row) > 30 else None,
             "active_crypto_strategy": row[31] if len(row) > 31 and row[31] else 'Mean Reversion Scalper',
             "active_stock_strategy": row[32] if len(row) > 32 and row[32] else 'None',
-            "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 1.0
+            "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 1.0,
+            "premium_referrals": row[34] if len(row) > 34 else 0,
+            "premium_expired_notified": bool(row[35]) if len(row) > 35 else False,
+            "had_premium_before": bool(row[36]) if len(row) > 36 else False
         }
     return None
 
@@ -534,7 +540,6 @@ def set_referrer(chat_id, referrer_id):
     """Links a new user to a referrer and increments the referrer's count."""
     if chat_id == referrer_id: return False # No self-referral
     
-    reward_granted = False
     with db_session() as conn:
         c = conn.cursor()
         # Check if user already has a referrer
@@ -545,10 +550,9 @@ def set_referrer(chat_id, referrer_id):
         if row and row[0] is None:
             c.execute("UPDATE Users SET referred_by = ? WHERE telegram_chat_id = ?", (referrer_id, chat_id))
             c.execute("UPDATE Users SET referral_count = referral_count + 1 WHERE telegram_chat_id = ?", (referrer_id,))
-            # Check for reward
-            reward_granted = check_and_award_referral_bonus(referrer_id)
+            return True # Linked successfully
     
-    return reward_granted
+    return False
 
 def add_premium_days(chat_id, days):
     """Extends a user's premium status by X days."""
@@ -561,7 +565,7 @@ def add_premium_days(chat_id, days):
     
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?", (new_expiry, chat_id))
+        c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = 0, had_premium_before = 1 WHERE telegram_chat_id = ?", (new_expiry, chat_id))
 
 def get_referral_stats(chat_id):
     """Returns the total number of referrals for a user."""
@@ -577,13 +581,39 @@ def update_user_wallet(chat_id, wallet_address):
         c = conn.cursor()
         c.execute("UPDATE Users SET source_wallet = ? WHERE telegram_chat_id = ?", (wallet_address, chat_id))
 
+def get_expired_unnotified_users():
+    """Returns a list of chat_ids for users whose premium expired but haven't been notified."""
+    now = int(time.time())
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT telegram_chat_id FROM Users WHERE premium_expiry > 0 AND premium_expiry < ? AND premium_expired_notified = 0", (now,))
+        return [row[0] for row in c.fetchall()]
+
+def set_premium_expired_notified(chat_id, value=True):
+    """Marks a user as notified about their premium expiration."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE Users SET premium_expired_notified = ? WHERE telegram_chat_id = ?", (int(value), chat_id))
+
 def check_and_award_referral_bonus(referrer_id):
-    """Awards 30 days of premium for every 3 referrals."""
-    count = get_referral_stats(referrer_id)
+    """Awards 30 days of premium for every 3 premium referrals."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT premium_referrals FROM Users WHERE telegram_chat_id = ?", (referrer_id,))
+        row = c.fetchone()
+        count = row[0] if row else 0
+
     if count > 0 and count % 3 == 0:
         add_premium_days(referrer_id, 30)
         return True # Reward granted
     return False
+
+def award_premium_referral(referrer_id):
+    """Increments premium_referrals and checks for the bonus."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE Users SET premium_referrals = premium_referrals + 1 WHERE telegram_chat_id = ?", (referrer_id,))
+    return check_and_award_referral_bonus(referrer_id)
 
 def update_position_status(chat_id, has_active):
     """Updates the has_open_positions flag in the database."""
