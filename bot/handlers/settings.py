@@ -946,9 +946,14 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "dummy_spacer":
         await query.answer()
         return
-    elif query.data == "free_active":
+    elif query.data.startswith("free_active"):
+        sort_mode = "date"
+        if "_" in query.data and query.data != "free_active":
+            parts = query.data.split("_")
+            if len(parts) > 2:
+                sort_mode = parts[-1]
         await query.answer()
-        await open_free_trades(update, context)
+        await open_free_trades(update, context, sort_mode=sort_mode)
         return
     elif query.data == "free_closed":
         await query.answer()
@@ -1311,7 +1316,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await safe_edit_text(update, context, msg, reply_markup=reply_markup)
 
 
-async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, sort_mode='date'):
     chat_id = update.effective_chat.id
     user = database.get_user(chat_id)
     if not user:
@@ -1383,6 +1388,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Failed to fetch Crypto positions for free stats check: {e}")
 
     mdm = live_bot_multi.MarketDataManager()
+    trade_data_list = []
     try:
         for t in open_sim_trades:
             sym = t['symbol']
@@ -1444,6 +1450,41 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 target_pnl_val = pos_size * (target_pnl_pct / 100)
             
             side_str = "LONG" if is_long else "SHORT"
+            
+            trade_data_list.append({
+                't': t,
+                'df_chart': df_chart,
+                'sym': sym,
+                'side_str': side_str,
+                'entry': entry,
+                'tp': tp,
+                'sl': sl,
+                'open_ts': open_ts,
+                'pos_size': pos_size,
+                'strat': strat,
+                'pnl_pct': pnl_pct,
+                'pnl_val': pnl_val,
+                'target_pnl_pct': target_pnl_pct,
+                'target_pnl_val': target_pnl_val
+            })
+            
+        if sort_mode == 'progress':
+            trade_data_list.sort(key=lambda x: x['pnl_pct'])
+            
+        for td in trade_data_list:
+            t = td['t']
+            df_chart = td['df_chart']
+            sym = td['sym']
+            side_str = td['side_str']
+            entry = td['entry']
+            tp = td['tp']
+            sl = td['sl']
+            open_ts = td['open_ts']
+            strat = td['strat']
+            pnl_pct = td['pnl_pct']
+            pnl_val = td['pnl_val']
+            target_pnl_pct = td['target_pnl_pct']
+            target_pnl_val = td['target_pnl_val']
             
             chart_file = None
             try:
@@ -1523,10 +1564,18 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['admin_free_photo_ids'] = photo_ids
 
     # Send navigation footer at the very end
+    sort_btn = InlineKeyboardButton("↕️ Sort By Progress %", callback_data="free_active_progress") if sort_mode == 'date' else InlineKeyboardButton("↕️ Sort By Date Time", callback_data="free_active_date")
+    
+    keyboard = [
+        [sort_btn],
+        *get_main_inline_menu(chat_id).inline_keyboard
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await context.bot.send_message(
         chat_id=chat_id,
-        text="🏔️ *Sherpa Navigation*",
-        reply_markup=get_main_inline_menu(chat_id),
+        text=f"🏔️ *Sherpa Navigation*\n_Currently sorted by: {'Progress %' if sort_mode == 'progress' else 'Date Time'}_",
+        reply_markup=reply_markup,
         parse_mode="Markdown"
     )
 
