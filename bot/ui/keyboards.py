@@ -280,9 +280,9 @@ def get_settings_ui(user):
     )
     
     keyboard = [
-        [InlineKeyboardButton(f"🪙 Set Crypto Risk % {'🔒' if not is_premium else ''}", callback_data="set_crypto_risk")],
-        [InlineKeyboardButton(f"🦙 Set Stock Risk % {'🔒' if not is_premium else ''}", callback_data="set_stock_risk")],
-        [InlineKeyboardButton(f"🛰 Symbols {'🔒' if not is_premium else ''}", callback_data="manage_symbols")],
+        [InlineKeyboardButton(f"🪙 Set Crypto Risk % {'⚙️' if not is_premium else ''}", callback_data="set_crypto_risk")],
+        [InlineKeyboardButton(f"🦙 Set Stock Risk % {'⚙️' if not is_premium else ''}", callback_data="set_stock_risk")],
+        [InlineKeyboardButton(f"🛰 Symbols {'⚙️' if not is_premium else ''}", callback_data="manage_symbols")],
         [InlineKeyboardButton("💰 Capital Allocation", callback_data="capital_menu")],
         [InlineKeyboardButton(f"Toggle Privacy ({'Show $' if user['hide_dollars'] else 'Hide $'})", callback_data="toggle_privacy")],
         [InlineKeyboardButton("Change Strategy", callback_data="strategy_menu")],
