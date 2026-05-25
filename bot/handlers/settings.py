@@ -947,11 +947,13 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         return
     elif query.data.startswith("free_active"):
-        sort_mode = "date"
         if "_" in query.data and query.data != "free_active":
             parts = query.data.split("_")
             if len(parts) > 2:
-                sort_mode = parts[-1]
+                context.user_data['active_signals_sort'] = parts[-1]
+                
+        sort_mode = context.user_data.get('active_signals_sort', 'date')
+        
         await query.answer()
         await open_free_trades(update, context, sort_mode=sort_mode)
         return
