@@ -119,15 +119,11 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
             
         photo_ids = []
         
+        from bot.ui.keyboards import send_cached_photo
+        
         # 1. Send the comparison visual chart first
-        with open(chart_path, 'rb') as photo:
-            msg = await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo,
-                caption="📊 *Metaverse Sherpa: 3-Year Strategy Comparison Visual*",
-                parse_mode="Markdown"
-            )
-            photo_ids.append(msg.message_id)
+        msg = await send_cached_photo(update, context, chart_path, caption="📊 *Metaverse Sherpa: 3-Year Strategy Comparison Visual*")
+        if msg: photo_ids.append(msg.message_id)
         
         # 2. Send Intro & Mean Reversion text description
         await context.bot.send_message(
@@ -137,12 +133,8 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
         )
         
         # 3. Send Mean Reversion Infographic
-        with open(mr_path, 'rb') as photo:
-            msg = await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo
-            )
-            photo_ids.append(msg.message_id)
+        msg = await send_cached_photo(update, context, mr_path)
+        if msg: photo_ids.append(msg.message_id)
         
         # 4. Send Valkyrie Elite text description
         await context.bot.send_message(
@@ -152,12 +144,8 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
         )
         
         # 5. Send Valkyrie Elite Infographic
-        with open(valk_path, 'rb') as photo:
-            msg = await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo
-            )
-            photo_ids.append(msg.message_id)
+        msg = await send_cached_photo(update, context, valk_path)
+        if msg: photo_ids.append(msg.message_id)
             
         # 6. Send Sherpa Velocity Pullback text description
         await context.bot.send_message(
@@ -167,12 +155,8 @@ async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_T
         )
         
         # 7. Send Sherpa Velocity Pullback Infographic
-        with open(stock_path, 'rb') as photo:
-            msg = await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo
-            )
-            photo_ids.append(msg.message_id)
+        msg = await send_cached_photo(update, context, stock_path)
+        if msg: photo_ids.append(msg.message_id)
         
         # 8. Send Comparative Matrix & final keyboard menu
         await context.bot.send_message(

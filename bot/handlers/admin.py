@@ -140,26 +140,8 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
     
     photo_path = os.path.join(BASE_DIR, "images", "premium_infographic.png")
-    if os.path.exists(photo_path):
-        if update.callback_query:
-            try:
-                await update.effective_message.delete()
-            except: pass
-        with open(photo_path, 'rb') as photo:
-            try:
-                await context.bot.send_photo(
-                    chat_id=chat_id,
-                    photo=photo,
-                    caption=premium_msg,
-                    reply_markup=InlineKeyboardMarkup(kb),
-                    parse_mode="Markdown"
-                )
-            except Exception as e:
-                logger.error(f"Failed to send infographic: {e}")
-                await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
-    else:
-        logger.error(f"Infographic not found at {photo_path}")
-        await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
+    from bot.ui.keyboards import send_cached_photo
+    await send_cached_photo(update, context, photo_path, caption=premium_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a Telegram message to the Super Admin."""

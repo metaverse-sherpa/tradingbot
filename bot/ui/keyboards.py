@@ -59,6 +59,68 @@ def build_datetime_entity_message(text_before: str, unix_ts: int, text_after: st
     )
     return full_text, [entity]
 
+async def send_cached_photo(update, context, photo_path: str, caption: str = None, reply_markup = None, parse_mode = "Markdown"):
+    """
+    Sends a photo and caches the Telegram file_id in the database to dramatically speed up future sends.
+    If the file has already been uploaded once, it uses the cached file_id.
+    """
+    chat_id = update.effective_chat.id
+    if not os.path.exists(photo_path):
+        logger.error(f"send_cached_photo: File not found at {photo_path}")
+        if caption:
+            await safe_edit_text(update, context, caption, reply_markup=reply_markup, parse_mode=parse_mode)
+        return None
+
+    # Use the filename as the cache key
+    filename = os.path.basename(photo_path)
+    cache_key = f"photo_cache_{filename}"
+    cached_file_id = database.get_config(cache_key)
+
+    try:
+        if cached_file_id:
+            # Delete old message if it was a callback
+            if update.callback_query:
+                try: await update.effective_message.delete()
+                except: pass
+                
+            return await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=cached_file_id,
+                caption=caption,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send cached photo {filename} (maybe invalid file_id). Re-uploading. Error: {e}")
+        # Clear the invalid cache
+        database.update_config(cache_key, "")
+        cached_file_id = None
+
+    # Upload from disk
+    if update.callback_query:
+        try: await update.effective_message.delete()
+        except: pass
+
+    with open(photo_path, 'rb') as photo:
+        try:
+            msg = await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption=caption,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+            # Cache the largest photo's file_id
+            if msg.photo:
+                best_photo = msg.photo[-1]
+                database.update_config(cache_key, best_photo.file_id)
+            return msg
+        except Exception as e:
+            logger.error(f"Failed to upload photo {filename}: {e}")
+            if caption:
+                await safe_edit_text(update, context, caption, reply_markup=reply_markup, parse_mode=parse_mode)
+            return None
+
 async def safe_edit_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, reply_markup: InlineKeyboardMarkup = None, parse_mode: str = "Markdown"):
     """Surgically edits a message or sends a fresh one if media conflict exists."""
     query = update.callback_query
