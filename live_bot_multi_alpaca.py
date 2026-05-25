@@ -16,9 +16,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("AlpacaLiveBot")
 
-load_dotenv()
+import utils_gcp
 
-TIINGO_API_KEY = os.getenv("TIINGO_API_KEY")
+ALPACA_API_KEY = utils_gcp.get_secret("alpaca-api-key")
+ALPACA_API_SECRET = utils_gcp.get_secret("alpaca-api-secret")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STOCK_DB_PATH = os.path.join(BASE_DIR, "data", "stock_daily_cache.db")
 USER_DB_PATH = os.path.join(BASE_DIR, "data", "bot_users.db")
@@ -41,8 +42,8 @@ async def send_telegram_message(chat_id, text):
         logger.error(f"Failed to send Telegram message to {chat_id}: {e}")
 
 def update_stock_daily_cache():
-    if not TIINGO_API_KEY:
-        logger.error("TIINGO_API_KEY is not set.")
+    if not ALPACA_API_KEY or not ALPACA_API_SECRET:
+        logger.error("ALPACA_API_KEY or ALPACA_API_SECRET is not set.")
         return
     
     import stock_data_cache_daily
@@ -56,7 +57,7 @@ def update_stock_daily_cache():
     logger.info(f"Updating stock daily cache from {start_date} to {today_str}...")
     
     for ticker in stock_data_cache_daily.SYMBOLS:
-        data = stock_data_cache_daily.fetch_daily_data(ticker, TIINGO_API_KEY, start_date=start_date, end_date=today_str)
+        data = stock_data_cache_daily.fetch_daily_data(ticker, ALPACA_API_KEY, ALPACA_API_SECRET, start_date=start_date, end_date=today_str)
         if data:
             stock_data_cache_daily.save_to_db(ticker, data)
         # Small rate limit sleep
@@ -115,25 +116,27 @@ def calculate_symbol_indicators_and_signal(symbol):
 
 def fetch_today_open_prices():
     """
-    Fetches real-time IEX prices for all 40 symbols to get today's open price.
+    Fetches real-time prices for all 40 symbols to get today's open price.
     """
     import stock_data_cache_daily
     tickers_str = ",".join(stock_data_cache_daily.SYMBOLS)
-    url = "https://api.tiingo.com/iex/"
+    url = "https://data.alpaca.markets/v2/stocks/bars/latest"
     params = {
-        "tickers": tickers_str,
-        "token": TIINGO_API_KEY
+        "symbols": tickers_str,
+    }
+    headers = {
+        "APCA-API-KEY-ID": ALPACA_API_KEY,
+        "APCA-API-SECRET-KEY": ALPACA_API_SECRET
     }
     
     opens = {}
     try:
-        response = requests.get(url, params=params, timeout=15)
+        response = requests.get(url, params=params, headers=headers, timeout=15)
         if response.status_code == 200:
             data = response.json()
-            for item in data:
-                ticker = item.get("ticker")
-                # Use today's open price. If open is None (e.g. before print), fallback to lastTradePrice or prev close
-                open_price = item.get("open") or item.get("lastTradePrice") or item.get("last")
+            bars = data.get("bars", {})
+            for ticker, item in bars.items():
+                open_price = item.get("o") or item.get("c")
                 if open_price:
                     opens[ticker] = float(open_price)
         else:
@@ -452,7 +455,7 @@ async def main():
         logger.info("US Equities Market is closed today. Skipping swing execution.")
         return
         
-    # 2. Update stock daily cache from Tiingo
+    # 2. Update stock daily cache from Alpaca
     try:
         update_stock_daily_cache()
     except Exception as e:

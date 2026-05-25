@@ -6,6 +6,10 @@ import argparse
 from datetime import datetime
 from dotenv import load_dotenv
 
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import utils_gcp
+
 load_dotenv()
 
 # 🏔️ Sherpa Stock Basket (Expanded)
@@ -27,24 +31,27 @@ def init_db():
     conn.commit()
     conn.close()
 
-def fetch_stock_data(ticker, api_key, start_date="2026-03-01"):
-    """Fetches 15m intraday data from Tiingo IEX endpoint."""
+def fetch_stock_data(ticker, api_key, api_secret, start_date="2026-03-01"):
+    """Fetches 15m intraday data from Alpaca."""
     print(f"🛰️ Fetching 15m data for {ticker} starting from {start_date}...")
     
-    # Tiingo IEX Intraday Endpoint
-    url = f"https://api.tiingo.com/iex/{ticker}/prices"
+    url = f"https://data.alpaca.markets/v2/stocks/bars"
     params = {
-        "startDate": start_date,
-        "resampleFreq": "15min",
-        "token": api_key,
-        "columns": "open,high,low,close,volume"
+        "symbols": ticker,
+        "timeframe": "15Min",
+        "start": start_date,
+        "adjustment": "all"
+    }
+    headers = {
+        "APCA-API-KEY-ID": api_key,
+        "APCA-API-SECRET-KEY": api_secret
     }
     
     try:
-        response = requests.get(url, params=params, timeout=15)
+        response = requests.get(url, params=params, headers=headers, timeout=15)
         if response.status_code == 200:
             data = response.json()
-            return data
+            return data.get('bars', {}).get(ticker, [])
         else:
             print(f"❌ Error fetching {ticker}: {response.status_code} - {response.text}")
             return None
@@ -62,12 +69,12 @@ def save_to_db(ticker, data):
     
     count = 0
     for bar in data:
-        # Convert Tiingo ISO timestamp to unix ms
-        ts = int(datetime.fromisoformat(bar['date'].replace('Z', '+00:00')).timestamp() * 1000)
+        # Convert Alpaca ISO timestamp to unix ms
+        ts = int(datetime.fromisoformat(bar['t'].replace('Z', '+00:00')).timestamp() * 1000)
         
         try:
             c.execute('INSERT OR IGNORE INTO StockData (symbol, timestamp, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                      (ticker, ts, bar['open'], bar['high'], bar['low'], bar['close'], bar['volume']))
+                      (ticker, ts, bar['o'], bar['h'], bar['l'], bar['c'], bar['v']))
             count += 1
         except: pass
         
@@ -77,12 +84,13 @@ def save_to_db(ticker, data):
 
 def main():
     parser = argparse.ArgumentParser(description="Sherpa Stock Data Cacher")
-    parser.add_argument("--key", default=os.getenv("TIINGO_API_KEY"), help="Your Tiingo API Key (defaults to .env)")
+    parser.add_argument("--key", default=utils_gcp.get_secret("alpaca-api-key"), help="Your Alpaca API Key ID (defaults to GCP/env)")
+    parser.add_argument("--secret", default=utils_gcp.get_secret("alpaca-api-secret"), help="Your Alpaca API Secret Key (defaults to GCP/env)")
     parser.add_argument("--start", default="2023-01-01", help="Start date (YYYY-MM-DD)")
     args = parser.parse_args()
 
-    if not args.key:
-        print("❌ Error: TIINGO_API_KEY not found in .env or provided via --key.")
+    if not args.key or not args.secret:
+        print("❌ Error: ALPACA_API_KEY or ALPACA_API_SECRET not found in .env or provided via args.")
         return
 
     init_db()
@@ -91,14 +99,14 @@ def main():
     print(f"Target Symbols: {', '.join(SYMBOLS)}")
     
     for i, ticker in enumerate(SYMBOLS):
-        data = fetch_stock_data(ticker, args.key, args.start)
+        data = fetch_stock_data(ticker, args.key, args.secret, args.start)
         if data:
             save_to_db(ticker, data)
         
-        # 🛡️ Rate Limit Shield: Respect the 5-calls-per-minute limit
+        # 🛡️ Rate Limit Shield: Respect Alpaca's 200 calls/min limit
         if i < len(SYMBOLS) - 1:
-            print("⏳ Respecting Tiingo Rate Limits (12s cooldown)...")
-            time.sleep(12)
+            print("⏳ Respecting Alpaca Rate Limits (0.35s cooldown)...")
+            time.sleep(0.35)
 
     print("\n🏆 Caching Complete. Data stored in data/stock_cache.db")
 

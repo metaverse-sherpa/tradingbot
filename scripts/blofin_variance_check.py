@@ -45,20 +45,20 @@ def main():
                 
             b_df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             
-            # Fetch synced Tiingo data
+            # Fetch synced Alpaca data
             min_ts, max_ts = b_df['timestamp'].min(), b_df['timestamp'].max()
             t_df = pd.read_sql_query(f"SELECT timestamp, close FROM StockData WHERE symbol = '{s}' AND timestamp >= {min_ts} AND timestamp <= {max_ts}", conn)
             
             # Merge and Compare
-            merged = pd.merge(b_df[['timestamp', 'close']], t_df, on='timestamp', suffixes=('_blofin', '_tiingo'))
+            merged = pd.merge(b_df[['timestamp', 'close']], t_df, on='timestamp', suffixes=('_blofin', '_alpaca'))
             
             if not merged.empty:
-                merged['variance'] = abs(merged['close_blofin'] - merged['close_tiingo']) / merged['close_tiingo'] * 100
+                merged['variance'] = abs(merged['close_blofin'] - merged['close_alpaca']) / merged['close_alpaca'] * 100
                 avg_v, max_v = merged['variance'].mean(), merged['variance'].max()
                 results.append({'s': s, 'avg': avg_v, 'max': max_v, 'count': len(merged)})
                 print(f"{s:<10} | {len(merged):<8} | {avg_v:>10.4f}% | {max_v:>10.4f}%")
             else:
-                print(f"{s:<10} | No synced Tiingo data.")
+                print(f"{s:<10} | No synced Alpaca data.")
                 
         except Exception as e:
             # print(f"{s:<10} | Error: {str(e)[:50]}")
