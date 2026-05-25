@@ -24,7 +24,7 @@ import database
 import charting
 import media_gen
 import live_bot_multi
-from bot.config import SUPER_ADMIN_ID, logger
+from bot.config import SUPER_ADMIN_ID, logger, get_symbol_link
 from bot.ui.keyboards import (
     escape_md_v2,
     safe_edit_text,
@@ -924,8 +924,9 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         tp_str = escape_md_v2(tp_str_formatted)
                         entry_str = escape_md_v2(entry_str_formatted)
                         
+                        sym_link = get_symbol_link(sym, text=sym_v2)
                         caption = (
-                            f"{'🟢' if side == 'LONG' else '🔴'} *{sym_v2} \\({side.upper()}\\)*\n"
+                            f"{'🟢' if side == 'LONG' else '🔴'} *{sym_link} \\({side.upper()}\\)*\n"
                             f"Current PnL: {roe_v2} \\(||{upnl_v2}||\\) of {target_roe_v2} \\(||{target_pnl_v2}||\\)\n"
                             f"• Entry: `{entry_str}` \\| SL: `{sl_str}` \\| TP: `{tp_str}`"
                         )
@@ -1085,8 +1086,10 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             target_pnl_v2 = escape_md_v2(f"{target_pnl_usdt:+.2f}")
                             target_roe_v2 = escape_md_v2(target_roe_str)
                             
+                            clean_sym = sym.split(":")[0]
+                            sym_link = get_symbol_link(clean_sym, text=sym_v2)
                             caption = (
-                                f"{'🟢' if side == 'LONG' else '🔴'} *{sym_v2} \\({side}\\)*\n"
+                                f"{'🟢' if side == 'LONG' else '🔴'} *{sym_link} \\({side}\\)*\n"
                                 f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target\n"
                                 f"SL: `{sl_val}` \\| TP: `{tp_val}`"
                             )
