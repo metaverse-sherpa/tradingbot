@@ -1389,6 +1389,9 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             except Exception as e:
                 logger.error(f"Failed to fetch Crypto positions for free stats check: {e}")
 
+    from live_bot_multi_alpaca import check_is_market_open
+    is_mkt_open = check_is_market_open()
+
     mdm = live_bot_multi.MarketDataManager()
     trade_data_list = []
     try:
@@ -1404,14 +1407,15 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             
             if is_stock(sym):
                 df_chart = None
-                try:
-                    from bot.handlers.trading import fetch_alpaca_daily_bars_async
-                    df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
-                    if df_chart is not None and not df_chart.empty:
-                        if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
-                            df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
-                except Exception as live_err:
-                    logger.error(f"Failed to fetch live free signal data for {sym}: {live_err}")
+                if is_mkt_open:
+                    try:
+                        from bot.handlers.trading import fetch_alpaca_daily_bars_async
+                        df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
+                        if df_chart is not None and not df_chart.empty:
+                            if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
+                                df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
+                    except Exception as live_err:
+                        logger.error(f"Failed to fetch live free signal data for {sym}: {live_err}")
                 
                 if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                     try:
@@ -1489,23 +1493,37 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             target_pnl_val = td['target_pnl_val']
             
             chart_file = None
-            try:
-                tf = "1D" if is_stock(sym) else "15M"
-                curr = "USD" if is_stock(sym) else "USDT"
-                chart_file = await asyncio.to_thread(
-                    charting.generate_trade_chart,
-                    sym,
-                    df_chart,
-                    entry,
-                    tp,
-                    sl,
-                    side_str,
-                    open_ts=open_ts,
-                    timeframe=tf,
-                    currency=curr
-                )
-            except Exception as chart_err:
-                logger.error(f"Free chart generation failed for {sym}: {chart_err}")
+            cached_chart_path = f"data/cached_charts/trade_{t['id']}.jpg"
+            use_cache = False
+            
+            if is_stock(sym) and not is_mkt_open:
+                if os.path.exists(cached_chart_path):
+                    chart_file = cached_chart_path
+                    use_cache = True
+            
+            if not use_cache:
+                try:
+                    tf = "1D" if is_stock(sym) else "15M"
+                    curr = "USD" if is_stock(sym) else "USDT"
+                    chart_file = await asyncio.to_thread(
+                        charting.generate_trade_chart,
+                        sym,
+                        df_chart,
+                        entry,
+                        tp,
+                        sl,
+                        side_str,
+                        open_ts=open_ts,
+                        timeframe=tf,
+                        currency=curr
+                    )
+                    
+                    if is_stock(sym) and not is_mkt_open and chart_file and os.path.exists(chart_file):
+                        os.makedirs("data/cached_charts", exist_ok=True)
+                        import shutil
+                        shutil.copy(chart_file, cached_chart_path)
+                except Exception as chart_err:
+                    logger.error(f"Free chart generation failed for {sym}: {chart_err}")
             
             # Calculate percentages
             sl_pct_val = (((sl - entry) / entry) * 100 if side_str == 'LONG' else ((entry - sl) / entry) * 100) if sl > 0 else 0
@@ -1542,8 +1560,9 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                         parse_mode="Markdown"
                     )
                     photo_ids.append(msg.message_id)
-                try: os.remove(chart_file)
-                except: pass
+                if chart_file != cached_chart_path:
+                    try: os.remove(chart_file)
+                    except: pass
             else:
                 msg = await context.bot.send_message(
                     chat_id=chat_id,
