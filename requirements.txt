@@ -4,6 +4,7 @@ numpy
 python-dotenv
 requests
 python-telegram-bot
+google-cloud-secret-manager
 cryptography
 matplotlib
 mplfinance
