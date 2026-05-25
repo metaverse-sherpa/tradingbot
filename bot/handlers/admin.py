@@ -107,13 +107,16 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     price_msg = f"💳 *Institutional Access Fee:* ~~[ $20 ]~~ **${final_price:.2f} USDT** / 30 Days\n" if credits > 0 else f"💳 *Institutional Access Fee:* **$20 USDT / 30 Days**\n"
 
     premium_msg = (
-        "💎 *Go Institutional: Unlock the 23x Wealth Gap*\n\n"
-        "Unlock the full power of the Metaverse Sherpa engine. Moving from Standard to Institutional tier grants you access to professional-grade tools used by elite traders:\n\n"
-        "🏔️ *Institutional Tier Benefits:*\n"
-        "• **The Full Sherpa Basket**: Trade all 19+ premium symbols (Standard is limited to top 5).\n"
+        "💎 *Go Premium: Unlock the 23x Wealth Gap*\n\n"
+        "Unlock the full power of the Metaverse Sherpa engine. Moving from Standard to Premium tier grants you access to professional-grade tools used by elite traders:\n\n"
+        "🏔️ *Premium Tier Benefits:*\n"
+        "• **Full Autopilot**: The Sherpa executes and manages live trades directly on your exchange.\n"
+        "• **The Full Sherpa Basket**: Trade all 19+ premium symbols (Standard only gets free signals).\n"
         "• **Advanced Risk Control**: Set custom risk-per-trade percentages.\n"
         "• **Priority Execution**: Your trades are prioritized in the engine's background loop.\n"
         "• **Zero Friction**: Automated on-chain audits keep your access active.\n\n"
+        "🎁 *Get it for FREE!*\n"
+        "Invite 3 friends to join the trail and unlock **1 Month Free** of Premium Access. Tap /refer to get your custom invite link!\n\n"
         f"{credit_msg}"
         f"{price_msg}\n"
         "📥 *The Step-by-Step Upgrade Path:*\n"
@@ -134,7 +137,23 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     kb.append([InlineKeyboardButton("👛 Change My Linked Wallet", callback_data="prompt_set_wallet")])
     kb.append([InlineKeyboardButton("🔙 Return to Settings", callback_data="settings_menu")])
-    await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
+    
+    photo_path = os.path.join(BASE_DIR, "assets", "premium_infographic.png")
+    if os.path.exists(photo_path):
+        if update.callback_query:
+            try:
+                await update.effective_message.delete()
+            except: pass
+        with open(photo_path, 'rb') as photo:
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption=premium_msg,
+                reply_markup=InlineKeyboardMarkup(kb),
+                parse_mode="Markdown"
+            )
+    else:
+        await safe_edit_text(update, context, premium_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a Telegram message to the Super Admin."""
