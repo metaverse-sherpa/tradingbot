@@ -188,7 +188,7 @@ async def signal_engine(application):
                             database.close_theoretical_trade(trade_id, exit_price, close_time, status, pnl_raw, pnl_pct, pnl_usdt)
                             
                             display_pnl_pct = pnl_pct
-                            from bot.config import is_stock, CRYPTO_LEVERAGE
+                            from bot.config import CRYPTO_LEVERAGE
                             if not is_stock(symbol):
                                 display_pnl_pct *= CRYPTO_LEVERAGE
 

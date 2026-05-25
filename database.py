@@ -482,18 +482,25 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
                             
                             cum_pnl += net_pnl
                             share_data = None
+                            
+                            side_raw = t.get('side', 'buy').lower()
+                            is_long = (side_raw == 'sell')
+                            direction_str = "LONG" if is_long else "SHORT"
+                            
+                            from bot.config import CRYPTO_LEVERAGE
+                            leverage = int(CRYPTO_LEVERAGE)
+                            
                             if net_pnl > 0:
                                 wins += 1
                                 header = "🏆 *Trade Won!*"
-                                # assume long for notification if side is missing from raw info
-                                side_code = "l"
+                                side_code = "l" if is_long else "s"
                                 share_data = f"sh_{sym}_{side_code}_{roe_pct:.2f}_{t.get('price', 0)}_{t.get('price', 0)}_{net_pnl:.2f}"
                             else:
                                 losses += 1
                                 header = "❌ *Trade Lost*"
                                 
                             symbol_new_closed.append({
-                                "msg": f"{header}\n\nSymbol: `{sym}`\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
+                                "msg": f"{header}\n\nSymbol: `{sym}`\nDirection: *{direction_str} {leverage}x*\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
                                 "share_data": share_data
                             })
                     except Exception as e:
