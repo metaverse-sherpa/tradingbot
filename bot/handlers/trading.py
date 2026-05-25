@@ -958,7 +958,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     currency="USD"
                                 )
                                 
-                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}", style="destructive")]]
+                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
                                 with open(chart_path, 'rb') as photo:
                                     await context.bot.send_photo(
                                         chat_id=chat_id,
@@ -974,7 +974,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             logger.error(f"Failed to generate Alpaca daily chart for {sym}: {chart_err}")
                             
                         if not chart_sent:
-                            kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}", style="destructive")]]
+                            kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
                             await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
                     except Exception as e:
                         logger.error(f"Error processing Alpaca position: {e}")
@@ -1069,7 +1069,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     currency="USDT"
                                 )
                                 
-                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}", style="destructive")]]
+                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
                                 with open(chart_path, 'rb') as photo:
                                     await context.bot.send_photo(
                                         chat_id=chat_id,
@@ -1082,7 +1082,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 except: pass
                             except Exception as ce:
                                 logger.error(f"Failed to generate position chart for {sym}: {ce}")
-                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}", style="destructive")]]
+                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
                                 await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
                         except Exception as e:
                             logger.error(f"Error processing position: {e}")

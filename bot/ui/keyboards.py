@@ -112,7 +112,7 @@ def get_nav_buttons(has_active_trades=False, is_admin=False):
         kb.append([InlineKeyboardButton("👑 Admin Console", callback_data="admin_command")])
     
     if has_active_trades:
-        kb.append([InlineKeyboardButton("🚨 CLOSE ALL TRADES", callback_data="confirm_panic", style="destructive")])
+        kb.append([InlineKeyboardButton("🚨 CLOSE ALL TRADES", callback_data="confirm_panic")])
     return kb
 
 def get_main_inline_menu(chat_id=None):
