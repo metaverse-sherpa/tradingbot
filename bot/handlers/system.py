@@ -139,9 +139,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🏆 Tap /setup to link your account and start your climb."
     )
     
-    await update.effective_message.reply_text(
-        welcome_msg, 
-        parse_mode="Markdown",
+    from bot.ui.keyboards import send_cached_photo
+    premium_photo_path = os.path.join(BASE_DIR, "images", "welcome_infographic.png")
+    
+    await send_cached_photo(
+        update,
+        context,
+        premium_photo_path,
+        caption=welcome_msg,
         reply_markup=get_main_inline_menu(chat_id)
     )
 
