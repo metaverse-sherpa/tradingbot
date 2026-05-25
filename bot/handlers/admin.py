@@ -125,7 +125,7 @@ async def show_premium_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "1. Copy the Treasury Address below.\n"
             f"2. Send **${final_price:.2f} USDT** via **TRON (TRC-20)**.\n"
             "3. Tap 'Audit My Payment'.\n\n"
-            "🏛️ *Treasury (TRC-20):* `{get_master_wallet()}`\n\n"
+            f"🏛️ *Treasury (TRC-20):* `{get_master_wallet()}`\n\n"
             "⚠️ _Activation is automated within 1-3 mins._"
         )
         
