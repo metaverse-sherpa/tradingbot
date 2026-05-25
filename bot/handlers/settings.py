@@ -1395,15 +1395,14 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             if is_stock(sym):
                 df_chart = None
-                if user.get("alpaca_api_key"):
-                    try:
-                        from bot.handlers.trading import fetch_alpaca_daily_bars_async
-                        df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
-                        if df_chart is not None and not df_chart.empty:
-                            if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
-                                df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
-                    except Exception as live_err:
-                        logger.error(f"Failed to fetch live free signal data for {sym}: {live_err}")
+                try:
+                    from bot.handlers.trading import fetch_alpaca_daily_bars_async
+                    df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
+                    if df_chart is not None and not df_chart.empty:
+                        if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
+                            df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
+                except Exception as live_err:
+                    logger.error(f"Failed to fetch live free signal data for {sym}: {live_err}")
                 
                 if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                     try:

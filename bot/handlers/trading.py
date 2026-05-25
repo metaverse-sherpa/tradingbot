@@ -782,10 +782,11 @@ async def fetch_alpaca_daily_bars_async(user, symbol, limit=60):
     start_str = start_date.strftime('%Y-%m-%dT00:00:00Z')
     end_str = end_date.strftime('%Y-%m-%dT23:59:59Z')
     
+    import utils_gcp
     url = "https://data.alpaca.markets/v2/stocks/bars"
     headers = {
-        "APCA-API-KEY-ID": user.get("alpaca_api_key") or "",
-        "APCA-API-SECRET-KEY": user.get("alpaca_api_secret") or "",
+        "APCA-API-KEY-ID": utils_gcp.get_secret("ALPACA_API_KEY") or "",
+        "APCA-API-SECRET-KEY": utils_gcp.get_secret("ALPACA_API_SECRET") or "",
         "Content-Type": "application/json"
     }
     params = {
