@@ -203,7 +203,7 @@ def profile():
     web_premium_expiry = user.get("premium_expiry", 0)
     bot_premium_expiry = tg_user.get("premium_expiry", 0) if tg_user else 0
     max_expiry = max(web_premium_expiry, bot_premium_expiry)
-    user["is_premium"] = max_expiry > now
+    user["is_premium"] = max_expiry > now or user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False))
     
     # Merge active strategies from bot user
     user["active_crypto_strategy"] = (tg_user or {}).get("active_crypto_strategy") or user.get("active_crypto_strategy", "Mean Reversion Scalper")

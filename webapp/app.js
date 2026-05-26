@@ -412,38 +412,71 @@ function renderDashboardView() {
     const isPremium = STATE.user && STATE.user.is_premium;
     const isCrypto = STATE.dashboard_tab === 'crypto';
     
+    const tierBadge = `
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
+            <span class="text-[10px]">${isPremium ? '💎' : '🥈'}</span>
+            <span class="font-label-sm text-label-sm ${isPremium ? 'text-secondary-container' : 'text-primary'}">${isPremium ? 'Premium' : 'Standard'}</span>
+        </div>
+    `;
+
+    if (!isPremium) {
+        return `
+            ${renderHeader()}
+            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+                <div class="flex justify-between items-center">
+                    ${tierBadge}
+                </div>
+                
+                <h2 class="font-headline-sm text-headline-sm text-on-surface mt-6">🛰️ Active Signals</h2>
+                <div class="space-y-stack-gap">
+                    ${STATE.active_signals.length === 0 ? `
+                        <div class="text-center py-12">
+                            <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                            <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+                            <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
+                        </div>
+                    ` : STATE.active_signals.map(sig => `
+                        <div class="glass-card rounded-xl p-card-padding border border-white/10 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-bold text-on-surface">${sig.symbol}</h4>
+                                <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
+                                <p class="text-xs text-tertiary mt-2">Entry target: $${sig.entry_price}</p>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-tertiary-fixed-dim/20 text-tertiary uppercase">Active</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </main>
+        `;
+    }
+
     const activeStrategy = STATE.user ? (isCrypto ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCrypto ? 'Mean Reversion Scalper' : 'None');
     const balance = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
     const activeTradesCount = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock')).length;
     
-    // Gated actions depending on premium status
-    let actionCards = `
+    // Gated actions for premium
+    const actionCards = `
+        <a href="#/trades" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">data_exploration</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Live Trades</span>
+        </a>
+        <a href="#/history" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">history</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Trade History</span>
+        </a>
+        <a href="#/stats" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">insights</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">My Stats</span>
+        </a>
+        <a href="#/backtest" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">science</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Backtest</span>
+        </a>
         <a href="#/signals" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center col-span-2">
             <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">satellite_alt</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Free Alpha Signals</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Alpha Signals</span>
         </a>
     `;
-    
-    if (isPremium) {
-        actionCards = `
-            <a href="#/trades" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">data_exploration</span>
-                <span class="font-label-md text-label-md text-on-surface font-semibold">Live Trades</span>
-            </a>
-            <a href="#/history" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">history</span>
-                <span class="font-label-md text-label-md text-on-surface font-semibold">Trade History</span>
-            </a>
-            <a href="#/stats" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">insights</span>
-                <span class="font-label-md text-label-md text-on-surface font-semibold">My Stats</span>
-            </a>
-            <a href="#/backtest" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">science</span>
-                <span class="font-label-md text-label-md text-on-surface font-semibold">Backtest</span>
-            </a>
-            ` + actionCards;
-    }
     
     return `
         ${renderHeader()}
