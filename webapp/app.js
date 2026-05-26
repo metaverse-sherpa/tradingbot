@@ -989,9 +989,15 @@ function renderPremiumView() {
             
             <div class="glass-card rounded-xl p-card-padding space-y-4">
                 <h4 class="font-semibold text-on-surface">Upgrade / Renew via TRON USDT</h4>
-                <div class="bg-surface-container rounded-lg p-3 border border-white/5 space-y-2">
-                    <p class="text-xs text-on-surface-variant uppercase">USDT TRC-20 Treasury</p>
-                    <p class="text-sm font-mono text-on-surface select-all overflow-x-auto whitespace-nowrap">TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj</p>
+                <div class="flex justify-center py-2">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj" alt="TRON Wallet QR Code" class="rounded-lg p-2 bg-white" width="160" height="160" />
+                </div>
+                <div onclick="navigator.clipboard.writeText('TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj'); showToast('Wallet address copied!')" class="bg-surface-container rounded-lg p-3 border border-white/5 space-y-2 cursor-pointer hover:bg-white/5 transition-colors group">
+                    <div class="flex justify-between items-center">
+                        <p class="text-xs text-on-surface-variant uppercase">USDT TRC-20 Treasury</p>
+                        <span class="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-primary transition-colors">content_copy</span>
+                    </div>
+                    <p class="text-sm font-mono text-primary break-all">TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj</p>
                 </div>
                 <div class="space-y-3">
                     <input id="wallet-addr" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4" placeholder="Your source USDT TRC20 Wallet" type="text" value="${user.source_wallet || ''}"/>
