@@ -122,8 +122,61 @@ def update_web_user_wallet(user_id, source_wallet):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('UPDATE WebUsers SET source_wallet = ? WHERE id = ?', (source_wallet, user_id))
+        
+        # Sync to Telegram bot if linked
+        c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row and row[0]:
+            c.execute('UPDATE Users SET source_wallet = ? WHERE telegram_chat_id = ?', (source_wallet, row[0]))
 
 def update_web_user_telegram(user_id, telegram_chat_id):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('UPDATE WebUsers SET telegram_chat_id = ? WHERE id = ?', (telegram_chat_id, user_id))
+        
+        if telegram_chat_id:
+            # 1. Fetch Web Settings
+            c.execute('''
+                SELECT source_wallet, api_key, api_secret, api_password, exchange_id, 
+                       alpaca_api_key, alpaca_api_secret, alpaca_endpoint
+                FROM WebUsers WHERE id = ?
+            ''', (user_id,))
+            web_row = c.fetchone()
+            
+            # 2. Fetch Bot Settings
+            c.execute('''
+                SELECT source_wallet, api_key, api_secret, api_password, exchange_id,
+                       alpaca_api_key, alpaca_api_secret, alpaca_endpoint
+                FROM Users WHERE telegram_chat_id = ?
+            ''', (telegram_chat_id,))
+            bot_row = c.fetchone()
+            
+            if web_row and bot_row:
+                w_wallet, w_ak, w_as, w_ap, w_exc, w_alk, w_als, w_ale = web_row
+                b_wallet, b_ak, b_as, b_ap, b_exc, b_alk, b_als, b_ale = bot_row
+                
+                # Merge logic: Web takes precedence if it exists, otherwise Bot
+                f_wallet = w_wallet or b_wallet
+                f_ak = w_ak or b_ak
+                f_as = w_as or b_as
+                f_ap = w_ap or b_ap
+                f_exc = w_exc or b_exc
+                f_alk = w_alk or b_alk
+                f_als = w_als or b_als
+                f_ale = w_ale or b_ale
+                
+                # Update WebUsers with merged
+                c.execute('''
+                    UPDATE WebUsers 
+                    SET source_wallet = ?, api_key = ?, api_secret = ?, api_password = ?, exchange_id = ?,
+                        alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?
+                    WHERE id = ?
+                ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale, user_id))
+                
+                # Update Users (Bot) with merged
+                c.execute('''
+                    UPDATE Users 
+                    SET source_wallet = ?, api_key = ?, api_secret = ?, api_password = ?, exchange_id = ?,
+                        alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?
+                    WHERE telegram_chat_id = ?
+                ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale, telegram_chat_id))
