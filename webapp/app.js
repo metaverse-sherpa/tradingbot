@@ -1,6 +1,4 @@
-// ----------------- App State & Configurations -----------------
-// Force local testing to use the live VPS production database!
-const API_BASE = 'http://34.136.20.8:5001/api';
+const API_BASE = '/api';
 
 let STATE = {
     user: null,

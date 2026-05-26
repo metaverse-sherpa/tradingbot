@@ -36,13 +36,18 @@ from web_api.auth import (
 # Initialize Database on Startup
 database.init_db()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='webapp', static_url_path='')
 # Configure Flask session secret
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "metaverse-sherpa-secret-key")
 
 # Enable CORS for frontend origin (e.g. static DO site or local Vite dev)
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 CORS(app, resources={r"/api/*": {"origins": [FRONTEND_ORIGIN, "https://metaversesherpa.io", "http://localhost:5173", "http://127.0.0.1:5173"]}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
+
+# ----------------- Serve Frontend -----------------
+@app.route('/')
+def serve_index():
+    return app.send_static_file('index.html')
 
 # ----------------- Health Endpoint -----------------
 @app.route('/api/health', methods=['GET'])
