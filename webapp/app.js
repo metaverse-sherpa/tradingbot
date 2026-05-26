@@ -1,7 +1,6 @@
 // ----------------- App State & Configurations -----------------
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? "http://localhost:5001/api" 
-    : "https://api.metaversesherpa.io/api";
+// Force local testing to use the live VPS production database!
+const API_BASE = 'http://34.136.20.8:5001/api';
 
 let STATE = {
     user: null,
