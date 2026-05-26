@@ -678,8 +678,70 @@ def set_premium_wallet():
 @app.route('/api/premium/check-payment', methods=['POST'])
 @require_auth
 def check_payment():
-    # Verify wallet against Tron blockchain / transaction history
-    return jsonify({"message": "Audit completed. No recent transactions found for your source wallet. Please ensure you sent $20 USDT via TRON (TRC-20)."}), 200
+    user = g.user
+    source_wallet = user.get("source_wallet")
+    if not source_wallet:
+        return jsonify({"message": "Please save your source wallet before verifying payment."}), 400
+        
+    master_wallet = os.getenv("MASTER_TREASURY_WALLET", "TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj")
+    
+    # Security: Do not allow using master wallet to bypass
+    super_admin_id = os.getenv("SUPER_ADMIN_ID")
+    if source_wallet == master_wallet and str(user.get("telegram_chat_id")) != super_admin_id:
+        return jsonify({"message": "You cannot use the Master Treasury address as your source wallet."}), 400
+
+    import requests
+    url = "https://apilist.tronscan.org/api/token_trc20/transfers"
+    params = {
+        "limit": 20,
+        "start": 0,
+        "direction": 1,
+        "address": master_wallet,
+        "relatedAddress": source_wallet
+    }
+    
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        data = resp.json()
+        transfers = data.get('token_transfers', [])
+        
+        credits = user.get('referral_credits', 0.0)
+        required_price = max(0.1, 20.0 - credits)
+        
+        found = False
+        for tx in transfers:
+            if tx.get('contract_address') == 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t':
+                amount = float(tx.get('quant')) / 10**6
+                if (required_price - 0.5) <= amount <= (required_price + 0.5):
+                    found = True
+                    break
+        
+        if found:
+            import database
+            import time
+            with database.db_session() as conn:
+                c = conn.cursor()
+                now = int(time.time())
+                current_expiry = user.get("premium_expiry") or 0
+                new_expiry = max(now, current_expiry) + (30 * 86400)
+                
+                c.execute("UPDATE WebUsers SET premium_expiry = ? WHERE id = ?", (new_expiry, user["id"]))
+                
+                if credits > 0:
+                    c.execute("UPDATE WebUsers SET referral_credits = max(0, referral_credits - 20) WHERE id = ?", (user["id"],))
+                    
+            if user.get("telegram_chat_id"):
+                database.add_premium_days(user["telegram_chat_id"], 30)
+                if credits > 0:
+                    database.consume_referral_credits(user["telegram_chat_id"], 20.0)
+                    
+            return jsonify({"message": "Payment verified! Premium activated for 30 days."}), 200
+        else:
+            return jsonify({"message": "Audit completed. No recent transactions found for your source wallet. Please ensure you sent $20 USDT via TRON (TRC-20)."}), 200
+            
+    except Exception as e:
+        print(f"Error checking payment: {e}")
+        return jsonify({"message": "Error querying Tron blockchain. Please try again later."}), 500
 
 # ----------------- Referrals -----------------
 @app.route('/api/referral/stats', methods=['GET'])
