@@ -204,7 +204,7 @@ def profile():
     bot_premium_expiry = tg_user.get("premium_expiry", 0) if tg_user else 0
     max_expiry = max(web_premium_expiry, bot_premium_expiry)
     
-    super_admin_id = os.getenv("SUPER_ADMIN_ID")
+    super_admin_id = utils_gcp.get_secret("SUPER_ADMIN_ID")
     is_super_admin = False
     if super_admin_id:
         try:
