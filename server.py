@@ -41,7 +41,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "metaverse-sherpa-secret-key")
 
 # Enable CORS for frontend origin (e.g. static DO site or local Vite dev)
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
-CORS(app, resources={r"/api/*": {"origins": [FRONTEND_ORIGIN, "https://metaversesherpa.io", "http://localhost:5173", "http://127.0.0.1:5173"]}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": [FRONTEND_ORIGIN, "https://metaversesherpa.io", "http://localhost:5173", "http://127.0.0.1:5173"]}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
 
 # ----------------- Health Endpoint -----------------
 @app.route('/api/health', methods=['GET'])
