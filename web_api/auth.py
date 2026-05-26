@@ -23,7 +23,7 @@ def check_password(password: str, hashed: str) -> bool:
 
 def generate_token(user_id: int) -> str:
     payload = {
-        'sub': user_id,
+        'sub': str(user_id),
         'iat': datetime.datetime.utcnow(),
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
     }
@@ -32,7 +32,7 @@ def generate_token(user_id: int) -> str:
 def verify_token(token: str) -> int:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-        return payload['sub']
+        return int(payload['sub'])
     except Exception as e:
         print(f"[AUTH DEBUG] verify_token EXCEPTION: {type(e).__name__}: {e}")
         return None
