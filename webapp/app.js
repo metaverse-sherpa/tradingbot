@@ -11,6 +11,7 @@ let STATE = {
     closed_signals: [],
     stats: { wins: 14, losses: 5, win_rate: 72.5, cumulative_pnl: 342.10, profit_factor: 2.45 },
     current_view: 'login',
+    dashboard_tab: 'crypto',
     backtest: { running: false, result: null, period: '3 Years', capital: 1000, strategy: 'Mean Reversion Scalper' }
 };
 
@@ -203,6 +204,11 @@ async function handleRoute() {
     
     renderView();
 }
+
+window.setDashboardTab = function(tab) {
+    STATE.dashboard_tab = tab;
+    renderView();
+};
 
 window.addEventListener('hashchange', handleRoute);
 window.addEventListener('load', () => {
@@ -402,16 +408,54 @@ function renderRegisterView() {
 
 function renderDashboardView() {
     const isPremium = STATE.user && STATE.user.is_premium;
-    const activeStrategy = STATE.user ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : 'Mean Reversion Scalper';
+    const isCrypto = STATE.dashboard_tab === 'crypto';
+    
+    const activeStrategy = STATE.user ? (isCrypto ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCrypto ? 'Mean Reversion Scalper' : 'None');
+    const balance = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
+    const activeTradesCount = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock')).length;
+    
+    // Gated actions depending on premium status
+    let actionCards = `
+        <a href="#/signals" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center col-span-2">
+            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">satellite_alt</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Free Alpha Signals</span>
+        </a>
+    `;
+    
+    if (isPremium) {
+        actionCards = `
+            <a href="#/trades" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">data_exploration</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold">Live Trades</span>
+            </a>
+            <a href="#/history" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">history</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold">Trade History</span>
+            </a>
+            <a href="#/stats" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">insights</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold">My Stats</span>
+            </a>
+            <a href="#/backtest" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+                <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">science</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold">Backtest</span>
+            </a>
+            ` + actionCards;
+    }
     
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <!-- Tier Badge -->
-            <div class="flex justify-start">
+            <!-- Tier Badge & Tabs -->
+            <div class="flex justify-between items-center">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
                     <span class="text-[10px]">${isPremium ? '💎' : '🥈'}</span>
                     <span class="font-label-sm text-label-sm ${isPremium ? 'text-secondary-container' : 'text-primary'}">${isPremium ? 'Premium' : 'Standard'}</span>
+                </div>
+                
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
+                    <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
+                    <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
                 </div>
             </div>
             
@@ -419,12 +463,12 @@ function renderDashboardView() {
             <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden">
                 <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full"></div>
                 <div class="relative z-10">
-                    <p class="font-label-md text-label-md text-on-surface-variant mb-1">Total Equity</p>
-                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)]">$${STATE.total_balance.toFixed(2)}</h1>
+                    <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
+                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)]">$${(balance || 0).toFixed(2)}</h1>
                     <div class="flex flex-wrap gap-2 mt-4">
                         <div class="bg-tertiary-container/20 text-tertiary px-2 py-1 rounded-lg flex items-center gap-1">
                             <span class="material-symbols-outlined text-[14px]">trending_up</span>
-                            <span class="font-label-sm text-label-sm">+$${STATE.stats.cumulative_pnl.toFixed(2)} Today</span>
+                            <span class="font-label-sm text-label-sm">+$${(STATE.stats.cumulative_pnl || 0).toFixed(2)} All-Time</span>
                         </div>
                     </div>
                 </div>
@@ -434,11 +478,11 @@ function renderDashboardView() {
             <section class="grid grid-cols-2 gap-stack-gap">
                 <div class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40">
                     <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Open Trades</p>
-                    <p class="font-numeric-data text-numeric-data text-primary">${STATE.open_trades.length}</p>
+                    <p class="font-numeric-data text-numeric-data text-primary">${activeTradesCount}</p>
                 </div>
                 <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
                     <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
-                    <p class="font-numeric-data text-numeric-data text-tertiary">${STATE.stats.win_rate}%</p>
+                    <p class="font-numeric-data text-numeric-data text-tertiary">${STATE.stats.win_rate || 0}%</p>
                 </div>
             </section>
             
@@ -450,34 +494,15 @@ function renderDashboardView() {
                     </div>
                     <div>
                         <p class="font-label-sm text-label-sm text-on-surface-variant">Active Strategy</p>
-                        <p class="font-body-lg text-body-lg font-bold text-on-surface">🪙 ${activeStrategy}</p>
+                        <p class="font-body-lg text-body-lg font-bold text-on-surface">${isCrypto ? '🪙' : '🦙'} ${activeStrategy}</p>
                     </div>
                 </div>
-                <a class="font-label-md text-label-md text-primary hover:underline" href="#/strategy">Change</a>
+                <a class="font-label-md text-label-md text-primary hover:underline" href="#/settings">Change</a>
             </section>
             
             <!-- Action Grid -->
             <section class="grid grid-cols-2 gap-stack-gap">
-                <a href="#/trades" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                    <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">data_exploration</span>
-                    <span class="font-label-md text-label-md text-on-surface font-semibold">Live Trades</span>
-                </a>
-                <a href="#/history" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                    <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">history</span>
-                    <span class="font-label-md text-label-md text-on-surface font-semibold">Trade History</span>
-                </a>
-                <a href="#/stats" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                    <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">insights</span>
-                    <span class="font-label-md text-label-md text-on-surface font-semibold">My Stats</span>
-                </a>
-                <a href="#/backtest" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-                    <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">science</span>
-                    <span class="font-label-md text-label-md text-on-surface font-semibold">Backtest</span>
-                </a>
-                <a href="#/signals" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center col-span-2">
-                    <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">satellite_alt</span>
-                    <span class="font-label-md text-label-md text-on-surface font-semibold">Free Alpha Signals</span>
-                </a>
+                ${actionCards}
             </section>
         </main>
     `;
@@ -494,37 +519,47 @@ function renderTradesView() {
             </div>
         `;
     } else {
-        listHtml = STATE.open_trades.map(trade => `
-            <div class="glass-card rounded-xl p-card-padding flex flex-col gap-3 relative overflow-hidden border border-white/10">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">${trade.symbol}</h3>
-                    <span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${
-                        trade.side === 'LONG' ? 'bg-tertiary-fixed-dim/20 text-tertiary' : 'bg-error-container/20 text-error'
-                    }">${trade.side}</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                        <span class="text-on-surface-variant">Entry Price:</span>
-                        <span class="text-on-surface font-medium">$${trade.entry_price}</span>
-                    </div>
-                    <div>
-                        <span class="text-on-surface-variant">Qty:</span>
-                        <span class="text-on-surface font-medium">${trade.qty}</span>
-                    </div>
-                </div>
-                <div class="flex justify-between items-end border-t border-white/5 pt-2">
-                    <div>
-                        <p class="text-xs text-on-surface-variant">Unrealized PnL</p>
-                        <p class="text-lg font-bold ${trade.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'}">
-                            ${trade.unrealized_pnl >= 0 ? '+' : ''}$${trade.unrealized_pnl.toFixed(2)} (${trade.roe}%)
-                        </p>
-                    </div>
-                    <button onclick="closeSinglePosition('${trade.id}', '${trade.type}')" class="px-3 py-1.5 rounded-lg border border-error/40 hover:bg-error/10 text-error text-xs font-semibold">
-                        Close
-                    </button>
-                </div>
-            </div>
-        `).join('');
+        listHtml = STATE.open_trades.map(trade => {
+                        const pnlColor = (trade.unrealized_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                        const roeColor = (trade.roe || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                        const icon = trade.side === 'LONG' ? 'trending_up' : 'trending_down';
+                        const assetIcon = trade.type === 'stock' ? '🦙' : '🪙';
+                        
+                        return `
+                            <div class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-sm">
+                                            ${assetIcon}
+                                        </div>
+                                        <div>
+                                            <p class="font-label-md text-label-md font-bold text-on-surface">${trade.symbol}</p>
+                                            <p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+                                                <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${icon}</span>
+                                                ${trade.side} ${trade.qty}x
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
+                                            ${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}
+                                        </p>
+                                        <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
+                                            ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center pt-3 border-t border-white/10">
+                                    <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
+                                        Entry: <span class="text-on-surface">$${(trade.entry_price || 0).toFixed(2)}</span>
+                                    </div>
+                                    <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
+                                        Mark: <span class="text-on-surface">$${(trade.mark_price || 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
     }
     
     return `
@@ -560,31 +595,32 @@ function renderHistoryView() {
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">📜 History</h2>
             
-            <div class="glass-card rounded-xl p-card-padding">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-white/10 text-xs text-on-surface-variant uppercase font-semibold">
-                                <th class="pb-2">Symbol</th>
-                                <th class="pb-2">Side</th>
-                                <th class="pb-2">PnL</th>
-                                <th class="pb-2">Date</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-white/5 text-sm">
-                            ${STATE.history.map(tr => `
-                                <tr>
-                                    <td class="py-3 font-semibold text-on-surface">${tr.symbol}</td>
-                                    <td class="py-3 font-medium ${tr.side === 'LONG' ? 'text-tertiary' : 'text-error'}">${tr.side}</td>
-                                    <td class="py-3 font-bold ${tr.pnl_raw >= 0 ? 'text-tertiary' : 'text-error'}">
-                                        ${tr.pnl_raw >= 0 ? '+' : ''}$${tr.pnl_raw.toFixed(2)}
-                                    </td>
-                                    <td class="py-3 text-xs text-on-surface-variant">Just now</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
+            <div class="space-y-stack-gap">
+                ${STATE.history.map(t => {
+                        const dateStr = 'Just now';
+                        const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                        const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
+                        
+                        return `
+                            <div class="glass-card p-4 rounded-lg flex justify-between items-center border border-white/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-lg">
+                                        ${assetIcon}
+                                    </div>
+                                    <div>
+                                        <p class="font-label-md text-label-md font-bold text-on-surface">${t.symbol}</p>
+                                        <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr} • ${t.side}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
+                                        ${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}
+                                    </p>
+                                    <p class="font-label-sm text-label-sm text-on-surface-variant">Closed</p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
             </div>
         </main>
     `;

@@ -174,6 +174,17 @@ def logout():
     return response
 
 # ----------------- User Profile & Info -----------------
+def _get_telegram_user(web_user):
+    """If the web user has linked a Telegram chat ID, load the bot's User record."""
+    tg_id = web_user.get("telegram_chat_id")
+    if tg_id:
+        try:
+            import database
+            return database.get_user(int(tg_id))
+        except Exception as e:
+            print(f"Could not load Telegram user {tg_id}: {e}")
+    return None
+
 @app.route('/api/user/profile', methods=['GET'])
 @require_auth
 def profile():
@@ -187,7 +198,20 @@ def profile():
     
     # Determine premium level
     now = int(time.time())
-    user["is_premium"] = user.get("premium_expiry", 0) > now
+    tg_user = _get_telegram_user(user)
+    
+    web_premium_expiry = user.get("premium_expiry", 0)
+    bot_premium_expiry = tg_user.get("premium_expiry", 0) if tg_user else 0
+    max_expiry = max(web_premium_expiry, bot_premium_expiry)
+    user["is_premium"] = max_expiry > now
+    
+    # Merge active strategies from bot user
+    user["active_crypto_strategy"] = (tg_user or {}).get("active_crypto_strategy") or user.get("active_crypto_strategy", "Mean Reversion Scalper")
+    user["active_stock_strategy"] = (tg_user or {}).get("active_stock_strategy") or user.get("active_stock_strategy", "None")
+    
+    # Indicate if keys are configured (masking the actual keys)
+    user["has_exchange_keys"] = bool((tg_user or {}).get("api_key") or user.get("api_key"))
+    user["has_alpaca_keys"] = bool((tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key"))
     
     # Standard security mask on sensitive tokens
     for key in ["api_key", "api_secret", "api_password", "alpaca_api_key", "alpaca_api_secret"]:
@@ -376,20 +400,12 @@ def get_stats():
         "total_trades": total_trades,
         "win_rate": win_rate,
         "cumulative_pnl": cum_pnl,
-        "profit_factor": profit_factor
+        "profit_factor": profit_factor,
+        "active_crypto_strategy": (tg_user or {}).get("active_crypto_strategy") or user.get("active_crypto_strategy", "Mean Reversion Scalper"),
+        "active_stock_strategy": (tg_user or {}).get("active_stock_strategy") or user.get("active_stock_strategy", "None")
     }), 200
 
 # ----------------- Active & Closed Trades -----------------
-def _get_telegram_user(web_user):
-    """If the web user has linked a Telegram chat ID, load the bot's User record."""
-    tg_id = web_user.get("telegram_chat_id")
-    if tg_id:
-        try:
-            return database.get_user(int(tg_id))
-        except Exception as e:
-            print(f"Could not load Telegram user {tg_id}: {e}")
-    return None
-
 @app.route('/api/trades/open', methods=['GET'])
 @require_auth
 def get_open_trades():
@@ -405,14 +421,29 @@ def get_open_trades():
     else:
         trade_chat_id = user["id"] + 1000000000
     
-    # 1. Fetch Alpaca Stock Trades
-    try:
-        alpaca_positions = database.get_open_alpaca_trades_by_user(trade_chat_id)
-        for pos in alpaca_positions:
-            pos["type"] = "stock"
-            open_positions.append(pos)
-    except Exception as e:
-        print(f"Alpaca positions error: {e}")
+    # 1. Fetch live Alpaca Stock Trades
+    alpaca_key = (tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key")
+    alpaca_secret = (tg_user or {}).get("alpaca_api_secret") or user.get("alpaca_api_secret")
+    
+    if alpaca_key and alpaca_secret:
+        try:
+            alpaca_user = tg_user or user
+            positions = database.make_alpaca_request(alpaca_user, "GET", "/v2/positions")
+            if isinstance(positions, list):
+                for p in positions:
+                    open_positions.append({
+                        "id": p.get("asset_id", f"alpaca-{p.get('symbol')}"),
+                        "type": "stock",
+                        "symbol": p.get("symbol"),
+                        "side": p.get("side", "long").upper(),
+                        "qty": float(p.get("qty", 0)),
+                        "entry_price": float(p.get("avg_entry_price", 0)),
+                        "mark_price": float(p.get("current_price", 0)),
+                        "unrealized_pnl": float(p.get("unrealized_pl", 0)),
+                        "roe": float(p.get("unrealized_plpc", 0)) * 100
+                    })
+        except Exception as e:
+            print(f"Alpaca live positions error: {e}")
         
     # 2. Fetch CCXT Crypto positions
     # Use the linked Telegram user's exchange keys if available, otherwise fall back to web user keys
