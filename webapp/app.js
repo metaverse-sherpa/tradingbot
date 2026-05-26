@@ -1230,7 +1230,7 @@ async function panicCloseAll() {
 }
 
 async function saveWallet() {
-    const val = document.getElementById('wallet-addr').value.strip();
+    const val = document.getElementById('wallet-addr').value.trim();
     const res = await apiRequest('/premium/wallet', 'POST', { source_wallet: val });
     if (res) {
         showToast("USDT source wallet registered");
