@@ -10,6 +10,7 @@ from flask_cors import CORS
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import database
+import utils_gcp
 from web_api.db_web import (
     get_web_user_by_email,
     get_web_user_by_google_id,
@@ -38,7 +39,7 @@ database.init_db()
 
 app = Flask(__name__, static_folder='webapp', static_url_path='')
 # Configure Flask session secret
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "metaverse-sherpa-secret-key")
+app.secret_key = utils_gcp.get_secret("FLASK_SECRET_KEY") or "metaverse-sherpa-secret-key"
 
 # Enable CORS for frontend origin (e.g. static DO site or local Vite dev)
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
@@ -59,7 +60,7 @@ def health():
 def get_config():
     """Serves non-sensitive, public configuration to the frontend SPA."""
     return jsonify({
-        "google_client_id": os.getenv("GOOGLE_CLIENT_ID", "")
+        "google_client_id": utils_gcp.get_secret("GOOGLE_CLIENT_ID") or ""
     }), 200
 
 # ----------------- Authentication Routes -----------------

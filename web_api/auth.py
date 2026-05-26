@@ -7,9 +7,10 @@ from flask import request, jsonify, g
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from web_api.db_web import get_web_user_by_id
+import utils_gcp
 
-JWT_SECRET = os.getenv("JWT_SECRET", "default-fallback-jwt-secret-key-1234567")
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+JWT_SECRET = utils_gcp.get_secret("JWT_SECRET") or "default-fallback-jwt-secret-key-1234567"
+GOOGLE_CLIENT_ID = utils_gcp.get_secret("GOOGLE_CLIENT_ID") or ""
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()

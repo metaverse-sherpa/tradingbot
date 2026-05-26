@@ -14,10 +14,11 @@ if SCRIPTS_DIR not in sys.path:
     sys.path.append(SCRIPTS_DIR)
 
 import database
+import utils_gcp
 
 # Load environment variables
 load_dotenv()
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_TOKEN = utils_gcp.get_secret("TELEGRAM_BOT_TOKEN")
 SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID", 1567788633))
 CRYPTO_LEVERAGE = 20.0
 
