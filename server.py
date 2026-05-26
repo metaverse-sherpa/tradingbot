@@ -297,22 +297,28 @@ def settings_strategy():
 @require_auth
 def get_balance():
     user = g.user
+    tg_user = _get_telegram_user(user)
     balance_crypto = 0.0
     balance_stock = 0.0
     
+    # Use the linked Telegram user's exchange keys if available
+    crypto_api_key = (tg_user or {}).get("api_key") or user.get("api_key")
+    crypto_api_secret = (tg_user or {}).get("api_secret") or user.get("api_secret")
+    crypto_api_password = (tg_user or {}).get("api_password") or user.get("api_password") or ""
+    crypto_exchange_id = (tg_user or {}).get("exchange_id") or user.get("exchange_id", "blofin")
+    
     # 1. Query live Crypto balance (CCXT)
-    if user.get("api_key") and user.get("api_secret"):
+    if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
-            ex_id = user.get('exchange_id', 'blofin')
             config = {
-                "apiKey": user["api_key"],
-                "secret": user["api_secret"],
-                "password": user.get("api_password") or "",
+                "apiKey": crypto_api_key,
+                "secret": crypto_api_secret,
+                "password": crypto_api_password,
                 "options": {"defaultType": "swap"},
                 "enableRateLimit": True,
             }
-            client = getattr(ccxt, ex_id)(config)
+            client = getattr(ccxt, crypto_exchange_id)(config)
             bal = client.fetch_balance(params={"type": "futures"})
             balance_crypto = bal.get('USDT', {}).get('total', 0.0) or bal.get('total', {}).get('USDT', 0.0) or 0.0
             client.close()
@@ -321,10 +327,15 @@ def get_balance():
             balance_crypto = 0.0
             
     # 2. Query live Stock balance (Alpaca)
-    if user.get("alpaca_api_key") and user.get("alpaca_api_secret"):
+    # Use linked Telegram user's Alpaca keys if available
+    alpaca_key = (tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key")
+    alpaca_secret = (tg_user or {}).get("alpaca_api_secret") or user.get("alpaca_api_secret")
+    alpaca_endpoint = (tg_user or {}).get("alpaca_endpoint") or user.get("alpaca_endpoint")
+    
+    if alpaca_key and alpaca_secret:
         try:
-            endpoint = user.get("alpaca_endpoint") or "https://paper-api.alpaca.markets"
-            res = database.make_alpaca_request(user, "GET", "/v2/account")
+            alpaca_user = tg_user or user
+            res = database.make_alpaca_request(alpaca_user, "GET", "/v2/account")
             balance_stock = float(res.get("portfolio_value", 0.0))
         except Exception as e:
             print(f"Error fetching stock balance: {e}")
@@ -339,36 +350,64 @@ def get_balance():
 @app.route('/api/user/stats', methods=['GET'])
 @require_auth
 def get_stats():
-    # Return aggregated statistics from local db and session
     user = g.user
+    tg_user = _get_telegram_user(user)
     
-    # Synthetic / actual metrics
-    win_rate = 72.5
-    total_trades = user.get("total_wins", 0) + user.get("total_losses", 0)
-    if total_trades > 0:
-        win_rate = round((user["total_wins"] / total_trades) * 100, 1)
+    # If linked to Telegram, use real bot stats
+    if tg_user:
+        wins = tg_user.get("wins", 0)
+        losses = tg_user.get("losses", 0)
+        total_trades = wins + losses
+        win_rate = round((wins / total_trades) * 100, 1) if total_trades > 0 else 0.0
+        cum_pnl = tg_user.get("cum_pnl", 0.0)
+        profit_factor = round(wins / losses, 2) if losses > 0 else (float('inf') if wins > 0 else 0.0)
+    else:
+        # Web-only user: use WebUsers table data or defaults
+        wins = user.get("total_wins", 0)
+        losses = user.get("total_losses", 0)
+        total_trades = wins + losses
+        win_rate = round((wins / total_trades) * 100, 1) if total_trades > 0 else 0.0
+        cum_pnl = user.get("cumulative_pnl", 0.0)
+        profit_factor = round(wins / losses, 2) if losses > 0 else (float('inf') if wins > 0 else 0.0)
         
     return jsonify({
-        "wins": user.get("total_wins", 14),
-        "losses": user.get("total_losses", 5),
-        "total_trades": total_trades or 19,
+        "wins": wins,
+        "losses": losses,
+        "total_trades": total_trades,
         "win_rate": win_rate,
-        "cumulative_pnl": user.get("cumulative_pnl", 342.10),
-        "profit_factor": 2.45
+        "cumulative_pnl": cum_pnl,
+        "profit_factor": profit_factor
     }), 200
 
 # ----------------- Active & Closed Trades -----------------
+def _get_telegram_user(web_user):
+    """If the web user has linked a Telegram chat ID, load the bot's User record."""
+    tg_id = web_user.get("telegram_chat_id")
+    if tg_id:
+        try:
+            return database.get_user(int(tg_id))
+        except Exception as e:
+            print(f"Could not load Telegram user {tg_id}: {e}")
+    return None
+
 @app.route('/api/trades/open', methods=['GET'])
 @require_auth
 def get_open_trades():
     user = g.user
     open_positions = []
+    tg_user = _get_telegram_user(user)
+    
+    # Determine the chat_id to use for Alpaca trade queries
+    # If user linked their Telegram, use the real chat_id so we see actual bot trades
+    # Otherwise fall back to the synthetic web-only offset
+    if tg_user:
+        trade_chat_id = user["telegram_chat_id"]
+    else:
+        trade_chat_id = user["id"] + 1000000000
     
     # 1. Fetch Alpaca Stock Trades
     try:
-        # We query Alpaca active trades mapping user id offset
-        synthetic_chat_id = user["id"] + 1000000000
-        alpaca_positions = database.get_open_alpaca_trades_by_user(synthetic_chat_id)
+        alpaca_positions = database.get_open_alpaca_trades_by_user(trade_chat_id)
         for pos in alpaca_positions:
             pos["type"] = "stock"
             open_positions.append(pos)
@@ -376,18 +415,23 @@ def get_open_trades():
         print(f"Alpaca positions error: {e}")
         
     # 2. Fetch CCXT Crypto positions
-    if user.get("api_key") and user.get("api_secret"):
+    # Use the linked Telegram user's exchange keys if available, otherwise fall back to web user keys
+    crypto_api_key = (tg_user or {}).get("api_key") or user.get("api_key")
+    crypto_api_secret = (tg_user or {}).get("api_secret") or user.get("api_secret")
+    crypto_api_password = (tg_user or {}).get("api_password") or user.get("api_password") or ""
+    crypto_exchange_id = (tg_user or {}).get("exchange_id") or user.get("exchange_id", "blofin")
+    
+    if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
-            ex_id = user.get('exchange_id', 'blofin')
             config = {
-                "apiKey": user["api_key"],
-                "secret": user["api_secret"],
-                "password": user.get("api_password") or "",
+                "apiKey": crypto_api_key,
+                "secret": crypto_api_secret,
+                "password": crypto_api_password,
                 "options": {"defaultType": "swap"},
                 "enableRateLimit": True,
             }
-            client = getattr(ccxt, ex_id)(config)
+            client = getattr(ccxt, crypto_exchange_id)(config)
             positions = client.fetch_positions()
             for pos in positions:
                 contracts = float(pos.get("contracts", 0.0) or 0.0)
@@ -406,23 +450,6 @@ def get_open_trades():
             client.close()
         except Exception as e:
             print(f"Crypto positions fetch error: {e}")
-            
-    # Mocking standard active positions if None exist for visualization
-    if not open_positions and not user.get("api_key"):
-        open_positions = [
-            {
-                "id": "mock-btc",
-                "type": "crypto",
-                "symbol": "BTC/USDT",
-                "side": "LONG",
-                "qty": 0.5,
-                "entry_price": 64500.0,
-                "mark_price": 65120.0,
-                "unrealized_pnl": 310.0,
-                "roe": 12.4,
-                "chart_url": "/api/charts/btc_mock.png"
-            }
-        ]
         
     return jsonify(open_positions), 200
 
@@ -431,23 +458,22 @@ def get_open_trades():
 def get_trades_history():
     user = g.user
     limit = int(request.args.get("limit", 10))
-    synthetic_chat_id = user["id"] + 1000000000
+    tg_user = _get_telegram_user(user)
+    
+    # Use real Telegram chat_id if linked, otherwise synthetic offset
+    if tg_user:
+        trade_chat_id = user["telegram_chat_id"]
+    else:
+        trade_chat_id = user["id"] + 1000000000
     
     history = []
     try:
-        alpaca_history = database.get_closed_alpaca_trades_by_user(synthetic_chat_id, limit)
+        alpaca_history = database.get_closed_alpaca_trades_by_user(trade_chat_id, limit)
         for tr in alpaca_history:
             tr["type"] = "stock"
             history.append(tr)
     except Exception as e:
         print(f"History query error: {e}")
-        
-    # Append mock entries if database history is empty for user experience
-    if not history:
-        history = [
-            {"id": 1, "type": "crypto", "symbol": "BTC/USDT", "side": "LONG", "entry_price": 63200, "close_price": 64500, "qty": 0.2, "pnl_raw": 260.0, "pnl_pct": 2.05, "close_time": int(time.time()) - 3600},
-            {"id": 2, "type": "crypto", "symbol": "SOL/USDT", "side": "SHORT", "entry_price": 145, "close_price": 141, "qty": 10, "pnl_raw": 40.0, "pnl_pct": 2.75, "close_time": int(time.time()) - 18000}
-        ]
         
     return jsonify(history), 200
 
