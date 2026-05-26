@@ -101,6 +101,7 @@ If setting up a new `e2-micro` instance, follow these essential steps:
 
 ## 🔐 Google Cloud Secret Manager Setup
 
+
 To securely run the bot on GCP without hardcoding API keys in `.env` files, the bot uses Google Cloud Secret Manager.
 
 1.  **Create Secrets**: Go to **Security > Secret Manager** in the Google Cloud Console and create your secrets (e.g., `ALPACA_API_KEY`, `ALPACA_API_SECRET`).
