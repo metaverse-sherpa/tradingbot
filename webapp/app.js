@@ -989,6 +989,13 @@ function renderPremiumView() {
             
             <div class="glass-card rounded-xl p-card-padding space-y-4">
                 <h4 class="font-semibold text-on-surface">Upgrade / Renew via TRON USDT</h4>
+                
+                <div class="bg-primary/10 rounded-lg p-3 border border-primary/20 space-y-2">
+                    <p class="text-sm text-on-surface"><span class="font-bold text-primary">1.</span> Send <span class="font-bold text-secondary-container">20 USDT</span> (TRC-20) to the Treasury wallet below.</p>
+                    <p class="text-sm text-on-surface"><span class="font-bold text-primary">2.</span> Enter your sending wallet address and click <span class="font-semibold">Save Source Wallet</span>.</p>
+                    <p class="text-sm text-on-surface"><span class="font-bold text-primary">3.</span> Click <span class="font-semibold">Verify Blockchain Payment</span>.</p>
+                </div>
+
                 <div class="flex justify-center py-2">
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj" alt="TRON Wallet QR Code" class="rounded-lg p-2 bg-white" width="160" height="160" />
                 </div>
