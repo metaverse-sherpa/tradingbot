@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Metaverse Sherpa | Portfolio Stats</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f131f;
+            color: #dfe2f3;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(27, 31, 44, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(60, 215, 255, 0.3), transparent);
+        }
+        .elite-glow {
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+        .donut-ring {
+            transition: stroke-dashoffset 1s ease-out;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-high": "#262a37",
+                      "tertiary-fixed-dim": "#00e479",
+                      "on-tertiary-container": "#005d2d",
+                      "primary-container": "#00d4ff",
+                      "error-container": "#93000a",
+                      "surface-container-lowest": "#0a0e1a",
+                      "on-error-container": "#ffdad6",
+                      "outline-variant": "#3c494e",
+                      "tertiary-container": "#00df76",
+                      "on-surface-variant": "#bbc9cf",
+                      "on-surface": "#dfe2f3",
+                      "surface-container-low": "#171b28",
+                      "tertiary-fixed": "#60ff99",
+                      "outline": "#859398",
+                      "on-primary-fixed-variant": "#004e5f",
+                      "on-primary-fixed": "#001f27",
+                      "surface-tint": "#3cd7ff",
+                      "on-background": "#dfe2f3",
+                      "surface-variant": "#313442",
+                      "on-tertiary": "#003919",
+                      "on-error": "#690005",
+                      "surface-container-highest": "#313442",
+                      "surface-container": "#1b1f2c",
+                      "tertiary": "#00ff88",
+                      "primary-fixed": "#b4ebff",
+                      "on-tertiary-fixed": "#00210c",
+                      "secondary-container": "#ffdb3c",
+                      "inverse-on-surface": "#2c303d",
+                      "on-primary": "#003642",
+                      "secondary": "#fff9ef",
+                      "error": "#ffb4ab",
+                      "inverse-primary": "#00677e",
+                      "on-secondary": "#3a3000",
+                      "surface-bright": "#353946",
+                      "primary-fixed-dim": "#3cd7ff",
+                      "surface-dim": "#0f131f",
+                      "surface": "#0f131f",
+                      "background": "#0f131f",
+                      "on-secondary-fixed-variant": "#544600",
+                      "primary": "#a8e8ff",
+                      "secondary-fixed-dim": "#e9c400",
+                      "on-secondary-container": "#725f00",
+                      "secondary-fixed": "#ffe16d",
+                      "on-primary-container": "#00586b",
+                      "on-tertiary-fixed-variant": "#005228",
+                      "inverse-surface": "#dfe2f3",
+                      "on-secondary-fixed": "#221b00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-gap": "24px",
+                      "stack-gap": "12px",
+                      "inline-gap": "8px",
+                      "card-padding": "16px",
+                      "container-margin": "16px"
+              },
+              "fontFamily": {
+                      "label-md": ["Inter"],
+                      "numeric-data": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "display-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "numeric-data": ["18px", {"lineHeight": "24px", "fontWeight": "700"}],
+                      "label-sm": ["10px", {"lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-[0_2px_10px_rgba(0,212,255,0.1)] flex justify-between items-center px-container-margin py-3">
+<div class="flex items-center gap-2 font-headline-sm text-headline-sm font-bold text-primary tracking-tight">
+<span class="material-symbols-outlined text-primary" data-icon="terrain">terrain</span>
+            Metaverse Sherpa
+        </div>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional high-resolution avatar of a futuristic digital trader. The character is wearing a sleek dark techwear jacket with subtle cyan glowing accents. The background is a soft-focus visualization of a digital trading terminal with translucent data charts and neon highlights, maintaining a professional and elite metaverse aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSDTO1X3QHmP7UUN-chkQj_BfmshZvrBV6z7Q-DHAgdI2CoB9_q0ddV8jv2Gus2G5kuNJOh1VmkqXQLY6_P35aQkuCT4x2fbJx2nlDmUZpme86FO592hvYi50Hxv6tkV2C1_20xWfFVIS1QsND2TDvO1e3qYvEr5km5jPfrFx7G-tQKkWbgHFkc-XoGlM29zhm1NDGD-yBUqiLuf_2XBbvZF0vMjEmJbcSZorz81C1C1B2oPqmfPuDyTMLw3wb92dQzMuokL1IzT0"/>
+</div>
+</header>
+<main class="pt-20 px-container-margin">
+<!-- Title & Tabs -->
+<section class="mt-4 mb-section-gap">
+<h1 class="font-display-lg text-display-lg text-on-surface mb-6">📊 Your Stats</h1>
+<div class="flex gap-inline-gap border-b border-white/5">
+<button class="px-6 py-2 font-label-md text-label-md text-primary relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-primary after:shadow-[0_0_8px_#3cd7ff] transition-all">
+                    🪙 Crypto
+                </button>
+<button class="px-6 py-2 font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">
+                    🦙 Stocks
+                </button>
+</div>
+</section>
+<!-- Main Stats Dashboard -->
+<div class="space-y-section-gap">
+<!-- Win Rate Visualization -->
+<div class="glass-card rounded-xl p-card-padding flex flex-col items-center justify-center min-h-[220px]">
+<div class="relative w-40 h-40">
+<svg class="w-full h-full transform -rotate-90">
+<circle cx="80" cy="80" fill="transparent" r="70" stroke="rgba(255,255,255,0.05)" stroke-width="12"></circle>
+<circle class="donut-ring" cx="80" cy="80" fill="transparent" r="70" stroke="url(#emeraldGradient)" stroke-dasharray="440" stroke-dashoffset="140.8" stroke-linecap="round" stroke-width="12"></circle>
+<defs>
+<lineargradient id="emeraldGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" style="stop-color:#00ff88;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#00e479;stop-opacity:1"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-display-lg text-display-lg text-tertiary drop-shadow-[0_0_12px_rgba(0,255,136,0.15)]">68%</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Win Rate</span>
+</div>
+</div>
+<div class="mt-4 flex gap-4 w-full justify-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_6px_#00ff88]"></div>
+<span class="font-label-md text-label-md text-on-surface-variant">Wins (142)</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-surface-variant"></div>
+<span class="font-label-md text-label-md text-on-surface-variant">Losses (66)</span>
+</div>
+</div>
+</div>
+<!-- PnL Summary Card -->
+<div class="glass-card rounded-xl p-card-padding elite-glow">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Cumulative PnL</p>
+<h2 class="font-display-lg text-display-lg text-tertiary-fixed-dim drop-shadow-[0_0_12px_rgba(0,228,121,0.2)]">+$14,284.50</h2>
+</div>
+<div class="text-right">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Profit Factor</p>
+<div class="flex items-center justify-end gap-1 text-secondary-container">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-numeric-data text-numeric-data">2.41</span>
+</div>
+</div>
+</div>
+<div class="h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-tertiary-container w-[72%] shadow-[0_0_8px_#00df76]"></div>
+</div>
+<p class="mt-3 font-label-sm text-label-sm text-on-surface-variant/60 italic text-center">Performing in the top 5% of Sherpa traders this month.</p>
+</div>
+<!-- Bento 2x2 Grid -->
+<div class="grid grid-cols-2 gap-stack-gap">
+<div class="glass-card rounded-xl p-card-padding">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-2">Total Trades</p>
+<p class="font-numeric-data text-numeric-data text-on-surface">208</p>
+</div>
+<div class="glass-card rounded-xl p-card-padding">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-2">Best Trade</p>
+<p class="font-numeric-data text-numeric-data text-tertiary">+$3,102</p>
+</div>
+<div class="glass-card rounded-xl p-card-padding">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-2">Worst Trade</p>
+<p class="font-numeric-data text-numeric-data text-error">-$1,240</p>
+</div>
+<div class="glass-card rounded-xl p-card-padding">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-2">Active Since</p>
+<p class="font-numeric-data text-numeric-data text-on-surface">Jan 2024</p>
+</div>
+</div>
+<!-- Reset Stats Link -->
+<div class="flex justify-center pt-4">
+<button class="flex items-center gap-2 text-error font-label-md text-label-md hover:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined text-[16px]" data-icon="restart_alt">restart_alt</span>
+                    Reset Stats
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container/90 backdrop-blur-[40px] border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.4)]">
+<div class="flex justify-around items-center w-full h-16 px-4">
+<!-- Dashboard -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</a>
+<!-- Trades -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="swap_horiz">swap_horiz</span>
+<span class="font-label-sm text-label-sm">Trades</span>
+</a>
+<!-- Stats (ACTIVE) -->
+<a class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full after:shadow-[0_0_8px_#3cd7ff] active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats" style="font-variation-settings: 'FILL' 1;">query_stats</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<!-- Settings -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 hover:text-primary/80 transition-colors active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-sm text-label-sm">Settings</span>
+</a>
+</div>
+</nav>
+<script>
+        // Micro-interaction for number counts or subtle hover glows
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+
+        // Simple animation entry for the donut
+        window.addEventListener('load', () => {
+            const donut = document.querySelector('.donut-ring');
+            if (donut) {
+                donut.style.strokeDashoffset = '140.8'; // 68% of 440 path length
+            }
+        });
+    </script>
+</body></html>

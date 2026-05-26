@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Refer and Earn | Metaverse Sherpa</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: contain;
+        }
+        .glass-card {
+            background: rgba(27, 31, 44, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+            opacity: 0.3;
+        }
+        .cyan-glow {
+            filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.15));
+        }
+        .progress-glow {
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for mobile feel */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#2c303d",
+                        "secondary-container": "#ffdb3c",
+                        "surface-tint": "#3cd7ff",
+                        "outline-variant": "#3c494e",
+                        "tertiary": "#00ff88",
+                        "surface-container-highest": "#313442",
+                        "on-surface-variant": "#bbc9cf",
+                        "on-secondary-container": "#725f00",
+                        "on-tertiary-fixed-variant": "#005228",
+                        "primary": "#a8e8ff",
+                        "surface": "#0f131f",
+                        "primary-fixed-dim": "#3cd7ff",
+                        "surface-container-high": "#262a37",
+                        "primary-container": "#00d4ff",
+                        "tertiary-container": "#00df76",
+                        "surface-dim": "#0f131f",
+                        "secondary-fixed-dim": "#e9c400",
+                        "primary-fixed": "#b4ebff",
+                        "outline": "#859398",
+                        "inverse-surface": "#dfe2f3",
+                        "surface-container-lowest": "#0a0e1a",
+                        "on-surface": "#dfe2f3",
+                        "on-primary-container": "#00586b",
+                        "surface-container": "#1b1f2c",
+                        "surface-variant": "#313442",
+                        "on-tertiary": "#003919",
+                        "background": "#0f131f",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#001f27",
+                        "on-tertiary-fixed": "#00210c",
+                        "on-primary": "#003642",
+                        "surface-container-low": "#171b28",
+                        "on-primary-fixed-variant": "#004e5f",
+                        "tertiary-fixed": "#60ff99",
+                        "on-tertiary-container": "#005d2d",
+                        "surface-bright": "#353946",
+                        "secondary-fixed": "#ffe16d",
+                        "on-secondary-fixed": "#221b00",
+                        "on-error-container": "#ffdad6",
+                        "inverse-primary": "#00677e",
+                        "error-container": "#93000a",
+                        "on-background": "#dfe2f3",
+                        "tertiary-fixed-dim": "#00e479",
+                        "on-secondary": "#3a3000",
+                        "on-secondary-fixed-variant": "#544600",
+                        "secondary": "#fff9ef",
+                        "error": "#ffb4ab"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "inline-gap": "8px",
+                        "section-gap": "24px",
+                        "card-padding": "16px",
+                        "stack-gap": "12px",
+                        "container-margin": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "numeric-data": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "label-sm": ["10px", {"lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "numeric-data": ["18px", {"lineHeight": "24px", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface selection:bg-primary/30 min-h-screen pb-32">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl border-b border-white/10 shadow-[0_2px_10px_rgba(0,212,255,0.05)] flex justify-between items-center px-container-margin py-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">terrain</span>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight">Metaverse Sherpa</h1>
+</div>
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-primary transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full border border-primary/20 overflow-hidden shadow-lg">
+<img alt="User portfolio avatar" class="w-full h-full object-cover" data-alt="A high-quality 3D avatar profile picture of a tech-forward professional wearing sleek futuristic glasses and a minimalist collar. The background features deep navy blue gradients with subtle neon cyan digital grid patterns, matching an institutional-grade institutional metaverse trading platform aesthetic. The lighting is crisp and modern with a cinematic soft focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjNcR3MmilsJladlGzjNJ-K_lut4YycVhG4ysAU4HJm2fhSXiHT3lhVXjZmjvWOb_glf4Rh7iWQGjluJqKrJzs3hT0UBKHzUZTVmvBX-cQVkAyHZuqoJznubUoN3S6jGe7FPezdCuV1HG8-udSG53of1qJZj1nRA1mChj-nitum8jlNVomyQTJRt6YIpihFPAyebdpZ6UXc8vIpRvJvOewCYxg3nNX1bUcAS1dZz7sd2WP5JtgqQpQy_YfAgN88DQs95XuUhlsuzg"/>
+</div>
+</div>
+</header>
+<main class="mt-20 px-container-margin space-y-section-gap">
+<!-- Hero Header -->
+<div class="space-y-2">
+<h2 class="font-display-lg text-display-lg text-primary">Refer and Earn</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Expand the trail and unlock premium access for free!</p>
+</div>
+<!-- Performance Card -->
+<section class="glass-card rounded-xl p-card-padding space-y-4">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-outline uppercase tracking-widest">Your Performance</span>
+<span class="bg-primary-container/10 text-primary-container px-2 py-0.5 rounded-full font-label-sm text-label-sm border border-primary-container/30">Base Camp Explorer</span>
+</div>
+<div class="flex items-end gap-2">
+<span class="font-numeric-data text-display-lg leading-none text-primary">1</span>
+<span class="font-label-md text-label-md text-on-surface-variant mb-1.5 uppercase">Recruit Joined</span>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center font-label-sm text-label-sm">
+<span class="text-on-surface-variant">Next Reward: 2 more for 30 Days Premium</span>
+<span class="text-primary-container">33%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-container progress-glow transition-all duration-1000" style="width: 33%"></div>
+</div>
+</div>
+</section>
+<!-- Incentive Banner -->
+<div class="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-container/20 to-tertiary-container/10 border border-primary/20 p-card-padding">
+<div class="flex items-start gap-4">
+<div class="bg-primary-container/20 p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">database</span>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline-sm text-label-md font-bold text-white uppercase tracking-wider">Institutional Data Edge</h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-snug">
+                        Every 3 recruits... instantly unlocks 30 days of full <span class="text-primary font-bold">'Sherpa Basket'</span> institutional data access.
+                    </p>
+</div>
+</div>
+<!-- Decorative mountain in background -->
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-9xl text-primary/5 select-none" style="font-variation-settings: 'wght' 100;">terrain</span>
+</div>
+<!-- Invite Section -->
+<section class="space-y-stack-gap">
+<h3 class="font-label-md text-label-md text-outline uppercase tracking-widest px-1">Your Institutional Invite Link</h3>
+<div class="glass-card rounded-xl p-card-padding space-y-4 border-primary/20">
+<div class="flex items-center gap-3 bg-surface-container-lowest/50 border border-white/5 rounded-lg px-3 py-3 font-body-md text-body-md text-on-surface truncate">
+<span class="text-primary/70">shrp.io/alpha_nexus_99</span>
+<button class="ml-auto flex items-center justify-center p-1 hover:text-primary transition-colors" onclick="copyLink()">
+<span class="material-symbols-outlined text-xl">content_copy</span>
+</button>
+</div>
+<div class="flex gap-inline-gap">
+<button class="flex-grow bg-primary-container text-on-primary-container font-headline-sm text-label-md py-4 rounded-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-xl">share</span>
+                        SHARE INVITE LINK
+                    </button>
+<button class="aspect-square bg-surface-container-high text-primary flex items-center justify-center px-4 rounded-lg border border-primary/10 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-2xl">qr_code_2</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Activity Table -->
+<section class="space-y-stack-gap pb-8">
+<div class="flex justify-between items-center px-1">
+<h3 class="font-label-md text-label-md text-outline uppercase tracking-widest">Recruit Activity</h3>
+<span class="font-label-sm text-label-sm text-primary-container">View All</span>
+</div>
+<div class="space-y-2">
+<!-- Activity Item 1 -->
+<div class="glass-card rounded-lg p-3 flex items-center justify-between border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-surface-container-high to-primary/20 flex items-center justify-center">
+<span class="text-primary font-bold">AT</span>
+</div>
+<div>
+<div class="font-label-md text-on-surface font-bold">@Alpha_Trades_44</div>
+<div class="font-label-sm text-on-surface-variant">Joined: Oct 12, 2023</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="px-2 py-0.5 rounded bg-tertiary/10 text-tertiary text-[10px] font-bold uppercase border border-tertiary/20">Active</span>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="glass-card rounded-lg p-3 flex items-center justify-between border-white/5 opacity-70">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="text-on-surface-variant font-bold">KK</span>
+</div>
+<div>
+<div class="font-label-md text-on-surface font-bold">@Krypto_Knight</div>
+<div class="font-label-sm text-on-surface-variant">Invited: Oct 14, 2023</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="px-2 py-0.5 rounded bg-outline/10 text-outline text-[10px] font-bold uppercase border border-outline/20">Pending</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container/90 backdrop-blur-xl rounded-t-xl border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] md:hidden">
+<div class="flex justify-around items-center h-16 px-4 pb-safe">
+<!-- Trade -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary-fixed active:scale-90 transition-transform">
+<span class="material-symbols-outlined">swap_horiz</span>
+<span class="font-label-sm text-label-sm">Trade</span>
+</button>
+<!-- Assets -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary-fixed active:scale-90 transition-transform">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-sm text-label-sm">Assets</span>
+</button>
+<!-- Intelligence -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary-fixed active:scale-90 transition-transform">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-sm text-label-sm">Intelligence</span>
+</button>
+<!-- Profile (ACTIVE for settings context) -->
+<button class="flex flex-col items-center justify-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full after:shadow-[0_0_8px_#00d4ff] active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</button>
+</div>
+</nav>
+<script>
+        function copyLink() {
+            // Simple visual feedback for copy
+            const btn = event.currentTarget;
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined text-tertiary">check</span>';
+            setTimeout(() => {
+                btn.innerHTML = originalIcon;
+            }, 2000);
+            
+            // Logic for clipboard would go here
+            console.log("Link copied to clipboard: shrp.io/alpha_nexus_99");
+        }
+
+        // Add subtle parallax/shimmer to glass cards on scroll
+        window.addEventListener('scroll', () => {
+            const cards = document.querySelectorAll('.glass-card');
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect();
+                const visible = rect.top < window.innerHeight && rect.bottom > 0;
+                if (visible) {
+                    const shift = (rect.top / window.innerHeight) * 20;
+                    card.style.backgroundPosition = `center ${shift}px`;
+                }
+            });
+        });
+    </script>
+</body></html>

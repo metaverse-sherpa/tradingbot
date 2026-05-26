@@ -259,6 +259,46 @@ def init_db():
         # Set default theoretical balance
         c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('theoretical_balance', '1000.0')")
 
+        # 🌐 Web Application Users Table
+        c.execute('''CREATE TABLE IF NOT EXISTS WebUsers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            google_id TEXT UNIQUE,
+            password_hash TEXT,
+            full_name TEXT,
+            telegram_chat_id INTEGER,
+            exchange_id TEXT DEFAULT 'blofin',
+            api_key TEXT,
+            api_secret TEXT,
+            api_password TEXT,
+            alpaca_api_key TEXT,
+            alpaca_api_secret TEXT,
+            alpaca_endpoint TEXT,
+            is_active BOOLEAN DEFAULT 0,
+            risk_pct REAL DEFAULT 1.0,
+            stock_risk_pct REAL DEFAULT 1.0,
+            enabled_symbols TEXT,
+            hide_dollars BOOLEAN DEFAULT 0,
+            custom_equity_type TEXT DEFAULT 'all',
+            custom_equity_value REAL,
+            active_crypto_strategy TEXT DEFAULT 'Mean Reversion Scalper',
+            active_stock_strategy TEXT DEFAULT 'None',
+            source_wallet TEXT,
+            premium_expiry INTEGER DEFAULT 0,
+            referral_credits REAL DEFAULT 0.0,
+            referred_by INTEGER,
+            referral_count INTEGER DEFAULT 0,
+            total_wins INTEGER DEFAULT 0,
+            total_losses INTEGER DEFAULT 0,
+            cumulative_pnl REAL DEFAULT 0.0,
+            has_open_positions BOOLEAN DEFAULT 0,
+            history_cache TEXT,
+            last_audit_stats TEXT,
+            last_fetch_timestamp INTEGER DEFAULT 0,
+            created_at INTEGER
+        )''')
+
+
 def reset_crypto_stats(chat_id):
     with db_session() as conn:
         c = conn.cursor()

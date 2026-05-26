@@ -17,5 +17,13 @@ yfinance
 scipy
 pytz
 
+# Web Application & API Dependencies
+flask
+flask-cors
+pyjwt
+bcrypt
+google-auth
+httpx
+
 # Optional (Install from git if needed in future to bypass PyPI resolution limitations):
 # pandas-ta @ git+https://github.com/twopirllc/pandas-ta.git
