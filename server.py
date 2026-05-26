@@ -203,7 +203,19 @@ def profile():
     web_premium_expiry = user.get("premium_expiry", 0)
     bot_premium_expiry = tg_user.get("premium_expiry", 0) if tg_user else 0
     max_expiry = max(web_premium_expiry, bot_premium_expiry)
-    user["is_premium"] = max_expiry > now or user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False))
+    
+    super_admin_id = os.getenv("SUPER_ADMIN_ID")
+    is_super_admin = False
+    if super_admin_id:
+        try:
+            super_admin_id = int(super_admin_id)
+            if user.get("telegram_chat_id") == super_admin_id or (tg_user and tg_user.get("telegram_chat_id") == super_admin_id):
+                is_super_admin = True
+        except ValueError:
+            pass
+            
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    user["is_premium"] = max_expiry > now or is_admin
     
     # Merge active strategies from bot user
     user["active_crypto_strategy"] = (tg_user or {}).get("active_crypto_strategy") or user.get("active_crypto_strategy", "Mean Reversion Scalper")
