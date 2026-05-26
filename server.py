@@ -22,7 +22,8 @@ from web_api.db_web import (
     update_web_user_symbols,
     update_web_user_status,
     update_web_user_strategy,
-    update_web_user_wallet
+    update_web_user_wallet,
+    update_web_user_telegram
 )
 from web_api.auth import (
     hash_password,
@@ -236,6 +237,24 @@ def settings_preferences():
     
     update_web_user_preferences(g.user["id"], risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars)
     return jsonify({"message": "Trading preferences saved successfully"}), 200
+
+@app.route('/api/settings/telegram', methods=['POST'])
+@require_auth
+def settings_telegram():
+    data = request.json or {}
+    telegram_chat_id = data.get("telegram_chat_id")
+    
+    # Try to convert to int if provided
+    if telegram_chat_id:
+        try:
+            telegram_chat_id = int(telegram_chat_id)
+        except ValueError:
+            return jsonify({"error": "Invalid Telegram Chat ID"}), 400
+    else:
+        telegram_chat_id = None
+        
+    update_web_user_telegram(g.user["id"], telegram_chat_id)
+    return jsonify({"message": "Telegram Chat ID updated successfully"}), 200
 
 @app.route('/api/settings/symbols', methods=['POST'])
 @require_auth

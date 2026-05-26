@@ -136,6 +136,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• **Standard (Always Free)**: Receive real-time free signal signals directly in your Telegram chat as the Sherpa scans the markets.\n"
         "• **/premium**: Full autopilot mode. The Sherpa connects directly to your exchange accounts to automatically execute and manage actual trades in real-time. **$20/mo**.\n\n"
         "📖 Tap /strategyguide to view different trading strategies.\n\n"
+        f"🔗 **Web Sync ID**: Your Telegram Chat ID is `{chat_id}`. Copy this into the Web App settings to sync your accounts.\n\n"
         "🏆 Tap /setup to link your account and start your climb."
     )
     

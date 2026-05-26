@@ -658,6 +658,18 @@ function renderSettingsView() {
                 </form>
             </section>
             
+            <!-- Telegram Sync -->
+            <section class="glass-card rounded-xl p-card-padding space-y-4">
+                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">📱 Telegram Sync</h3>
+                <p class="text-xs text-on-surface-variant">Sync your web account with the Telegram bot to receive live signals and portfolio updates. Send /start to the bot to get your Chat ID.</p>
+                <form onsubmit="handleTelegramSetup(event)" class="space-y-3">
+                    <input id="telegram-chat-id" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="Telegram Chat ID (e.g. 123456789)" type="text" value="${user.telegram_chat_id || ''}" required/>
+                    <button type="submit" class="w-full h-11 bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2">
+                        Link Telegram
+                    </button>
+                </form>
+            </section>
+            
             <!-- Risk Sizing Slider -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">⚖️ Risk & Sizing</h3>
@@ -989,6 +1001,18 @@ async function toggleBotStatus(currentStatus) {
     if (res) {
         showToast(`Autopilot ${!currentStatus ? 'started' : 'stopped'} successfully`);
         handleRoute();
+    }
+}
+
+async function handleTelegramSetup(e) {
+    e.preventDefault();
+    const telegram_chat_id = document.getElementById('telegram-chat-id').value;
+    const res = await apiRequest('/settings/telegram', 'POST', { telegram_chat_id });
+    if (res) {
+        if (STATE.user) {
+            STATE.user.telegram_chat_id = parseInt(telegram_chat_id);
+        }
+        showToast(res.message);
     }
 }
 
