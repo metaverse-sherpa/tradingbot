@@ -49,15 +49,21 @@ function showToast(message, type = 'success') {
 }
 
 // ----------------- API Requests -----------------
-async function apiRequest(path, method = 'GET', data = null) {
-    const url = `${API_BASE}${path}`;
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    const url = `${API_BASE}${endpoint}`;
     const options = {
         method,
         headers: {
             'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        credentials: 'omit' // We are using Bearer tokens now
     };
+    
+    // Inject Bearer Token
+    const token = localStorage.getItem('session_token');
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+    }
     if (data) {
         options.body = JSON.stringify(data);
     }
@@ -117,6 +123,7 @@ async function handleGoogleCredentialResponse(response) {
     const res = await apiRequest('/auth/google', 'POST', { credential });
     if (res) {
         STATE.user = res.user;
+        if (res.token) localStorage.setItem('session_token', res.token);
         showToast("Logged in with Google!");
         navigate('#/dashboard');
     }
@@ -919,6 +926,7 @@ async function handleEmailLogin(e) {
     const res = await apiRequest('/auth/login', 'POST', { email, password });
     if (res) {
         STATE.user = res.user;
+        if (res.token) localStorage.setItem('session_token', res.token);
         showToast("Welcome back, Sherpa trader!");
         navigate('#/dashboard');
     }
@@ -933,6 +941,7 @@ async function handleEmailRegister(e) {
     const res = await apiRequest('/auth/register', 'POST', { full_name: name, email, password });
     if (res) {
         STATE.user = res.user;
+        if (res.token) localStorage.setItem('session_token', res.token);
         showToast("Account successfully registered!");
         navigate('#/dashboard');
     }
@@ -951,6 +960,7 @@ async function triggerGoogleLogin() {
 async function handleLogout() {
     await apiRequest('/auth/logout', 'POST');
     STATE.user = null;
+    localStorage.removeItem('session_token');
     showToast("Logged out successfully");
     navigate('#/login');
 }

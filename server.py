@@ -76,7 +76,7 @@ def register():
     user_id = create_web_user_email(email, pw_hash, full_name, referred_by)
     
     token = generate_token(user_id)
-    response = make_response(jsonify({"message": "Registration successful", "user": {"id": user_id, "email": email, "full_name": full_name}}), 201)
+    response = make_response(jsonify({"message": "Registration successful", "token": token, "user": {"id": user_id, "email": email, "full_name": full_name}}), 201)
     
     # Set secure JWT cookie
     response.set_cookie(
@@ -103,7 +103,7 @@ def login():
         return jsonify({"error": "Invalid email or password"}), 401
         
     token = generate_token(user["id"])
-    response = make_response(jsonify({"message": "Login successful", "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"]}}), 200)
+    response = make_response(jsonify({"message": "Login successful", "token": token, "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"]}}), 200)
     
     response.set_cookie(
         'session_token',
@@ -148,7 +148,7 @@ def google_auth():
             user = get_web_user_by_id(user_id)
             
     token = generate_token(user["id"])
-    response = make_response(jsonify({"message": "Google authentication successful", "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"]}}), 200)
+    response = make_response(jsonify({"message": "Google authentication successful", "token": token, "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"]}}), 200)
     
     response.set_cookie(
         'session_token',
