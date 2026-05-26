@@ -77,7 +77,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
         
         const resData = await response.json();
         if (!response.ok) {
-            throw new Error(resData.error || "Something went wrong");
+            throw new Error(resData.error || resData.message || "Something went wrong");
         }
         return resData;
     } catch (err) {
