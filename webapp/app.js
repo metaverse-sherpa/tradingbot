@@ -1,5 +1,8 @@
 // ----------------- App State & Configurations -----------------
-const API_BASE = "/api"; // Standard proxy path (or falls back to direct URL in dev if needed)
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? "http://localhost:5001/api" 
+    : "/api";
+
 let STATE = {
     user: null,
     crypto_balance: 12450.0,
@@ -60,11 +63,10 @@ async function apiRequest(path, method = 'GET', data = null) {
     
     try {
         const response = await fetch(url, options);
-        if (response.status === 401 && STATE.current_view !== 'login' && STATE.current_view !== 'register') {
+        if (response.status === 401 && window.location.hash !== '#/login' && window.location.hash !== '#/register') {
             // Unauthorized → redirect to login
             STATE.user = null;
             navigate('#/login');
-            showToast("Session expired. Please log in again.", "warning");
             return null;
         }
         
