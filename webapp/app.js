@@ -164,6 +164,8 @@ async function handleRoute() {
         }
         const sigs = await apiRequest('/signals/active');
         if (sigs) STATE.active_signals = sigs;
+        const open = await apiRequest('/trades/open');
+        if (open) STATE.open_trades = open;
     } else if (hash === '#/trades') {
         STATE.current_view = 'trades';
         const open = await apiRequest('/trades/open');
@@ -510,7 +512,10 @@ function renderDashboardView() {
 
 function renderTradesView() {
     let listHtml = '';
-    if (STATE.open_trades.length === 0) {
+    const isCrypto = STATE.dashboard_tab === 'crypto';
+    const filteredTrades = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
+    
+    if (filteredTrades.length === 0) {
         listHtml = `
             <div class="text-center py-12">
                 <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">hourglass_empty</span>
@@ -519,7 +524,7 @@ function renderTradesView() {
             </div>
         `;
     } else {
-        listHtml = STATE.open_trades.map(trade => {
+        listHtml = filteredTrades.map(trade => {
                         const pnlColor = (trade.unrealized_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
                         const roeColor = (trade.roe || 0) >= 0 ? 'text-tertiary' : 'text-error';
                         const icon = trade.side === 'LONG' ? 'trending_up' : 'trending_down';
@@ -568,11 +573,12 @@ function renderTradesView() {
             <div class="flex justify-between items-center">
                 <div>
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Positions</h2>
-                    <p class="font-label-sm text-label-sm text-on-surface-variant">${STATE.open_trades.length} trades open</p>
+                    <p class="font-label-sm text-label-sm text-on-surface-variant">${filteredTrades.length} trades open</p>
                 </div>
-                <button onclick="handleRoute()" class="text-primary hover:opacity-80">
-                    <span class="material-symbols-outlined">refresh</span>
-                </button>
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
+                    <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
+                    <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
+                </div>
             </div>
             
             <div class="space-y-stack-gap">
@@ -590,13 +596,27 @@ function renderTradesView() {
 }
 
 function renderHistoryView() {
+    const isCrypto = STATE.dashboard_tab === 'crypto';
+    const filteredHistory = STATE.history.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
+    
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">📜 History</h2>
+            <div class="flex justify-between items-center">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">📜 History</h2>
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
+                    <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
+                    <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
+                </div>
+            </div>
             
             <div class="space-y-stack-gap">
-                ${STATE.history.map(t => {
+                ${filteredHistory.length === 0 ? `
+                    <div class="text-center py-12">
+                        <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">history</span>
+                        <p class="font-body-lg text-body-lg text-on-surface font-semibold">No trade history</p>
+                    </div>
+                ` : filteredHistory.map(t => {
                         const dateStr = 'Just now';
                         const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
                         const assetIcon = t.type === 'stock' ? '🦙' : '🪙';

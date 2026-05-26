@@ -13,6 +13,11 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
     if fallback_env_key is None:
         fallback_env_key = secret_id.replace('-', '_').upper()
         
+    # Priority 1: Check local environment variable first to bypass GCP overhead in local dev
+    val = os.getenv(fallback_env_key)
+    if val:
+        return val
+        
     try:
         # Try to fetch from GCP Secret Manager
         client = secretmanager.SecretManagerServiceClient()

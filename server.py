@@ -361,7 +361,9 @@ def get_balance():
             balance_crypto = total_equity
         except Exception as e:
             print(f"Error fetching crypto balance: {e}")
-            balance_crypto = 0.0
+            balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
+    else:
+        balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
             
     # 2. Query live Stock balance (Alpaca)
     # Use linked Telegram user's Alpaca keys if available
@@ -457,6 +459,27 @@ def get_open_trades():
                     })
         except Exception as e:
             print(f"Alpaca live positions error: {e}")
+            
+        # Add fallback for internal tracking
+        try:
+            tg_id = tg_user.get("telegram_chat_id") if tg_user else user.get("id")
+            local_alpaca_trades = database.get_open_alpaca_trades_by_user(tg_id)
+            for t in local_alpaca_trades:
+                if not any(p.get("symbol") == t.get("symbol") for p in open_positions):
+                    # We have a local trade that wasn't retrieved from Alpaca directly
+                    open_positions.append({
+                        "id": f"local-{t.get('id')}",
+                        "type": "stock",
+                        "symbol": t.get("symbol"),
+                        "side": "LONG",  # internal tracker defaults to long
+                        "qty": float(t.get("qty", 0)),
+                        "entry_price": float(t.get("entry_price", 0)),
+                        "mark_price": float(t.get("entry_price", 0)), # avoid crash if missing
+                        "unrealized_pnl": 0.0,
+                        "roe": 0.0
+                    })
+        except Exception as e:
+            print(f"Alpaca local fallback error: {e}")
         
     # 2. Fetch CCXT Crypto positions
     # Use the linked Telegram user's exchange keys if available, otherwise fall back to web user keys
@@ -536,6 +559,9 @@ def get_trades_history():
             # Avoid duplicates if already pulled from cache
             if not any(h.get("symbol") == tr["symbol"] and h.get("timestamp") == tr.get("close_timestamp", 0) for h in history):
                 tr["type"] = "stock"
+                tr["net_pnl"] = tr.get("pnl_raw", 0)
+                tr["mark_price"] = tr.get("close_price", tr.get("entry_price", 0))
+                tr["side"] = "LONG"
                 history.append(tr)
     except Exception as e:
         print(f"History query error: {e}")
