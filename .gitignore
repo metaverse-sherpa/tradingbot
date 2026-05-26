@@ -40,3 +40,4 @@ bot_users.db
 
 # Scratch / Sandbox Files
 scratch/
+node_modules/
