@@ -48,6 +48,14 @@ CORS(app, resources={r"/api/*": {"origins": [FRONTEND_ORIGIN, "https://metaverse
 def health():
     return jsonify({"status": "healthy", "timestamp": int(time.time())}), 200
 
+# ----------------- Configuration Endpoint -----------------
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Serves non-sensitive, public configuration to the frontend SPA."""
+    return jsonify({
+        "google_client_id": os.getenv("GOOGLE_CLIENT_ID", "")
+    }), 200
+
 # ----------------- Authentication Routes -----------------
 @app.route('/api/auth/register', methods=['POST'])
 def register():

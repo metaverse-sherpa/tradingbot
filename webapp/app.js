@@ -55,7 +55,8 @@ async function apiRequest(path, method = 'GET', data = null) {
         method,
         headers: {
             'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
     };
     if (data) {
         options.body = JSON.stringify(data);
@@ -82,7 +83,16 @@ async function apiRequest(path, method = 'GET', data = null) {
 }
 
 // ----------------- Google Sign In Initialization -----------------
-function initGoogleSignIn() {
+async function initGoogleSignIn() {
+    // Fetch the client ID from the backend securely so it's not hardcoded in the frontend repository
+    const config = await apiRequest('/config', 'GET');
+    const clientId = config ? config.google_client_id : null;
+    
+    if (!clientId) {
+        console.error("Google Client ID not found from backend config.");
+        return;
+    }
+
     // Inject official Google script dynamically
     if (!document.getElementById('google-gsi-script')) {
         const script = document.createElement('script');
@@ -93,7 +103,7 @@ function initGoogleSignIn() {
         script.onload = () => {
             if (window.google) {
                 window.google.accounts.id.initialize({
-                    client_id: "386827192736-yourgoogleappid.apps.googleusercontent.com", // Overwritten dynamically by API client config
+                    client_id: clientId,
                     callback: handleGoogleCredentialResponse
                 });
             }
