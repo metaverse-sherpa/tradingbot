@@ -544,6 +544,64 @@ function renderDashboardView() {
 }
 
 function renderTradesView() {
+    const isPremium = STATE.user && STATE.user.is_premium;
+    
+    if (!isPremium) {
+        return `
+            ${renderHeader()}
+            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">💎 Go Premium</h2>
+                
+                <div class="glass-card rounded-xl overflow-hidden border-t-2 border-secondary-container/40">
+                    <div class="p-6 bg-surface-container-low text-center border-b border-white/5 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-secondary-container/10 to-transparent pointer-events-none"></div>
+                        <span class="material-symbols-outlined text-secondary-container text-5xl mb-2 relative z-10">diamond</span>
+                        <h2 class="text-2xl font-bold text-on-surface relative z-10">Unlock the 23x Wealth Gap</h2>
+                        <p class="text-sm text-on-surface-variant mt-2 relative z-10">Unlock professional-grade tools used by elite traders.</p>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl mt-0.5">smart_toy</span>
+                            <div>
+                                <p class="font-bold text-on-surface">Full Autopilot</p>
+                                <p class="text-sm text-on-surface-variant mt-0.5">Live auto-trading directly on your exchange.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl mt-0.5">query_stats</span>
+                            <div>
+                                <p class="font-bold text-on-surface">Full Sherpa Basket</p>
+                                <p class="text-sm text-on-surface-variant mt-0.5">Trade all 19+ premium symbols.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl mt-0.5">tune</span>
+                            <div>
+                                <p class="font-bold text-on-surface">Advanced Risk</p>
+                                <p class="text-sm text-on-surface-variant mt-0.5">Set custom risk-per-trade percentages.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl mt-0.5">bolt</span>
+                            <div>
+                                <p class="font-bold text-on-surface">Priority Execution</p>
+                                <p class="text-sm text-on-surface-variant mt-0.5">Priority in the engine's background loop.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-surface-container-low border-t border-white/5">
+                        <a href="#/premium" class="block w-full text-center h-12 leading-[48px] bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-110 transition-all shadow-[0_0_15px_rgba(212,175,55,0.3)]">
+                            Upgrade Now - $20 / mo
+                        </a>
+                        <p class="text-center text-xs text-tertiary mt-4">
+                            🎁 Or invite 3 friends to unlock 1 Month Free! <a href="#/referral" class="underline font-bold">Tap to refer!</a>
+                        </p>
+                    </div>
+                </div>
+            </main>
+        `;
+    }
+
     let listHtml = '';
     const isCrypto = STATE.dashboard_tab === 'crypto';
     const filteredTrades = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
