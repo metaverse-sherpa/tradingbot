@@ -476,10 +476,10 @@ function renderDashboardView() {
             
             <!-- Quick Stats -->
             <section class="grid grid-cols-2 gap-stack-gap">
-                <div class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40">
-                    <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Open Trades</p>
+                <a href="#/trades" class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40 hover:bg-white/5 transition-colors group block">
+                    <p class="font-label-sm text-label-sm text-on-surface-variant mb-1 group-hover:text-primary transition-colors">Open Trades</p>
                     <p class="font-numeric-data text-numeric-data text-primary">${activeTradesCount}</p>
-                </div>
+                </a>
                 <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
                     <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
                     <p class="font-numeric-data text-numeric-data text-tertiary">${STATE.stats.win_rate || 0}%</p>

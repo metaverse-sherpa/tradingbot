@@ -343,9 +343,22 @@ def get_balance():
                 "enableRateLimit": True,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
-            bal = client.fetch_balance(params={"type": "futures"})
-            balance_crypto = bal.get('USDT', {}).get('total', 0.0) or bal.get('total', {}).get('USDT', 0.0) or 0.0
-            client.close()
+            acc_type = "swap" if crypto_exchange_id in ['bitget', 'bingx'] else "futures"
+            bal = client.fetch_balance(params={"type": acc_type})
+            free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
+            
+            # Calculate true equity (free + margin + unrealized pnl)
+            total_equity = free_usdt
+            try:
+                positions = client.fetch_positions()
+                for p in positions:
+                    margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
+                    upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
+                    total_equity += (margin + upnl)
+            except Exception as pos_err:
+                print(f"Error fetching positions for balance: {pos_err}")
+                
+            balance_crypto = total_equity
         except Exception as e:
             print(f"Error fetching crypto balance: {e}")
             balance_crypto = 0.0
@@ -498,11 +511,32 @@ def get_trades_history():
         trade_chat_id = user["id"] + 1000000000
     
     history = []
+    
+    # 1. Fetch Crypto History from the Bot's Cache if linked
+    if tg_user:
+        try:
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (trade_chat_id,))
+                row = c.fetchone()
+                if row and row[0]:
+                    import json
+                    cached = json.loads(row[0])
+                    for tr in cached:
+                        is_stk = database.is_stock(tr.get("symbol", ""))
+                        tr["type"] = "stock" if is_stk else "crypto"
+                        history.append(tr)
+        except Exception as e:
+            print(f"Error loading history_cache: {e}")
+            
+    # 2. Add local web user stock history if any
     try:
         alpaca_history = database.get_closed_alpaca_trades_by_user(trade_chat_id, limit)
         for tr in alpaca_history:
-            tr["type"] = "stock"
-            history.append(tr)
+            # Avoid duplicates if already pulled from cache
+            if not any(h.get("symbol") == tr["symbol"] and h.get("timestamp") == tr.get("close_timestamp", 0) for h in history):
+                tr["type"] = "stock"
+                history.append(tr)
     except Exception as e:
         print(f"History query error: {e}")
         
