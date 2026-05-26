@@ -28,5 +28,6 @@ jobs:
             
             echo "🔄 Restarting Sherpa Engine..."
             sudo systemctl restart tradingbot
+            sudo systemctl restart tradingbot-api
             
             echo "✅ Deployment Successful. Verification marker: 2026-05-14 10:02"
