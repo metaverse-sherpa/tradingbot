@@ -607,8 +607,13 @@ function renderDashboardView() {
         </a>
     `;
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-    const shouldBlur = STATE.is_loading_balance || isPrivacyOn;
-    const inlineBlur = shouldBlur ? 'style="filter: blur(5px); transition: filter 0.2s ease; cursor: pointer; user-select: none;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : 'style="transition: filter 0.2s ease;"';
+    const loadingBlur = STATE.is_loading_balance ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : '';
+    const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
+    const privacyBlur = shouldBlurDollars ? 'style="filter: blur(5px); transition: filter 0.2s ease; cursor: pointer; user-select: none;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : 'style="transition: filter 0.2s ease;"';
+    
+    const pnlVal = activeStats.cumulative_pnl || 0;
+    const startingCapital = balance - pnlVal;
+    const pnlPct = startingCapital > 0 ? (pnlVal / startingCapital) * 100 : 0;
     
     return `
         ${renderHeader()}
@@ -631,11 +636,13 @@ function renderDashboardView() {
                 <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full"></div>
                 <div class="relative z-10">
                     <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
-                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)]" ${inlineBlur}>$${(balance || 0).toFixed(2)}</h1>
+                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)]" ${privacyBlur}>$${(balance || 0).toFixed(2)}</h1>
                     <div class="flex flex-wrap gap-2 mt-4">
-                        <div class="bg-tertiary-container/20 text-tertiary px-2 py-1 rounded-lg flex items-center gap-1 w-fit" ${inlineBlur}>
-                            <span class="material-symbols-outlined text-[14px]">trending_up</span>
-                            <span class="font-label-sm text-label-sm">${(activeStats.cumulative_pnl || 0) >= 0 ? '+' : ''}$${(activeStats.cumulative_pnl || 0).toFixed(2)} All-Time</span>
+                        <div class="bg-tertiary-container/20 text-tertiary px-2 py-1 rounded-lg flex items-center gap-1 w-fit">
+                            <span class="material-symbols-outlined text-[14px]" ${loadingBlur}>${pnlVal >= 0 ? 'trending_up' : 'trending_down'}</span>
+                            <span class="font-label-sm text-label-sm">
+                                <span ${loadingBlur}>${pnlVal >= 0 ? '+' : '-'}</span><span ${privacyBlur}>$${Math.abs(pnlVal).toFixed(2)}</span> <span ${loadingBlur}>(${pnlVal >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%) All-Time</span>
+                            </span>
                         </div>
                     </div>
                 </div>
