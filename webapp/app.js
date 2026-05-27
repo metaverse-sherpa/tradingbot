@@ -348,8 +348,10 @@ window.addEventListener('load', () => {
 function renderBottomNav() {
     if (['login', 'register'].includes(STATE.current_view)) return '';
     
+    const disabledClass = !STATE.user ? 'opacity-40 pointer-events-none grayscale' : '';
+    
     return `
-        <nav class="fixed bottom-0 left-0 w-full z-50 pb-safe bg-surface-container/90 backdrop-blur-[40px] border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.4)] flex justify-around items-center h-16 px-4">
+        <nav class="fixed bottom-0 left-0 w-full z-50 pb-safe bg-surface-container/90 backdrop-blur-[40px] border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.4)] flex justify-around items-center h-16 px-4 ${disabledClass}">
             <a class="flex flex-col items-center justify-center ${STATE.current_view === 'dashboard' ? 'text-primary relative after:content-[\'\'] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full after:shadow-[0_0_8px_#3cd7ff]' : 'text-on-surface-variant/60 hover:text-primary'} transition-colors duration-200" href="#/dashboard">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' ${STATE.current_view === 'dashboard' ? 1 : 0};">dashboard</span>
                 <span class="font-label-sm text-label-sm">Dashboard</span>
@@ -1804,7 +1806,7 @@ async function handleLogout() {
     STATE.user = null;
     localStorage.removeItem('session_token');
     showToast("Logged out successfully");
-    navigate('#/login');
+    navigate('#/landing');
 }
 
 async function handleExchangeSetup(e) {
