@@ -184,10 +184,12 @@ async function handleRoute() {
     // Determine view route
     if (hash === '#/dashboard') {
         STATE.current_view = 'dashboard';
-        const [bal, sigs, open] = await Promise.all([
+        const statsRoute = (STATE.user && STATE.user.is_premium) ? '/user/stats' : '/stats/free';
+        const [bal, sigs, open, stats] = await Promise.all([
             apiRequest('/user/balance'),
             apiRequest('/signals/active'),
-            apiRequest('/trades/open')
+            apiRequest('/trades/open'),
+            apiRequest(statsRoute)
         ]);
         if (bal) {
             STATE.crypto_balance = bal.crypto_balance;
@@ -196,6 +198,10 @@ async function handleRoute() {
         }
         if (sigs) STATE.active_signals = sigs;
         if (open) STATE.open_trades = open;
+        if (stats) {
+            if (STATE.user && STATE.user.is_premium) STATE.stats = stats;
+            else STATE.free_stats = stats;
+        }
     } else if (hash === '#/trades') {
         STATE.current_view = 'trades';
         const [open, hist] = await Promise.all([
@@ -533,7 +539,8 @@ function renderDashboardView() {
             </main>
         `;
     }
-
+    
+    const activeStats = STATE.stats || STATE.free_stats || { cumulative_pnl: 0, win_rate: 0 };
     const activeStrategy = STATE.user ? (isCrypto ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCrypto ? 'Mean Reversion Scalper' : 'None');
     const balance = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
     const activeTradesCount = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock')).length;
@@ -587,7 +594,7 @@ function renderDashboardView() {
                     <div class="flex flex-wrap gap-2 mt-4">
                         <div class="bg-tertiary-container/20 text-tertiary px-2 py-1 rounded-lg flex items-center gap-1">
                             <span class="material-symbols-outlined text-[14px]">trending_up</span>
-                            <span class="font-label-sm text-label-sm">+$${(STATE.stats.cumulative_pnl || 0).toFixed(2)} All-Time</span>
+                            <span class="font-label-sm text-label-sm">+$${(activeStats.cumulative_pnl || 0).toFixed(2)} All-Time</span>
                         </div>
                     </div>
                 </div>
@@ -601,7 +608,7 @@ function renderDashboardView() {
                 </a>
                 <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
                     <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
-                    <p class="font-numeric-data text-numeric-data text-tertiary">${STATE.stats.win_rate || 0}%</p>
+                    <p class="font-numeric-data text-numeric-data text-tertiary">${activeStats.win_rate || 0}%</p>
                 </div>
             </section>
             
