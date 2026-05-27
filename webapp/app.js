@@ -1937,7 +1937,7 @@ async function checkDeploymentAlert() {
             const lastSeen = localStorage.getItem('last_seen_deployment');
             if (lastSeen !== res.commit_hash) {
                 // Trigger the existing premium temporary toast balloon
-                showToast("🚀 New deployment Successful");
+                showToast("🚀 New deployment Successful! Reloading app...");
                 localStorage.setItem('last_seen_deployment', res.commit_hash);
                 
                 // Trigger native OS push notification if permitted
@@ -1947,6 +1947,11 @@ async function checkDeploymentAlert() {
                         icon: "/favicon.ico"
                     });
                 }
+                
+                // Force a reload to clear the cache and load the new code
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 3000);
             }
         }
     } catch (e) {
