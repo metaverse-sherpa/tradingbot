@@ -1104,6 +1104,44 @@ def referral_stats():
         "invite_link": invite_link
     }), 200
 
+# ----------------- Admin Deployment Endpoint -----------------
+@app.route('/api/admin/deployment', methods=['GET'])
+@require_auth
+def admin_deployment():
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    import subprocess
+    from datetime import datetime
+    
+    try:
+        # Fetch latest 3 commits
+        changelog = subprocess.check_output(['git', 'log', '-n', '3', '--pretty=format:%s (%ar)']).decode('utf-8')
+        changelog_lines = changelog.split('\n')
+    except Exception as git_err:
+        print(f"Failed to fetch changelog: {git_err}")
+        changelog_lines = ["• New deployment (Git log not accessible)"]
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    checklist = [
+        "Verify 'Close Trade' tactical confirmation on /opentrades",
+        "Audit the new 'Glass Progress Bar' for layout overlap",
+        "Confirm Blofin Tutorial deep_link delivers PDF correctly"
+    ]
+
+    return jsonify({
+        "timestamp": now,
+        "changelog": changelog_lines,
+        "checklist": checklist
+    }), 200
+
 # ----------------- Visual Chart Endpoint -----------------
 @app.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
