@@ -836,7 +836,12 @@ function renderTradesView() {
             listHtml = filteredHistory.map(t => {
                 const dateStr = t.close_time ? new Date(t.close_time * 1000).toLocaleDateString() : 'Recent';
                 const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                const roeColor = (t.roe || 0) >= 0 ? 'text-tertiary' : 'text-error';
                 const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
+                const isLong = t.side === 'LONG' || t.side === 'l' || t.side === 'long';
+                
+                const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+                const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
                 
                 return `
                     <div class="glass-card p-4 rounded-lg flex justify-between items-center border border-white/5">
@@ -845,15 +850,20 @@ function renderTradesView() {
                                 ${assetIcon}
                             </div>
                             <div>
-                                <p class="font-label-md text-label-md font-bold text-on-surface">${t.symbol}</p>
-                                <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr} • ${t.side}</p>
+                                <p class="font-label-md text-label-md font-bold text-on-surface flex items-center gap-1">
+                                    ${t.symbol}
+                                    <span class="material-symbols-outlined text-[16px] ${isLong ? 'text-primary' : 'text-error'}">${isLong ? 'trending_up' : 'trending_down'}</span>
+                                </p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr}</p>
                             </div>
                         </div>
                         <div class="text-right">
                             <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                ${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}
+                                <span ${inlineBlur}>${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}</span>
                             </p>
-                            <p class="font-label-sm text-label-sm text-on-surface-variant">Closed</p>
+                            <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
+                                ${(t.roe || 0) >= 0 ? '+' : ''}${(t.roe || 0).toFixed(2)}%
+                            </p>
                         </div>
                     </div>
                 `;
