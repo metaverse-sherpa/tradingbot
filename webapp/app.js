@@ -1570,11 +1570,18 @@ function renderSignalCard(sig, isLanding = false) {
                     </h4>
                     <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
                 </div>
-                <div class="text-right flex flex-col justify-center" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
-                    <p class="font-numeric-data text-numeric-data font-bold text-lg ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
-                        ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
-                    </p>
-                    ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
+                <div class="flex items-center gap-3">
+                    <div class="text-right flex flex-col justify-center" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
+                        <p class="font-numeric-data text-numeric-data font-bold text-lg ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
+                            ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
+                        </p>
+                        ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
+                    </div>
+                    ${!isLanding ? `
+                    <div class="text-on-surface-variant/40 group-hover:text-primary transition-colors flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl transition-transform duration-300 ${isExpanded ? 'rotate-180 text-primary' : ''}">expand_more</span>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
             <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
