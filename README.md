@@ -113,26 +113,53 @@ To securely run the bot on GCP without hardcoding API keys in `.env` files, the 
     * Save and restart the VM.
 4.  **Local Fallback**: When running locally on your own machine (outside of GCP), the bot will gracefully fall back to checking your local `.env` file for uppercase equivalents (e.g., `ALPACA_API_KEY` and `ALPACA_API_SECRET`).
 
+## 🌐 Premium Web Application
+
+The companion premium trading dashboard serves as an elite, high-performance web dashboard integrated directly with your VPS trading systems.
+
+### Core Features
+
+*   **Instant Load Speeds**: Optimizes tab transitions using parallelized request handling (`Promise.all`) and thread-safe in-memory caching on the backend (60-second TTL) for near `<1ms` response times.
+*   **Segmented Mobile controls**: Custom dual segmented controllers built with clean glassmorphic CSS styling:
+    *   **Modes**: Switch seamlessly between **Active Positions** and **Closed History**.
+    *   **Sizing**: Swaps dynamically between **Crypto** and **Stocks** with real-time active position counters directly inside the tab labels, e.g. `Crypto (0)` and `Stocks (4)`. No wrapping, no layout shifting.
+*   **Inline Candlestick Charting**: Exposes an `/api/trades/chart` route that dynamically fetches live 15-minute crypto or daily stock bars and renders technical candlestick analysis with indicator overlays (Bollinger Clouds, EMAs).
+*   **Dynamic glowing progress bar**: Clicking any active position smoothly expands it to display a custom progress visual mapping Stop Loss (SL), Entry, and Take Profit (TP) levels relative to the current live mark price, using a glowing neon indicator.
+*   **Real-time deployment alerts**: Periodically checks the VPS for commits every 30 seconds. Uses a static git commit hash system so that when updates are pushed and the server restarts, a temporary **"🚀 New deployment Successful"** toast and native browser push notification automatically trigger for admin users without needing a refresh.
+
+---
+
 ## 🔄 Updates & Maintenance
 
-Follow these steps each time you push new code to Github:
+Follow these steps each time you push new code to Github to deploy it live to the VPS:
 
-1.  **Local**: `git add .` -> `git commit -m "Update"` -> `git push`
-2.  **VPS**: Connect via SSH and run:
+1.  **Local**: Push commits to GitHub:
+    ```bash
+    git add .
+    git commit -m "feat: implement webapp optimizations"
+    git push
+    ```
+2.  **VPS**: Connect via SSH and pull the changes:
     ```bash
     cd ~/tradingbot
     git pull
+    ```
+3.  **Restart Services**: Restart the Telegram bot daemon and the Flask web server:
+    ```bash
+    # Restart the Telegram Bot
     sudo systemctl restart tradingbot
 
-    or
-
-    cd /home/gilesasp/tradingbot && git pull && sudo systemctl restart tradingbot && journalctl -u tradingbot -f
+    # Restart or start the Flask Web Application Server (manually or via service)
+    # If running manually in the background:
+    screen -S webapp -X quit 2>/dev/null
+    screen -dmS webapp bash -c "source venv/bin/activate && python3 server.py"
     ```
-3.  **Logs**: Monitor live activity with `journalctl -u tradingbot -f`
-4.  **Disk Safety**: Limit system logs to 500MB to prevent disk bloat:
-    ```bash
-    sudo journalctl --vacuum-size=500M
-    ```
+4.  **Logs**: Monitor live console logs:
+    *   Telegram Bot: `journalctl -u tradingbot -f`
+    *   Disk Safety: Limit system logs to 500MB to prevent disk bloat:
+        ```bash
+        sudo journalctl --vacuum-size=500M
+        ```
 
 ## 🛠️ Troubleshooting & Environment
 
