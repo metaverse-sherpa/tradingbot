@@ -19,6 +19,7 @@ let STATE = {
     expanded_signal_id: null,
     is_loading_signals: false,
     is_loading_dashboard: false,
+    is_loading_balance: false,
     history_expanded_id: null,
     free_history_expanded_id: null,
     profile_menu_open: false,
@@ -185,6 +186,7 @@ async function handleRoute() {
     // Determine view route
     if (hash === '#/dashboard') {
         STATE.current_view = 'dashboard';
+        STATE.is_loading_balance = true;
         
         // 1. Render immediately using cached/default state for a lightning fast load
         renderView();
@@ -197,20 +199,19 @@ async function handleRoute() {
             apiRequest('/trades/open'),
             apiRequest(statsRoute)
         ]).then(([bal, sigs, open, stats]) => {
-            let stateChanged = false;
+            STATE.is_loading_balance = false;
+            let stateChanged = true; // Always re-render to remove the blur
             
             if (bal) {
                 STATE.crypto_balance = bal.crypto_balance;
                 STATE.stock_balance = bal.stock_balance;
                 STATE.total_balance = bal.total_balance;
-                stateChanged = true;
             }
-            if (sigs) { STATE.active_signals = sigs; stateChanged = true; }
-            if (open) { STATE.open_trades = open; stateChanged = true; }
+            if (sigs) STATE.active_signals = sigs;
+            if (open) STATE.open_trades = open;
             if (stats) {
                 if (STATE.user && STATE.user.is_premium) STATE.stats = stats;
                 else STATE.free_stats = stats;
-                stateChanged = true;
             }
             
             // 3. Silently re-render the dashboard to "hydrate" the widgets if the user is still on it
@@ -627,7 +628,7 @@ function renderDashboardView() {
                 <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full"></div>
                 <div class="relative z-10">
                     <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
-                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)]">$${(balance || 0).toFixed(2)}</h1>
+                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${(STATE.is_loading_balance || (STATE.user && STATE.user.hide_dollars)) ? 'blur-md opacity-50 select-none transition-all duration-300' : 'transition-all duration-300'}">$${(balance || 0).toFixed(2)}</h1>
                     <div class="flex flex-wrap gap-2 mt-4">
                         <div class="bg-tertiary-container/20 text-tertiary px-2 py-1 rounded-lg flex items-center gap-1">
                             <span class="material-symbols-outlined text-[14px]">trending_up</span>
