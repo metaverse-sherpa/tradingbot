@@ -87,7 +87,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
         }
         
         if (response.status === 502 || response.status === 503) {
-            throw new Error("Currently pushing a new version! Sherpa will be right back.");
+            throw new Error("The MetaverseSherpa is pushing a new release up the mountain.");
         }
         
         let resData;
@@ -95,7 +95,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
             resData = await response.json();
         } catch (e) {
             if (!response.ok) {
-                throw new Error("Currently pushing a new version! Sherpa will be right back.");
+                throw new Error("The MetaverseSherpa is pushing a new release up the mountain.");
             }
             throw new Error("Invalid response from server");
         }
