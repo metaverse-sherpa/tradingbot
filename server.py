@@ -607,6 +607,35 @@ def get_trades_history():
     # 2. Add local web user stock history if any
     try:
         alpaca_history = database.get_closed_alpaca_trades_by_user(trade_chat_id, limit)
+        if not alpaca_history:
+            # Fallback to API if local db is empty
+            orders = database.make_alpaca_request(tg_user or user, "GET", "/v2/orders", params={"status": "closed", "limit": 40})
+            if isinstance(orders, list):
+                for o in orders:
+                    qty = float(o.get("filled_qty", 0) or 0)
+                    if qty > 0 and o.get("side") == "sell":
+                        price = float(o.get("filled_avg_price", 0))
+                        entry = price * 0.95
+                        for prev in orders:
+                            if prev["symbol"] == o["symbol"] and prev["side"] == "buy":
+                                entry = float(prev.get("filled_avg_price", price))
+                                break
+                        pnl_raw = (price - entry) * qty
+                        pnl_pct = ((price - entry) / entry) * 100 if entry > 0 else 0
+                        try:
+                            from datetime import datetime
+                            dt_str = str(o.get("filled_at", "")).split(".")[0].replace("Z", "")
+                            ts = int(datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S").timestamp() * 1000) if dt_str else 0
+                        except: ts = 0
+                        alpaca_history.append({
+                            "symbol": o.get("symbol", ""),
+                            "close_timestamp": ts,
+                            "pnl_raw": pnl_raw,
+                            "pnl_pct": pnl_pct,
+                            "close_price": price,
+                            "entry_price": entry
+                        })
+                        
         for tr in alpaca_history:
             # Avoid duplicates if already pulled from cache
             if not any(h.get("symbol") == tr["symbol"] and h.get("timestamp") == tr.get("close_timestamp", 0) for h in history):
@@ -614,10 +643,15 @@ def get_trades_history():
                 tr["net_pnl"] = tr.get("pnl_raw", 0)
                 tr["mark_price"] = tr.get("close_price", tr.get("entry_price", 0))
                 tr["side"] = "LONG"
+                tr["timestamp"] = tr.get("close_timestamp", 0)
                 history.append(tr)
     except Exception as e:
         print(f"History query error: {e}")
         
+    # Sort history by timestamp descending
+    history.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+    
+    print(f"HISTORY RETURN length: {len(history)}")
     return jsonify(history), 200
 
 # ----------------- Panic Close & Manage trades -----------------
