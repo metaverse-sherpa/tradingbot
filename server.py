@@ -991,6 +991,60 @@ def get_active_signals():
         rows = c.fetchall()
     signals = [dict(r) for r in rows]
     
+    # Calculate live PnL dynamically
+    import sqlite3
+    import asyncio
+    import live_bot_multi
+    
+    CRYPTO_LEVERAGE = 10
+    
+    try:
+        mdm = live_bot_multi.MarketDataManager()
+    except Exception:
+        mdm = None
+
+    for sig in signals:
+        sym = sig.get("symbol", "")
+        entry = sig.get("entry_price", 0)
+        side = str(sig.get("side", "LONG")).upper()
+        is_long = side in ['BUY', 'LONG', 'L']
+        pos_size = sig.get("position_size") or 1000
+
+        is_stk = not ("/" in sym)
+        current = 0.0
+
+        try:
+            if is_stk:
+                conn2 = sqlite3.connect("data/stock_daily_cache.db")
+                c2 = conn2.cursor()
+                c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                row = c2.fetchone()
+                conn2.close()
+                if row:
+                    current = float(row[0])
+            else:
+                if mdm:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    df_chart = loop.run_until_complete(mdm.fetch_ohlcv(sym, "15m"))
+                    loop.close()
+                    if df_chart is not None and not df_chart.empty:
+                        current = float(df_chart['close'].iloc[-1])
+        except Exception as e:
+            print(f"Error fetching live price for {sym} in signals: {e}")
+
+        if current > 0 and entry > 0:
+            pnl_raw = current - entry if is_long else entry - current
+            pnl_pct = (pnl_raw / entry) * 100
+            
+            if not is_stk:
+                pnl_pct *= CRYPTO_LEVERAGE
+                
+            pnl_val = pos_size * (pnl_pct / 100)
+            
+            sig["pnl_pct"] = pnl_pct
+            sig["pnl_usdt"] = pnl_val
+    
     if not signals:
         # Prepopulate standard indicators
         signals = [

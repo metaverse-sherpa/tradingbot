@@ -1327,10 +1327,10 @@ function renderBacktestView() {
 }
 
 window.toggleSignalExpand = function(id) {
-    if (STATE.expanded_signal_id === id) {
+    if (String(STATE.expanded_signal_id) === String(id)) {
         STATE.expanded_signal_id = null;
     } else {
-        STATE.expanded_signal_id = id;
+        STATE.expanded_signal_id = String(id);
     }
     renderView();
 }
@@ -1349,7 +1349,7 @@ function renderSignalsView() {
                         <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
                     </div>
                 ` : STATE.active_signals.map(sig => {
-                    const isExpanded = STATE.expanded_signal_id === sig.id;
+                    const isExpanded = String(STATE.expanded_signal_id) === String(sig.id);
                     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
                     const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
                     
