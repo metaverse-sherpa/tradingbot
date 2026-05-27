@@ -827,15 +827,14 @@ function renderTradesView() {
                 </button>
             </div>
 
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ ${headerText}</h2>
-                    <p class="font-label-sm text-label-sm text-on-surface-variant">${countText}</p>
-                </div>
-                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
-                    <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
-                    <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
-                </div>
+            <!-- Crypto vs Stocks Segmented Controller with dynamic trade count -->
+            <div class="glass-card rounded-full flex border border-white/10 p-1 w-full relative overflow-hidden z-10">
+                <button onclick="setDashboardTab('crypto')" class="flex-grow py-1.5 text-center rounded-full font-label-sm font-bold transition-all duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                    Crypto (${tradesMode === 'active' ? STATE.open_trades.filter(t => t.type === 'crypto').length : STATE.history.filter(t => t.type === 'crypto').length})
+                </button>
+                <button onclick="setDashboardTab('stock')" class="flex-grow py-1.5 text-center rounded-full font-label-sm font-bold transition-all duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                    Stocks (${tradesMode === 'active' ? STATE.open_trades.filter(t => t.type === 'stock').length : STATE.history.filter(t => t.type === 'stock').length})
+                </button>
             </div>
             
             <div class="space-y-stack-gap">
