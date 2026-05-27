@@ -691,7 +691,7 @@ function renderTradesView() {
                 
                 // Privacy Mode Dollar PnL Blur Class (Default to hide/blur unless hide_dollars is explicitly false)
                 const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-                const blurClass = isPrivacyOn ? 'filter blur-[4px] select-none hover:blur-none transition-all' : '';
+                const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
                 
                 let progressBarHtml = '';
                 if (isExpanded && trade.tp_price > 0 && trade.sl_price > 0) {
@@ -734,7 +734,7 @@ function renderTradesView() {
                                         ${trade.symbol} <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${trade.side === 'LONG' ? 'trending_up' : 'trending_down'}</span>
                                     </div>
                                     <div>
-                                        Current PnL: <span class="${current_pnl_val >= 0 ? 'text-tertiary' : 'text-error'} font-bold">${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}% (<span class="${blurClass}">${current_pnl_val >= 0 ? '+' : ''}$${current_pnl_val.toFixed(2)}</span>)</span> of <span class="text-tertiary font-bold">+${target_pnl_pct.toFixed(2)}% (<span class="${blurClass}">+$${target_pnl_val.toFixed(2)}</span>)</span>
+                                        Current PnL: <span class="${current_pnl_val >= 0 ? 'text-tertiary' : 'text-error'} font-bold">${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}% (<span ${inlineBlur}>${current_pnl_val >= 0 ? '+' : ''}$${current_pnl_val.toFixed(2)}</span>)</span> of <span class="text-tertiary font-bold">+${target_pnl_pct.toFixed(2)}% (<span ${inlineBlur}>+$${target_pnl_val.toFixed(2)}</span>)</span>
                                     </div>
                                     <div>
                                         • Entry: <span class="text-primary font-bold">$${entry.toFixed(2)}</span> | SL: <span class="text-error font-bold">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span> | TP: <span class="text-tertiary font-bold">$${tp.toFixed(2)} (+${tp_pct.toFixed(0)}%)</span>
@@ -798,8 +798,8 @@ function renderTradesView() {
                             </div>
                             <div class="text-right">
                                 <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                    <span class="${blurClass}">${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
-                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / <span class="${blurClass}">+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
+                                    <span ${inlineBlur}>${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
+                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / <span ${inlineBlur}>+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
                                 </p>
                                 <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
                                     ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE
@@ -1154,7 +1154,7 @@ function renderSettingsView() {
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 Connect Exchange (Blofin)</h3>
                 <form onsubmit="handleExchangeSetup(event)" class="space-y-3">
-                    <input id="api-key" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Key" type="text" required/>
+                    <input id="api-key" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Key" type="text" required/>
                     <input id="api-secret" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Secret" type="password" required/>
                     <input id="api-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="Passphrase" type="password" required/>
                     <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2">
