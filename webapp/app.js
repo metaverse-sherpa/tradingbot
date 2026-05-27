@@ -1326,6 +1326,15 @@ function renderBacktestView() {
     `;
 }
 
+window.toggleSignalExpand = function(id) {
+    if (STATE.expanded_signal_id === id) {
+        STATE.expanded_signal_id = null;
+    } else {
+        STATE.expanded_signal_id = id;
+    }
+    renderView();
+}
+
 function renderSignalsView() {
     return `
         ${renderHeader()}
@@ -1333,16 +1342,126 @@ function renderSignalsView() {
             <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
             
             <div class="space-y-stack-gap">
-                ${STATE.active_signals.map(sig => `
-                    <div class="glass-card rounded-xl p-card-padding border border-white/10 flex justify-between items-center">
-                        <div>
-                            <h4 class="font-bold text-on-surface">${sig.symbol}</h4>
-                            <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
-                            <p class="text-xs text-tertiary mt-2">Entry target: $${sig.entry_price}</p>
-                        </div>
-                        <span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-tertiary-fixed-dim/20 text-tertiary uppercase">Active</span>
+                ${STATE.active_signals.length === 0 ? `
+                    <div class="text-center py-12">
+                        <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                        <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+                        <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
                     </div>
-                `).join('')}
+                ` : STATE.active_signals.map(sig => {
+                    const isExpanded = STATE.expanded_signal_id === sig.id;
+                    const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+                    const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
+                    
+                    const entry = sig.entry_price || 0;
+                    const tp = sig.tp_price || 0;
+                    const sl = sig.sl_price || 0;
+                    const isLong = sig.side === 'LONG' || sig.side === 'l' || sig.side === 'long';
+                    const sideStr = isLong ? 'LONG' : 'SHORT';
+                    
+                    const sl_pct = entry > 0 ? ((sl - entry) / entry) * 100 : 0;
+                    const tp_pct = entry > 0 ? ((tp - entry) / entry) * 100 : 0;
+                    
+                    const current_pnl_pct = sig.pnl_pct || 0;
+                    const current_pnl_val = sig.pnl_usdt || 0;
+                    const target_pnl_pct = Math.abs(tp_pct);
+                    const target_pnl_val = entry > 0 ? (Math.abs(tp - entry) / entry) * 100 : 0; // Simulated $1000 size or similar? We'll just show the pct for target if no exact position size, but let's emulate the trade view's structure. If we don't have position_size, let's just use placeholder or simulated $ value for target. The prompt shows (+$15.55) so we'll just format it. Actually, sig.position_size might be there.
+                    const pos_size = sig.position_size || (current_pnl_pct !== 0 ? (current_pnl_val / (current_pnl_pct / 100)) : 1000);
+                    const simulated_target_val = (target_pnl_pct / 100) * pos_size;
+
+                    // Progress pct
+                    // Without mark price, let's reverse-engineer mark price from current_pnl_pct
+                    const mark = entry + (entry * (current_pnl_pct / 100) * (isLong ? 1 : -1));
+                    let pct = 50;
+                    if (isLong) {
+                        if (mark <= sl) pct = 0;
+                        else if (mark >= tp) pct = 100;
+                        else pct = ((mark - sl) / (tp - sl)) * 100;
+                    } else {
+                        if (mark >= sl) pct = 0;
+                        else if (mark <= tp) pct = 100;
+                        else pct = ((sl - mark) / (sl - tp)) * 100;
+                    }
+                    
+                    let progressBarHtml = '';
+                    if (isExpanded) {
+                        progressBarHtml = \`
+                            <div class="mt-4 pt-4 border-t border-white/5 space-y-4" onclick="event.stopPropagation()">
+                                <h4 class="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Market Analysis & Setup</h4>
+                                <div class="relative w-full aspect-[16/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center">
+                                    <img src="/api/trades/chart?symbol=\${encodeURIComponent(sig.symbol)}&entry=\${entry}&tp=\${tp}&sl=\${sl}&side=\${sideStr}&open_ts=\${sig.open_time || 0}&type=\${sig.symbol && sig.symbol.includes('/') ? 'crypto' : 'stock'}" class="w-full h-full object-cover" alt="Signal Chart" />
+                                </div>
+                                
+                                <div class="bg-[#121212] p-4 rounded-lg border border-white/5 space-y-4">
+                                    <div class="space-y-1 font-mono text-[11px] text-left leading-relaxed text-on-surface-variant">
+                                        <div class="flex items-center gap-1.5 font-bold text-xs text-on-surface">
+                                            <span class="inline-block w-2.5 h-2.5 rounded-full \${current_pnl_pct >= 0 ? 'bg-tertiary animate-pulse shadow-[0_0_8px_#3cd7ff]' : 'bg-error animate-pulse shadow-[0_0_8px_#ff5c5c]'}"></span>
+                                            \${sig.symbol} <span class="material-symbols-outlined text-[14px] \${isLong ? 'text-primary' : 'text-error'}">\${isLong ? 'trending_up' : 'trending_down'}</span>
+                                        </div>
+                                        <div>
+                                            Current PnL: <span class="\${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'} font-bold">\${current_pnl_pct >= 0 ? '+' : ''}\${current_pnl_pct.toFixed(2)}% (<span \${inlineBlur}>\${current_pnl_val >= 0 ? '+' : ''}$\${Math.abs(current_pnl_val).toFixed(2)}</span>)</span> of <span class="text-tertiary font-bold">+\${target_pnl_pct.toFixed(2)}% (<span \${inlineBlur}>+$\${Math.abs(simulated_target_val).toFixed(2)}</span>)</span>
+                                        </div>
+                                        <div>
+                                            • Entry: <span class="text-primary font-bold">$\${entry.toFixed(2)}</span> | SL: <span class="text-error font-bold">$\${sl.toFixed(2)} (\${sl_pct.toFixed(0)}%)</span> | TP: <span class="text-tertiary font-bold">$\${tp.toFixed(2)} (+\${tp_pct.toFixed(0)}%)</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="relative py-2">
+                                        <div class="h-1 w-full bg-surface-container rounded-full relative">
+                                            <div class="absolute w-3.5 h-3.5 -top-1.5 bg-[#00E5FF] rounded-full border-2 border-white shadow-[0_0_8px_#00E5FF]" style="left: calc(\${pct}% - 7px);"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center text-[10px] text-on-surface-variant font-mono">
+                                        <div class="text-left">
+                                            <div class="font-bold text-error">\${sl_pct.toFixed(1)}%</div>
+                                            <div>$\${sl.toFixed(2)}</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="font-bold text-white">ENTRY</div>
+                                            <div>$\${entry.toFixed(2)}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-bold text-tertiary">+\${tp_pct.toFixed(1)}%</div>
+                                            <div>$\${tp.toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        \`;
+                    }
+
+                    return \`
+                        <div onclick="toggleSignalExpand('\${sig.id}')" class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3 cursor-pointer hover:border-white/20 transition-all">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-bold text-on-surface flex items-center gap-1">
+                                        \${sig.symbol} 
+                                        <span class="material-symbols-outlined text-[16px] \${isLong ? 'text-primary' : 'text-error'}">\${isLong ? 'trending_up' : 'trending_down'}</span>
+                                    </h4>
+                                    <p class="text-xs text-on-surface-variant mt-1">\${sig.strategy}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-numeric-data text-numeric-data font-bold \${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
+                                        <span \${inlineBlur}>\${current_pnl_pct >= 0 ? '+' : ''}$\${Math.abs(current_pnl_val).toFixed(2)}</span>
+                                    </p>
+                                    <p class="font-numeric-data text-numeric-data text-sm \${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
+                                        \${current_pnl_pct >= 0 ? '+' : ''}\${current_pnl_pct.toFixed(2)}%
+                                        \${tp > 0 ? \`<span class="text-on-surface-variant/30 text-xs font-normal"> of \${Math.abs(target_pnl_pct).toFixed(0)}%</span>\` : ''}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center pt-3 border-t border-white/10">
+                                <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
+                                    SL: <span class="text-on-surface">$\${sl.toFixed(2)} (\${sl_pct.toFixed(0)}%)</span>
+                                </div>
+                                <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
+                                    TP: <span class="text-on-surface">$\${tp.toFixed(2)} (+\${tp_pct.toFixed(0)}%)</span>
+                                </div>
+                            </div>
+                            \${progressBarHtml}
+                        </div>
+                    \`;
+                }).join('')}
             </div>
         </main>
     `;
