@@ -164,8 +164,15 @@ async function handleRoute() {
         STATE.current_view = view;
         
         if (view === 'landing') {
-            STATE.is_loading_signals = true;
-            renderView(); // Render loading skeleton
+            if (!STATE.signals || STATE.signals.length === 0) {
+                STATE.is_loading_signals = true;
+                renderView(); // Render loading skeleton
+            } else {
+                STATE.is_loading_signals = false;
+                renderView(); // Instantly load cached signals
+            }
+            
+            // Revalidate in background
             apiRequest('/signals/active').then(signals => {
                 STATE.signals = signals || [];
                 STATE.is_loading_signals = false;
@@ -541,22 +548,6 @@ function renderRegisterView() {
 }
 
 function renderLandingView() {
-    if (STATE.is_loading_signals) {
-        return `
-            ${renderHeader()}
-            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto flex flex-col items-center justify-center min-h-[60vh]">
-                <div class="relative w-24 h-24 mb-6">
-                    <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
-                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
-                    <div class="absolute inset-0 flex items-center justify-center text-primary">
-                        <span class="material-symbols-outlined text-3xl animate-pulse">satellite_alt</span>
-                    </div>
-                </div>
-                <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 animate-pulse">Scanning the markets...</h2>
-            </main>
-        `;
-    }
-
     // Top Header for the landing page
     const headerHtml = `
         <div class="text-center pt-8 pb-6">
@@ -567,12 +558,28 @@ function renderLandingView() {
         </div>
     `;
 
-    const signalsList = (!STATE.signals || STATE.signals.length === 0) ? `
-        <div class="text-center py-12">
-            <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
-            <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-        </div>
-    ` : STATE.signals.map(s => renderSignalCard(s, true)).join('');
+    let signalsList = '';
+    if (STATE.is_loading_signals) {
+        signalsList = `
+            <div class="flex flex-col items-center justify-center py-12">
+                <div class="relative w-16 h-16 mb-4">
+                    <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-2xl animate-pulse">satellite_alt</span>
+                    </div>
+                </div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 animate-pulse">Scanning the markets...</h2>
+            </div>
+        `;
+    } else {
+        signalsList = (!STATE.signals || STATE.signals.length === 0) ? `
+            <div class="text-center py-12">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+            </div>
+        ` : STATE.signals.map(s => renderSignalCard(s, true)).join('');
+    }
 
     return `
         ${renderHeader()}
