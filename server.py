@@ -984,6 +984,15 @@ def run_backtest():
 # ----------------- Free Signals Endpoint -----------------
 @app.route('/api/signals/active', methods=['GET'])
 def get_active_signals():
+    import time
+    cache_key = "signals_active"
+    now = time.time()
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            if now < expiry:
+                return jsonify(cached_data), 200
+
     # Fetch free signal logs from TheoreticalTrades table
     with database.db_session() as conn:
         c = conn.cursor()
@@ -1082,6 +1091,10 @@ def get_active_signals():
         signals = [
             {"id": 1, "symbol": "BTC/USDT", "strategy": "Mean Reversion Scalper", "side": "LONG", "entry_price": 63400.0, "tp_price": 64800.0, "sl_price": 62500.0, "open_time": int(time.time()) - 600, "status": "open"}
         ]
+        
+    with RESPONSE_CACHE_LOCK:
+        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, signals)
+        
     return jsonify(signals), 200
 
 @app.route('/api/signals/closed', methods=['GET'])
