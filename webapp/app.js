@@ -386,18 +386,17 @@ function renderHeader(title) {
                 </a>
                 <div class="relative">
                     <button onclick="toggleProfileMenu(event)" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-bold text-primary border border-primary/30 text-sm cursor-pointer hover:bg-surface-container-high transition-all overflow-hidden">
-                        ${STATE.user.avatar_url ? \`<img src="\${STATE.user.avatar_url}" alt="Profile" class="w-full h-full object-cover">\` : STATE.user.email[0].toUpperCase()}
+                        ${STATE.user && STATE.user.avatar_url ? `<img src="${STATE.user.avatar_url}" alt="Profile" class="w-full h-full object-cover">` : (STATE.user ? STATE.user.email[0].toUpperCase() : 'U')}
                     </button>
-                    ${STATE.profile_menu_open ? \`
+                    ${STATE.profile_menu_open ? `
                         <div class="absolute right-0 mt-2 w-40 glass-card rounded-lg border border-white/10 shadow-xl overflow-hidden z-[100] animate-fade-in" onclick="event.stopPropagation()">
                             <button onclick="logoutUser()" class="w-full text-left px-4 py-2.5 text-sm text-error hover:bg-error/10 transition-colors flex items-center gap-2 font-semibold">
                                 <span class="material-symbols-outlined text-[18px]">logout</span>
                                 Logout
                             </button>
                         </div>
-                    \` : ''}
-                </div>
                 ` : ''}
+            </div>
             </div>
         </header>
     `;
