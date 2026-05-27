@@ -247,9 +247,11 @@ async function handleRoute() {
         STATE.is_loading_signals = true;
         renderView();
         try {
-            const active = await apiRequest('/signals/active');
+            const [active, closed] = await Promise.all([
+                apiRequest('/signals/active'),
+                apiRequest('/signals/closed')
+            ]);
             if (active) STATE.active_signals = active;
-            const closed = await apiRequest('/signals/closed');
             if (closed) STATE.closed_signals = closed;
         } finally {
             STATE.is_loading_signals = false;
