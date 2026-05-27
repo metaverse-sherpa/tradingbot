@@ -384,7 +384,6 @@ function renderHeader(title) {
                 <a class="text-on-surface-variant hover:opacity-80 transition-opacity" href="#/help">
                     <span class="material-symbols-outlined">help</span>
                 </a>
-                ${STATE.user ? `
                 <div class="relative">
                     <button onclick="toggleProfileMenu(event)" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-bold text-primary border border-primary/30 text-sm cursor-pointer hover:bg-surface-container-high transition-all overflow-hidden">
                         ${STATE.user.avatar_url ? \`<img src="\${STATE.user.avatar_url}" alt="Profile" class="w-full h-full object-cover">\` : STATE.user.email[0].toUpperCase()}
