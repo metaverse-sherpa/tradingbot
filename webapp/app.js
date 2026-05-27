@@ -18,6 +18,7 @@ let STATE = {
     expanded_trade_id: null,
     expanded_signal_id: null,
     is_loading_signals: false,
+    is_loading_dashboard: false,
     history_expanded_id: null,
     free_history_expanded_id: null,
     profile_menu_open: false,
@@ -184,23 +185,30 @@ async function handleRoute() {
     // Determine view route
     if (hash === '#/dashboard') {
         STATE.current_view = 'dashboard';
-        const statsRoute = (STATE.user && STATE.user.is_premium) ? '/user/stats' : '/stats/free';
-        const [bal, sigs, open, stats] = await Promise.all([
-            apiRequest('/user/balance'),
-            apiRequest('/signals/active'),
-            apiRequest('/trades/open'),
-            apiRequest(statsRoute)
-        ]);
-        if (bal) {
-            STATE.crypto_balance = bal.crypto_balance;
-            STATE.stock_balance = bal.stock_balance;
-            STATE.total_balance = bal.total_balance;
-        }
-        if (sigs) STATE.active_signals = sigs;
-        if (open) STATE.open_trades = open;
-        if (stats) {
-            if (STATE.user && STATE.user.is_premium) STATE.stats = stats;
-            else STATE.free_stats = stats;
+        STATE.is_loading_dashboard = true;
+        renderView();
+        
+        try {
+            const statsRoute = (STATE.user && STATE.user.is_premium) ? '/user/stats' : '/stats/free';
+            const [bal, sigs, open, stats] = await Promise.all([
+                apiRequest('/user/balance'),
+                apiRequest('/signals/active'),
+                apiRequest('/trades/open'),
+                apiRequest(statsRoute)
+            ]);
+            if (bal) {
+                STATE.crypto_balance = bal.crypto_balance;
+                STATE.stock_balance = bal.stock_balance;
+                STATE.total_balance = bal.total_balance;
+            }
+            if (sigs) STATE.active_signals = sigs;
+            if (open) STATE.open_trades = open;
+            if (stats) {
+                if (STATE.user && STATE.user.is_premium) STATE.stats = stats;
+                else STATE.free_stats = stats;
+            }
+        } finally {
+            STATE.is_loading_dashboard = false;
         }
     } else if (hash === '#/trades') {
         STATE.current_view = 'trades';
@@ -499,6 +507,25 @@ function renderRegisterView() {
 }
 
 function renderDashboardView() {
+    if (STATE.is_loading_dashboard) {
+        return `
+            ${renderHeader()}
+            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+                <div class="relative w-24 h-24 mb-6">
+                    <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-3xl animate-pulse">dashboard</span>
+                    </div>
+                </div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 animate-pulse">Loading Dashboard...</h2>
+                <p class="font-body-md text-body-md text-on-surface-variant text-center max-w-[280px]">
+                    Gathering your portfolio metrics.
+                </p>
+            </main>
+        `;
+    }
+
     const isPremium = STATE.user && STATE.user.is_premium;
     const isCrypto = STATE.dashboard_tab === 'crypto';
     

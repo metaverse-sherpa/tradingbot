@@ -1013,25 +1013,12 @@ def get_active_signals():
     except Exception:
         sys_user = {}
 
-    for sig in signals:
-        sym = sig.get("symbol", "")
-        entry = sig.get("entry_price", 0)
-        side = str(sig.get("side", "LONG")).upper()
-        is_long = side in ['BUY', 'LONG', 'L']
-        pos_size = sig.get("position_size") or 1000
-
-        is_stk = not ("/" in sym)
-        current = 0.0
-
+    async def fetch_price(sym, is_stk):
         try:
             if is_stk:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                df_chart = loop.run_until_complete(fetch_alpaca_daily_bars_async(sys_user, sym, limit=1))
-                loop.close()
-                
+                df_chart = await fetch_alpaca_daily_bars_async(sys_user, sym, limit=1)
                 if df_chart is not None and not df_chart.empty:
-                    current = float(df_chart['close'].iloc[-1])
+                    return float(df_chart['close'].iloc[-1])
                 else:
                     # Fallback to local daily cache if Alpaca live fetch fails or market closed
                     conn2 = sqlite3.connect("data/stock_daily_cache.db")
@@ -1040,17 +1027,43 @@ def get_active_signals():
                     row = c2.fetchone()
                     conn2.close()
                     if row:
-                        current = float(row[0])
+                        return float(row[0])
             else:
                 if mdm:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    df_chart = loop.run_until_complete(mdm.fetch_ohlcv(sym, "15m"))
-                    loop.close()
+                    df_chart = await mdm.fetch_ohlcv(sym, "15m")
                     if df_chart is not None and not df_chart.empty:
-                        current = float(df_chart['close'].iloc[-1])
+                        return float(df_chart['close'].iloc[-1])
         except Exception as e:
             print(f"Error fetching live price for {sym} in signals: {e}")
+        return 0.0
+
+    async def fetch_all_prices(sigs):
+        tasks = []
+        for sig in sigs:
+            sym = sig.get("symbol", "")
+            is_stk = not ("/" in sym)
+            tasks.append(fetch_price(sym, is_stk))
+        return await asyncio.gather(*tasks)
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        current_prices = loop.run_until_complete(fetch_all_prices(signals))
+    except Exception as e:
+        print(f"Error in concurrent fetch: {e}")
+        current_prices = [0.0] * len(signals)
+    finally:
+        loop.close()
+
+    for idx, sig in enumerate(signals):
+        sym = sig.get("symbol", "")
+        entry = sig.get("entry_price", 0)
+        side = str(sig.get("side", "LONG")).upper()
+        is_long = side in ['BUY', 'LONG', 'L']
+        pos_size = sig.get("position_size") or 1000
+
+        is_stk = not ("/" in sym)
+        current = current_prices[idx]
 
         if current > 0 and entry > 0:
             pnl_raw = current - entry if is_long else entry - current
