@@ -609,7 +609,10 @@ function renderDashboardView() {
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
     const loadingBlur = STATE.is_loading_balance ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : '';
     const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
-    const privacyBlur = shouldBlurDollars ? 'style="filter: blur(5px); transition: filter 0.2s ease; cursor: pointer; user-select: none;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : 'style="transition: filter 0.2s ease;"';
+    
+    const privacyStyle = shouldBlurDollars ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
+    const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
+    const privacyHoverHandlers = shouldBlurDollars ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(5px)')"` : '';
     
     const pnlVal = activeStats.cumulative_pnl || 0;
     const startingCapital = balance - pnlVal;
@@ -632,16 +635,16 @@ function renderDashboardView() {
             </div>
             
             <!-- Balance Card -->
-            <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden">
-                <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full"></div>
-                <div class="relative z-10">
+            <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${privacyHoverHandlers}>
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
+                <div class="relative z-10 pointer-events-none">
                     <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
-                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)]" ${privacyBlur}>$${(balance || 0).toFixed(2)}</h1>
+                    <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(balance || 0).toFixed(2)}</h1>
                     <div class="flex flex-wrap gap-2 mt-4">
                         <div class="bg-tertiary-container/20 text-tertiary px-2 py-1 rounded-lg flex items-center gap-1 w-fit">
                             <span class="material-symbols-outlined text-[14px]" ${loadingBlur}>${pnlVal >= 0 ? 'trending_up' : 'trending_down'}</span>
                             <span class="font-label-sm text-label-sm">
-                                <span ${loadingBlur}>${pnlVal >= 0 ? '+' : '-'}</span><span ${privacyBlur}>$${Math.abs(pnlVal).toFixed(2)}</span> <span ${loadingBlur}>(${pnlVal >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%) All-Time</span>
+                                <span ${loadingBlur}>${pnlVal >= 0 ? '+' : '-'}</span><span class="${privacyClass}" ${privacyStyle}>$${Math.abs(pnlVal).toFixed(2)}</span> <span ${loadingBlur}>(${pnlVal >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%) All-Time</span>
                             </span>
                         </div>
                     </div>
