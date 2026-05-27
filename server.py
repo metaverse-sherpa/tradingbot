@@ -663,6 +663,51 @@ def get_closed_signals():
         ]
     return jsonify(signals), 200
 
+@app.route('/api/stats/free', methods=['GET'])
+def get_free_stats():
+    strategy_names = ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"]
+    open_sim_trades = database.get_open_theoretical_trades()
+    
+    strategy_open_trades = {s: [] for s in strategy_names}
+    for t in open_sim_trades:
+        strat = t.get('strategy', '')
+        if strat in strategy_open_trades:
+            strategy_open_trades[strat].append(t)
+            
+    stats_data = []
+    starting_capital = 1000.0
+    
+    for name in strategy_names:
+        s_stats = database.get_theoretical_stats_by_strategy(name)
+        realized_pct = (s_stats['cumulative_pnl'] / starting_capital) * 100
+        open_trades = strategy_open_trades[name]
+        
+        # Format the active trades to send to frontend
+        active_list = []
+        for t in open_trades:
+            active_list.append({
+                "symbol": t['symbol'],
+                "side": t['side'],
+                "entry_price": t['entry_price'],
+                "tp_price": t.get('tp_price', 0)
+            })
+            
+        stats_data.append({
+            "name": name,
+            "win_rate": s_stats['win_rate'],
+            "wins": s_stats['wins'],
+            "losses": s_stats['losses'],
+            "realized_pct": realized_pct,
+            "active_count": len(open_trades),
+            "active_trades": active_list
+        })
+        
+    return jsonify({
+        "total_open": len(open_sim_trades),
+        "strategies": stats_data
+    }), 200
+
+
 # ----------------- Premium Upgrade -----------------
 @app.route('/api/premium/wallet', methods=['POST'])
 @require_auth

@@ -176,8 +176,13 @@ async function handleRoute() {
         if (hist) STATE.history = hist;
     } else if (hash === '#/stats') {
         STATE.current_view = 'stats';
-        const stats = await apiRequest('/user/stats');
-        if (stats) STATE.stats = stats;
+        if (STATE.user && STATE.user.is_premium) {
+            const stats = await apiRequest('/user/stats');
+            if (stats) STATE.stats = stats;
+        } else {
+            const freeStats = await apiRequest('/stats/free');
+            if (freeStats) STATE.free_stats = freeStats;
+        }
     } else if (hash === '#/settings') {
         STATE.current_view = 'settings';
     } else if (hash === '#/strategy') {
@@ -737,7 +742,83 @@ function renderHistoryView() {
     `;
 }
 
+function renderFreeStatsView() {
+    if (!STATE.free_stats) return `${renderHeader()}<main class="pt-20 px-container-margin"><div class="text-center p-8 text-on-surface-variant">Loading stats...</div></main>`;
+
+    const strategyIcons = {
+        "Mean Reversion Scalper": "📈",
+        "Valkyrie Elite Scalper": "🛡️",
+        "Sherpa Velocity Pullback": "🦙"
+    };
+
+    let strategiesHtml = STATE.free_stats.strategies.map(s => {
+        const icon = strategyIcons[s.name] || "📈";
+        
+        let activeTradesHtml = "";
+        if (s.active_count > 0 && s.active_trades.length > 0) {
+            activeTradesHtml = `<div class="mt-3 space-y-1 bg-surface-container-low p-3 rounded-lg border border-white/5">`;
+            s.active_trades.forEach(t => {
+                const isLong = String(t.side).toLowerCase() === 'long' || String(t.side).toLowerCase() === 'buy';
+                const direction = isLong ? "⬆️" : "⬇️";
+                const isStock = t.symbol && !t.symbol.includes('/');
+                let targetPct = t.tp_price > 0 ? (((Math.abs(t.tp_price - t.entry_price)) / t.entry_price) * 100) : 0;
+                if (!isStock) targetPct *= 10; // crypto leverage
+                
+                activeTradesHtml += `
+                    <div class="flex items-center text-sm font-mono">
+                        <span class="mr-2">${direction}</span>
+                        <span class="text-primary">${t.symbol}</span>
+                        <span class="ml-auto text-on-surface-variant">tgt: +${targetPct.toFixed(2)}%</span>
+                    </div>
+                `;
+            });
+            activeTradesHtml += `</div>`;
+        }
+
+        const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
+
+        return `
+            <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50">
+                <h3 class="font-headline-sm text-on-surface flex items-center gap-2">
+                    <span>${icon}</span> ${s.name}
+                </h3>
+                <div class="text-sm space-y-1">
+                    <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
+                    <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
+                    <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
+                </div>
+                ${activeTradesHtml}
+            </div>
+        `;
+    }).join('');
+
+    return `
+        ${renderHeader()}
+        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <div class="flex items-center gap-3">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Free Forward Testing</h2>
+            </div>
+            <div class="bg-surface-container rounded-lg p-3 border border-white/5 inline-block">
+                <p class="text-on-surface-variant text-sm">
+                    • Open Free Signals: <span class="text-primary font-medium text-base">${STATE.free_stats.total_open}</span>
+                </p>
+            </div>
+            
+            <div class="space-y-4">
+                ${strategiesHtml}
+            </div>
+            
+            <p class="text-xs text-center text-on-surface-variant italic mt-4 opacity-70">
+                _Each strategy starts with an independent $1,000 allocation_
+            </p>
+        </main>
+    `;
+}
+
 function renderStatsView() {
+    if (!STATE.user || !STATE.user.is_premium) {
+        return renderFreeStatsView();
+    }
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
