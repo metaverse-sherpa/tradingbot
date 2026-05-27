@@ -236,6 +236,12 @@ def profile():
     user["active_crypto_strategy"] = (tg_user or {}).get("active_crypto_strategy") or user.get("active_crypto_strategy", "Mean Reversion Scalper")
     user["active_stock_strategy"] = (tg_user or {}).get("active_stock_strategy") or user.get("active_stock_strategy", "None")
     
+    # Sync hide_dollars setting from Telegram user if linked, otherwise default to True
+    if tg_user:
+        user["hide_dollars"] = tg_user.get("hide_dollars") if tg_user.get("hide_dollars") is not None else True
+    else:
+        user["hide_dollars"] = user.get("hide_dollars") if user.get("hide_dollars") is not None else True
+    
     # Indicate if keys are configured (masking the actual keys)
     user["has_exchange_keys"] = bool((tg_user or {}).get("api_key") or user.get("api_key"))
     user["has_alpaca_keys"] = bool((tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key"))
@@ -293,6 +299,16 @@ def settings_preferences():
     hide_dollars = bool(data.get("hide_dollars", g.user.get("hide_dollars", False)))
     
     update_web_user_preferences(g.user["id"], risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars)
+    
+    # Sync with linked Telegram account
+    tg_user = _get_telegram_user(g.user)
+    if tg_user:
+        try:
+            import database
+            database.update_user_preference(tg_user["telegram_chat_id"], "hide_dollars", 1 if hide_dollars else 0)
+        except Exception as e:
+            print(f"Error syncing settings to Telegram Users table: {e}")
+            
     return jsonify({"message": "Trading preferences saved successfully"}), 200
 
 @app.route('/api/settings/telegram', methods=['POST'])

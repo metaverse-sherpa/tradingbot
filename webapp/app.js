@@ -689,6 +689,10 @@ function renderTradesView() {
                 const assetIcon = trade.type === 'stock' ? '🦙' : '🪙';
                 const isExpanded = STATE.expanded_trade_id === trade.id;
                 
+                // Privacy Mode Dollar PnL Blur Class (Default to hide/blur unless hide_dollars is explicitly false)
+                const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+                const blurClass = isPrivacyOn ? 'filter blur-[4px] select-none hover:blur-none transition-all' : '';
+                
                 let progressBarHtml = '';
                 if (isExpanded && trade.tp_price > 0 && trade.sl_price > 0) {
                     const entry = trade.entry_price || 0;
@@ -727,10 +731,10 @@ function renderTradesView() {
                                 <div class="space-y-1 font-mono text-[11px] text-left leading-relaxed text-on-surface-variant">
                                     <div class="flex items-center gap-1.5 font-bold text-xs text-on-surface">
                                         <span class="inline-block w-2.5 h-2.5 rounded-full ${current_pnl_val >= 0 ? 'bg-tertiary animate-pulse shadow-[0_0_8px_#3cd7ff]' : 'bg-error animate-pulse shadow-[0_0_8px_#ff5c5c]'}"></span>
-                                        ${trade.symbol} (${trade.side})
+                                        ${trade.symbol} <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${trade.side === 'LONG' ? 'trending_up' : 'trending_down'}</span>
                                     </div>
                                     <div>
-                                        Current PnL: <span class="${current_pnl_val >= 0 ? 'text-tertiary' : 'text-error'} font-bold">${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}% (${current_pnl_val >= 0 ? '+' : ''}$${current_pnl_val.toFixed(2)})</span> of <span class="text-tertiary font-bold">+${target_pnl_pct.toFixed(2)}% (+$${target_pnl_val.toFixed(2)})</span>
+                                        Current PnL: <span class="${current_pnl_val >= 0 ? 'text-tertiary' : 'text-error'} font-bold">${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}% (<span class="${blurClass}">${current_pnl_val >= 0 ? '+' : ''}$${current_pnl_val.toFixed(2)}</span>)</span> of <span class="text-tertiary font-bold">+${target_pnl_pct.toFixed(2)}% (<span class="${blurClass}">+$${target_pnl_val.toFixed(2)}</span>)</span>
                                     </div>
                                     <div>
                                         • Entry: <span class="text-primary font-bold">$${entry.toFixed(2)}</span> | SL: <span class="text-error font-bold">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span> | TP: <span class="text-tertiary font-bold">$${tp.toFixed(2)} (+${tp_pct.toFixed(0)}%)</span>
@@ -788,15 +792,14 @@ function renderTradesView() {
                                 <div>
                                     <p class="font-label-md text-label-md font-bold text-on-surface">${trade.symbol}</p>
                                     <p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${icon}</span>
-                                        ${trade.side} ${trade.qty}x
+                                        <span class="material-symbols-outlined text-[16px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${trade.side === 'LONG' ? 'trending_up' : 'trending_down'}</span>
                                     </p>
                                 </div>
                             </div>
                             <div class="text-right">
                                 <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                    ${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}
-                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / +$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span>` : ''}
+                                    <span class="${blurClass}">${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
+                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / <span class="${blurClass}">+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
                                 </p>
                                 <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
                                     ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE
@@ -1184,6 +1187,19 @@ function renderSettingsView() {
                 </div>
                 <button onclick="savePreferences()" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 transition-all">
                     Apply Sizing
+                </button>
+            </section>
+
+            <!-- Privacy Mode Setting -->
+            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-primary/40">
+                <div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Privacy Mode</h3>
+                    <p class="text-xs text-on-surface-variant mt-1">🔒 Hide Dollar PnL amounts across the app</p>
+                </div>
+                <button onclick="togglePrivacySetting()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
+                    (user.hide_dollars !== false) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
+                }">
+                    ${(user.hide_dollars !== false) ? 'Privacy On 🔒' : 'Privacy Off 👁️'}
                 </button>
             </section>
 
@@ -1734,6 +1750,25 @@ window.addEventListener('click', () => {
 window.confirmClosePosition = function(id, type, symbol) {
     if (confirm(`🚨 WARNING: Are you sure you want to execute a Market Close order for ${symbol}?`)) {
         closeSinglePosition(id, type, symbol);
+    }
+};
+
+window.togglePrivacySetting = async function() {
+    const isCurrentlyHidden = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+    const newHideVal = !isCurrentlyHidden;
+    
+    const res = await apiRequest('/settings/preferences', 'POST', {
+        risk_pct: STATE.user ? STATE.user.risk_pct : 1.0,
+        stock_risk_pct: STATE.user ? STATE.user.stock_risk_pct : 1.0,
+        hide_dollars: newHideVal
+    });
+    
+    if (res) {
+        if (STATE.user) {
+            STATE.user.hide_dollars = newHideVal;
+        }
+        showToast(`Privacy mode switched ${newHideVal ? 'ON 🔒' : 'OFF 👁️'}`);
+        renderView();
     }
 };
 
