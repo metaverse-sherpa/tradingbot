@@ -1472,14 +1472,11 @@ function renderSignalCard(sig) {
                     </h4>
                     <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
                 </div>
-                <div class="text-right">
-                    <p class="font-numeric-data text-numeric-data font-bold ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
-                        <span class="${privacyClass}" ${privacyStyle}>${current_pnl_pct >= 0 ? '+' : ''}$${Math.abs(current_pnl_val).toFixed(2)}</span>
-                    </p>
-                    <p class="font-numeric-data text-numeric-data text-sm ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
+                <div class="text-right flex flex-col justify-center">
+                    <p class="font-numeric-data text-numeric-data font-bold text-lg ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
                         ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
-                        ${tp > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> of ${Math.abs(target_pnl_pct).toFixed(0)}%</span>` : ''}
                     </p>
+                    ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
                 </div>
             </div>
             <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none">
