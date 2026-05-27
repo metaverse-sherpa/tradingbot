@@ -145,6 +145,7 @@ def google_auth():
     google_id = id_info['sub']
     email = id_info.get('email', '').strip().lower()
     full_name = id_info.get('name', '')
+    picture = id_info.get('picture', '')
     
     # Find user by google_id or email
     user = get_web_user_by_google_id(google_id)
@@ -154,15 +155,22 @@ def google_auth():
             # Connect google account to existing email user
             with database.db_session() as conn:
                 c = conn.cursor()
-                c.execute('UPDATE WebUsers SET google_id = ?, full_name = COALESCE(full_name, ?) WHERE id = ?', (google_id, full_name, user['id']))
+                c.execute('UPDATE WebUsers SET google_id = ?, full_name = COALESCE(full_name, ?), avatar_url = ? WHERE id = ?', (google_id, full_name, picture, user['id']))
             user = get_web_user_by_id(user['id'])
         else:
             # Create brand new user
-            user_id = create_web_user_google(email, google_id, full_name, referred_by)
+            user_id = create_web_user_google(email, google_id, full_name, referred_by, avatar_url=picture)
             user = get_web_user_by_id(user_id)
+    else:
+        # Update avatar url if changed or not present
+        if user.get("avatar_url") != picture:
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute('UPDATE WebUsers SET avatar_url = ? WHERE id = ?', (picture, user['id']))
+            user = get_web_user_by_id(user['id'])
             
     token = generate_token(user["id"])
-    response = make_response(jsonify({"message": "Google authentication successful", "token": token, "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"]}}), 200)
+    response = make_response(jsonify({"message": "Google authentication successful", "token": token, "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "avatar_url": user.get("avatar_url")}}), 200)
     
     response.set_cookie(
         'session_token',

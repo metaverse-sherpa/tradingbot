@@ -294,9 +294,14 @@ def init_db():
             has_open_positions BOOLEAN DEFAULT 0,
             history_cache TEXT,
             last_audit_stats TEXT,
-            last_fetch_timestamp INTEGER DEFAULT 0,
+            avatar_url TEXT,
             created_at INTEGER
         )''')
+
+        # Migration: Ensure WebUsers has avatar_url
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN avatar_url TEXT")
+        except: pass
+
 
 
 def reset_crypto_stats(chat_id):

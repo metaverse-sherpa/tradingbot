@@ -58,14 +58,14 @@ def create_web_user_email(email, password_hash, full_name=None, referred_by=None
             
         return user_id
 
-def create_web_user_google(email, google_id, full_name=None, referred_by=None):
+def create_web_user_google(email, google_id, full_name=None, referred_by=None, avatar_url=None):
     with db_session() as conn:
         c = conn.cursor()
         created_at = int(time.time())
         c.execute('''
-            INSERT INTO WebUsers (email, google_id, full_name, referred_by, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (email.strip().lower(), google_id, full_name, referred_by, created_at))
+            INSERT INTO WebUsers (email, google_id, full_name, referred_by, avatar_url, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (email.strip().lower(), google_id, full_name, referred_by, avatar_url, created_at))
         user_id = c.lastrowid
         
         if referred_by:
