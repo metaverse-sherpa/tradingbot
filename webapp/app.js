@@ -125,7 +125,6 @@ async function handleGoogleCredentialResponse(response) {
     if (res) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
-        showToast("Logged in with Google!");
         navigate('#/dashboard');
     }
 }
@@ -712,6 +711,11 @@ function renderTradesView() {
                     const sl_pct = ((sl - entry) / entry) * 100;
                     const tp_pct = ((tp - entry) / entry) * 100;
                     
+                    const current_pnl_pct = trade.roe || 0;
+                    const current_pnl_val = trade.unrealized_pnl || 0;
+                    const target_pnl_pct = Math.abs(tp_pct);
+                    const target_pnl_val = Math.abs(tp - entry) * (trade.qty || 0);
+                    
                     progressBarHtml = `
                         <div class="mt-4 pt-4 border-t border-white/5 space-y-4" onclick="event.stopPropagation()">
                             <h4 class="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Market Analysis & Setup</h4>
@@ -720,14 +724,19 @@ function renderTradesView() {
                             </div>
                             
                             <div class="bg-[#121212] p-4 rounded-lg border border-white/5 space-y-4">
-                                <div class="text-center font-bold text-xs uppercase tracking-wider text-on-surface-variant/60">
-                                    Trade Progress
+                                <div class="space-y-1 font-mono text-[11px] text-left leading-relaxed text-on-surface-variant">
+                                    <div class="flex items-center gap-1.5 font-bold text-xs text-on-surface">
+                                        <span class="inline-block w-2.5 h-2.5 rounded-full ${current_pnl_val >= 0 ? 'bg-tertiary animate-pulse shadow-[0_0_8px_#3cd7ff]' : 'bg-error animate-pulse shadow-[0_0_8px_#ff5c5c]'}"></span>
+                                        ${trade.symbol} (${trade.side})
+                                    </div>
+                                    <div>
+                                        Current PnL: <span class="${current_pnl_val >= 0 ? 'text-tertiary' : 'text-error'} font-bold">${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}% (${current_pnl_val >= 0 ? '+' : ''}$${current_pnl_val.toFixed(2)})</span> of <span class="text-tertiary font-bold">+${target_pnl_pct.toFixed(2)}% (+$${target_pnl_val.toFixed(2)})</span>
+                                    </div>
+                                    <div>
+                                        • Entry: <span class="text-primary font-bold">$${entry.toFixed(2)}</span> | SL: <span class="text-error font-bold">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span> | TP: <span class="text-tertiary font-bold">$${tp.toFixed(2)} (+${tp_pct.toFixed(0)}%)</span>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between items-center text-xs font-bold">
-                                    <span class="text-error">SL</span>
-                                    <span class="px-2 py-0.5 rounded bg-tertiary/10 ${roeColor} border border-tertiary/20">${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE</span>
-                                    <span class="text-tertiary">TP</span>
-                                </div>
+
                                 <div class="relative py-2">
                                     <div class="h-1 w-full bg-surface-container rounded-full relative">
                                         <div class="absolute w-3.5 h-3.5 -top-1.5 bg-[#00E5FF] rounded-full border-2 border-white shadow-[0_0_8px_#00E5FF]" style="left: calc(${pct}% - 7px);"></div>
@@ -748,12 +757,23 @@ function renderTradesView() {
                                     </div>
                                 </div>
                             </div>
+
+                            <button onclick="confirmClosePosition('${trade.id}', '${trade.type}', '${trade.symbol}')" class="w-full h-10 bg-error/15 hover:bg-error/25 border border-error/30 text-error font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 mt-2 cursor-pointer transition-all active:scale-[0.98]">
+                                <span class="material-symbols-outlined text-[16px]">close</span>
+                                Market Close ${trade.symbol}
+                            </button>
                         </div>
                     `;
                 } else if (isExpanded) {
                     progressBarHtml = `
-                        <div class="mt-4 pt-4 border-t border-white/5 text-center py-4 text-xs text-on-surface-variant" onclick="event.stopPropagation()">
-                            Live R:R levels are not configured for this manual or untracked position.
+                        <div class="mt-4 pt-4 border-t border-white/5 space-y-4" onclick="event.stopPropagation()">
+                            <div class="text-center py-4 text-xs text-on-surface-variant">
+                                Live R:R levels are not configured for this manual or untracked position.
+                            </div>
+                            <button onclick="confirmClosePosition('${trade.id}', '${trade.type}', '${trade.symbol}')" class="w-full h-10 bg-error/15 hover:bg-error/25 border border-error/30 text-error font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]">
+                                <span class="material-symbols-outlined text-[16px]">close</span>
+                                Market Close ${trade.symbol}
+                            </button>
                         </div>
                     `;
                 }
@@ -1708,4 +1728,11 @@ window.addEventListener('click', () => {
         renderView();
     }
 });
+
+window.confirmClosePosition = function(id, type, symbol) {
+    if (confirm(`🚨 WARNING: Are you sure you want to execute a Market Close order for ${symbol}?`)) {
+        closeSinglePosition(id, type);
+    }
+};
+
 
