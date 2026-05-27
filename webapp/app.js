@@ -7,13 +7,19 @@ let STATE = {
     total_balance: 12450.0,
     open_trades: [],
     history: [],
+    free_history: [],
     active_signals: [],
     closed_signals: [],
-    stats: { wins: 14, losses: 5, win_rate: 72.5, cumulative_pnl: 342.10, profit_factor: 2.45 },
+    stats: null,
+    free_stats: null,
     current_view: 'login',
     dashboard_tab: 'crypto',
     trades_mode: 'active',
     expanded_trade_id: null,
+    expanded_signal_id: null,
+    is_loading_signals: false,
+    history_expanded_id: null,
+    free_history_expanded_id: null,
     profile_menu_open: false,
     backtest: { running: false, result: null, period: '3 Years', capital: 1000, strategy: 'Mean Reversion Scalper' }
 };
@@ -224,10 +230,16 @@ async function handleRoute() {
         STATE.current_view = 'backtest';
     } else if (hash === '#/signals') {
         STATE.current_view = 'signals';
-        const active = await apiRequest('/signals/active');
-        if (active) STATE.active_signals = active;
-        const closed = await apiRequest('/signals/closed');
-        if (closed) STATE.closed_signals = closed;
+        STATE.is_loading_signals = true;
+        renderView();
+        try {
+            const active = await apiRequest('/signals/active');
+            if (active) STATE.active_signals = active;
+            const closed = await apiRequest('/signals/closed');
+            if (closed) STATE.closed_signals = closed;
+        } finally {
+            STATE.is_loading_signals = false;
+        }
     } else if (hash === '#/premium') {
         STATE.current_view = 'premium';
     } else if (hash === '#/referral') {
@@ -1349,6 +1361,35 @@ window.toggleSignalExpand = function(id) {
 }
 
 function renderSignalsView() {
+    if (STATE.is_loading_signals) {
+        const loadingMessages = [
+            "Sherpa is consulting the algorithmic oracles...",
+            "Analyzing quantum market fluctuations...",
+            "Deploying the Alpha-Seeking Sherpas...",
+            "Calibrating the velocity pullbacks...",
+            "Parsing the cosmic charts...",
+            "Calculating precise entry vectors..."
+        ];
+        const msg = loadingMessages[new Date().getSeconds() % loadingMessages.length];
+        
+        return `
+            ${renderHeader()}
+            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+                <div class="relative w-24 h-24 mb-6">
+                    <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-3xl animate-pulse">satellite_alt</span>
+                    </div>
+                </div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 animate-pulse">Scanning Markets...</h2>
+                <p class="font-body-md text-body-md text-on-surface-variant text-center max-w-[280px]">
+                    ${msg}
+                </p>
+            </main>
+        `;
+    }
+
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
