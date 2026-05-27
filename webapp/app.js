@@ -79,10 +79,10 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     
     try {
         const response = await fetch(url, options);
-        if (response.status === 401 && window.location.hash !== '#/login' && window.location.hash !== '#/register') {
-            // Unauthorized → redirect to login
+        if (response.status === 401 && window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/') {
+            // Unauthorized → redirect to landing
             STATE.user = null;
-            navigate('#/login');
+            navigate('#/landing');
             return null;
         }
         
@@ -156,12 +156,25 @@ function navigate(hash) {
 }
 
 async function handleRoute() {
-    const hash = window.location.hash || '#/dashboard';
+    const hash = window.location.hash || '#/landing';
     
     // Auth Guard
-    if (hash === '#/login' || hash === '#/register') {
-        STATE.current_view = hash.substring(2);
-        renderView();
+    if (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/') {
+        const view = (hash === '#/' || hash === '#/landing') ? 'landing' : hash.substring(2);
+        STATE.current_view = view;
+        
+        if (view === 'landing') {
+            STATE.is_loading_signals = true;
+            renderView(); // Render loading skeleton
+            apiRequest('/signals/active').then(signals => {
+                STATE.signals = signals || [];
+                STATE.is_loading_signals = false;
+                renderView();
+            });
+        } else {
+            renderView();
+        }
+
         if (STATE.current_view === 'login') {
             initGoogleSignIn();
         }
@@ -388,6 +401,9 @@ function renderView() {
     let html = '';
     
     switch (STATE.current_view) {
+        case 'landing':
+            html = renderLandingView();
+            break;
         case 'login':
             html = renderLoginView();
             break;
@@ -519,6 +535,73 @@ function renderRegisterView() {
                 <div class="flex flex-col items-center gap-2 mt-2">
                     <p class="font-label-sm text-label-sm text-on-surface-variant">Already have an account? <a class="text-primary font-bold" href="#/login">Sign in</a></p>
                 </div>
+            </div>
+        </main>
+    `;
+}
+
+function renderLandingView() {
+    if (STATE.is_loading_signals) {
+        return `
+            ${renderHeader()}
+            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+                <div class="relative w-24 h-24 mb-6">
+                    <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-3xl animate-pulse">satellite_alt</span>
+                    </div>
+                </div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface mb-2 animate-pulse">Scanning the markets...</h2>
+            </main>
+        `;
+    }
+
+    // Top Header for the landing page
+    const headerHtml = `
+        <div class="text-center pt-8 pb-6">
+            <h1 class="font-headline-md text-headline-md text-on-surface mb-3">Alpha Signals</h1>
+            <p class="font-body-md text-body-md text-on-surface-variant max-w-[320px] mx-auto">
+                Real-time algorithmic trading setups.
+            </p>
+        </div>
+    `;
+
+    const signalsList = (!STATE.signals || STATE.signals.length === 0) ? `
+        <div class="text-center py-12">
+            <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+            <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+        </div>
+    ` : STATE.signals.map(s => renderSignalCard(s, true)).join('');
+
+    return `
+        ${renderHeader()}
+        <main class="pt-20 px-container-margin pb-24 max-w-[500px] mx-auto relative">
+            ${headerHtml}
+            <div class="space-y-4 relative">
+                ${signalsList}
+                
+                <div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none" style="top: 20%;">
+                    <div class="glass-card p-6 rounded-2xl border border-primary/30 max-w-[340px] text-center shadow-2xl bg-[#121212]/80 backdrop-blur-md pointer-events-auto relative overflow-hidden">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-primary/20 to-tertiary/20 blur-xl z-0"></div>
+                        <div class="relative z-10">
+                            <span class="material-symbols-outlined text-4xl text-primary mb-3">lock_open</span>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Unlock Alpha Signals</h3>
+                            <p class="font-body-sm text-body-sm text-on-surface-variant mb-6">
+                                Join MetaverseSherpa for free to view live signals, entry points, and performance.
+                            </p>
+                            <button onclick="navigate('#/login')" class="w-full btn-primary py-3 rounded-full font-bold text-sm tracking-wide">
+                                Create Free Account
+                            </button>
+                            <button onclick="navigate('#/login')" class="w-full mt-3 py-2 text-primary font-bold text-sm hover:text-primary/80 transition-colors">
+                                Log In
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bottom gradient fade -->
+                <div class="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none"></div>
             </div>
         </main>
     `;
@@ -1415,8 +1498,8 @@ window.toggleSignalExpand = function(id) {
     renderView();
 }
 
-function renderSignalCard(sig) {
-    const isExpanded = String(STATE.expanded_signal_id) === String(sig.id);
+function renderSignalCard(sig, isLanding = false) {
+    const isExpanded = !isLanding && String(STATE.expanded_signal_id) === String(sig.id);
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
     const privacyStyle = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
     const privacyClass = isPrivacyOn ? 'privacy-blur' : '';
@@ -1463,7 +1546,7 @@ function renderSignalCard(sig) {
     }
 
     return `
-        <div onclick="toggleSignalExpand('${sig.id}')" class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3 cursor-pointer hover:border-white/20 transition-all group" ${privacyHoverHandlers}>
+        <div ${isLanding ? '' : `onclick="toggleSignalExpand('${sig.id}')"`} class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3 ${isLanding ? '' : 'cursor-pointer hover:border-white/20'} transition-all group" ${privacyHoverHandlers}>
             <div class="flex justify-between items-center pointer-events-none">
                 <div>
                     <h4 class="font-bold text-on-surface flex items-center gap-1">
@@ -1472,14 +1555,14 @@ function renderSignalCard(sig) {
                     </h4>
                     <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
                 </div>
-                <div class="text-right flex flex-col justify-center">
+                <div class="text-right flex flex-col justify-center" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
                     <p class="font-numeric-data text-numeric-data font-bold text-lg ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
                         ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
                     </p>
                     ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
                 </div>
             </div>
-            <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none">
+            <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
                     SL: <span class="text-on-surface">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span>
                 </div>
