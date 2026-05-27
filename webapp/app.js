@@ -811,11 +811,11 @@ function renderTradesView() {
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <div class="flex justify-center border-b border-white/10 pb-2 gap-6">
-                <button onclick="setTradesMode('active')" class="font-label-md text-label-md pb-2 font-bold transition-all relative ${tradesMode === 'active' ? 'text-primary after:content-[\'\'] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+            <div class="glass-card rounded-full flex border border-white/10 p-1 w-full relative overflow-hidden z-10">
+                <button onclick="setTradesMode('active')" class="flex-1 py-2 text-center rounded-full font-label-md font-bold transition-all duration-200 ${tradesMode === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
                     Active Positions
                 </button>
-                <button onclick="setTradesMode('closed')" class="font-label-md text-label-md pb-2 font-bold transition-all relative ${tradesMode === 'closed' ? 'text-primary after:content-[\'\'] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                <button onclick="setTradesMode('closed')" class="flex-1 py-2 text-center rounded-full font-label-md font-bold transition-all duration-200 ${tradesMode === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
                     Closed History
                 </button>
             </div>
