@@ -1124,11 +1124,14 @@ def admin_deployment():
         # Fetch latest 3 commits
         changelog = subprocess.check_output(['git', 'log', '-n', '3', '--pretty=format:%s (%ar)']).decode('utf-8')
         changelog_lines = changelog.split('\n')
+        # Fetch latest commit info statically
+        commit_hash = subprocess.check_output(['git', 'log', '-1', '--format=%H']).decode('utf-8').strip()
+        commit_time = subprocess.check_output(['git', 'log', '-1', '--format=%cd']).decode('utf-8').strip()
     except Exception as git_err:
-        print(f"Failed to fetch changelog: {git_err}")
+        print(f"Failed to fetch git info: {git_err}")
         changelog_lines = ["• New deployment (Git log not accessible)"]
-
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        commit_hash = "fallback-hash"
+        commit_time = "fallback-time"
 
     checklist = [
         "Verify 'Close Trade' tactical confirmation on /opentrades",
@@ -1137,7 +1140,8 @@ def admin_deployment():
     ]
 
     return jsonify({
-        "timestamp": now,
+        "timestamp": commit_time,
+        "commit_hash": commit_hash,
         "changelog": changelog_lines,
         "checklist": checklist
     }), 200

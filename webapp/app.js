@@ -255,6 +255,16 @@ window.addEventListener('hashchange', handleRoute);
 window.addEventListener('load', () => {
     handleRoute();
     initParticles();
+    // Check for new deployments dynamically every 30 seconds in the background
+    setInterval(() => {
+        if (STATE.user) {
+            const isSuperAdmin = STATE.user.telegram_chat_id === 1567788633;
+            const isAdmin = STATE.user.is_admin || isSuperAdmin;
+            if (isAdmin) {
+                checkDeploymentAlert();
+            }
+        }
+    }, 30000);
 });
 
 // ----------------- Bottom Navigation Component -----------------
@@ -819,20 +829,20 @@ function renderTradesView() {
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <div class="glass-card rounded-full flex border border-white/10 p-1 w-full relative overflow-hidden z-10">
-                <button onclick="setTradesMode('active')" class="flex-1 py-2 text-center rounded-full font-label-md font-bold transition-all duration-200 ${tradesMode === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                <button onclick="setTradesMode('active')" class="flex-1 py-2 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${tradesMode === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
                     Active Positions
                 </button>
-                <button onclick="setTradesMode('closed')" class="flex-1 py-2 text-center rounded-full font-label-md font-bold transition-all duration-200 ${tradesMode === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                <button onclick="setTradesMode('closed')" class="flex-1 py-2 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${tradesMode === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
                     Closed History
                 </button>
             </div>
 
             <!-- Crypto vs Stocks Segmented Controller with dynamic trade count -->
             <div class="glass-card rounded-full flex border border-white/10 p-1 w-full relative overflow-hidden z-10">
-                <button onclick="setDashboardTab('crypto')" class="flex-1 py-1.5 text-center rounded-full font-label-sm font-bold transition-all duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                <button onclick="setDashboardTab('crypto')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
                     Crypto (${tradesMode === 'active' ? STATE.open_trades.filter(t => t.type === 'crypto').length : STATE.history.filter(t => t.type === 'crypto').length})
                 </button>
-                <button onclick="setDashboardTab('stock')" class="flex-1 py-1.5 text-center rounded-full font-label-sm font-bold transition-all duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                <button onclick="setDashboardTab('stock')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
                     Stocks (${tradesMode === 'active' ? STATE.open_trades.filter(t => t.type === 'stock').length : STATE.history.filter(t => t.type === 'stock').length})
                 </button>
             </div>
@@ -1641,15 +1651,28 @@ function bindEvents() {
 }
 
 // ----------------- Deployment Alert Notifier -----------------
+// Ask for native browser push notification permissions on load if default
+if (window.Notification && Notification.permission === "default") {
+    Notification.requestPermission();
+}
+
 async function checkDeploymentAlert() {
     try {
         const res = await apiRequest('/admin/deployment');
-        if (res && res.timestamp) {
+        if (res && res.commit_hash) {
             const lastSeen = localStorage.getItem('last_seen_deployment');
-            if (lastSeen !== res.timestamp) {
+            if (lastSeen !== res.commit_hash) {
                 // Trigger the existing premium temporary toast balloon
                 showToast("🚀 New deployment Successful");
-                localStorage.setItem('last_seen_deployment', res.timestamp);
+                localStorage.setItem('last_seen_deployment', res.commit_hash);
+                
+                // Trigger native OS push notification if permitted
+                if (window.Notification && Notification.permission === "granted") {
+                    new Notification("🚀 Metaverse Sherpa Upgraded", {
+                        body: "New deployment Successful! Features are ready for testing.",
+                        icon: "/favicon.ico"
+                    });
+                }
             }
         }
     } catch (e) {
