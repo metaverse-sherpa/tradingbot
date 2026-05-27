@@ -760,9 +760,49 @@ def debug_history_check():
             cols = c.fetchall()
             col_names = [col[1] for col in cols]
             result["users_table_has_history_cache"] = "history_cache" in col_names
-            result["users_table_columns"] = col_names
     except Exception as e:
         result["table_info_error"] = str(e)
+    
+    # 6. Simulate get_trades_history for web user 1
+    try:
+        from web_api.db_web import get_web_user_by_id
+        web_user = get_web_user_by_id(1)
+        if web_user:
+            result["sim_web_user_id"] = web_user.get("id")
+            result["sim_web_user_tg_id"] = web_user.get("telegram_chat_id")
+            
+            tg_user = _get_telegram_user(web_user)
+            result["sim_tg_user_found"] = tg_user is not None
+            
+            if tg_user and web_user.get("telegram_chat_id"):
+                trade_chat_id = int(web_user["telegram_chat_id"])
+            else:
+                trade_chat_id = int(web_user["id"]) + 1000000000
+            result["sim_trade_chat_id"] = trade_chat_id
+            
+            # Try reading history_cache from DB
+            history = []
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (trade_chat_id,))
+                row = c.fetchone()
+                result["sim_db_row_found"] = row is not None
+                result["sim_db_has_data"] = bool(row and row[0])
+                if row and row[0]:
+                    cached = json.loads(row[0])
+                    for tr in cached:
+                        is_stk = database.is_stock(tr.get("symbol", ""))
+                        tr["type"] = "stock" if is_stk else "crypto"
+                        history.append(tr)
+            
+            result["sim_history_count"] = len(history)
+            result["sim_history_preview"] = history[:2] if history else []
+        else:
+            result["sim_error"] = "Web user 1 not found"
+    except Exception as e:
+        result["sim_error"] = str(e)
+        import traceback
+        result["sim_traceback"] = traceback.format_exc()
     
     return jsonify(result), 200
 
