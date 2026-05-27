@@ -186,25 +186,25 @@ async function handleRoute() {
     if (hash === '#/dashboard') {
         STATE.current_view = 'dashboard';
         
-        // 1. Block only on critical live data (balance)
-        const bal = await apiRequest('/user/balance');
-        if (bal) {
-            STATE.crypto_balance = bal.crypto_balance;
-            STATE.stock_balance = bal.stock_balance;
-            STATE.total_balance = bal.total_balance;
-        }
-        
-        // 2. Render immediately using live balance + any cached data for the rest
+        // 1. Render immediately using cached/default state for a lightning fast load
         renderView();
         
-        // 3. Fetch non-critical data in the background
+        // 2. Fetch ALL data (including live balance) in the background
         const statsRoute = (STATE.user && STATE.user.is_premium) ? '/user/stats' : '/stats/free';
         Promise.all([
+            apiRequest('/user/balance'),
             apiRequest('/signals/active'),
             apiRequest('/trades/open'),
             apiRequest(statsRoute)
-        ]).then(([sigs, open, stats]) => {
+        ]).then(([bal, sigs, open, stats]) => {
             let stateChanged = false;
+            
+            if (bal) {
+                STATE.crypto_balance = bal.crypto_balance;
+                STATE.stock_balance = bal.stock_balance;
+                STATE.total_balance = bal.total_balance;
+                stateChanged = true;
+            }
             if (sigs) { STATE.active_signals = sigs; stateChanged = true; }
             if (open) { STATE.open_trades = open; stateChanged = true; }
             if (stats) {
@@ -213,7 +213,7 @@ async function handleRoute() {
                 stateChanged = true;
             }
             
-            // 4. Silently re-render the dashboard to "hydrate" the widgets if the user is still on it
+            // 3. Silently re-render the dashboard to "hydrate" the widgets if the user is still on it
             if (stateChanged && STATE.current_view === 'dashboard') {
                 renderView();
             }
