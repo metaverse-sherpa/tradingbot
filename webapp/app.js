@@ -1458,36 +1458,34 @@ function renderSignalCard(sig) {
                     <img src="/api/trades/chart?symbol=${encodeURIComponent(sig.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${sideStr}&open_ts=${sig.open_time || 0}&type=${sig.symbol && sig.symbol.includes('/') ? 'crypto' : 'stock'}" class="w-full h-full object-cover" alt="Signal Chart" />
                 </div>
                 
-                <div class="bg-[#121212] p-4 rounded-lg border border-white/5 space-y-4">
-                    <div class="space-y-1 font-mono text-[11px] text-left leading-relaxed text-on-surface-variant">
-                        <div class="flex items-center gap-1.5 font-bold text-xs text-on-surface">
-                            <span class="inline-block w-2.5 h-2.5 rounded-full ${current_pnl_pct >= 0 ? 'bg-tertiary animate-pulse shadow-[0_0_8px_#3cd7ff]' : 'bg-error animate-pulse shadow-[0_0_8px_#ff5c5c]'}"></span>
-                            ${sig.symbol} <span class="material-symbols-outlined text-[14px] ${isLong ? 'text-primary' : 'text-error'}">${isLong ? 'trending_up' : 'trending_down'}</span>
-                        </div>
-                        <div>
-                            Current PnL: <span class="${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'} font-bold">${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}% (<span class="${privacyClass}" ${privacyStyle}>${current_pnl_val >= 0 ? '+' : ''}$${Math.abs(current_pnl_val).toFixed(2)}</span>)</span> of <span class="text-tertiary font-bold">+${target_pnl_pct.toFixed(2)}% (<span class="${privacyClass}" ${privacyStyle}>+$${Math.abs(simulated_target_val).toFixed(2)}</span>)</span>
-                        </div>
-                        <div>
-                            • Entry: <span class="text-primary font-bold">$${entry.toFixed(2)}</span> | SL: <span class="text-error font-bold">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span> | TP: <span class="text-tertiary font-bold">$${tp.toFixed(2)} (+${tp_pct.toFixed(0)}%)</span>
+                <div class="bg-[#121212] p-4 rounded-lg border border-white/5 space-y-3">
+                    <div class="text-center flex flex-col items-center gap-1">
+                        <div class="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-widest">Trade Progress</div>
+                        <div class="inline-block px-2 py-0.5 rounded-full border border-white/10 ${current_pnl_pct >= 0 ? 'bg-tertiary/10 text-tertiary' : 'bg-error/10 text-error'} font-mono text-xs font-bold">
+                            ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
                         </div>
                     </div>
 
                     <div class="relative py-2">
                         <div class="h-1 w-full bg-surface-container rounded-full relative">
-                            <div class="absolute w-3.5 h-3.5 -top-1.5 bg-[#00E5FF] rounded-full border-2 border-white shadow-[0_0_8px_#00E5FF]" style="left: calc(${pct}% - 7px);"></div>
+                            <div class="absolute w-3.5 h-3.5 -top-1.5 ${current_pnl_pct >= 0 ? 'bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]' : 'bg-[#FF3366] shadow-[0_0_8px_#FF3366]'} rounded-full border-2 border-white" style="left: calc(${pct}% - 7px);"></div>
                         </div>
                     </div>
+                    
                     <div class="flex justify-between items-center text-[10px] text-on-surface-variant font-mono">
                         <div class="text-left">
-                            <div class="font-bold text-error">${sl_pct.toFixed(1)}%</div>
+                            <div class="font-bold text-error mb-1">SL</div>
+                            <div class="text-error/80">${sl_pct.toFixed(1)}%</div>
                             <div>$${sl.toFixed(2)}</div>
                         </div>
                         <div class="text-center">
-                            <div class="font-bold text-white">ENTRY</div>
+                            <div class="font-bold text-white mb-1">ENTRY</div>
+                            <div class="opacity-0">0%</div> <!-- Spacer to align -->
                             <div>$${entry.toFixed(2)}</div>
                         </div>
                         <div class="text-right">
-                            <div class="font-bold text-tertiary">+${tp_pct.toFixed(1)}%</div>
+                            <div class="font-bold text-tertiary mb-1">TP</div>
+                            <div class="text-tertiary/80">+${tp_pct.toFixed(1)}%</div>
                             <div>$${tp.toFixed(2)}</div>
                         </div>
                     </div>
