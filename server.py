@@ -1313,6 +1313,7 @@ def get_trade_chart():
     side = request.args.get("side", "LONG").upper()
     open_ts = int(request.args.get("open_ts", 0))
     trade_type = request.args.get("type", "crypto")
+    current_price = float(request.args.get("current_price", 0.0))
 
     if not symbol:
         return "Symbol required", 400
@@ -1375,7 +1376,8 @@ def get_trade_chart():
             sl=sl,
             side=side,
             open_ts=open_ts,
-            timeframe=timeframe
+            timeframe=timeframe,
+            current_price=current_price
         )
         
         from flask import send_file

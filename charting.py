@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 # Use a non-interactive backend to save RAM and avoid VPS issues
 matplotlib.use('Agg')
 
-def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="15M", currency="USDT"):
+def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="15M", currency="USDT", current_price=0.0):
     """
     Generates a high-contrast Neon chart where TP/SL/Entry lines only start from open_ts.
     """
@@ -16,6 +16,28 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     df.index = pd.to_datetime(df['timestamp'], unit='ms')
     if df.index.tz is not None:
         df.index = df.index.tz_localize(None)
+
+    # Incorporate live price into the chart
+    if current_price > 0:
+        last_idx = df.index[-1]
+        now = pd.Timestamp.utcnow().tz_localize(None)
+        
+        # If the last candle is from a previous day, append a new daily candle
+        if timeframe == "1D" and (now.date() > last_idx.date()):
+             new_row = pd.DataFrame([{
+                 'timestamp': int(now.timestamp() * 1000),
+                 'open': df.loc[last_idx, 'close'],
+                 'high': max(df.loc[last_idx, 'close'], current_price),
+                 'low': min(df.loc[last_idx, 'close'], current_price),
+                 'close': current_price,
+                 'volume': 0
+             }])
+             new_row.index = pd.to_datetime(new_row['timestamp'], unit='ms')
+             df = pd.concat([df, new_row])
+        else:
+             df.loc[df.index[-1], 'close'] = current_price
+             df.loc[df.index[-1], 'high'] = max(df.loc[df.index[-1], 'high'], current_price)
+             df.loc[df.index[-1], 'low'] = min(df.loc[df.index[-1], 'low'], current_price)
     
     # 1. Calculate Indicators & Setup Vibrant Neon Addplots
     ap = []
@@ -119,29 +141,6 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     plt.close(fig)
 
     
-    # --- 4. Premium Visual Assembly ---
-    try:
-        import media_gen
-        progress_box = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, df['close'].iloc[-1], width=1024)
-        
-        from PIL import Image
-        chart_img = Image.open(filepath).convert("RGBA")
-        prog_img = Image.open(progress_box).convert("RGBA")
-        
-        # Scale progress box to match chart width
-        scale = chart_img.width / prog_img.width
-        new_h = int(prog_img.height * scale)
-        prog_img = prog_img.resize((chart_img.width, new_h), Image.Resampling.LANCZOS)
-        
-        # Combine vertically
-        combined = Image.new("RGBA", (chart_img.width, chart_img.height + prog_img.height), (18, 18, 18, 255))
-        combined.paste(chart_img, (0, 0), chart_img)
-        combined.paste(prog_img, (0, chart_img.height), prog_img)
-        
-        combined.convert("RGB").save(filepath, "JPEG", quality=90)
-        chart_img.close(); prog_img.close(); combined.close()
-        os.remove(progress_box)
-    except Exception as e:
-        print(f"Visual assembly failed: {e}")
+
 
     return filepath
