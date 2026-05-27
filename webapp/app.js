@@ -185,31 +185,39 @@ async function handleRoute() {
     // Determine view route
     if (hash === '#/dashboard') {
         STATE.current_view = 'dashboard';
-        STATE.is_loading_dashboard = true;
+        
+        // 1. Block only on critical live data (balance)
+        const bal = await apiRequest('/user/balance');
+        if (bal) {
+            STATE.crypto_balance = bal.crypto_balance;
+            STATE.stock_balance = bal.stock_balance;
+            STATE.total_balance = bal.total_balance;
+        }
+        
+        // 2. Render immediately using live balance + any cached data for the rest
         renderView();
         
-        try {
-            const statsRoute = (STATE.user && STATE.user.is_premium) ? '/user/stats' : '/stats/free';
-            const [bal, sigs, open, stats] = await Promise.all([
-                apiRequest('/user/balance'),
-                apiRequest('/signals/active'),
-                apiRequest('/trades/open'),
-                apiRequest(statsRoute)
-            ]);
-            if (bal) {
-                STATE.crypto_balance = bal.crypto_balance;
-                STATE.stock_balance = bal.stock_balance;
-                STATE.total_balance = bal.total_balance;
-            }
-            if (sigs) STATE.active_signals = sigs;
-            if (open) STATE.open_trades = open;
+        // 3. Fetch non-critical data in the background
+        const statsRoute = (STATE.user && STATE.user.is_premium) ? '/user/stats' : '/stats/free';
+        Promise.all([
+            apiRequest('/signals/active'),
+            apiRequest('/trades/open'),
+            apiRequest(statsRoute)
+        ]).then(([sigs, open, stats]) => {
+            let stateChanged = false;
+            if (sigs) { STATE.active_signals = sigs; stateChanged = true; }
+            if (open) { STATE.open_trades = open; stateChanged = true; }
             if (stats) {
                 if (STATE.user && STATE.user.is_premium) STATE.stats = stats;
                 else STATE.free_stats = stats;
+                stateChanged = true;
             }
-        } finally {
-            STATE.is_loading_dashboard = false;
-        }
+            
+            // 4. Silently re-render the dashboard to "hydrate" the widgets if the user is still on it
+            if (stateChanged && STATE.current_view === 'dashboard') {
+                renderView();
+            }
+        });
     } else if (hash === '#/trades') {
         STATE.current_view = 'trades';
         const [open, hist] = await Promise.all([
