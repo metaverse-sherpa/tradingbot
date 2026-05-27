@@ -899,12 +899,33 @@ def close_trade():
     data = request.json or {}
     trade_id = data.get("id")
     trade_type = data.get("type", "crypto")
+    symbol = data.get("symbol")
     
     if not trade_id:
         return jsonify({"error": "Trade ID required"}), 400
+    if not symbol:
+        return jsonify({"error": "Symbol required"}), 400
         
-    # Implement actual exchange close call
-    return jsonify({"message": f"Successfully closed {trade_type} trade {trade_id}"}), 200
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    if tg_user:
+        chat_id = user["telegram_chat_id"]
+    else:
+        chat_id = user["id"] + 1000000000
+        
+    try:
+        from bot.handlers.trading import close_single_position
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        success, msg = loop.run_until_complete(close_single_position(chat_id, symbol))
+        loop.close()
+        
+        if success:
+            return jsonify({"message": msg}), 200
+        else:
+            return jsonify({"error": msg}), 400
+    except Exception as e:
+        return jsonify({"error": f"Failed to execute exchange order: {str(e)}"}), 500
 
 @app.route('/api/trades/panic', methods=['POST'])
 @require_auth

@@ -796,9 +796,11 @@ function renderTradesView() {
                             <div class="text-right">
                                 <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
                                     ${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}
+                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / +$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span>` : ''}
                                 </p>
                                 <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
                                     ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE
+                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / +${Math.abs(((trade.tp_price - trade.entry_price) / trade.entry_price) * 100).toFixed(0)}%</span>` : ''}
                                 </p>
                             </div>
                         </div>
@@ -1567,8 +1569,8 @@ function resetBacktester() {
     renderView();
 }
 
-async function closeSinglePosition(id, type) {
-    const res = await apiRequest('/trades/close', 'POST', { id, type });
+async function closeSinglePosition(id, type, symbol) {
+    const res = await apiRequest('/trades/close', 'POST', { id, type, symbol });
     if (res) {
         showToast("Close signal submitted");
         handleRoute();
@@ -1731,7 +1733,7 @@ window.addEventListener('click', () => {
 
 window.confirmClosePosition = function(id, type, symbol) {
     if (confirm(`🚨 WARNING: Are you sure you want to execute a Market Close order for ${symbol}?`)) {
-        closeSinglePosition(id, type);
+        closeSinglePosition(id, type, symbol);
     }
 };
 
