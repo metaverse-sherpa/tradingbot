@@ -995,6 +995,9 @@ def get_active_signals():
     import sqlite3
     import asyncio
     import live_bot_multi
+    from bot.handlers.trading import fetch_alpaca_daily_bars_async
+    import os
+    import utils_gcp
     
     CRYPTO_LEVERAGE = 10
     
@@ -1002,6 +1005,13 @@ def get_active_signals():
         mdm = live_bot_multi.MarketDataManager()
     except Exception:
         mdm = None
+        
+    try:
+        sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
+        sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
+        sys_user = {"alpaca_api_key": sys_key, "alpaca_api_secret": sys_sec}
+    except Exception:
+        sys_user = {}
 
     for sig in signals:
         sym = sig.get("symbol", "")
@@ -1015,13 +1025,22 @@ def get_active_signals():
 
         try:
             if is_stk:
-                conn2 = sqlite3.connect("data/stock_daily_cache.db")
-                c2 = conn2.cursor()
-                c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
-                row = c2.fetchone()
-                conn2.close()
-                if row:
-                    current = float(row[0])
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                df_chart = loop.run_until_complete(fetch_alpaca_daily_bars_async(sys_user, sym, limit=1))
+                loop.close()
+                
+                if df_chart is not None and not df_chart.empty:
+                    current = float(df_chart['close'].iloc[-1])
+                else:
+                    # Fallback to local daily cache if Alpaca live fetch fails or market closed
+                    conn2 = sqlite3.connect("data/stock_daily_cache.db")
+                    c2 = conn2.cursor()
+                    c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                    row = c2.fetchone()
+                    conn2.close()
+                    if row:
+                        current = float(row[0])
             else:
                 if mdm:
                     loop = asyncio.new_event_loop()
