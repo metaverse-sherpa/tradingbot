@@ -1155,8 +1155,8 @@ function renderSettingsView() {
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 Connect Exchange (Blofin)</h3>
                 <form onsubmit="handleExchangeSetup(event)" class="space-y-3">
                     <input id="api-key" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Key" type="text" required/>
-                    <input id="api-secret" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Secret" type="password" required/>
-                    <input id="api-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="Passphrase" type="password" required/>
+                    <input id="api-secret" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Secret" type="password" required/>
+                    <input id="api-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="Passphrase" type="password" required/>
                     <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2">
                         Save Keys
                     </button>
