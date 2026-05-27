@@ -540,10 +540,10 @@ def get_trades_history():
     tg_user = _get_telegram_user(user)
     
     # Use real Telegram chat_id if linked, otherwise synthetic offset
-    if tg_user:
-        trade_chat_id = user["telegram_chat_id"]
+    if tg_user and user.get("telegram_chat_id"):
+        trade_chat_id = int(user["telegram_chat_id"])
     else:
-        trade_chat_id = user["id"] + 1000000000
+        trade_chat_id = int(user["id"]) + 1000000000
     
     history = []
     
@@ -563,6 +563,46 @@ def get_trades_history():
                         history.append(tr)
         except Exception as e:
             print(f"Error loading history_cache: {e}")
+            
+        # Fallback to fetching directly from CCXT if cache is empty
+        if not history:
+            crypto_api_key = (tg_user or {}).get("api_key") or user.get("api_key")
+            crypto_api_secret = (tg_user or {}).get("api_secret") or user.get("api_secret")
+            crypto_api_password = (tg_user or {}).get("api_password") or user.get("api_password") or ""
+            crypto_exchange_id = (tg_user or {}).get("exchange_id") or user.get("exchange_id", "blofin")
+            if crypto_api_key and crypto_api_secret:
+                try:
+                    import ccxt
+                    config = {
+                        "apiKey": crypto_api_key,
+                        "secret": crypto_api_secret,
+                        "password": crypto_api_password,
+                        "options": {"defaultType": "swap"},
+                        "enableRateLimit": True,
+                    }
+                    client = getattr(ccxt, crypto_exchange_id)(config)
+                    enabled_syms = (user.get("enabled_symbols") or "BTC,ETH").split(",")[:3]
+                    for sym in enabled_syms:
+                        norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
+                        try:
+                            trades = client.fetch_my_trades(norm_sym, limit=5)
+                            for t in trades:
+                                info = t.get("info", {})
+                                gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
+                                if gross_pnl != 0:
+                                    fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                                    net_pnl = gross_pnl - (fee * 2)
+                                    history.append({
+                                        "type": "crypto",
+                                        "symbol": sym,
+                                        "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
+                                        "timestamp": t.get('timestamp', 0),
+                                        "net_pnl": net_pnl,
+                                        "price": t.get('price', 0),
+                                    })
+                        except Exception: pass
+                except Exception as e:
+                    print(f"Fallback CCXT fetch error: {e}")
             
     # 2. Add local web user stock history if any
     try:
