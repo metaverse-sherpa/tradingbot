@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import database
 import utils_gcp
+from bot.config import is_stock
 from web_api.db_web import (
     get_web_user_by_email,
     get_web_user_by_google_id,
@@ -562,7 +563,7 @@ def get_trades_history():
                 cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
                 print(f"[HISTORY] Parsed {len(cached)} trades from tg_user history_cache")
                 for tr in cached:
-                    is_stk = database.is_stock(tr.get("symbol", ""))
+                    is_stk = is_stock(tr.get("symbol", ""))
                     tr["type"] = "stock" if is_stk else "crypto"
                     history.append(tr)
             except Exception as e:
@@ -581,7 +582,7 @@ def get_trades_history():
                         cached = json.loads(row[0])
                         print(f"[HISTORY] Parsed {len(cached)} trades from DB history_cache")
                         for tr in cached:
-                            is_stk = database.is_stock(tr.get("symbol", ""))
+                            is_stk = is_stock(tr.get("symbol", ""))
                             tr["type"] = "stock" if is_stk else "crypto"
                             history.append(tr)
             except Exception as e:
@@ -791,7 +792,7 @@ def debug_history_check():
                 if row and row[0]:
                     cached = json.loads(row[0])
                     for tr in cached:
-                        is_stk = database.is_stock(tr.get("symbol", ""))
+                        is_stk = is_stock(tr.get("symbol", ""))
                         tr["type"] = "stock" if is_stk else "crypto"
                         history.append(tr)
             
