@@ -802,17 +802,17 @@ function renderTradesView() {
                                     ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / <span ${inlineBlur}>+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
                                 </p>
                                 <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
-                                    ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE
-                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / +${Math.abs(((trade.tp_price - trade.entry_price) / trade.entry_price) * 100).toFixed(0)}%</span>` : ''}
+                                    ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}%
+                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> of ${Math.abs(((trade.tp_price - trade.entry_price) / trade.entry_price) * 100).toFixed(0)}%</span>` : ''}
                                 </p>
                             </div>
                         </div>
                         <div class="flex justify-between items-center pt-3 border-t border-white/10">
                             <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                                Entry: <span class="text-on-surface">$${(trade.entry_price || 0).toFixed(2)}</span>
+                                SL: <span class="text-on-surface">$${(trade.sl_price || 0).toFixed(2)} (${trade.entry_price > 0 && trade.sl_price > 0 ? (((trade.sl_price - trade.entry_price) / trade.entry_price) * 100).toFixed(0) : '0'}%)</span>
                             </div>
                             <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                                Mark: <span class="text-on-surface">$${(trade.mark_price || 0).toFixed(2)}</span>
+                                TP: <span class="text-on-surface">$${(trade.tp_price || 0).toFixed(2)} (${trade.entry_price > 0 && trade.tp_price > 0 ? (((trade.tp_price - trade.entry_price) / trade.entry_price) * 100).toFixed(0) : '0'}%)</span>
                             </div>
                         </div>
                         ${progressBarHtml}
