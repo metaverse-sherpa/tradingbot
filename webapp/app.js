@@ -1458,38 +1458,6 @@ function renderSignalCard(sig) {
                     <img src="/api/trades/chart?symbol=${encodeURIComponent(sig.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${sideStr}&open_ts=${sig.open_time || 0}&type=${sig.symbol && sig.symbol.includes('/') ? 'crypto' : 'stock'}" class="w-full h-full object-cover" alt="Signal Chart" />
                 </div>
                 
-                <div class="bg-[#121212] p-4 rounded-lg border border-white/5 space-y-3">
-                    <div class="text-center flex flex-col items-center gap-1">
-                        <div class="text-[9px] font-bold text-on-surface-variant/70 uppercase tracking-widest">Trade Progress</div>
-                        <div class="inline-block px-2 py-0.5 rounded-full border border-white/10 ${current_pnl_pct >= 0 ? 'bg-tertiary/10 text-tertiary' : 'bg-error/10 text-error'} font-mono text-xs font-bold">
-                            ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
-                        </div>
-                    </div>
-
-                    <div class="relative py-2">
-                        <div class="h-1 w-full bg-surface-container rounded-full relative">
-                            <div class="absolute w-3.5 h-3.5 -top-1.5 ${current_pnl_pct >= 0 ? 'bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]' : 'bg-[#FF3366] shadow-[0_0_8px_#FF3366]'} rounded-full border-2 border-white" style="left: calc(${pct}% - 7px);"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-between items-center text-[10px] text-on-surface-variant font-mono">
-                        <div class="text-left">
-                            <div class="font-bold text-error mb-1">SL</div>
-                            <div class="text-error/80">${sl_pct.toFixed(1)}%</div>
-                            <div>$${sl.toFixed(2)}</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold text-white mb-1">ENTRY</div>
-                            <div class="opacity-0">0%</div> <!-- Spacer to align -->
-                            <div>$${entry.toFixed(2)}</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="font-bold text-tertiary mb-1">TP</div>
-                            <div class="text-tertiary/80">+${tp_pct.toFixed(1)}%</div>
-                            <div>$${tp.toFixed(2)}</div>
-                        </div>
-                    </div>
-                </div>
             </div>
         `;
     }
