@@ -545,34 +545,60 @@ def get_trades_history():
     else:
         trade_chat_id = int(user["id"]) + 1000000000
     
+    print(f"[HISTORY] user_id={user.get('id')}, tg_user={'YES' if tg_user else 'NO'}, trade_chat_id={trade_chat_id}")
+    
     history = []
     
-    # 1. Fetch Crypto History from the Bot's Cache if linked
+    # 1. Try the history_cache from the Telegram bot's Users table
     if tg_user:
-        try:
-            with database.db_session() as conn:
-                c = conn.cursor()
-                c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (trade_chat_id,))
-                row = c.fetchone()
-                if row and row[0]:
-                    import json
-                    cached = json.loads(row[0])
-                    for tr in cached:
-                        is_stk = database.is_stock(tr.get("symbol", ""))
-                        tr["type"] = "stock" if is_stk else "crypto"
-                        history.append(tr)
-        except Exception as e:
-            print(f"Error loading history_cache: {e}")
-            
-        # Fallback to fetching directly from CCXT if cache is empty
+        # The bot's get_user() returns history_cache as a raw field.
+        # Try reading it directly from tg_user first, then fall back to DB query.
+        raw_cache = tg_user.get("history_cache")
+        print(f"[HISTORY] tg_user history_cache type={type(raw_cache).__name__}, truthy={bool(raw_cache)}")
+        
+        if raw_cache:
+            try:
+                import json
+                cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
+                print(f"[HISTORY] Parsed {len(cached)} trades from tg_user history_cache")
+                for tr in cached:
+                    is_stk = database.is_stock(tr.get("symbol", ""))
+                    tr["type"] = "stock" if is_stk else "crypto"
+                    history.append(tr)
+            except Exception as e:
+                print(f"[HISTORY] Error parsing tg_user history_cache: {e}")
+        
+        # Fallback: query the DB directly if tg_user didn't have it
         if not history:
-            crypto_api_key = (tg_user or {}).get("api_key") or user.get("api_key")
-            crypto_api_secret = (tg_user or {}).get("api_secret") or user.get("api_secret")
-            crypto_api_password = (tg_user or {}).get("api_password") or user.get("api_password") or ""
-            crypto_exchange_id = (tg_user or {}).get("exchange_id") or user.get("exchange_id", "blofin")
+            try:
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (trade_chat_id,))
+                    row = c.fetchone()
+                    print(f"[HISTORY] DB query result: row={bool(row)}, has_data={bool(row and row[0])}")
+                    if row and row[0]:
+                        import json
+                        cached = json.loads(row[0])
+                        print(f"[HISTORY] Parsed {len(cached)} trades from DB history_cache")
+                        for tr in cached:
+                            is_stk = database.is_stock(tr.get("symbol", ""))
+                            tr["type"] = "stock" if is_stk else "crypto"
+                            history.append(tr)
+            except Exception as e:
+                print(f"[HISTORY] Error loading history_cache from DB: {e}")
+        
+        # Fallback: fetch directly from CCXT if both caches are empty
+        if not history:
+            print("[HISTORY] Cache empty, trying CCXT fallback...")
+            crypto_api_key = tg_user.get("api_key") or user.get("api_key")
+            crypto_api_secret = tg_user.get("api_secret") or user.get("api_secret")
+            crypto_api_password = tg_user.get("api_password") or user.get("api_password") or ""
+            crypto_exchange_id = tg_user.get("exchange_id") or user.get("exchange_id", "blofin")
+            print(f"[HISTORY] CCXT: exchange={crypto_exchange_id}, has_key={bool(crypto_api_key)}, has_secret={bool(crypto_api_secret)}")
             if crypto_api_key and crypto_api_secret:
                 try:
                     import ccxt
+                    from bot import live_bot_multi
                     config = {
                         "apiKey": crypto_api_key,
                         "secret": crypto_api_secret,
@@ -581,8 +607,9 @@ def get_trades_history():
                         "enableRateLimit": True,
                     }
                     client = getattr(ccxt, crypto_exchange_id)(config)
-                    enabled_syms = (user.get("enabled_symbols") or "BTC,ETH").split(",")[:3]
-                    for sym in enabled_syms:
+                    symbols_to_check = list(live_bot_multi.SYMBOLS)[:5]
+                    print(f"[HISTORY] CCXT checking symbols: {symbols_to_check}")
+                    for sym in symbols_to_check:
                         norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
                         try:
                             trades = client.fetch_my_trades(norm_sym, limit=5)
@@ -600,58 +627,66 @@ def get_trades_history():
                                         "net_pnl": net_pnl,
                                         "price": t.get('price', 0),
                                     })
-                        except Exception: pass
+                        except Exception as sym_err:
+                            print(f"[HISTORY] CCXT error for {sym}: {sym_err}")
+                    print(f"[HISTORY] CCXT fetched {len(history)} trades")
                 except Exception as e:
-                    print(f"Fallback CCXT fetch error: {e}")
+                    print(f"[HISTORY] CCXT fallback error: {e}")
             
-    # 2. Add local web user stock history if any
+    # 2. Fetch stock history
+    print(f"[HISTORY] Checking Alpaca trades for chat_id={trade_chat_id}")
     try:
         alpaca_history = database.get_closed_alpaca_trades_by_user(trade_chat_id, limit)
-        if not alpaca_history:
-            # Fallback to API if local db is empty
-            orders = database.make_alpaca_request(tg_user or user, "GET", "/v2/orders", params={"status": "closed", "limit": 40})
-            if isinstance(orders, list):
-                for o in orders:
-                    qty = float(o.get("filled_qty", 0) or 0)
-                    if qty > 0 and o.get("side") == "sell":
-                        price = float(o.get("filled_avg_price", 0))
-                        entry = price * 0.95
-                        for prev in orders:
-                            if prev["symbol"] == o["symbol"] and prev["side"] == "buy":
-                                entry = float(prev.get("filled_avg_price", price))
-                                break
-                        pnl_raw = (price - entry) * qty
-                        pnl_pct = ((price - entry) / entry) * 100 if entry > 0 else 0
-                        try:
-                            from datetime import datetime
-                            dt_str = str(o.get("filled_at", "")).split(".")[0].replace("Z", "")
-                            ts = int(datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S").timestamp() * 1000) if dt_str else 0
-                        except: ts = 0
-                        alpaca_history.append({
-                            "symbol": o.get("symbol", ""),
-                            "close_timestamp": ts,
-                            "pnl_raw": pnl_raw,
-                            "pnl_pct": pnl_pct,
-                            "close_price": price,
-                            "entry_price": entry
-                        })
+        print(f"[HISTORY] Local Alpaca trades: {len(alpaca_history)}")
+        if not alpaca_history and tg_user:
+            # Fallback to Alpaca API
+            print("[HISTORY] No local Alpaca trades, trying API fallback...")
+            try:
+                orders = database.make_alpaca_request(tg_user, "GET", "/v2/orders", params={"status": "closed", "limit": 40})
+                print(f"[HISTORY] Alpaca API returned: {type(orders).__name__}, is_list={isinstance(orders, list)}, count={len(orders) if isinstance(orders, list) else 'N/A'}")
+                if isinstance(orders, list):
+                    for o in orders:
+                        qty = float(o.get("filled_qty", 0) or 0)
+                        if qty > 0 and o.get("side") == "sell":
+                            price = float(o.get("filled_avg_price", 0))
+                            entry = price * 0.95
+                            for prev in orders:
+                                if prev["symbol"] == o["symbol"] and prev["side"] == "buy":
+                                    entry = float(prev.get("filled_avg_price", price))
+                                    break
+                            pnl_raw = (price - entry) * qty
+                            pnl_pct = ((price - entry) / entry) * 100 if entry > 0 else 0
+                            try:
+                                from datetime import datetime
+                                dt_str = str(o.get("filled_at", "")).split(".")[0].replace("Z", "")
+                                ts = int(datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S").timestamp() * 1000) if dt_str else 0
+                            except: ts = 0
+                            alpaca_history.append({
+                                "symbol": o.get("symbol", ""),
+                                "close_timestamp": ts,
+                                "pnl_raw": pnl_raw,
+                                "pnl_pct": pnl_pct,
+                                "close_price": price,
+                                "entry_price": entry
+                            })
+            except Exception as e:
+                print(f"[HISTORY] Alpaca API fallback error: {e}")
                         
         for tr in alpaca_history:
-            # Avoid duplicates if already pulled from cache
-            if not any(h.get("symbol") == tr["symbol"] and h.get("timestamp") == tr.get("close_timestamp", 0) for h in history):
+            if not any(h.get("symbol") == tr.get("symbol") and h.get("timestamp") == tr.get("close_timestamp", 0) for h in history):
                 tr["type"] = "stock"
                 tr["net_pnl"] = tr.get("pnl_raw", 0)
                 tr["mark_price"] = tr.get("close_price", tr.get("entry_price", 0))
                 tr["side"] = "LONG"
-                tr["timestamp"] = tr.get("close_timestamp", 0)
+                tr["timestamp"] = tr.get("close_timestamp", tr.get("close_time", 0))
                 history.append(tr)
     except Exception as e:
-        print(f"History query error: {e}")
+        print(f"[HISTORY] Stock history error: {e}")
         
     # Sort history by timestamp descending
     history.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
     
-    print(f"HISTORY RETURN length: {len(history)}")
+    print(f"[HISTORY] FINAL RETURN: {len(history)} trades")
     return jsonify(history), 200
 
 # ----------------- Panic Close & Manage trades -----------------
