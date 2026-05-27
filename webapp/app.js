@@ -578,30 +578,36 @@ function renderLandingView() {
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 max-w-[500px] mx-auto relative">
             ${headerHtml}
-            <div class="space-y-4 relative">
-                ${signalsList}
-                
-                <div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none" style="top: 20%;">
-                    <div class="glass-card p-6 rounded-2xl border border-primary/30 max-w-[340px] text-center shadow-2xl bg-[#121212]/80 backdrop-blur-md pointer-events-auto relative overflow-hidden">
+            <div class="relative">
+                <!-- Sticky CTA Panel -->
+                <div class="sticky top-24 z-20 mb-6 pointer-events-none">
+                    <div class="glass-card p-4 rounded-xl border border-primary/30 text-center shadow-2xl bg-[#121212]/90 backdrop-blur-md pointer-events-auto relative overflow-hidden mx-auto max-w-[360px]">
                         <div class="absolute -inset-1 bg-gradient-to-r from-primary/20 to-tertiary/20 blur-xl z-0"></div>
                         <div class="relative z-10">
-                            <span class="material-symbols-outlined text-4xl text-primary mb-3">lock_open</span>
-                            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Unlock Alpha Signals</h3>
-                            <p class="font-body-sm text-body-sm text-on-surface-variant mb-6">
-                                Join MetaverseSherpa for free to view live signals, entry points, and performance.
+                            <div class="flex items-center justify-center gap-2 mb-2">
+                                <span class="material-symbols-outlined text-xl text-primary">lock_open</span>
+                                <h3 class="font-headline-sm text-headline-sm text-on-surface">Unlock Alpha Signals</h3>
+                            </div>
+                            <p class="text-xs text-on-surface-variant mb-4">
+                                Join for free to view live entry points & performance.
                             </p>
-                            <button onclick="navigate('#/login')" class="w-full btn-primary py-3 rounded-full font-bold text-sm tracking-wide">
-                                Create Free Account
-                            </button>
-                            <button onclick="navigate('#/login')" class="w-full mt-3 py-2 text-primary font-bold text-sm hover:text-primary/80 transition-colors">
-                                Log In
-                            </button>
+                            <div class="flex gap-3">
+                                <button onclick="navigate('#/login')" class="flex-1 btn-primary py-2.5 rounded-full font-bold text-xs tracking-wide">
+                                    Create Account
+                                </button>
+                                <button onclick="navigate('#/login')" class="flex-1 py-2.5 glass-card rounded-full text-primary font-bold text-xs hover:bg-white/5 transition-colors border border-white/10">
+                                    Log In
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Bottom gradient fade -->
-                <div class="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none"></div>
+
+                <div class="space-y-4 relative">
+                    ${signalsList}
+                    <!-- Bottom gradient fade -->
+                    <div class="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none"></div>
+                </div>
             </div>
         </main>
     `;
