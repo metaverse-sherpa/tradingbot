@@ -982,16 +982,14 @@ def run_backtest():
     }), 200
 
 # ----------------- Free Signals Endpoint -----------------
-@app.route('/api/signals/active', methods=['GET'])
-def get_active_signals():
+def _update_active_signals_cache():
     import time
-    cache_key = "signals_active"
-    now = time.time()
-    with RESPONSE_CACHE_LOCK:
-        if cache_key in RESPONSE_CACHE:
-            expiry, cached_data = RESPONSE_CACHE[cache_key]
-            if now < expiry:
-                return jsonify(cached_data), 200
+    import sqlite3
+    import asyncio
+    import os
+    import utils_gcp
+    import live_bot_multi
+    from bot.handlers.trading import fetch_alpaca_daily_bars_async
 
     # Fetch free signal logs from TheoreticalTrades table
     with database.db_session() as conn:
@@ -1001,13 +999,6 @@ def get_active_signals():
     signals = [dict(r) for r in rows]
     
     # Calculate live PnL dynamically
-    import sqlite3
-    import asyncio
-    import live_bot_multi
-    from bot.handlers.trading import fetch_alpaca_daily_bars_async
-    import os
-    import utils_gcp
-    
     CRYPTO_LEVERAGE = 10
     
     try:
@@ -1092,9 +1083,31 @@ def get_active_signals():
             {"id": 1, "symbol": "BTC/USDT", "strategy": "Mean Reversion Scalper", "side": "LONG", "entry_price": 63400.0, "tp_price": 64800.0, "sl_price": 62500.0, "open_time": int(time.time()) - 600, "status": "open"}
         ]
         
+    cache_key = "signals_active"
     with RESPONSE_CACHE_LOCK:
-        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, signals)
-        
+        RESPONSE_CACHE[cache_key] = (time.time() + CACHE_TTL_SECONDS, signals)
+    
+    app.signals_active_updating = False
+    return signals
+
+@app.route('/api/signals/active', methods=['GET'])
+def get_active_signals():
+    import time
+    cache_key = "signals_active"
+    now = time.time()
+    
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            if now < expiry:
+                return jsonify(cached_data), 200
+            else:
+                if not getattr(app, "signals_active_updating", False):
+                    app.signals_active_updating = True
+                    threading.Thread(target=_update_active_signals_cache).start()
+                return jsonify(cached_data), 200
+                
+    signals = _update_active_signals_cache()
     return jsonify(signals), 200
 
 @app.route('/api/signals/closed', methods=['GET'])
