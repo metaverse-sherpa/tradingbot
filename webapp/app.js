@@ -1647,98 +1647,12 @@ async function checkDeploymentAlert() {
         if (res && res.timestamp) {
             const lastSeen = localStorage.getItem('last_seen_deployment');
             if (lastSeen !== res.timestamp) {
-                showDeploymentModal(res);
+                // Trigger the existing premium temporary toast balloon
+                showToast("🚀 New deployment Successful");
+                localStorage.setItem('last_seen_deployment', res.timestamp);
             }
         }
     } catch (e) {
         console.log("Not an admin or error fetching deployment info:", e);
     }
 }
-
-function showDeploymentModal(data) {
-    const existing = document.getElementById('deployment-modal');
-    if (existing) existing.remove();
-
-    const modal = document.createElement('div');
-    modal.id = 'deployment-modal';
-    modal.className = 'fixed inset-0 bg-[#060a0f]/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999] opacity-0 transition-opacity duration-300 pointer-events-auto';
-    
-    const changelogHtml = data.changelog.map(line => `
-        <li class="text-xs text-on-surface-variant font-mono list-disc ml-4">${line}</li>
-    `).join('');
-    
-    const checklistHtml = data.checklist.map(item => `
-        <li class="text-xs text-primary flex items-start gap-2">
-            <span class="material-symbols-outlined text-[14px] mt-0.5">check_circle</span>
-            <span>${item}</span>
-        </li>
-    `).join('');
-
-    modal.innerHTML = `
-        <div class="glass-card rounded-2xl border border-white/10 w-full max-w-[480px] overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
-            <div class="p-6 bg-surface-container-low border-b border-white/5 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none"></div>
-                <div class="flex items-center gap-3 relative z-10">
-                    <span class="material-symbols-outlined text-primary text-3xl">rocket_launch</span>
-                    <div>
-                        <h3 class="text-lg font-bold text-on-surface">🚀 Deployment Success</h3>
-                        <p class="text-xs text-on-surface-variant mt-0.5">The MetaverseSherpa Trading Bot is upgraded.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2 text-xs font-bold text-on-surface-variant/60 uppercase tracking-wider">
-                        <span class="material-symbols-outlined text-[16px]">schedule</span>
-                        <span>Timestamp</span>
-                    </div>
-                    <p class="text-sm font-mono text-white bg-white/5 p-2.5 rounded-lg border border-white/5">${data.timestamp}</p>
-                </div>
-                
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2 text-xs font-bold text-on-surface-variant/60 uppercase tracking-wider">
-                        <span class="material-symbols-outlined text-[16px]">history</span>
-                        <span>Recent Fixes</span>
-                    </div>
-                    <ul class="space-y-2 bg-[#121212] p-4 rounded-lg border border-white/5 list-none">
-                        ${changelogHtml}
-                    </ul>
-                </div>
-                
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2 text-xs font-bold text-on-surface-variant/60 uppercase tracking-wider">
-                        <span class="material-symbols-outlined text-[16px]">science</span>
-                        <span>What to Test Next</span>
-                    </div>
-                    <ul class="space-y-2 bg-surface-container-low p-4 rounded-lg border border-white/5 list-none">
-                        ${checklistHtml}
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="p-6 bg-surface-container-low border-t border-white/5 flex gap-3">
-                <button onclick="acknowledgeDeployment('${data.timestamp}')" class="flex-1 h-12 leading-[48px] bg-primary text-on-primary font-bold text-center rounded-lg hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_15px_rgba(60,215,255,0.3)]">
-                    Acknowledge & Dismiss
-                </button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-    
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modal.querySelector('.glass-card').classList.remove('scale-95');
-    }, 50);
-}
-
-window.acknowledgeDeployment = function(timestamp) {
-    localStorage.setItem('last_seen_deployment', timestamp);
-    const modal = document.getElementById('deployment-modal');
-    if (modal) {
-        modal.classList.add('opacity-0');
-        modal.querySelector('.glass-card').classList.add('scale-95');
-        setTimeout(() => modal.remove(), 300);
-    }
-};
