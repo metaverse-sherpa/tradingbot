@@ -667,7 +667,7 @@ function renderDashboardView() {
                             <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
                             <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
                         </div>
-                    ` : STATE.active_signals.map(renderSignalCard).join('')}
+                    ` : STATE.active_signals.map(s => renderSignalCard(s)).join('')}
                 </div>
             </main>
         `;
@@ -1632,7 +1632,7 @@ function renderSignalsView() {
                         <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
                         <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
                     </div>
-                ` : STATE.active_signals.map(renderSignalCard).join('')}
+                ` : STATE.active_signals.map(s => renderSignalCard(s)).join('')}
             </div>
         </main>
     `;
