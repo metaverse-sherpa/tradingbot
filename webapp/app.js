@@ -172,8 +172,13 @@ async function handleRoute() {
         if (open) STATE.open_trades = open;
     } else if (hash === '#/history') {
         STATE.current_view = 'history';
-        const hist = await apiRequest('/trades/history');
-        if (hist) STATE.history = hist;
+        if (STATE.user && STATE.user.is_premium) {
+            const hist = await apiRequest('/trades/history');
+            if (hist) STATE.history = hist;
+        } else {
+            const freeHist = await apiRequest('/signals/closed');
+            if (freeHist) STATE.free_history = freeHist;
+        }
     } else if (hash === '#/stats') {
         STATE.current_view = 'stats';
         if (STATE.user && STATE.user.is_premium) {
@@ -691,7 +696,81 @@ function renderTradesView() {
     `;
 }
 
+function renderFreeHistoryView() {
+    if (!STATE.free_history) return `${renderHeader()}<main class="pt-20 px-container-margin"><div class="text-center p-8 text-on-surface-variant">Loading history...</div></main>`;
+
+    let listHtml = STATE.free_history.map((t, i) => {
+        const isStock = t.symbol && !t.symbol.includes('/');
+        const assetIcon = isStock ? '🦙' : '🪙';
+        const sideIcon = String(t.side).toLowerCase() === 'long' ? '📈' : '📉';
+        
+        let dateStr = "Unknown";
+        if (t.close_time) {
+            const dt = new Date(t.close_time * 1000);
+            const m = String(dt.getMonth() + 1).padStart(2, '0');
+            const d = String(dt.getDate()).padStart(2, '0');
+            const hh = String(dt.getHours()).padStart(2, '0');
+            const mm = String(dt.getMinutes()).padStart(2, '0');
+            dateStr = `${m}-${d} ${hh}:${mm}`;
+        }
+        
+        const pnlPct = t.pnl_pct || 0;
+        const winIcon = pnlPct > 0 ? '🏆' : '❌';
+        
+        const dollarVal = (1000 * (pnlPct/100)).toFixed(2);
+        const pnlDollar = pnlPct >= 0 ? `+$${dollarVal}` : `-$${Math.abs(dollarVal)}`;
+        const pnlColor = pnlPct > 0 ? 'text-tertiary' : 'text-error';
+
+        return `
+            <div class="glass-card rounded-lg p-4 border border-white/5 space-y-2 relative overflow-hidden group">
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="font-bold text-base text-on-surface-variant">${i + 1}.</span>
+                    <div class="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-xs border border-white/10">
+                        ${assetIcon}
+                    </div>
+                    <span class="font-bold text-primary text-base">${t.symbol.split('/')[0]}</span>
+                    <span class="text-base">${sideIcon}</span>
+                    <span class="text-on-surface-variant text-xs ml-auto">| ${dateStr}</span>
+                </div>
+                
+                <div class="flex items-center gap-2 text-sm">
+                    <span>🧠</span>
+                    <span class="italic text-on-surface-variant">${t.strategy || 'Metaverse Sherpa'}</span>
+                </div>
+                
+                <div class="flex items-center gap-2 text-sm">
+                    <span>${winIcon}</span>
+                    <span class="text-on-surface-variant">PnL:</span>
+                    <span class="font-mono bg-surface-container-low px-2 py-0.5 rounded blur-[4px] group-active:blur-none transition-all cursor-pointer font-bold ${pnlColor}">${pnlDollar}</span>
+                    <span class="font-bold ${pnlColor}">(${pnlPct > 0 ? '+' : ''}${pnlPct.toFixed(1)}%)</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        ${renderHeader()}
+        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2 mb-6">
+                📜 Metaverse Sherpa History
+            </h2>
+            
+            <div class="space-y-3">
+                ${listHtml}
+            </div>
+            
+            <p class="text-center text-xs text-on-surface-variant mt-4 opacity-70">
+                *Tap blurred PnL amounts to reveal
+            </p>
+        </main>
+    `;
+}
+
 function renderHistoryView() {
+    if (!STATE.user || !STATE.user.is_premium) {
+        return renderFreeHistoryView();
+    }
+    
     const isCrypto = STATE.dashboard_tab === 'crypto';
     const filteredHistory = STATE.history.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
     
