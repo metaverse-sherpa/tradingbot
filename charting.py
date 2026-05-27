@@ -140,7 +140,29 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     # CRITICAL: Explicitly close the figure to release memory!
     plt.close(fig)
 
-    
-
+    # --- 4. Premium Visual Assembly ---
+    try:
+        import media_gen
+        progress_box = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, current_price if current_price > 0 else df['close'].iloc[-1], width=1024)
+        
+        from PIL import Image
+        chart_img = Image.open(filepath).convert("RGBA")
+        prog_img = Image.open(progress_box).convert("RGBA")
+        
+        # Scale progress box to match chart width
+        scale = chart_img.width / prog_img.width
+        new_h = int(prog_img.height * scale)
+        prog_img = prog_img.resize((chart_img.width, new_h), Image.Resampling.LANCZOS)
+        
+        # Combine vertically
+        combined = Image.new("RGBA", (chart_img.width, chart_img.height + prog_img.height), (18, 18, 18, 255))
+        combined.paste(chart_img, (0, 0), chart_img)
+        combined.paste(prog_img, (0, chart_img.height), prog_img)
+        
+        combined.convert("RGB").save(filepath, "JPEG", quality=90)
+        chart_img.close(); prog_img.close(); combined.close()
+        os.remove(progress_box)
+    except Exception as e:
+        print(f"Visual assembly failed: {e}")
 
     return filepath
