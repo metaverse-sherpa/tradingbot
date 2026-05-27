@@ -12,6 +12,8 @@ let STATE = {
     stats: { wins: 14, losses: 5, win_rate: 72.5, cumulative_pnl: 342.10, profit_factor: 2.45 },
     current_view: 'login',
     dashboard_tab: 'crypto',
+    trades_mode: 'active',
+    expanded_trade_id: null,
     backtest: { running: false, result: null, period: '3 Years', capital: 1000, strategy: 'Mean Reversion Scalper' }
 };
 
@@ -170,8 +172,12 @@ async function handleRoute() {
         if (open) STATE.open_trades = open;
     } else if (hash === '#/trades') {
         STATE.current_view = 'trades';
-        const open = await apiRequest('/trades/open');
+        const [open, hist] = await Promise.all([
+            apiRequest('/trades/open'),
+            apiRequest('/trades/history')
+        ]);
         if (open) STATE.open_trades = open;
+        if (hist) STATE.history = hist;
     } else if (hash === '#/history') {
         STATE.current_view = 'history';
         if (STATE.user && STATE.user.is_premium) {
@@ -221,6 +227,20 @@ async function handleRoute() {
 
 window.setDashboardTab = function(tab) {
     STATE.dashboard_tab = tab;
+    renderView();
+};
+
+window.setTradesMode = function(mode) {
+    STATE.trades_mode = mode;
+    renderView();
+};
+
+window.toggleTradeExpand = function(tradeId) {
+    if (STATE.expanded_trade_id === tradeId) {
+        STATE.expanded_trade_id = null;
+    } else {
+        STATE.expanded_trade_id = tradeId;
+    }
     renderView();
 };
 
@@ -614,69 +634,196 @@ function renderTradesView() {
         `;
     }
 
-    let listHtml = '';
     const isCrypto = STATE.dashboard_tab === 'crypto';
-    const filteredTrades = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
+    const tradesMode = STATE.trades_mode || 'active';
     
-    if (filteredTrades.length === 0) {
-        listHtml = `
-            <div class="text-center py-12">
-                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">hourglass_empty</span>
-                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No open positions</p>
-                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">The Sherpa engine is scanning the markets...</p>
-            </div>
-        `;
-    } else {
-        listHtml = filteredTrades.map(trade => {
-                        const pnlColor = (trade.unrealized_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
-                        const roeColor = (trade.roe || 0) >= 0 ? 'text-tertiary' : 'text-error';
-                        const icon = trade.side === 'LONG' ? 'trending_up' : 'trending_down';
-                        const assetIcon = trade.type === 'stock' ? '🦙' : '🪙';
-                        
-                        return `
-                            <div class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3">
-                                <div class="flex justify-between items-center">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-sm">
-                                            ${assetIcon}
-                                        </div>
-                                        <div>
-                                            <p class="font-label-md text-label-md font-bold text-on-surface">${trade.symbol}</p>
-                                            <p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
-                                                <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${icon}</span>
-                                                ${trade.side} ${trade.qty}x
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                            ${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}
-                                        </p>
-                                        <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
-                                            ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE
-                                        </p>
+    let listHtml = '';
+    let headerText = '';
+    let countText = '';
+    
+    if (tradesMode === 'active') {
+        const filteredTrades = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
+        headerText = 'Active Positions';
+        countText = `${filteredTrades.length} trades open`;
+        
+        if (filteredTrades.length === 0) {
+            listHtml = `
+                <div class="text-center py-12">
+                    <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">hourglass_empty</span>
+                    <p class="font-body-lg text-body-lg text-on-surface font-semibold">No open positions</p>
+                    <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">The Sherpa engine is scanning the markets...</p>
+                </div>
+            `;
+        } else {
+            listHtml = filteredTrades.map(trade => {
+                const pnlColor = (trade.unrealized_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                const roeColor = (trade.roe || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                const icon = trade.side === 'LONG' ? 'trending_up' : 'trending_down';
+                const assetIcon = trade.type === 'stock' ? '🦙' : '🪙';
+                const isExpanded = STATE.expanded_trade_id === trade.id;
+                
+                let progressBarHtml = '';
+                if (isExpanded && trade.tp_price > 0 && trade.sl_price > 0) {
+                    const entry = trade.entry_price || 0;
+                    const mark = trade.mark_price || 0;
+                    const tp = trade.tp_price || 0;
+                    const sl = trade.sl_price || 0;
+                    const isLong = trade.side === 'LONG';
+                    
+                    let pct = 50;
+                    if (isLong) {
+                        if (mark <= sl) pct = 0;
+                        else if (mark >= tp) pct = 100;
+                        else pct = ((mark - sl) / (tp - sl)) * 100;
+                    } else {
+                        if (mark >= sl) pct = 0;
+                        else if (mark <= tp) pct = 100;
+                        else pct = ((sl - mark) / (sl - tp)) * 100;
+                    }
+                    
+                    const sl_pct = ((sl - entry) / entry) * 100;
+                    const tp_pct = ((tp - entry) / entry) * 100;
+                    
+                    progressBarHtml = `
+                        <div class="mt-4 pt-4 border-t border-white/5 space-y-4" onclick="event.stopPropagation()">
+                            <h4 class="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Market Analysis & Setup</h4>
+                            <div class="relative w-full aspect-[16/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center">
+                                <img src="/api/trades/chart?symbol=${encodeURIComponent(trade.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${trade.side}&open_ts=${trade.open_time}&type=${trade.type}" class="w-full h-full object-cover" alt="Trade Chart" />
+                            </div>
+                            
+                            <div class="bg-[#121212] p-4 rounded-lg border border-white/5 space-y-4">
+                                <div class="text-center font-bold text-xs uppercase tracking-wider text-on-surface-variant/60">
+                                    Trade Progress
+                                </div>
+                                <div class="flex justify-between items-center text-xs font-bold">
+                                    <span class="text-error">SL</span>
+                                    <span class="px-2 py-0.5 rounded bg-tertiary/10 ${roeColor} border border-tertiary/20">${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE</span>
+                                    <span class="text-tertiary">TP</span>
+                                </div>
+                                <div class="relative py-2">
+                                    <div class="h-1 w-full bg-surface-container rounded-full relative">
+                                        <div class="absolute w-3.5 h-3.5 -top-1.5 bg-[#00E5FF] rounded-full border-2 border-white shadow-[0_0_8px_#00E5FF]" style="left: calc(${pct}% - 7px);"></div>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center pt-3 border-t border-white/10">
-                                    <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                                        Entry: <span class="text-on-surface">$${(trade.entry_price || 0).toFixed(2)}</span>
+                                <div class="flex justify-between items-center text-[10px] text-on-surface-variant font-mono">
+                                    <div class="text-left">
+                                        <div class="font-bold text-error">${sl_pct.toFixed(1)}%</div>
+                                        <div>$${sl.toFixed(2)}</div>
                                     </div>
-                                    <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                                        Mark: <span class="text-on-surface">$${(trade.mark_price || 0).toFixed(2)}</span>
+                                    <div class="text-center">
+                                        <div class="font-bold text-white">ENTRY</div>
+                                        <div>$${entry.toFixed(2)}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-bold text-tertiary">+${tp_pct.toFixed(1)}%</div>
+                                        <div>$${tp.toFixed(2)}</div>
                                     </div>
                                 </div>
                             </div>
-                        `;
-                    }).join('');
+                        </div>
+                    `;
+                } else if (isExpanded) {
+                    progressBarHtml = `
+                        <div class="mt-4 pt-4 border-t border-white/5 text-center py-4 text-xs text-on-surface-variant" onclick="event.stopPropagation()">
+                            Live R:R levels are not configured for this manual or untracked position.
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div onclick="toggleTradeExpand('${trade.id}')" class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3 cursor-pointer hover:border-white/20 transition-all">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-sm">
+                                    ${assetIcon}
+                                </div>
+                                <div>
+                                    <p class="font-label-md text-label-md font-bold text-on-surface">${trade.symbol}</p>
+                                    <p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${icon}</span>
+                                        ${trade.side} ${trade.qty}x
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
+                                    ${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}
+                                </p>
+                                <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
+                                    ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}% ROE
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-3 border-t border-white/10">
+                            <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
+                                Entry: <span class="text-on-surface">$${(trade.entry_price || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
+                                Mark: <span class="text-on-surface">$${(trade.mark_price || 0).toFixed(2)}</span>
+                            </div>
+                        </div>
+                        ${progressBarHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+    } else {
+        const filteredHistory = STATE.history.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
+        headerText = 'Trade History';
+        countText = `${filteredHistory.length} trades recorded`;
+        
+        if (filteredHistory.length === 0) {
+            listHtml = `
+                <div class="text-center py-12">
+                    <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">history</span>
+                    <p class="font-body-lg text-body-lg text-on-surface font-semibold">No trade history</p>
+                </div>
+            `;
+        } else {
+            listHtml = filteredHistory.map(t => {
+                const dateStr = t.close_time ? new Date(t.close_time * 1000).toLocaleDateString() : 'Recent';
+                const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
+                
+                return `
+                    <div class="glass-card p-4 rounded-lg flex justify-between items-center border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-lg">
+                                ${assetIcon}
+                            </div>
+                            <div>
+                                <p class="font-label-md text-label-md font-bold text-on-surface">${t.symbol}</p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr} • ${t.side}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
+                                ${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}
+                            </p>
+                            <p class="font-label-sm text-label-sm text-on-surface-variant">Closed</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
     }
     
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <div class="flex justify-center border-b border-white/10 pb-2 gap-6">
+                <button onclick="setTradesMode('active')" class="font-label-md text-label-md pb-2 font-bold transition-all relative ${tradesMode === 'active' ? 'text-primary after:content-[\'\'] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                    Active Positions
+                </button>
+                <button onclick="setTradesMode('closed')" class="font-label-md text-label-md pb-2 font-bold transition-all relative ${tradesMode === 'closed' ? 'text-primary after:content-[\'\'] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                    Closed History
+                </button>
+            </div>
+
             <div class="flex justify-between items-center">
                 <div>
-                    <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Positions</h2>
-                    <p class="font-label-sm text-label-sm text-on-surface-variant">${filteredTrades.length} trades open</p>
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ ${headerText}</h2>
+                    <p class="font-label-sm text-label-sm text-on-surface-variant">${countText}</p>
                 </div>
                 <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
                     <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
@@ -688,7 +835,7 @@ function renderTradesView() {
                 ${listHtml}
             </div>
             
-            ${STATE.open_trades.length > 0 ? `
+            ${tradesMode === 'active' && STATE.open_trades.length > 0 ? `
                 <button onclick="panicCloseAll()" class="w-full h-12 bg-red-900/40 text-error font-label-md text-label-md font-bold rounded-lg border border-error/50 hover:bg-error/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                     <span class="material-symbols-outlined">warning</span>
                     🚨 PANIC - Close All Positions

@@ -491,6 +491,22 @@ def get_open_trades():
             positions = database.make_alpaca_request(alpaca_user, "GET", "/v2/positions")
             if isinstance(positions, list):
                 for p in positions:
+                    # Lookup R:R in database
+                    tp_price = 0.0
+                    sl_price = 0.0
+                    open_time = 0
+                    try:
+                        with database.db_session() as conn:
+                            c = conn.cursor()
+                            c.execute("SELECT tp_price, sl_price, open_time FROM AlpacaActiveTrades WHERE symbol = ? AND status = 'open' LIMIT 1", (p.get("symbol"),))
+                            row = c.fetchone()
+                            if row:
+                                tp_price = float(row[0] or 0.0)
+                                sl_price = float(row[1] or 0.0)
+                                open_time = int(row[2] or 0)
+                    except Exception as db_err:
+                        print(f"Alpaca DB lookup error: {db_err}")
+
                     open_positions.append({
                         "id": p.get("asset_id", f"alpaca-{p.get('symbol')}"),
                         "type": "stock",
@@ -500,7 +516,10 @@ def get_open_trades():
                         "entry_price": float(p.get("avg_entry_price", 0)),
                         "mark_price": float(p.get("current_price", 0)),
                         "unrealized_pnl": float(p.get("unrealized_pl", 0)),
-                        "roe": float(p.get("unrealized_plpc", 0)) * 100
+                        "roe": float(p.get("unrealized_plpc", 0)) * 100,
+                        "tp_price": tp_price,
+                        "sl_price": sl_price,
+                        "open_time": open_time
                     })
         except Exception as e:
             print(f"Alpaca live positions error: {e}")
@@ -521,7 +540,10 @@ def get_open_trades():
                         "entry_price": float(t.get("entry_price", 0)),
                         "mark_price": float(t.get("entry_price", 0)), # avoid crash if missing
                         "unrealized_pnl": 0.0,
-                        "roe": 0.0
+                        "roe": 0.0,
+                        "tp_price": float(t.get("tp_price", 0.0) or 0.0),
+                        "sl_price": float(t.get("sl_price", 0.0) or 0.0),
+                        "open_time": int(t.get("open_time", 0) or 0)
                     })
         except Exception as e:
             print(f"Alpaca local fallback error: {e}")
@@ -548,6 +570,23 @@ def get_open_trades():
             for pos in positions:
                 contracts = float(pos.get("contracts", 0.0) or 0.0)
                 if contracts > 0:
+                    # Lookup R:R in database
+                    tp_price = 0.0
+                    sl_price = 0.0
+                    open_time = 0
+                    try:
+                        with database.db_session() as conn:
+                            c = conn.cursor()
+                            symbol_clean = pos.get('symbol', '').split(':')[0].replace('-', '/')
+                            c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
+                            row = c.fetchone()
+                            if row:
+                                tp_price = float(row[0] or 0.0)
+                                sl_price = float(row[1] or 0.0)
+                                open_time = int(row[2] or 0)
+                    except Exception as db_err:
+                        print(f"Crypto DB lookup error: {db_err}")
+
                     open_positions.append({
                         "id": pos.get("id", f"crypto-{pos.get('symbol')}"),
                         "type": "crypto",
@@ -557,7 +596,10 @@ def get_open_trades():
                         "entry_price": float(pos.get("entryPrice") or 0),
                         "mark_price": float(pos.get("markPrice") or 0),
                         "unrealized_pnl": float(pos.get("unrealizedPnl") or 0),
-                        "roe": float(pos.get("percentage") or 0)
+                        "roe": float(pos.get("percentage") or 0),
+                        "tp_price": tp_price,
+                        "sl_price": sl_price,
+                        "open_time": open_time
                     })
             client.close()
         except Exception as e:
@@ -1061,6 +1103,87 @@ def referral_stats():
         "referral_credits": user.get("referral_credits", 0.0),
         "invite_link": invite_link
     }), 200
+
+# ----------------- Visual Chart Endpoint -----------------
+@app.route('/api/trades/chart', methods=['GET'])
+def get_trade_chart():
+    symbol = request.args.get("symbol")
+    entry = float(request.args.get("entry", 0.0))
+    tp = float(request.args.get("tp", 0.0))
+    sl = float(request.args.get("sl", 0.0))
+    side = request.args.get("side", "LONG").upper()
+    open_ts = int(request.args.get("open_ts", 0))
+    trade_type = request.args.get("type", "crypto")
+
+    if not symbol:
+        return "Symbol required", 400
+
+    clean_sym = symbol.replace("/", "_").replace(":", "_")
+    filepath = os.path.join(os.getcwd(), "pnl_cards", f"chart_{clean_sym}.png")
+    
+    # Return cache if less than 60 seconds old
+    if os.path.exists(filepath) and (time.time() - os.path.getmtime(filepath) < 60):
+        from flask import send_file
+        return send_file(filepath, mimetype='image/png')
+
+    try:
+        import charting
+        import pandas as pd
+        import sqlite3
+        import live_bot_multi
+        
+        df_chart = None
+        if trade_type == "stock":
+            timeframe = "1D"
+            try:
+                conn = sqlite3.connect("data/stock_daily_cache.db")
+                df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
+                conn.close()
+                if not df_chart.empty:
+                    df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype(int) // 10**6
+                    df_chart = df_chart.tail(60).copy()
+                else:
+                    df_chart = None
+            except Exception as e:
+                print(f"Error fetching from stock daily cache: {e}")
+        else:
+            timeframe = "15M"
+            try:
+                mdm = live_bot_multi.MarketDataManager()
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, "15m"))
+                loop.close()
+            except Exception as e:
+                print(f"Error fetching CCXT OHLCV: {e}")
+
+        if df_chart is None or df_chart.empty:
+            dates = pd.date_range(end=pd.Timestamp.now(), periods=60, freq='D' if trade_type == "stock" else '15T')
+            df_chart = pd.DataFrame({
+                'timestamp': dates.astype(int) // 10**6,
+                'open': [entry] * 60,
+                'high': [entry * 1.01] * 60,
+                'low': [entry * 0.99] * 60,
+                'close': [entry] * 60,
+                'volume': [1000] * 60
+            })
+
+        chart_file = charting.generate_trade_chart(
+            symbol=symbol,
+            df=df_chart,
+            entry=entry,
+            tp=tp,
+            sl=sl,
+            side=side,
+            open_ts=open_ts,
+            timeframe=timeframe
+        )
+        
+        from flask import send_file
+        return send_file(chart_file, mimetype='image/png')
+    except Exception as e:
+        print(f"Error generating chart endpoint: {e}")
+        return f"Error: {str(e)}", 500
 
 # Start Flask Server
 if __name__ == '__main__':
