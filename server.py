@@ -689,6 +689,83 @@ def get_trades_history():
     print(f"[HISTORY] FINAL RETURN: {len(history)} trades")
     return jsonify(history), 200
 
+# TEMPORARY DEBUG ENDPOINT - remove after diagnosis
+@app.route('/api/debug/history-check', methods=['GET'])
+def debug_history_check():
+    """Temporary endpoint to diagnose trade history issue on VPS."""
+    import json
+    result = {}
+    
+    # 1. Check WebUsers table
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT id, telegram_chat_id, email FROM WebUsers LIMIT 5")
+            rows = c.fetchall()
+            result["web_users"] = [dict(r) for r in rows]
+    except Exception as e:
+        result["web_users_error"] = str(e)
+    
+    # 2. Check history_cache for user 1567788633
+    chat_id = int(request.args.get("chat_id", 1567788633))
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+            row = c.fetchone()
+            if row:
+                raw = row[0]
+                result["history_cache_type"] = type(raw).__name__
+                result["history_cache_is_null"] = raw is None
+                result["history_cache_length"] = len(raw) if raw else 0
+                if raw:
+                    try:
+                        parsed = json.loads(raw)
+                        result["history_cache_count"] = len(parsed)
+                        result["history_cache_preview"] = parsed[:2] if parsed else []
+                    except Exception as e:
+                        result["history_cache_parse_error"] = str(e)
+                        result["history_cache_raw_preview"] = str(raw)[:200]
+            else:
+                result["history_cache"] = "NO ROW FOUND for chat_id"
+    except Exception as e:
+        result["history_cache_error"] = str(e)
+    
+    # 3. Check _get_telegram_user simulation
+    try:
+        tg_user = database.get_user(chat_id)
+        result["tg_user_found"] = tg_user is not None
+        if tg_user:
+            result["tg_user_has_api_key"] = bool(tg_user.get("api_key"))
+            result["tg_user_has_alpaca_key"] = bool(tg_user.get("alpaca_api_key"))
+            result["tg_user_exchange_id"] = tg_user.get("exchange_id")
+            result["tg_user_has_history_cache_field"] = "history_cache" in tg_user
+    except Exception as e:
+        result["tg_user_error"] = str(e)
+    
+    # 4. Check AlpacaActiveTrades for this user
+    try:
+        closed_trades = database.get_closed_alpaca_trades_by_user(chat_id, 10)
+        result["alpaca_closed_trades_count"] = len(closed_trades)
+        if closed_trades:
+            result["alpaca_closed_preview"] = closed_trades[:2]
+    except Exception as e:
+        result["alpaca_trades_error"] = str(e)
+    
+    # 5. List columns in Users table to verify history_cache exists
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("PRAGMA table_info(Users)")
+            cols = c.fetchall()
+            col_names = [col[1] for col in cols]
+            result["users_table_has_history_cache"] = "history_cache" in col_names
+            result["users_table_columns"] = col_names
+    except Exception as e:
+        result["table_info_error"] = str(e)
+    
+    return jsonify(result), 200
+
 # ----------------- Panic Close & Manage trades -----------------
 @app.route('/api/trades/close', methods=['POST'])
 @require_auth
