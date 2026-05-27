@@ -782,11 +782,18 @@ async def fetch_alpaca_daily_bars_async(user, symbol, limit=60):
     start_str = start_date.strftime('%Y-%m-%dT00:00:00Z')
     end_str = end_date.strftime('%Y-%m-%dT23:59:59Z')
     
-    import utils_gcp
+    alpaca_key = user.get("alpaca_api_key") if isinstance(user, dict) else ""
+    alpaca_secret = user.get("alpaca_api_secret") if isinstance(user, dict) else ""
+    
+    if not alpaca_key or not alpaca_secret:
+        import utils_gcp
+        alpaca_key = alpaca_key or utils_gcp.get_secret("ALPACA_API_KEY") or ""
+        alpaca_secret = alpaca_secret or utils_gcp.get_secret("ALPACA_API_SECRET") or ""
+        
     url = "https://data.alpaca.markets/v2/stocks/bars"
     headers = {
-        "APCA-API-KEY-ID": utils_gcp.get_secret("ALPACA_API_KEY") or "",
-        "APCA-API-SECRET-KEY": utils_gcp.get_secret("ALPACA_API_SECRET") or "",
+        "APCA-API-KEY-ID": alpaca_key,
+        "APCA-API-SECRET-KEY": alpaca_secret,
         "Content-Type": "application/json"
     }
     params = {
