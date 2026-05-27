@@ -156,15 +156,17 @@ async function handleRoute() {
     // Determine view route
     if (hash === '#/dashboard') {
         STATE.current_view = 'dashboard';
-        const bal = await apiRequest('/user/balance');
+        const [bal, sigs, open] = await Promise.all([
+            apiRequest('/user/balance'),
+            apiRequest('/signals/active'),
+            apiRequest('/trades/open')
+        ]);
         if (bal) {
             STATE.crypto_balance = bal.crypto_balance;
             STATE.stock_balance = bal.stock_balance;
             STATE.total_balance = bal.total_balance;
         }
-        const sigs = await apiRequest('/signals/active');
         if (sigs) STATE.active_signals = sigs;
-        const open = await apiRequest('/trades/open');
         if (open) STATE.open_trades = open;
     } else if (hash === '#/trades') {
         STATE.current_view = 'trades';

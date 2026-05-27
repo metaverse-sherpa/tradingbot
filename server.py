@@ -38,6 +38,12 @@ from web_api.auth import (
 # Initialize Database on Startup
 database.init_db()
 
+import threading
+# Thread-safe in-memory cache for slow external API responses
+RESPONSE_CACHE = {}  # Format: { (cache_type, user_id): (expiry_timestamp, data) }
+RESPONSE_CACHE_LOCK = threading.Lock()
+CACHE_TTL_SECONDS = 60  # Cache for 60 seconds
+
 app = Flask(__name__, static_folder='webapp', static_url_path='')
 # Configure Flask session secret
 app.secret_key = utils_gcp.get_secret("FLASK_SECRET_KEY") or "metaverse-sherpa-secret-key"
@@ -334,6 +340,17 @@ def settings_strategy():
 @require_auth
 def get_balance():
     user = g.user
+    user_id = user["id"]
+    
+    # Check cache
+    now = time.time()
+    cache_key = ("balance", user_id)
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            if now < expiry:
+                return jsonify(cached_data), 200
+
     tg_user = _get_telegram_user(user)
     balance_crypto = 0.0
     balance_stock = 0.0
@@ -393,11 +410,16 @@ def get_balance():
             print(f"Error fetching stock balance: {e}")
             balance_stock = 0.0
             
-    return jsonify({
+    response_data = {
         "crypto_balance": balance_crypto,
         "stock_balance": balance_stock,
         "total_balance": balance_crypto + balance_stock
-    }), 200
+    }
+    
+    with RESPONSE_CACHE_LOCK:
+        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, response_data)
+        
+    return jsonify(response_data), 200
 
 @app.route('/api/user/stats', methods=['GET'])
 @require_auth
@@ -433,11 +455,21 @@ def get_stats():
         "active_stock_strategy": (tg_user or {}).get("active_stock_strategy") or user.get("active_stock_strategy", "None")
     }), 200
 
-# ----------------- Active & Closed Trades -----------------
 @app.route('/api/trades/open', methods=['GET'])
 @require_auth
 def get_open_trades():
     user = g.user
+    user_id = user["id"]
+    
+    # Check cache
+    now = time.time()
+    cache_key = ("open_trades", user_id)
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            if now < expiry:
+                return jsonify(cached_data), 200
+
     open_positions = []
     tg_user = _get_telegram_user(user)
     
@@ -530,6 +562,9 @@ def get_open_trades():
             client.close()
         except Exception as e:
             print(f"Crypto positions fetch error: {e}")
+        
+    with RESPONSE_CACHE_LOCK:
+        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, open_positions)
         
     return jsonify(open_positions), 200
 
