@@ -836,7 +836,8 @@ function renderTradesView() {
             listHtml = filteredHistory.map(t => {
                 const dateStr = t.close_time ? new Date(t.close_time * 1000).toLocaleDateString() : 'Recent';
                 const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
-                const roeColor = (t.roe || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                const roePct = t.roe !== undefined ? t.roe : (t.roe_val || 0);
+                const roeColor = roePct >= 0 ? 'text-tertiary' : 'text-error';
                 const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
                 const isLong = t.side === 'LONG' || t.side === 'l' || t.side === 'long';
                 
@@ -862,7 +863,7 @@ function renderTradesView() {
                                 <span ${inlineBlur}>${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}</span>
                             </p>
                             <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
-                                ${(t.roe || 0) >= 0 ? '+' : ''}${(t.roe || 0).toFixed(2)}%
+                                ${roePct >= 0 ? '+' : ''}${roePct.toFixed(2)}%
                             </p>
                         </div>
                     </div>
