@@ -616,6 +616,15 @@ def get_open_trades():
     open_positions = []
     tg_user = _get_telegram_user(user)
     
+    # Merge credentials from both WebUsers and Telegram bot Users table
+    merged_user = {}
+    if user:
+        merged_user.update(user)
+    if tg_user:
+        for k, v in tg_user.items():
+            if v is not None and v != "":
+                merged_user[k] = v
+                
     # Determine the chat_id to use for Alpaca trade queries
     # If user linked their Telegram, use the real chat_id so we see actual bot trades
     # Otherwise fall back to the synthetic web-only offset
@@ -625,13 +634,12 @@ def get_open_trades():
         trade_chat_id = user["id"] + 1000000000
     
     # 1. Fetch live Alpaca Stock Trades
-    alpaca_key = (tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key")
-    alpaca_secret = (tg_user or {}).get("alpaca_api_secret") or user.get("alpaca_api_secret")
+    alpaca_key = merged_user.get("alpaca_api_key")
+    alpaca_secret = merged_user.get("alpaca_api_secret")
     
     if alpaca_key and alpaca_secret:
         try:
-            alpaca_user = tg_user or user
-            positions = database.make_alpaca_request(alpaca_user, "GET", "/v2/positions")
+            positions = database.make_alpaca_request(merged_user, "GET", "/v2/positions")
             if isinstance(positions, list):
                 for p in positions:
                     # Lookup R:R in database
@@ -692,11 +700,10 @@ def get_open_trades():
             print(f"Alpaca local fallback error: {e}")
         
     # 2. Fetch CCXT Crypto positions
-    # Use the linked Telegram user's exchange keys if available, otherwise fall back to web user keys
-    crypto_api_key = (tg_user or {}).get("api_key") or user.get("api_key")
-    crypto_api_secret = (tg_user or {}).get("api_secret") or user.get("api_secret")
-    crypto_api_password = (tg_user or {}).get("api_password") or user.get("api_password") or ""
-    crypto_exchange_id = (tg_user or {}).get("exchange_id") or user.get("exchange_id", "blofin")
+    crypto_api_key = merged_user.get("api_key")
+    crypto_api_secret = merged_user.get("api_secret")
+    crypto_api_password = merged_user.get("api_password") or ""
+    crypto_exchange_id = merged_user.get("exchange_id", "blofin")
     
     if crypto_api_key and crypto_api_secret:
         try:

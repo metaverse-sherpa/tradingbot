@@ -2060,7 +2060,7 @@ function renderSignalCard(sig, isLanding = false) {
     const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
     const userHasKeys = isCryptoSignal ? (STATE.user && STATE.user.has_exchange_keys) : (STATE.user && STATE.user.has_alpaca_keys);
     
-    const cleanSigSym = (sig.symbol || '').replace(/\//g, '');
+    const cleanSigSym = (sig.symbol || '').split(':')[0].replace(/\//g, '');
     const hasPosition = STATE.open_trades && STATE.open_trades.some(t => {
         if (!t.symbol) return false;
         const cleanTSym = t.symbol.split(':')[0].replace(/\//g, '');
