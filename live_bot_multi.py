@@ -177,7 +177,10 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         lp = ticker["last"]
         if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
         sl_dist, rr = signal["sl_dist"], signal["rr"]
-        sl, tp = lp - sl_dist, lp + (sl_dist * rr)
+        if signal["side"] == "buy":
+            sl, tp = lp - sl_dist, lp + (sl_dist * rr)
+        else: # sell (SHORT)
+            sl, tp = lp + sl_dist, lp - (sl_dist * rr)
         contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
         
