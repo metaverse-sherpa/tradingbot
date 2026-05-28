@@ -1517,16 +1517,17 @@ function renderStatsView() {
         </main>
     `;
 }
-
 function renderSettingsView() {
     const user = STATE.user || {};
     const isActive = user.is_active;
     const isPremium = user.is_premium;
     // Check if the user is linked
     const isTelegramLinked = !!user.telegram_chat_id;
+    const isSuperAdmin = user.telegram_chat_id === 1567788633;
+    const isAdmin = !!(user.is_admin || isSuperAdmin);
     
-    const hasLinkedCrypto = !!user.api_key;
-    const hasLinkedStock = !!user.alpaca_api_key;
+    const hasLinkedCrypto = !!user.has_exchange_keys;
+    const hasLinkedStock = !!user.has_alpaca_keys;
     
     // Parse expiration details
     let expiryText = 'Not Premium';
@@ -1594,22 +1595,22 @@ function renderSettingsView() {
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Key:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_key || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
+                                    <input type="password" value="${user.api_key || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-key-display', this)">visibility</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Secret:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_secret || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
+                                    <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-secret-display', this)">visibility</span>
                                 </div>
                             </div>
-                            ${user.api_password ? `
+                            ${user.has_exchange_keys ? `
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">Passphrase:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_password || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
+                                    <input type="password" value="${user.api_password || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-pass-display', this)">visibility</span>
                                 </div>
                             </div>
@@ -1632,14 +1633,14 @@ function renderSettingsView() {
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Key:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.alpaca_api_key || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
+                                    <input type="password" value="${user.alpaca_api_key || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-key-display', this)">visibility</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Secret:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.alpaca_api_secret || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
+                                    <input type="password" value="${user.alpaca_api_secret || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-secret-display', this)">visibility</span>
                                 </div>
                             </div>
@@ -1813,6 +1814,24 @@ function renderSettingsView() {
                     <span class="text-xs font-semibold text-on-surface">Refer & Earn</span>
                 </a>
             </section>
+
+            <!-- Admin Gifting Center -->
+            ${isAdmin ? `
+            <section class="glass-card rounded-xl p-card-padding space-y-4 border border-[#ffdb3c]/30 gold-glow">
+                <h3 class="font-body-lg text-body-lg font-bold text-[#ffdb3c] flex items-center gap-2">
+                    <span class="material-symbols-outlined">workspace_premium</span> Admin Gifting Center
+                </h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Generate single-use premium gift links that can be shared with anyone. The recipient can redeem the code either on the Web App or the Telegram Bot to get 1 Month of Premium.
+                </p>
+                <div id="gift-generation-container" class="space-y-3">
+                    <button onclick="generateAdminGiftCode()" class="w-full h-11 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined text-lg">redeem</span>
+                        <span>Generate Universal Gift Link</span>
+                    </button>
+                </div>
+            </section>
+            ` : ''}
 
             <!-- Logout Link -->
             <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center cursor-pointer">
@@ -2859,6 +2878,61 @@ function showGiftSuccessModal(successMessage) {
         </div>
     `;
     document.body.appendChild(backdrop);
+}
+
+window.generateAdminGiftCode = async function() {
+    const container = document.getElementById('gift-generation-container');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="flex items-center justify-center p-4">
+            <div class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    `;
+    
+    try {
+        const res = await apiRequest('/api/admin/generate-gift', 'POST', {});
+        if (res && res.code) {
+            container.innerHTML = `
+                <div class="space-y-3 animate-fade-in text-left mt-2">
+                    <div class="bg-surface-container-low p-3 rounded-lg border border-white/5 space-y-1">
+                        <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Gift Code</span>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-mono text-sm text-[#ffdb3c] font-bold select-all">${res.code}</span>
+                            <button onclick="navigator.clipboard.writeText('${res.code}').then(() => showToast('Gift Code copied!'))" class="text-xs text-primary font-bold hover:underline cursor-pointer">Copy</button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-surface-container-low p-3 rounded-lg border border-white/5 space-y-1">
+                        <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">🌐 Web App Gift Link</span>
+                        <div class="flex items-center justify-between gap-2">
+                            <input type="text" readonly value="${res.web_gift_url}" class="bg-transparent text-xs text-on-surface-variant font-mono border-none outline-none focus:ring-0 p-0 w-full select-all"/>
+                            <button onclick="navigator.clipboard.writeText('${res.web_gift_url}').then(() => showToast('Web Gift Link copied!'))" class="text-xs text-primary font-bold hover:underline cursor-pointer">Copy</button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-surface-container-low p-3 rounded-lg border border-white/5 space-y-1">
+                        <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">🤖 Telegram Bot Gift Link</span>
+                        <div class="flex items-center justify-between gap-2">
+                            <input type="text" readonly value="${res.tg_gift_url}" class="bg-transparent text-xs text-on-surface-variant font-mono border-none outline-none focus:ring-0 p-0 w-full select-all"/>
+                            <button onclick="navigator.clipboard.writeText('${res.tg_gift_url}').then(() => showToast('Telegram Gift Link copied!'))" class="text-xs text-primary font-bold hover:underline cursor-pointer">Copy</button>
+                        </div>
+                    </div>
+                    
+                    <button onclick="renderView()" class="w-full h-9 bg-white/5 border border-white/10 text-on-surface text-xs font-bold rounded-lg hover:bg-white/10 transition-all cursor-pointer">
+                        Generate Another Code
+                    </button>
+                </div>
+            `;
+            showToast("🎁 Universal Gift links generated successfully!");
+        } else {
+            showToast(res.error || "Failed to generate gift links", "error");
+            renderView();
+        }
+    } catch(err) {
+        showToast("Error generating gift links", "error");
+        renderView();
+    }
 }
 
 

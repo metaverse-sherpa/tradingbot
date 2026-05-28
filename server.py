@@ -1514,6 +1514,37 @@ def admin_deployment():
         "checklist": checklist
     }), 200
 
+@app.route('/api/admin/generate-gift', methods=['POST'])
+@require_auth
+def admin_generate_gift():
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    try:
+        # Create unreserved universal gift code for 30 days
+        code = database.create_gift_code(target_chat_id=None, target_username=None, days=30)
+        
+        # Read or fallback bot username
+        bot_username = os.getenv("TELEGRAM_BOT_USERNAME", "metaverse_sherpa_bot")
+        
+        web_gift_url = f"https://bot.metaversesherpa.io/#/login?gift={code}"
+        tg_gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
+        
+        return jsonify({
+            "code": code,
+            "web_gift_url": web_gift_url,
+            "tg_gift_url": tg_gift_url
+        }), 200
+    except Exception as e:
+        print(f"Error generating admin gift: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
 # ----------------- Visual Chart Endpoint -----------------
 @app.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
