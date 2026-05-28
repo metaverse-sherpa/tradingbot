@@ -159,7 +159,8 @@ def init_db():
             ("alpaca_start_equity", "REAL"),
             ("premium_referrals", "INTEGER DEFAULT 0"),
             ("premium_expired_notified", "BOOLEAN DEFAULT 0"),
-            ("had_premium_before", "BOOLEAN DEFAULT 0")
+            ("had_premium_before", "BOOLEAN DEFAULT 0"),
+            ("referral_reward_triggered", "BOOLEAN DEFAULT 0")
         ]
         for col_name, col_def in cols:
             try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
@@ -295,7 +296,8 @@ def init_db():
             history_cache TEXT,
             last_audit_stats TEXT,
             avatar_url TEXT,
-            created_at INTEGER
+            created_at INTEGER,
+            referral_reward_triggered BOOLEAN DEFAULT 0
         )''')
 
         # Migration: Ensure WebUsers has avatar_url
@@ -304,6 +306,10 @@ def init_db():
         
         # Migration: Ensure WebUsers has premium_referrals
         try: c.execute("ALTER TABLE WebUsers ADD COLUMN premium_referrals INTEGER DEFAULT 0")
+        except: pass
+
+        # Migration: Ensure WebUsers has referral_reward_triggered
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN referral_reward_triggered BOOLEAN DEFAULT 0")
         except: pass
 
 
@@ -351,7 +357,7 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct, alpaca_start_equity, premium_referrals, premium_expired_notified, had_premium_before FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct, alpaca_start_equity, premium_referrals, premium_expired_notified, had_premium_before, referral_reward_triggered FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
@@ -393,7 +399,8 @@ def get_user(chat_id):
             "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 1.0,
             "premium_referrals": row[34] if len(row) > 34 else 0,
             "premium_expired_notified": bool(row[35]) if len(row) > 35 else False,
-            "had_premium_before": bool(row[36]) if len(row) > 36 else False
+            "had_premium_before": bool(row[36]) if len(row) > 36 else False,
+            "referral_reward_triggered": bool(row[37]) if len(row) > 37 else False
         }
     return None
 

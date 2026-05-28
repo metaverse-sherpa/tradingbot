@@ -53,7 +53,7 @@ def create_web_user_email(email, password_hash, full_name=None, referred_by=None
         user_id = c.lastrowid
         
         if referred_by:
-            award_web_referral(referred_by)
+            record_web_referral_signup(referred_by, full_name or email)
             
         return user_id
 
@@ -68,7 +68,7 @@ def create_web_user_google(email, google_id, full_name=None, referred_by=None, a
         user_id = c.lastrowid
         
         if referred_by:
-            award_web_referral(referred_by)
+            record_web_referral_signup(referred_by, full_name or email)
             
         return user_id
 
@@ -138,7 +138,7 @@ def update_web_user_telegram(user_id, telegram_chat_id):
             c.execute('''
                 SELECT source_wallet, api_key, api_secret, api_password, exchange_id, 
                        alpaca_api_key, alpaca_api_secret, alpaca_endpoint,
-                       referral_count, referral_credits, premium_expiry, premium_referrals
+                       referral_count, referral_credits, premium_expiry, premium_referrals, referral_reward_triggered
                 FROM WebUsers WHERE id = ?
             ''', (user_id,))
             web_row = c.fetchone()
@@ -147,14 +147,14 @@ def update_web_user_telegram(user_id, telegram_chat_id):
             c.execute('''
                 SELECT source_wallet, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id,
                        alpaca_api_key, alpaca_api_secret, alpaca_endpoint,
-                       referral_count, referral_credits, premium_expiry, premium_referrals
+                       referral_count, referral_credits, premium_expiry, premium_referrals, referral_reward_triggered
                 FROM Users WHERE telegram_chat_id = ?
             ''', (telegram_chat_id,))
             bot_row = c.fetchone()
             
             if web_row and bot_row:
-                w_wallet, w_ak, w_as, w_ap, w_exc, w_alk, w_als, w_ale, w_ref_count, w_credits, w_expiry, w_premium_ref = web_row
-                b_wallet, b_ak, b_as, b_ap, b_exc, b_alk, b_als, b_ale, b_ref_count, b_credits, b_expiry, b_premium_ref = bot_row
+                w_wallet, w_ak, w_as, w_ap, w_exc, w_alk, w_als, w_ale, w_ref_count, w_credits, w_expiry, w_premium_ref, w_reward_triggered = web_row
+                b_wallet, b_ak, b_as, b_ap, b_exc, b_alk, b_als, b_ale, b_ref_count, b_credits, b_expiry, b_premium_ref, b_reward_triggered = bot_row
                 
                 # Merge logic: Web takes precedence if it exists, otherwise Bot
                 f_wallet = w_wallet or b_wallet
@@ -171,67 +171,176 @@ def update_web_user_telegram(user_id, telegram_chat_id):
                 f_credits = max(w_credits or 0.0, b_credits or 0.0)
                 f_expiry = max(w_expiry or 0, b_expiry or 0)
                 f_premium_ref = max(w_premium_ref or 0, b_premium_ref or 0)
+                f_reward_triggered = max(w_reward_triggered or 0, b_reward_triggered or 0)
                 
                 # Update WebUsers with merged
                 c.execute('''
                     UPDATE WebUsers 
                     SET source_wallet = ?, api_key = ?, api_secret = ?, api_password = ?, exchange_id = ?,
-                        alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?,
-                        referral_count = ?, referral_credits = ?, premium_expiry = ?, premium_referrals = ?
+                         alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?,
+                         referral_count = ?, referral_credits = ?, premium_expiry = ?, premium_referrals = ?,
+                         referral_reward_triggered = ?
                     WHERE id = ?
                 ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale,
-                      f_ref_count, f_credits, f_expiry, f_premium_ref, user_id))
+                      f_ref_count, f_credits, f_expiry, f_premium_ref, f_reward_triggered, user_id))
                 
                 # Update Users (Bot) with merged
                 c.execute('''
                     UPDATE Users 
                     SET source_wallet = ?, blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, exchange_id = ?,
-                        alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?,
-                        referral_count = ?, referral_credits = ?, premium_expiry = ?, premium_referrals = ?
+                         alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?,
+                         referral_count = ?, referral_credits = ?, premium_expiry = ?, premium_referrals = ?,
+                         referral_reward_triggered = ?
                     WHERE telegram_chat_id = ?
                 ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale,
-                      f_ref_count, f_credits, f_expiry, f_premium_ref, telegram_chat_id))
+                      f_ref_count, f_credits, f_expiry, f_premium_ref, f_reward_triggered, telegram_chat_id))
 
-def award_web_referral(referrer_id):
-    """Increments referral counts/credits on web and synchronizes to bot if linked."""
+def send_telegram_notification(chat_id, message):
+    try:
+        from bot.config import TELEGRAM_TOKEN
+        import requests
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "Markdown"
+        }
+        requests.post(url, json=payload, timeout=5)
+    except Exception as e:
+        print(f"Failed to send telegram notification: {e}")
+
+def record_web_referral_signup(referrer_id, referee_name):
+    """Increments recruits count for the referrer and notifies them via Telegram bot if linked."""
     with db_session() as conn:
         c = conn.cursor()
         
-        # Increment referral stats for WebUser
-        c.execute('''
-            UPDATE WebUsers 
-            SET referral_count = referral_count + 1,
-                premium_referrals = premium_referrals + 1
-            WHERE id = ?
-        ''', (referrer_id,))
+        # Determine referrer details
+        tg_chat_id = None
+        web_user_id = None
         
-        # Check if they reached a multiple of 3 to award 30 days
-        c.execute('SELECT premium_referrals, premium_expiry, telegram_chat_id FROM WebUsers WHERE id = ?', (referrer_id,))
+        # 1. Check if referrer_id is a Telegram chat ID
+        c.execute("SELECT telegram_chat_id FROM Users WHERE telegram_chat_id = ?", (referrer_id,))
         row = c.fetchone()
         if row:
-            p_ref, p_expiry, tg_chat_id = row
-            if p_ref > 0 and p_ref % 3 == 0:
-                now = int(time.time())
-                current_expiry = max(p_expiry or 0, now)
-                new_expiry = current_expiry + (30 * 24 * 60 * 60)
+            tg_chat_id = row[0]
+            # See if there's a corresponding WebUser
+            c.execute("SELECT id FROM WebUsers WHERE telegram_chat_id = ?", (tg_chat_id,))
+            web_row = c.fetchone()
+            if web_row:
+                web_user_id = web_row[0]
+        else:
+            # 2. Check if referrer_id is a WebUser id
+            c.execute("SELECT id, telegram_chat_id FROM WebUsers WHERE id = ?", (referrer_id,))
+            web_row = c.fetchone()
+            if web_row:
+                web_user_id = web_row[0]
+                tg_chat_id = web_row[1]
+        
+        # Increment counts in whichever tables exist
+        if web_user_id:
+            c.execute("UPDATE WebUsers SET referral_count = referral_count + 1 WHERE id = ?", (web_user_id,))
+        if tg_chat_id:
+            c.execute("UPDATE Users SET referral_count = referral_count + 1 WHERE telegram_chat_id = ?", (tg_chat_id,))
+            
+        # Send Telegram notification to referrer
+        if tg_chat_id:
+            msg_std = (
+                f"🎉 *New Recruit Signed Up!*\n\n"
+                f"**{referee_name}** has registered under your referral link.\n\n"
+                f"ℹ️ _Note: They must upgrade to a premium subscription for this to count towards your free 1-month reward (you need 3 premium recruits to unlock a free month)._"
+            )
+            send_telegram_notification(tg_chat_id, msg_std)
+
+def award_premium_referral_on_upgrade(referee_id):
+    """Called when referee upgrades to Premium. Awards premium referral credit to the referrer if not already triggered."""
+    with db_session() as conn:
+        c = conn.cursor()
+        
+        # Check referee's referred_by and referral_reward_triggered
+        c.execute("SELECT referred_by, referral_reward_triggered, email, full_name FROM WebUsers WHERE id = ?", (referee_id,))
+        referee = c.fetchone()
+        if not referee:
+            return
+            
+        referred_by, reward_triggered, email, full_name = referee
+        if not referred_by or reward_triggered:
+            return # No referrer or already rewarded
+            
+        # Set referral_reward_triggered = 1 for referee
+        c.execute("UPDATE WebUsers SET referral_reward_triggered = 1 WHERE id = ?", (referee_id,))
+        
+        # Check if they have a linked Telegram bot user, update there too
+        c.execute("SELECT telegram_chat_id FROM WebUsers WHERE id = ?", (referee_id,))
+        referee_tg = c.fetchone()
+        if referee_tg and referee_tg[0]:
+            c.execute("UPDATE Users SET referral_reward_triggered = 1 WHERE telegram_chat_id = ?", (referee_tg[0],))
+            
+        # Resolve referrer's Web ID and Telegram ID
+        tg_chat_id = None
+        web_user_id = None
+        
+        # Check if referred_by is a Telegram chat ID
+        c.execute("SELECT telegram_chat_id FROM Users WHERE telegram_chat_id = ?", (referred_by,))
+        row = c.fetchone()
+        if row:
+            tg_chat_id = row[0]
+            c.execute("SELECT id FROM WebUsers WHERE telegram_chat_id = ?", (tg_chat_id,))
+            web_row = c.fetchone()
+            if web_row:
+                web_user_id = web_row[0]
+        else:
+            # Check if referred_by is a WebUser id
+            c.execute("SELECT id, telegram_chat_id FROM WebUsers WHERE id = ?", (referred_by,))
+            web_row = c.fetchone()
+            if web_row:
+                web_user_id = web_row[0]
+                tg_chat_id = web_row[1]
                 
-                c.execute('UPDATE WebUsers SET premium_expiry = ? WHERE id = ?', (new_expiry, referrer_id))
+        # Increment premium_referrals count for referrer
+        p_ref = 0
+        p_expiry = 0
+        
+        if web_user_id:
+            c.execute("UPDATE WebUsers SET premium_referrals = premium_referrals + 1 WHERE id = ?", (web_user_id,))
+            c.execute("SELECT premium_referrals, premium_expiry FROM WebUsers WHERE id = ?", (web_user_id,))
+            row = c.fetchone()
+            if row:
+                p_ref, p_expiry = row
                 
-                # If Telegram is linked, synchronize it directly in Users (Bot)
-                if tg_chat_id:
-                    c.execute('''
-                        UPDATE Users 
-                        SET premium_expiry = ?, 
-                            premium_referrals = ?, 
-                            referral_count = referral_count + 1 
-                        WHERE telegram_chat_id = ?
-                    ''', (new_expiry, p_ref, tg_chat_id))
-            else:
-                # If not a multiple of 3 but Telegram is linked, just sync the count
-                if tg_chat_id:
-                    c.execute('''
-                        UPDATE Users 
-                        SET premium_referrals = ?, 
-                            referral_count = referral_count + 1 
-                        WHERE telegram_chat_id = ?
-                    ''', (p_ref, tg_chat_id))
+        if tg_chat_id:
+            c.execute("UPDATE Users SET premium_referrals = premium_referrals + 1 WHERE telegram_chat_id = ?", (tg_chat_id,))
+            c.execute("SELECT premium_referrals, premium_expiry FROM Users WHERE telegram_chat_id = ?", (tg_chat_id,))
+            row = c.fetchone()
+            if row:
+                if not p_ref:
+                    p_ref, p_expiry = row
+                    
+        # Check if they reached a multiple of 3 to award 30 days of premium
+        if p_ref > 0 and p_ref % 3 == 0:
+            now = int(time.time())
+            current_expiry = max(p_expiry or 0, now)
+            new_expiry = current_expiry + (30 * 24 * 60 * 60)
+            
+            if web_user_id:
+                c.execute("UPDATE WebUsers SET premium_expiry = ? WHERE id = ?", (new_expiry, web_user_id))
+            if tg_chat_id:
+                c.execute("UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?", (new_expiry, tg_chat_id))
+                
+            # Notify referrer of reward extension
+            if tg_chat_id:
+                msg_reward = (
+                    "🎉 *PREMIUM MILESTONE REACHED!*\n\n"
+                    "You've successfully recruited 3 Premium members. Your **Premium access** has been activated/extended for 30 days!\n\n"
+                    "🏔️ _The Sherpa honors your leadership._"
+                )
+                send_telegram_notification(tg_chat_id, msg_reward)
+        else:
+            # Just notify of successful premium upgrade referral
+            if tg_chat_id:
+                referee_display = full_name or email
+                msg_upgrade = (
+                    f"🔥 *Premium Referral Activated!*\n\n"
+                    f"Your recruit **{referee_display}** has upgraded to Premium!\n\n"
+                    f"You have now referred **{p_ref}** Premium members (you need 3 to get 1 month free Premium. Next reward at **{((p_ref // 3) + 1) * 3}**)."
+                )
+                send_telegram_notification(tg_chat_id, msg_upgrade)

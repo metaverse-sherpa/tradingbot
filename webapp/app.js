@@ -149,10 +149,19 @@ async function initGoogleSignIn() {
 
 async function handleGoogleCredentialResponse(response) {
     const credential = response.credential;
-    const res = await apiRequest('/auth/google', 'POST', { credential });
+    const referrer = localStorage.getItem('referred_by');
+    const payload = { credential };
+    if (referrer) {
+        payload.referred_by = parseInt(referrer);
+    }
+    const res = await apiRequest('/auth/google', 'POST', payload);
     if (res) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
+        if (referrer) {
+            showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
+            localStorage.removeItem('referred_by');
+        }
         navigate('#/dashboard');
     }
 }
@@ -163,7 +172,16 @@ function navigate(hash) {
 }
 
 async function handleRoute() {
-    const hash = window.location.hash || '#/landing';
+    const refCode = getQueryParam('ref');
+    if (refCode) {
+        localStorage.setItem('referred_by', refCode);
+    }
+
+    let hash = window.location.hash || '#/landing';
+    // Clean query parameters for routing logic
+    if (hash.includes('?')) {
+        hash = hash.split('?')[0];
+    }
     
     // Auth Guard
     if (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/') {
@@ -487,6 +505,8 @@ function renderLoginView() {
                 <h2 class="font-display-lg text-display-lg text-white font-bold leading-tight">Trade Smarter.<br/>Not Harder.</h2>
             </div>
             
+            <div id="referral-banner-container" class="w-full"></div>
+            
             <div class="glass-card w-full rounded-xl p-card-padding flex flex-col gap-stack-gap">
                 <!-- Google Authentication Hook -->
                 <button onclick="triggerGoogleLogin()" class="w-full h-12 bg-white text-surface-dim font-label-md text-label-md rounded-full flex items-center justify-center gap-3 hover:bg-white/90 transition-colors">
@@ -538,6 +558,8 @@ function renderRegisterView() {
                 </div>
                 <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest opacity-80">Join the institutional trail</p>
             </header>
+            
+            <div id="referral-banner-container" class="w-full"></div>
             
             <div class="glass-card w-full rounded-xl p-card-padding flex flex-col gap-stack-gap">
                 <form id="register-form" class="space-y-4" onsubmit="handleEmailRegister(event)">
@@ -2227,7 +2249,7 @@ async function handleEmailRegister(e) {
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
     
-    const refCode = getQueryParam('ref');
+    const refCode = getQueryParam('ref') || localStorage.getItem('referred_by');
     const payload = { full_name: name, email, password };
     if (refCode) {
         payload.referred_by = parseInt(refCode);
@@ -2238,6 +2260,10 @@ async function handleEmailRegister(e) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
         showToast("Account successfully registered!");
+        if (refCode) {
+            showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
+            localStorage.removeItem('referred_by');
+        }
         navigate('#/dashboard');
     }
 }
@@ -2583,6 +2609,25 @@ function initParticles() {
 }
 
 function bindEvents() {
+    // Dynamic referral welcome banner injection if present
+    const refCode = localStorage.getItem('referred_by');
+    const bannerContainer = document.getElementById('referral-banner-container');
+    if (refCode && bannerContainer) {
+        apiRequest(`/referral/info?ref=${refCode}`).then(data => {
+            if (data && data.name) {
+                bannerContainer.innerHTML = `
+                    <div class="glass-card w-full rounded-xl p-4 border border-tertiary/20 bg-tertiary/5 flex items-center gap-3 text-label-md mb-4 animation-fade-in text-left">
+                        <span class="material-symbols-outlined text-tertiary text-2xl">group</span>
+                        <div>
+                            <p class="text-white font-bold">You were invited by <span class="text-tertiary">${data.name}</span></p>
+                            <p class="text-on-surface-variant text-label-sm">Register & unlock 1 month of Premium when you upgrade!</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }).catch(err => console.error("Error loading referrer name:", err));
+    }
+
     // Dynamic styles and event hooks on loaded HTML elements
     document.querySelectorAll('.glass-card').forEach(card => {
         card.addEventListener('touchstart', () => {

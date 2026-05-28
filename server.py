@@ -1389,6 +1389,13 @@ def check_payment():
                 if credits > 0:
                     database.consume_referral_credits(user["telegram_chat_id"], 20.0)
                     
+            # 🤝 Reward Referrer on successful Referee premium upgrade
+            try:
+                from web_api.db_web import award_premium_referral_on_upgrade
+                award_premium_referral_on_upgrade(user["id"])
+            except Exception as ref_err:
+                print(f"Error awarding referral on premium upgrade: {ref_err}")
+                
             return jsonify({"message": "Payment verified! Premium activated for 30 days."}), 200
         else:
             return jsonify({"message": "Audit completed. No recent transactions found for your source wallet. Please ensure you sent $20 USDT via TRON (TRC-20)."}), 200
@@ -1398,6 +1405,33 @@ def check_payment():
         return jsonify({"message": "Error querying Tron blockchain. Please try again later."}), 500
 
 # ----------------- Referrals -----------------
+@app.route('/api/referral/info', methods=['GET'])
+def referral_info():
+    ref_id = request.args.get("ref")
+    if not ref_id:
+        return jsonify({"error": "Missing ref parameter"}), 400
+        
+    try:
+        ref_id_int = int(ref_id)
+    except ValueError:
+        return jsonify({"name": f"Sherpa #{ref_id}"}), 200
+        
+    with database.db_session() as conn:
+        c = conn.cursor()
+        # 1. Try lookup in WebUsers by ID
+        c.execute("SELECT full_name FROM WebUsers WHERE id = ?", (ref_id_int,))
+        row = c.fetchone()
+        if row and row[0]:
+            return jsonify({"name": row[0]}), 200
+            
+        # 2. Try lookup in Users by Telegram Chat ID
+        c.execute("SELECT full_name FROM Users WHERE telegram_chat_id = ?", (ref_id_int,))
+        row = c.fetchone()
+        if row and row[0]:
+            return jsonify({"name": row[0]}), 200
+            
+    return jsonify({"name": f"Sherpa #{ref_id}"}), 200
+
 @app.route('/api/referral/stats', methods=['GET'])
 @require_auth
 def referral_stats():
