@@ -298,6 +298,11 @@ async function handleRoute() {
         if (STATE.user && STATE.user.is_premium) {
             const stats = await apiRequest('/user/stats');
             if (stats) STATE.stats = stats;
+            const hasLinkedKeys = STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys;
+            if (!hasLinkedKeys) {
+                const freeStats = await apiRequest('/stats/free');
+                if (freeStats) STATE.free_stats = freeStats;
+            }
         } else {
             const freeStats = await apiRequest('/stats/free');
             if (freeStats) STATE.free_stats = freeStats;
