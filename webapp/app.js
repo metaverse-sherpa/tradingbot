@@ -2059,7 +2059,14 @@ function renderSignalCard(sig, isLanding = false) {
     
     const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
     const userHasKeys = isCryptoSignal ? (STATE.user && STATE.user.has_exchange_keys) : (STATE.user && STATE.user.has_alpaca_keys);
-    const hasPosition = STATE.open_trades && STATE.open_trades.some(t => t.symbol === sig.symbol.split('/')[0]);
+    
+    const cleanSigSym = (sig.symbol || '').replace(/\//g, '');
+    const hasPosition = STATE.open_trades && STATE.open_trades.some(t => {
+        if (!t.symbol) return false;
+        const cleanTSym = t.symbol.split(':')[0].replace(/\//g, '');
+        return cleanTSym === cleanSigSym;
+    });
+    
     const showManualTradeButton = STATE.user && STATE.user.is_premium && userHasKeys && !hasPosition;
     
     let progressBarHtml = '';
