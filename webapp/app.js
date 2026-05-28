@@ -1998,20 +1998,12 @@ window.openLiveTrade = async function(id) {
         btn.disabled = true;
     }
     try {
-        const response = await fetch('/api/user/manual-trade', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ signal_id: id })
-        });
-        const data = await response.json();
-        if (data.success) {
+        const res = await apiRequest('/user/manual-trade', 'POST', { signal_id: id });
+        if (res && res.success) {
             alert('Live Trade Opened Successfully!');
             updateDashboard(); // Reloads active trades
         } else {
-            alert('Error opening trade: ' + (data.error || 'Unknown error'));
+            alert('Error opening trade: ' + ((res && res.error) || 'Unknown error'));
         }
     } catch (e) {
         alert('Error: ' + e);
