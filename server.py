@@ -1390,9 +1390,17 @@ def check_payment():
 def referral_stats():
     user = g.user
     invite_link = f"https://metaversesherpa.io/#/register?ref={user['id']}"
+    tg_user = _get_telegram_user(user)
+    ref_count = user.get("referral_count", 0)
+    credits = user.get("referral_credits", 0.0)
+    
+    if tg_user:
+        ref_count = max(ref_count, tg_user.get("referral_count", 0))
+        credits = max(credits, tg_user.get("referral_credits", 0.0))
+        
     return jsonify({
-        "referral_count": user.get("referral_count", 0),
-        "referral_credits": user.get("referral_credits", 0.0),
+        "referral_count": ref_count,
+        "referral_credits": credits,
         "invite_link": invite_link
     }), 200
 
