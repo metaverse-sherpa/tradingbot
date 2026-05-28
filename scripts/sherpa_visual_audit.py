@@ -89,10 +89,13 @@ def prepare_indicators(df, cfg, strategy_name="Mean Reversion Scalper"):
         "index": df.index,
     }
 
+CRYPTO_INDICATORS_CACHE = {}
+
 def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", start_balance=10000.0, strategy_name="Mean Reversion Scalper"):
     """
     Performs a visual backtest and returns (stats, chart_path, df_eq)
     """
+    global CRYPTO_INDICATORS_CACHE
     is_master = False
     
     if strategy_name == "Valkyrie Elite Scalper":
@@ -110,8 +113,14 @@ def run_visual_audit(risk_val_pct=1.5, enabled_symbols=None, user_id="admin", st
     for name in enabled_symbols:
         path = os.path.join(CSV_DIR, f"blofin_{name}_15m.csv")
         if not os.path.exists(path): continue
-        df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
-        datasets[name] = prepare_indicators(df, cfg_source[name], strategy_name)
+        
+        cache_key = (name, strategy_name)
+        if cache_key in CRYPTO_INDICATORS_CACHE:
+            datasets[name] = CRYPTO_INDICATORS_CACHE[cache_key]
+        else:
+            df = pd.read_csv(path, parse_dates=["datetime"], index_col="datetime")
+            datasets[name] = prepare_indicators(df, cfg_source[name], strategy_name)
+            CRYPTO_INDICATORS_CACHE[cache_key] = datasets[name]
     
     if not datasets: return None, None, None
     

@@ -1,5 +1,12 @@
 const API_BASE = '/api';
 
+function getQueryParam(name) {
+    let match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    if (match) return match[1];
+    match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.hash);
+    return match ? match[1] : null;
+}
+
 let STATE = {
     user: null,
     crypto_balance: 0.0,
@@ -914,9 +921,6 @@ function renderTradesView() {
                                         ${trade.symbol} <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${trade.side === 'LONG' ? 'trending_up' : 'trending_down'}</span>
                                     </div>
                                     <div>
-                                        Current PnL: <span class="${current_pnl_val >= 0 ? 'text-tertiary' : 'text-error'} font-bold">${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}% (<span ${inlineBlur}>${current_pnl_val >= 0 ? '+' : ''}$${current_pnl_val.toFixed(2)}</span>)</span> of <span class="text-tertiary font-bold">+${target_pnl_pct.toFixed(2)}% (<span ${inlineBlur}>+$${target_pnl_val.toFixed(2)}</span>)</span>
-                                    </div>
-                                    <div>
                                         • Entry: <span class="text-primary font-bold">$${entry.toFixed(2)}</span> | SL: <span class="text-error font-bold">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span> | TP: <span class="text-tertiary font-bold">$${tp.toFixed(2)} (+${tp_pct.toFixed(0)}%)</span>
                                     </div>
                                 </div>
@@ -976,15 +980,18 @@ function renderTradesView() {
                                     </p>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                    <span ${inlineBlur}>${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
-                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / <span ${inlineBlur}>+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
-                                </p>
-                                <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
-                                    ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}%
-                                    ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> of ${Math.abs(((trade.tp_price - trade.entry_price) / trade.entry_price) * 100).toFixed(0)}%</span>` : ''}
-                                </p>
+                            <div class="flex items-center gap-2">
+                                <div class="text-right">
+                                    <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
+                                        <span ${inlineBlur}>${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
+                                        ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / <span ${inlineBlur}>+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
+                                    </p>
+                                    <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
+                                        ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}%
+                                        ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> of ${Math.abs(((trade.tp_price - trade.entry_price) / trade.entry_price) * 100).toFixed(0)}%</span>` : ''}
+                                    </p>
+                                </div>
+                                <span class="material-symbols-outlined text-on-surface-variant/60 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}">expand_more</span>
                             </div>
                         </div>
                         <div class="flex justify-between items-center pt-3 border-t border-white/10">
@@ -1016,7 +1023,7 @@ function renderTradesView() {
             listHtml = filteredHistory.map(t => {
                 const dateStr = t.close_time ? new Date(t.close_time * 1000).toLocaleDateString() : 'Recent';
                 const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
-                const roePct = t.roe !== undefined ? t.roe : (t.roe_val || 0);
+                const roePct = t.pnl_pct !== undefined ? t.pnl_pct : (t.roe_val !== undefined ? t.roe_val : (t.roe !== undefined ? t.roe : 0));
                 const roeColor = roePct >= 0 ? 'text-tertiary' : 'text-error';
                 const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
                 const isLong = t.side === 'LONG' || t.side === 'l' || t.side === 'long';
@@ -1290,31 +1297,102 @@ function renderStatsView() {
     if (!STATE.user || !STATE.user.is_premium) {
         return renderFreeStatsView();
     }
+    
+    const s = STATE.stats || {
+        crypto: { portfolio_value: 1000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0 },
+        stock: { portfolio_value: 10000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0, closed_trades: 0 }
+    };
+    
+    const crypto = s.crypto || { portfolio_value: 1000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0 };
+    const stock = s.stock || { portfolio_value: 10000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0, closed_trades: 0 };
+    
+    const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+    const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
+    
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Performance</h2>
+            <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Institutional Performance</h2>
             
-            <div class="glass-card rounded-xl p-6 text-center border-t-2 border-primary/40 relative overflow-hidden">
-                <div class="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-tertiary shadow-[0_0_15px_rgba(0,255,136,0.3)] mb-4">
-                    <span class="text-2xl font-bold text-on-surface">${STATE.stats.win_rate}%</span>
+            <!-- Crypto Performance Section -->
+            <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Performance</h3>
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold">Live API</span>
                 </div>
-                <h3 class="text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">Overall Win Rate</h3>
-                <p class="text-on-surface font-numeric-data text-numeric-data mt-2">
-                    ${STATE.stats.wins} Wins / ${STATE.stats.losses} Losses
-                </p>
-            </div>
+                
+                <div class="grid grid-cols-2 gap-stack-gap text-center">
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Portfolio Value</p>
+                        <p class="text-lg font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Win Rate</p>
+                        <p class="text-lg font-bold text-tertiary mt-1">${crypto.win_rate.toFixed(1)}%</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-stack-gap text-center">
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Cumulative PnL</p>
+                        <p class="text-lg font-bold ${crypto.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
+                            <span ${inlineBlur}>${crypto.overall_pnl >= 0 ? '+' : ''}$${crypto.overall_pnl.toFixed(2)}</span>
+                            <span class="text-xs font-normal text-on-surface-variant"> (${crypto.overall_pnl_pct >= 0 ? '+' : ''}${crypto.overall_pnl_pct.toFixed(2)}%)</span>
+                        </p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Unrealized PnL</p>
+                        <p class="text-lg font-bold ${crypto.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1" ${inlineBlur}>
+                            ${crypto.unrealized_pnl >= 0 ? '+' : ''}$${crypto.unrealized_pnl.toFixed(2)}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
+                    <div>Open: <span class="text-on-surface font-bold">${crypto.open_positions} positions</span></div>
+                    <div>Record: <span class="text-on-surface font-bold">${crypto.wins}W / ${crypto.losses}L</span></div>
+                </div>
+            </section>
             
-            <div class="grid grid-cols-2 gap-stack-gap">
-                <div class="glass-card rounded-lg p-4">
-                    <p class="text-xs text-on-surface-variant">Cumulative PnL</p>
-                    <p class="text-xl font-bold text-tertiary mt-1">+$${STATE.stats.cumulative_pnl.toFixed(2)}</p>
+            <!-- Stocks Performance Section -->
+            <section class="glass-card rounded-xl p-card-padding border-t-2 border-secondary-container/40 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Performance</h3>
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-secondary-container/10 text-secondary-container font-bold">Alpaca Live</span>
                 </div>
-                <div class="glass-card rounded-lg p-4">
-                    <p class="text-xs text-on-surface-variant">Profit Factor</p>
-                    <p class="text-xl font-bold text-secondary-container mt-1">${STATE.stats.profit_factor}</p>
+                
+                <div class="grid grid-cols-2 gap-stack-gap text-center">
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Portfolio Value</p>
+                        <p class="text-lg font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Win Rate</p>
+                        <p class="text-lg font-bold text-tertiary mt-1">${stock.win_rate.toFixed(1)}%</p>
+                    </div>
                 </div>
-            </div>
+                
+                <div class="grid grid-cols-2 gap-stack-gap text-center">
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Cumulative PnL</p>
+                        <p class="text-lg font-bold ${stock.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
+                            <span ${inlineBlur}>${stock.overall_pnl >= 0 ? '+' : ''}$${stock.overall_pnl.toFixed(2)}</span>
+                            <span class="text-xs font-normal text-on-surface-variant"> (${stock.overall_pnl_pct >= 0 ? '+' : ''}${stock.overall_pnl_pct.toFixed(2)}%)</span>
+                        </p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-3">
+                        <p class="text-xs text-on-surface-variant">Unrealized PnL</p>
+                        <p class="text-lg font-bold ${stock.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1" ${inlineBlur}>
+                            ${stock.unrealized_pnl >= 0 ? '+' : ''}$${stock.unrealized_pnl.toFixed(2)}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
+                    <div>Open: <span class="text-on-surface font-bold">${stock.open_positions} positions</span></div>
+                    <div>Record: <span class="text-on-surface font-bold">${stock.wins}W / ${stock.losses}L</span></div>
+                </div>
+            </section>
         </main>
     `;
 }
@@ -1322,13 +1400,45 @@ function renderStatsView() {
 function renderSettingsView() {
     const user = STATE.user || {};
     const isActive = user.is_active;
+    const isPremium = user.is_premium;
+    
+    // Check if the user is linked
+    const isTelegramLinked = !!user.telegram_chat_id;
+    
+    // Parse expiration details
+    let expiryText = 'Not Premium';
+    if (isPremium && user.premium_expiry) {
+        expiryText = `Expires: ${new Date(user.premium_expiry * 1000).toLocaleDateString()}`;
+    } else if (isPremium) {
+        expiryText = 'Lifetime Active';
+    }
     
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">⚙️ Settings</h2>
             
-            <!-- Bot Status Panel -->
+            <!-- Premium Status & Renew Option -->
+            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border border-white/10">
+                <div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-secondary-container">diamond</span> Premium Membership
+                    </h3>
+                    <p class="text-xs text-on-surface-variant mt-1">${expiryText}</p>
+                </div>
+                ${isPremium ? `
+                    <button onclick="showRenewModal()" class="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg font-bold hover:brightness-110 transition-all text-xs flex items-center gap-1 shadow-[0_0_8px_rgba(212,175,55,0.3)]">
+                        <span class="material-symbols-outlined text-[14px]">autorenew</span> Renew
+                    </button>
+                ` : `
+                    <a href="#/premium" class="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg font-bold hover:brightness-110 transition-all text-xs">
+                        Upgrade
+                    </a>
+                `}
+            </section>
+            
+            <!-- Bot Status Panel (Gated to Premium Users Only) -->
+            ${isPremium ? `
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 ${isActive ? 'border-tertiary/40' : 'border-error/40'}">
                 <div>
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Autopilot Status</h3>
@@ -1340,15 +1450,40 @@ function renderSettingsView() {
                     ${isActive ? 'STOP BOT' : 'START BOT'}
                 </button>
             </section>
+            ` : ''}
             
             <!-- Connect Exchange Wizard -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
-                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 Connect Exchange (Blofin)</h3>
+                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 Connect Exchange</h3>
+                <div class="space-y-2">
+                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
+                    <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" onchange="toggleExchangeFields()">
+                        <option value="blofin">Blofin</option>
+                        <option value="binance">Binance</option>
+                        <option value="mexc">MEXC</option>
+                        <option value="bitget">Bitget</option>
+                        <option value="bingx">BingX</option>
+                        <option value="alpaca">Alpaca Stocks</option>
+                    </select>
+                </div>
                 <form onsubmit="handleExchangeSetup(event)" class="space-y-3">
-                    <input id="api-key" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Key" type="text" required/>
-                    <input id="api-secret" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="API Secret" type="password" required/>
-                    <input id="api-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="Passphrase" type="password" required/>
-                    <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2">
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Key</label>
+                        <input id="api-key" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Key" type="text" required/>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Secret</label>
+                        <input id="api-secret" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Secret" type="password" required/>
+                    </div>
+                    <div id="pwd-field-container" class="space-y-1">
+                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Passphrase</label>
+                        <input id="api-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
+                    </div>
+                    <div id="endpoint-field-container" class="space-y-1 hidden">
+                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
+                        <input id="alpaca-endpoint" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://paper-api.alpaca.markets" type="text" value="https://paper-api.alpaca.markets"/>
+                    </div>
+                    <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
                         Save Keys
                     </button>
                 </form>
@@ -1356,27 +1491,77 @@ function renderSettingsView() {
             
             <!-- Telegram Sync -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
-                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">📱 Telegram Sync</h3>
-                <p class="text-xs text-on-surface-variant">Sync your web account with the Telegram bot to receive live signals and portfolio updates. Send /start to the bot to get your Chat ID.</p>
-                <form onsubmit="handleTelegramSetup(event)" class="space-y-3">
-                    <input id="telegram-chat-id" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all" placeholder="Telegram Chat ID (e.g. 123456789)" type="text" value="${user.telegram_chat_id || ''}" required/>
-                    <button type="submit" class="w-full h-11 bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2">
-                        Link Telegram
-                    </button>
-                </form>
+                <div class="flex justify-between items-center">
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">📱 Telegram Sync</h3>
+                    ${isTelegramLinked && !STATE.editing_telegram ? `
+                        <button onclick="STATE.editing_telegram = true; renderView();" class="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                            <span class="material-symbols-outlined text-[14px]">edit</span>Edit
+                        </button>
+                    ` : ''}
+                </div>
+                ${isTelegramLinked && !STATE.editing_telegram ? `
+                    <div class="flex items-center gap-3 bg-tertiary/10 p-3 rounded-lg border border-tertiary/20">
+                        <span class="material-symbols-outlined text-tertiary text-2xl">check_circle</span>
+                        <div>
+                            <p class="text-xs text-on-surface-variant uppercase tracking-wider">Status</p>
+                            <p class="text-sm font-bold text-on-surface">Telegram Linked Successfully</p>
+                            <p class="text-xs text-on-surface-variant mt-0.5">Chat ID: ${user.telegram_chat_id}</p>
+                        </div>
+                    </div>
+                ` : `
+                    <p class="text-xs text-on-surface-variant leading-relaxed">Sync your web account with the Telegram bot to receive live signals and portfolio updates. Send /start to the bot to get your Chat ID.</p>
+                    <form onsubmit="handleTelegramSetup(event)" class="space-y-3">
+                        <input id="telegram-chat-id" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Telegram Chat ID (e.g. 123456789)" type="text" value="${user.telegram_chat_id || ''}" required/>
+                        <button type="submit" class="w-full h-11 bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
+                            ${isTelegramLinked ? 'Update Telegram Link' : 'Link Telegram'}
+                        </button>
+                    </form>
+                `}
+            </section>
+
+            <!-- Algorithmic Strategies Dropdowns -->
+            <section class="glass-card rounded-xl p-card-padding space-y-4">
+                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🤖 Algorithmic Strategies</h3>
+                <div class="space-y-3">
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Crypto Strategy</label>
+                        <select onchange="handleStrategyChange('crypto', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cursor-pointer">
+                            <option value="Mean Reversion Scalper" ${user.active_crypto_strategy === 'Mean Reversion Scalper' ? 'selected' : ''}>Mean Reversion Scalper</option>
+                            <option value="Valkyrie Elite Scalper" ${user.active_crypto_strategy === 'Valkyrie Elite Scalper' ? 'selected' : ''}>Valkyrie Elite Scalper</option>
+                            <option value="None" ${user.active_crypto_strategy === 'None' ? 'selected' : ''}>None (Disabled)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Stock Strategy</label>
+                        <select onchange="handleStrategyChange('stock', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cursor-pointer">
+                            <option value="Sherpa Velocity Pullback" ${user.active_stock_strategy === 'Sherpa Velocity Pullback' ? 'selected' : ''}>Sherpa Velocity Pullback</option>
+                            <option value="None" ${user.active_stock_strategy === 'None' ? 'selected' : ''}>None (Disabled)</option>
+                        </select>
+                    </div>
+                </div>
             </section>
             
             <!-- Risk Sizing Slider -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">⚖️ Risk & Sizing</h3>
-                <div class="space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-on-surface-variant">Crypto Risk per Trade</span>
-                        <span id="risk-val" class="text-primary font-bold">${user.risk_pct || '1.0'}%</span>
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-on-surface-variant">Crypto Risk per Trade</span>
+                            <span id="risk-val" class="text-primary font-bold">${user.risk_pct || '1.5'}%</span>
+                        </div>
+                        <input id="risk-slider" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || '1.5'}" oninput="document.getElementById('risk-val').innerText = this.value + '%'"/>
                     </div>
-                    <input id="risk-slider" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || '1.0'}" oninput="document.getElementById('risk-val').innerText = this.value + '%'"/>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-on-surface-variant">Stock Risk per Trade</span>
+                            <span id="stock-risk-val" class="text-secondary-container font-bold">${user.stock_risk_pct || '1.0'}%</span>
+                        </div>
+                        <input id="stock-risk-slider" class="w-full accent-secondary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.stock_risk_pct || '1.0'}" oninput="document.getElementById('stock-risk-val').innerText = this.value + '%'"/>
+                    </div>
                 </div>
-                <button onclick="savePreferences()" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 transition-all">
+                <button onclick="savePreferences()" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 transition-all mt-2 cursor-pointer">
                     Apply Sizing
                 </button>
             </section>
@@ -1387,19 +1572,26 @@ function renderSettingsView() {
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Privacy Mode</h3>
                     <p class="text-xs text-on-surface-variant mt-1">🔒 Hide Dollar PnL amounts across the app</p>
                 </div>
-                <button onclick="togglePrivacySetting()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
+                <button onclick="togglePrivacySetting()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
                     (user.hide_dollars !== false) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
                 }">
                     ${(user.hide_dollars !== false) ? 'Privacy On 🔒' : 'Privacy Off 👁️'}
                 </button>
             </section>
 
-            <!-- Premium & Referral Buttons -->
+            <!-- Premium Plan & Referral Buttons -->
             <section class="grid grid-cols-2 gap-stack-gap">
+                ${!isPremium ? `
                 <a href="#/premium" class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors text-center">
                     <span class="material-symbols-outlined text-secondary-container text-2xl">diamond</span>
                     <span class="text-xs font-semibold text-on-surface">Premium Plan</span>
                 </a>
+                ` : `
+                <div class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 text-center opacity-50">
+                    <span class="material-symbols-outlined text-secondary-container text-2xl">check_circle</span>
+                    <span class="text-xs font-semibold text-on-surface">Active Premium</span>
+                </div>
+                `}
                 <a href="#/referral" class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors text-center">
                     <span class="material-symbols-outlined text-tertiary text-2xl">diversity_3</span>
                     <span class="text-xs font-semibold text-on-surface">Refer & Earn</span>
@@ -1407,7 +1599,7 @@ function renderSettingsView() {
             </section>
 
             <!-- Logout Link -->
-            <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center">
+            <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center cursor-pointer">
                 Logout Session
             </button>
         </main>
@@ -1466,6 +1658,13 @@ function renderBacktestView() {
             ` : bt.result ? `
                 <div class="glass-card rounded-xl p-card-padding space-y-4">
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Backtest Complete!</h3>
+                    
+                    ${bt.result.chart_url ? `
+                        <div class="relative w-full aspect-[16/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center mb-4">
+                            <img src="${bt.result.chart_url}" class="w-full h-full object-cover" alt="Equity Curve" />
+                        </div>
+                    ` : ''}
+                    
                     <div class="grid grid-cols-2 gap-stack-gap">
                         <div class="bg-surface-container rounded-lg p-3 text-center">
                             <p class="text-xs text-on-surface-variant">Win Rate</p>
@@ -1477,14 +1676,16 @@ function renderBacktestView() {
                         </div>
                         <div class="bg-surface-container rounded-lg p-3 text-center">
                             <p class="text-xs text-on-surface-variant">Net PnL</p>
-                            <p class="text-lg font-bold text-tertiary">+$${bt.result.net_pnl.toFixed(2)}</p>
+                            <p class="text-lg font-bold ${bt.result.net_pnl >= 0 ? 'text-tertiary' : 'text-error'}">
+                                ${bt.result.net_pnl >= 0 ? '+' : ''}$${bt.result.net_pnl.toFixed(2)}
+                            </p>
                         </div>
                         <div class="bg-surface-container rounded-lg p-3 text-center">
-                            <p class="text-xs text-on-surface-variant">Profit Factor</p>
+                            <p class="text-xs text-on-surface-variant">Sharpe Ratio</p>
                             <p class="text-lg font-bold text-secondary-container">${bt.result.profit_factor}</p>
                         </div>
                     </div>
-                    <button onclick="resetBacktester()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all">
+                    <button onclick="resetBacktester()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all cursor-pointer">
                         Run New Backtest
                     </button>
                 </div>
@@ -1492,12 +1693,27 @@ function renderBacktestView() {
                 <div class="glass-card rounded-xl p-card-padding space-y-4">
                     <div class="space-y-2">
                         <label class="text-xs text-on-surface-variant font-semibold uppercase">Strategy</label>
-                        <select id="bt-strategy" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4">
+                        <select id="bt-strategy" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cursor-pointer" onchange="window.adjustBacktestDefaults(this.value)">
                             <option value="Mean Reversion Scalper">Mean Reversion Scalper</option>
+                            <option value="Valkyrie Elite Scalper">Valkyrie Elite Scalper</option>
                             <option value="Sherpa Velocity Pullback">Sherpa Velocity Pullback</option>
                         </select>
                     </div>
-                    <button onclick="triggerBacktest()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all">
+                    
+                    <div class="space-y-1">
+                        <label class="text-xs text-on-surface-variant font-semibold uppercase">Starting Capital ($)</label>
+                        <input id="bt-capital" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" type="number" min="100" max="10000000" value="10000"/>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-semibold uppercase text-on-surface-variant">
+                            <span>Risk per Trade</span>
+                            <span id="bt-risk-val" class="text-primary font-bold">1.5%</span>
+                        </div>
+                        <input id="bt-risk" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="1.5" oninput="document.getElementById('bt-risk-val').innerText = this.value + '%'"/>
+                    </div>
+                    
+                    <button onclick="triggerBacktest()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all cursor-pointer">
                         ▶ Run 3-Year Backtest
                     </button>
                 </div>
@@ -1754,16 +1970,41 @@ function renderHelpView() {
             
             <div class="space-y-stack-gap">
                 <div class="glass-card rounded-xl p-card-padding">
-                    <h3 class="font-bold text-on-surface">🚀 Fast Exchange Connection</h3>
-                    <p class="text-xs text-on-surface-variant mt-2 leading-relaxed">
-                        To activate autonomous copy-trading, go to Settings, paste your API credentials from Blofin or Alpaca, configure your target risk size per signal, and toggle "Start Bot".
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">account_balance_wallet</span> Portfolio Audits & Sync
+                    </h3>
+                    <p class="text-xs text-on-surface-variant mt-2 leading-relaxed font-normal">
+                        Your dashboard queries live balances directly from your connected exchanges (CCXT for crypto, Alpaca API for stocks). Open positions and active trades are updated in real-time, mirroring the exact portfolio structure tracked by the Metaverse Sherpa Telegram bot.
                     </p>
                 </div>
+                
                 <div class="glass-card rounded-xl p-card-padding">
-                    <h3 class="font-bold text-on-surface">🔒 Cryptographic Security</h3>
-                    <p class="text-xs text-on-surface-variant mt-2 leading-relaxed">
-                        All exchange API secrets are encrypted server-side using multi-layer Fernet keys. The bot possesses zero permission to withdraw assets from your exchange.
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">percent</span> Sizing & Sizing Rules
+                    </h3>
+                    <p class="text-xs text-on-surface-variant mt-2 leading-relaxed font-normal">
+                        Manage your risk sizing dynamically. High-volume momentum strategies default to strict sizing limits: <strong>1.5%</strong> per trade for Crypto, and <strong>1.0%</strong> for Stocks to guard capital. You can fully customize these limits in the Settings panel under Sizing.
                     </p>
+                </div>
+                
+                <div class="glass-card rounded-xl p-card-padding">
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">vpn_key</span> Exchange Connection Security
+                    </h3>
+                    <p class="text-xs text-on-surface-variant mt-2 leading-relaxed font-normal">
+                        All exchange credentials (API Keys, Secrets, and Passphrases) are encrypted on-disk using military-grade multi-layer Fernet keys. The engine only requires <strong>read</strong> and <strong>trade</strong> permissions; never enable withdrawal permissions.
+                    </p>
+                </div>
+                
+                <div class="glass-card rounded-xl p-card-padding">
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">smart_toy</span> Algorithmic Strategies
+                    </h3>
+                    <div class="text-xs text-on-surface-variant mt-2 space-y-2 leading-relaxed font-normal">
+                        <p>💡 <strong>Mean Reversion Scalper</strong>: Scalps volatile assets under extreme RSI overbought/oversold boundaries, entering counter-trend setups with dynamic targets.</p>
+                        <p>⚔️ <strong>Valkyrie Elite Scalper</strong>: Premium high-frequency scalp model using custom order flow imbalance detectors.</p>
+                        <p>🦙 <strong>Sherpa Velocity Pullback</strong>: Captures high-volume momentum trends on stocks with trailing stop mechanics.</p>
+                    </div>
                 </div>
             </div>
         </main>
@@ -1791,7 +2032,13 @@ async function handleEmailRegister(e) {
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
     
-    const res = await apiRequest('/auth/register', 'POST', { full_name: name, email, password });
+    const refCode = getQueryParam('ref');
+    const payload = { full_name: name, email, password };
+    if (refCode) {
+        payload.referred_by = parseInt(refCode);
+    }
+    
+    const res = await apiRequest('/auth/register', 'POST', payload);
     if (res) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
@@ -1820,16 +2067,27 @@ async function handleLogout() {
 
 async function handleExchangeSetup(e) {
     e.preventDefault();
+    const exId = document.getElementById('exchange-id').value;
     const key = document.getElementById('api-key').value;
     const secret = document.getElementById('api-secret').value;
-    const pwd = document.getElementById('api-password').value;
     
-    const res = await apiRequest('/settings/exchange', 'POST', {
-        exchange_id: 'blofin',
-        api_key: key,
-        api_secret: secret,
-        api_password: pwd
-    });
+    let res;
+    if (exId === 'alpaca') {
+        const endpoint = document.getElementById('alpaca-endpoint').value;
+        res = await apiRequest('/settings/alpaca', 'POST', {
+            api_key: key,
+            api_secret: secret,
+            endpoint: endpoint
+        });
+    } else {
+        const pwd = document.getElementById('api-password').value;
+        res = await apiRequest('/settings/exchange', 'POST', {
+            exchange_id: exId,
+            api_key: key,
+            api_secret: secret,
+            api_password: pwd
+        });
+    }
     
     if (res) {
         showToast("Exchange keys saved successfully!");
@@ -1853,47 +2111,126 @@ async function handleTelegramSetup(e) {
         if (STATE.user) {
             STATE.user.telegram_chat_id = parseInt(telegram_chat_id);
         }
+        STATE.editing_telegram = false;
         showToast(res.message);
+        handleRoute();
     }
 }
 
 async function savePreferences() {
     const val = parseFloat(document.getElementById('risk-slider').value);
-    const res = await apiRequest('/settings/preferences', 'POST', { risk_pct: val });
+    const stockVal = parseFloat(document.getElementById('stock-risk-slider').value);
+    const res = await apiRequest('/settings/preferences', 'POST', { 
+        risk_pct: val,
+        stock_risk_pct: stockVal
+    });
     if (res) {
+        if (STATE.user) {
+            STATE.user.risk_pct = val;
+            STATE.user.stock_risk_pct = stockVal;
+        }
         showToast("Risk configuration updated");
         handleRoute();
     }
 }
 
-async function changeStrategy(strategyName) {
-    const res = await apiRequest('/settings/strategy', 'POST', { strategy: strategyName });
+async function handleStrategyChange(type, strategyName) {
+    const res = await apiRequest('/settings/strategy', 'POST', { type, strategy: strategyName });
     if (res) {
-        showToast(`Strategy switched to ${strategyName}`);
-        navigate('#/dashboard');
+        showToast(res.message);
+        
+        // Dynamically update UI risk sliders and state if strategy is turned on
+        if (strategyName !== 'None') {
+            if (type === 'crypto') {
+                const cryptoSlider = document.getElementById('risk-slider');
+                const cryptoVal = document.getElementById('risk-val');
+                if (cryptoSlider && cryptoVal) {
+                    cryptoSlider.value = '1.5';
+                    cryptoVal.innerText = '1.5%';
+                }
+                if (STATE.user) STATE.user.risk_pct = 1.5;
+            } else if (type === 'stock') {
+                const stockSlider = document.getElementById('stock-risk-slider');
+                const stockVal = document.getElementById('stock-risk-val');
+                if (stockSlider && stockVal) {
+                    stockSlider.value = '1.0';
+                    stockVal.innerText = '1.0%';
+                }
+                if (STATE.user) STATE.user.stock_risk_pct = 1.0;
+            }
+            // Auto apply the new strategy sizing preference
+            await savePreferences();
+        } else {
+            handleRoute();
+        }
     }
 }
+
+window.toggleExchangeFields = function() {
+    const exId = document.getElementById('exchange-id').value;
+    const pwdDiv = document.getElementById('pwd-field-container');
+    const endpointDiv = document.getElementById('endpoint-field-container');
+    
+    if (pwdDiv) {
+        if (['blofin', 'bitget'].includes(exId)) {
+            pwdDiv.classList.remove('hidden');
+        } else {
+            pwdDiv.classList.add('hidden');
+        }
+    }
+    
+    if (endpointDiv) {
+        if (exId === 'alpaca') {
+            endpointDiv.classList.remove('hidden');
+        } else {
+            endpointDiv.classList.add('hidden');
+        }
+    }
+};
+
+window.showRenewModal = function() {
+    alert("💎 RENEW MEMBERSHIP VIA TRON\n\nPlease send exactly 20 USDT (TRC-20) to the address below:\n\nTUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3\n\nAfter submitting, please save your USDT wallet under the Premium panel to allow instant block confirmation.");
+};
 
 async function triggerBacktest() {
     STATE.backtest.running = true;
     renderView();
     
-    setTimeout(async () => {
-        const res = await apiRequest('/backtest/run', 'POST', {
-            strategy: document.getElementById('bt-strategy').value
-        });
-        STATE.backtest.running = false;
-        if (res) {
-            STATE.backtest.result = res.result;
-        }
-        renderView();
-    }, 1500);
+    const strategy = document.getElementById('bt-strategy').value;
+    const capital = parseFloat(document.getElementById('bt-capital').value) || 10000.0;
+    const risk = parseFloat(document.getElementById('bt-risk').value) || 1.5;
+    
+    const res = await apiRequest('/backtest/run', 'POST', {
+        strategy: strategy,
+        capital: capital,
+        risk_pct: risk
+    });
+    
+    STATE.backtest.running = false;
+    if (res) {
+        STATE.backtest.result = res.result;
+    }
+    renderView();
 }
 
 function resetBacktester() {
     STATE.backtest.result = null;
     renderView();
 }
+
+window.adjustBacktestDefaults = function(strategyName) {
+    const slider = document.getElementById('bt-risk');
+    const label = document.getElementById('bt-risk-val');
+    if (!slider || !label) return;
+    
+    if (strategyName === 'Sherpa Velocity Pullback') {
+        slider.value = '1.0';
+        label.innerText = '1.0%';
+    } else {
+        slider.value = '1.5';
+        label.innerText = '1.5%';
+    }
+};
 
 async function closeSinglePosition(id, type, symbol) {
     const res = await apiRequest('/trades/close', 'POST', { id, type, symbol });

@@ -306,6 +306,8 @@ def settings_preferences():
         try:
             import database
             database.update_user_preference(tg_user["telegram_chat_id"], "hide_dollars", 1 if hide_dollars else 0)
+            database.update_user_preference(tg_user["telegram_chat_id"], "risk_pct", risk_pct)
+            database.update_user_preference(tg_user["telegram_chat_id"], "stock_risk_pct", stock_risk_pct)
         except Exception as e:
             print(f"Error syncing settings to Telegram Users table: {e}")
             
@@ -449,35 +451,135 @@ def get_balance():
 @require_auth
 def get_stats():
     user = g.user
-    tg_user = _get_telegram_user(user)
+    tg_user = _get_telegram_user(user) or user
     
-    # If linked to Telegram, use real bot stats
-    if tg_user:
-        wins = tg_user.get("wins", 0)
-        losses = tg_user.get("losses", 0)
-        total_trades = wins + losses
-        win_rate = round((wins / total_trades) * 100, 1) if total_trades > 0 else 0.0
-        cum_pnl = tg_user.get("cum_pnl", 0.0)
-        profit_factor = round(wins / losses, 2) if losses > 0 else (float('inf') if wins > 0 else 0.0)
+    # 1. Crypto Stats
+    crypto_wins = tg_user.get("wins", tg_user.get("total_wins", 0))
+    if crypto_wins is None: crypto_wins = 0
+    crypto_losses = tg_user.get("losses", tg_user.get("total_losses", 0))
+    if crypto_losses is None: crypto_losses = 0
+    crypto_total = crypto_wins + crypto_losses
+    crypto_win_rate = round((crypto_wins / crypto_total) * 100, 1) if crypto_total > 0 else 0.0
+    
+    crypto_equity = tg_user.get("equity", 1000.0) or 1000.0
+    crypto_cum_pnl = tg_user.get("cum_pnl", tg_user.get("cumulative_pnl", 0.0)) or 0.0
+    
+    crypto_unrealized = 0.0
+    crypto_open_count = 0
+    
+    # Attempt CCXT fetch if keys exist
+    crypto_api_key = tg_user.get("api_key")
+    crypto_api_secret = tg_user.get("api_secret")
+    crypto_api_password = tg_user.get("api_password")
+    crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+    
+    if crypto_api_key and crypto_api_secret:
+        try:
+            import ccxt
+            config = {
+                "apiKey": crypto_api_key,
+                "secret": crypto_api_secret,
+                "password": crypto_api_password or "",
+                "options": {"defaultType": "swap"},
+                "timeout": 5000
+            }
+            client = getattr(ccxt, crypto_exchange_id)(config)
+            try:
+                positions = client.fetch_positions()
+                for p in positions:
+                    contracts = float(p.get("contracts", 0) or 0)
+                    if contracts != 0:
+                        crypto_open_count += 1
+                        crypto_unrealized += float(p.get("unrealizedPnl", 0) or 0)
+            finally:
+                try: client.close()
+                except: pass
+        except Exception as ce:
+            print(f"[STATS] Crypto live error: {ce}")
+            
+    crypto_overall_pnl = crypto_cum_pnl + crypto_unrealized
+    crypto_overall_pnl_pct = round((crypto_overall_pnl / crypto_equity) * 100, 2) if crypto_equity > 0 else 0.0
+    
+    # 2. Stock Stats
+    stock_equity = tg_user.get("alpaca_start_equity", 10000.0) or 10000.0
+    stock_start_equity = tg_user.get("alpaca_start_equity", 10000.0) or 10000.0
+    stock_unrealized = 0.0
+    stock_open_count = 0
+    stock_closed_count = 0
+    
+    stock_api_key = tg_user.get("alpaca_api_key")
+    stock_api_secret = tg_user.get("alpaca_api_secret")
+    
+    if stock_api_key and stock_api_secret:
+        try:
+            acc = database.make_alpaca_request(tg_user, "GET", "/v2/account")
+            if acc:
+                stock_equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
+                
+            positions = database.make_alpaca_request(tg_user, "GET", "/v2/positions")
+            if isinstance(positions, list):
+                stock_open_count = len(positions)
+                stock_unrealized = sum(float(p.get("unrealized_pl", 0) or p.get("unrealized_intraday_pl", 0) or 0) for p in positions)
+                
+            orders = database.make_alpaca_request(tg_user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
+            if isinstance(orders, list):
+                stock_closed_count = len(orders)
+        except Exception as se:
+            print(f"[STATS] Stock live error: {se}")
+            
+    # Calculate stock growth from starting base
+    stock_overall_pnl = stock_equity - stock_start_equity
+    stock_overall_pnl_pct = round((stock_overall_pnl / stock_start_equity) * 100, 2) if stock_start_equity > 0 else 0.0
+    
+    # Calculate stock win rate from AlpacaActiveTrades table
+    if tg_user.get("telegram_chat_id"):
+        trade_chat_id = int(tg_user["telegram_chat_id"])
     else:
-        # Web-only user: use WebUsers table data or defaults
-        wins = user.get("total_wins", 0)
-        losses = user.get("total_losses", 0)
-        total_trades = wins + losses
-        win_rate = round((wins / total_trades) * 100, 1) if total_trades > 0 else 0.0
-        cum_pnl = user.get("cumulative_pnl", 0.0)
-        profit_factor = round(wins / losses, 2) if losses > 0 else (float('inf') if wins > 0 else 0.0)
+        trade_chat_id = int(user["id"]) + 1000000000
         
-    return jsonify({
-        "wins": wins,
-        "losses": losses,
-        "total_trades": total_trades,
-        "win_rate": win_rate,
-        "cumulative_pnl": cum_pnl,
-        "profit_factor": profit_factor,
-        "active_crypto_strategy": (tg_user or {}).get("active_crypto_strategy") or user.get("active_crypto_strategy", "Mean Reversion Scalper"),
-        "active_stock_strategy": (tg_user or {}).get("active_stock_strategy") or user.get("active_stock_strategy", "None")
-    }), 200
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw > 0", (trade_chat_id,))
+            stock_wins = c.fetchone()[0] or 0
+            c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw <= 0", (trade_chat_id,))
+            stock_losses = c.fetchone()[0] or 0
+    except:
+        stock_wins = 0
+        stock_losses = 0
+        
+    stock_total_trades = stock_wins + stock_losses
+    stock_win_rate = round((stock_wins / stock_total_trades) * 100, 1) if stock_total_trades > 0 else 0.0
+    
+    response_data = {
+        "crypto": {
+            "portfolio_value": crypto_equity,
+            "overall_pnl": crypto_overall_pnl,
+            "overall_pnl_pct": crypto_overall_pnl_pct,
+            "wins": crypto_wins,
+            "losses": crypto_losses,
+            "total_trades": crypto_total,
+            "win_rate": crypto_win_rate,
+            "open_positions": crypto_open_count,
+            "unrealized_pnl": crypto_unrealized
+        },
+        "stock": {
+            "portfolio_value": stock_equity,
+            "overall_pnl": stock_overall_pnl,
+            "overall_pnl_pct": stock_overall_pnl_pct,
+            "wins": stock_wins,
+            "losses": stock_losses,
+            "total_trades": stock_total_trades,
+            "win_rate": stock_win_rate,
+            "open_positions": stock_open_count,
+            "unrealized_pnl": stock_unrealized,
+            "closed_trades": stock_closed_count
+        },
+        "active_crypto_strategy": tg_user.get("active_crypto_strategy") or "Mean Reversion Scalper",
+        "active_stock_strategy": tg_user.get("active_stock_strategy") or "None"
+    }
+    
+    return jsonify(response_data), 200
 
 @app.route('/api/trades/open', methods=['GET'])
 @require_auth
@@ -952,9 +1054,13 @@ def panic_close():
 # ----------------- Mock chart generator -----------------
 @app.route('/api/charts/<filename>', methods=['GET'])
 def get_chart(filename):
+    filepath = os.path.join(os.getcwd(), "results", filename)
+    if os.path.exists(filepath):
+        from flask import send_file
+        return send_file(filepath, mimetype='image/png')
+        
     # Standard base64 / PNG mock image fallback to avoid missing graphics
     import base64
-    # Solid black 1x1 png pixel
     pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")
     response = make_response(pixel)
     response.headers.set('Content-Type', 'image/png')
@@ -966,20 +1072,54 @@ def get_chart(filename):
 def run_backtest():
     data = request.json or {}
     strategy = data.get("strategy", "Mean Reversion Scalper")
-    capital = float(data.get("capital", 1000.0))
+    capital = float(data.get("capital", 10000.0))
+    risk_pct = float(data.get("risk_pct", 1.5))
     
-    # Simulate a delay for backtest
-    return jsonify({
-        "status": "success",
-        "result": {
-            "strategy": strategy,
-            "win_rate": 68.2,
-            "total_trades": 184,
-            "net_pnl": 2450.0,
-            "profit_factor": 2.1,
-            "chart_url": "/api/charts/backtest_eq.png"
-        }
-    }), 200
+    user = g.user
+    tg_user = _get_telegram_user(user) or user
+    user_id = user.get("email") or str(user.get("id"))
+    
+    try:
+        if strategy == "Sherpa Velocity Pullback":
+            from stock_backtester_daily import run_stock_visual_audit
+            stats, chart_path, df_eq = run_stock_visual_audit(
+                risk_val_pct=risk_pct,
+                user_id=user_id,
+                start_balance=capital
+            )
+        else:
+            from scripts.sherpa_visual_audit import run_visual_audit
+            syms = tg_user.get("enabled_symbols", []) if isinstance(tg_user, dict) else []
+            if not syms:
+                syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
+            elif isinstance(syms, str):
+                syms = syms.split(",")
+            stats, chart_path, df_eq = run_visual_audit(
+                risk_val_pct=risk_pct,
+                enabled_symbols=syms,
+                user_id=user_id,
+                start_balance=capital,
+                strategy_name=strategy
+            )
+            
+        if not stats or not chart_path:
+            return jsonify({"error": "Backtest engine failed to execute trades. Starting balance or risk is too low."}), 400
+            
+        return jsonify({
+            "status": "success",
+            "result": {
+                "strategy": strategy,
+                "win_rate": round(stats["win_rate"], 1),
+                "total_trades": stats["total_trades"],
+                "net_pnl": stats["final_equity"] - capital,
+                "profit_factor": round(stats.get("sharpe", 0.0), 2), # Render Sharpe ratio
+                "chart_url": f"/api/charts/{os.path.basename(chart_path)}"
+            }
+        }), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Backtest engine error: {str(e)}"}), 500
 
 # ----------------- Free Signals Endpoint -----------------
 def _update_active_signals_cache():

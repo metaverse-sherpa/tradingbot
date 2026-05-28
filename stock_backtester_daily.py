@@ -185,14 +185,25 @@ def check_signal(df, idx, strategy_name, params):
             
     return None
 
+GLOBAL_STOCK_INDICATORS_CACHE = {}
+
 # 🏆 Chronological Portfolio Backtester
 def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=10000.0, pct_per_trade=0.01):
     """Simulates chronological trading across all symbols with strict cash constraints."""
+    global GLOBAL_STOCK_INDICATORS_CACHE
+    
+    # Freeze params to use as cache key
+    params_key = frozenset((k, v if not isinstance(v, list) else tuple(v)) for k, v in params.items())
+    cache_key = (strategy_name, params_key)
     
     # 1. Precalculate indicators for all symbols
-    processed_data = {}
-    for sym, df in data_dict.items():
-        processed_data[sym] = calculate_indicators(df, strategy_name, params)
+    if cache_key in GLOBAL_STOCK_INDICATORS_CACHE:
+        processed_data = GLOBAL_STOCK_INDICATORS_CACHE[cache_key]
+    else:
+        processed_data = {}
+        for sym, df in data_dict.items():
+            processed_data[sym] = calculate_indicators(df, strategy_name, params)
+        GLOBAL_STOCK_INDICATORS_CACHE[cache_key] = processed_data
         
     # Get all unique trading dates sorted
     all_dates = sorted(list(set().union(*(df.index for df in processed_data.values()))))
