@@ -646,12 +646,9 @@ function renderLandingView() {
                             <p class="text-xs text-on-surface-variant/90 leading-relaxed font-medium">
                                 Join our network of elite copy-traders to view live entry values, target parameters, and real-time execution audits.
                             </p>
-                            <div class="flex gap-3 pt-1">
-                                <button onclick="navigate('#/register')" class="flex-1 h-11 bg-primary text-on-primary font-bold text-xs tracking-wider rounded-lg shadow-[0_0_12px_rgba(168,232,255,0.3)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
-                                    CREATE ACCOUNT
-                                </button>
-                                <button onclick="navigate('#/login')" class="flex-1 h-11 bg-white/5 text-primary border border-white/10 hover:bg-white/10 font-bold text-xs tracking-wider rounded-lg active:scale-[0.98] transition-all cursor-pointer">
-                                    LOG IN
+                            <div class="pt-1">
+                                <button onclick="navigate('#/login')" class="w-full h-11 bg-primary text-on-primary font-bold text-xs tracking-wider rounded-lg shadow-[0_0_12px_rgba(168,232,255,0.3)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
+                                    GET STARTED / LOG IN
                                 </button>
                             </div>
                         </div>
