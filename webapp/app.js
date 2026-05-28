@@ -179,6 +179,13 @@ async function handleRoute() {
         return;
     }
 
+    const giftCode = getQueryParam('gift');
+    if (giftCode) {
+        localStorage.setItem('pending_gift_code', giftCode);
+        navigate('#/login');
+        return;
+    }
+
     let hash = window.location.hash || '#/landing';
     // Clean query parameters for routing logic
     if (hash.includes('?')) {
@@ -222,6 +229,9 @@ async function handleRoute() {
         return;
     }
     STATE.user = profile;
+    
+    // Check and redeem pending gift code if any
+    await checkAndRedeemPendingGift();
     
     // Check for deployment success message if admin
     const isSuperAdmin = STATE.user.telegram_chat_id === 1567788633;
@@ -2716,5 +2726,139 @@ window.togglePrivacySetting = async function() {
         renderView();
     }
 };
+
+function triggerConfetti() {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'gift-confetti-canvas';
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.zIndex = '99999';
+    canvas.style.pointerEvents = 'none';
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    });
+
+    const colors = ['#3cd7ff', '#ffdb3c', '#ff5a5f', '#a78bfa', '#34d399', '#fb923c'];
+    const particles = [];
+
+    for (let i = 0; i < 150; i++) {
+        particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height - height,
+            r: Math.random() * 6 + 4,
+            d: Math.random() * height,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            tilt: Math.random() * 10 - 5,
+            tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+            tiltAngle: 0
+        });
+    }
+
+    let animationFrame;
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        let remaining = false;
+
+        particles.forEach((p) => {
+            p.tiltAngle += p.tiltAngleIncremental;
+            p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
+            p.x += Math.sin(p.tiltAngle);
+            p.tilt = Math.sin(p.tiltAngle - p.r / 2) * 5;
+
+            if (p.y < height) {
+                remaining = true;
+            }
+
+            ctx.beginPath();
+            ctx.lineWidth = p.r;
+            ctx.strokeStyle = p.color;
+            ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+            ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+            ctx.stroke();
+        });
+
+        if (remaining) {
+            animationFrame = requestAnimationFrame(draw);
+        } else {
+            try { document.body.removeChild(canvas); } catch(e) {}
+        }
+    }
+
+    draw();
+
+    setTimeout(() => {
+        if (document.getElementById('gift-confetti-canvas')) {
+            cancelAnimationFrame(animationFrame);
+            try { document.body.removeChild(canvas); } catch(e) {}
+        }
+    }, 6000);
+}
+
+async function checkAndRedeemPendingGift() {
+    const code = localStorage.getItem('pending_gift_code');
+    if (!code || !STATE.user) return;
+    
+    localStorage.removeItem('pending_gift_code');
+    
+    try {
+        const res = await apiRequest('/api/premium/redeem-gift', 'POST', { code });
+        if (res && !res.error) {
+            triggerConfetti();
+            const profile = await apiRequest('/user/profile');
+            if (profile) {
+                STATE.user = profile;
+            }
+            showGiftSuccessModal(res.message || "Welcome to Institutional Premium!");
+        } else {
+            showToast(res.error || "Failed to redeem gift code.", "error");
+        }
+    } catch(err) {
+        showToast("Error redeeming gift code.", "error");
+    }
+}
+
+function showGiftSuccessModal(successMessage) {
+    const backdrop = document.createElement('div');
+    backdrop.id = 'gift-success-modal';
+    backdrop.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md';
+    backdrop.innerHTML = `
+        <div class="glass-card max-w-[480px] w-full rounded-2xl p-8 text-center relative overflow-hidden flex flex-col items-center justify-center gap-6 animate-fade-in gold-glow">
+            <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-[#ffdb3c]/20 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="w-20 h-20 rounded-full bg-[#ffdb3c]/10 flex items-center justify-center border border-[#ffdb3c]/30 text-[#ffdb3c] animate-bounce">
+                <span class="material-symbols-outlined text-5xl">workspace_premium</span>
+            </div>
+            
+            <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-[#ffdb3c]">
+                Institutional Access Unlocked
+            </h2>
+            
+            <p class="text-on-surface/80 leading-relaxed text-sm">
+                Congratulations! You have successfully redeemed your gift code. Your account has been upgraded to the highest premium tier. Enjoy full access to all institutional-grade algorithms, theoretical baskets, and auto-pilot execution.
+            </p>
+            
+            <div class="px-5 py-3 rounded-xl bg-surface-container/60 border border-white/5 text-[#ffdb3c] font-bold text-sm w-full">
+                ${successMessage}
+            </div>
+            
+            <button onclick="try { document.body.removeChild(document.getElementById('gift-success-modal')); } catch(e) {}; handleRoute();" class="mt-2 w-full h-12 bg-gradient-to-r from-primary to-[#ffdb3c] hover:opacity-90 active:scale-95 text-background font-bold rounded-xl transition-all shadow-lg neon-button-glow flex items-center justify-center gap-2">
+                <span>Enter Institutional Terminal</span>
+                <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            </button>
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+}
 
 

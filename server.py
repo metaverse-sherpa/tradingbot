@@ -1404,6 +1404,27 @@ def check_payment():
         print(f"Error checking payment: {e}")
         return jsonify({"message": "Error querying Tron blockchain. Please try again later."}), 500
 
+@app.route('/api/premium/redeem-gift', methods=['POST'])
+def redeem_gift():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    data = request.get_json() or {}
+    code = data.get("code")
+    if not code:
+        return jsonify({"error": "Missing gift code"}), 400
+        
+    try:
+        success, message = database.redeem_gift_code_web(user["id"], code)
+        if success:
+            return jsonify({"message": message}), 200
+        else:
+            return jsonify({"error": message}), 400
+    except Exception as e:
+        print(f"Error redeeming gift: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
 # ----------------- Referrals -----------------
 @app.route('/api/referral/info', methods=['GET'])
 def referral_info():

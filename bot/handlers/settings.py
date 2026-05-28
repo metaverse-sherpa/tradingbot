@@ -312,8 +312,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['admin_gifting'] = True
         await query.message.reply_text(
             "🎁 *Institutional Gifting Center*\n\n"
-            "Please enter the **Telegram Chat ID** of the user you wish to gift a free month of Premium access to.\n\n"
-            "You can find this ID in the 'User & Referral Audit' report.\n\n"
+            "Please enter the **Telegram Chat ID** or **@username** of the user you wish to gift a free month of Premium access to.\n\n"
+            "Alternatively, type **`ANY`** to generate a universal unreserved gift code/link that can be redeemed on either the Web App or the Telegram bot.\n\n"
             "Tap /cancel to abort.",
             parse_mode="Markdown"
         )

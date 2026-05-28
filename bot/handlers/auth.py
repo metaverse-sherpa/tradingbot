@@ -339,22 +339,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif context.user_data.get('admin_gifting'):
         context.user_data.pop('admin_gifting', None)
         try:
-            target_input = text
+            target_input = text.strip()
             target_id = None
             target_username = None
             is_universal = False
             
-            # Resolve username if provided
-            if target_input.startswith('@') or not target_input.isdigit():
+            if target_input.upper() == 'ANY':
+                is_universal = True
+            elif target_input.startswith('@') or not target_input.isdigit():
                 target_id = database.get_chat_id_by_username(target_input)
                 if not target_id:
                     target_username = target_input.lstrip('@')
-                    is_universal = False
             else:
                 target_id = int(target_input)
 
             code = database.create_gift_code(target_id, target_username)
             bot_username = (await context.bot.get_me()).username
+            
+            # Universal gift or targeted gift links
+            web_gift_url = f"https://bot.metaversesherpa.io/#/login?gift={code}"
+            tg_gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
             
             if target_id:
                 display_target = str(target_id)
@@ -365,20 +369,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
             safe_id = escape_markdown(display_target, version=2)
             safe_code = escape_markdown(code, version=2)
-            gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
             
-            header_txt = "🎁 Reserved Gift Generated" if target_username else "🎁 Targeted Gift Generated"
+            if is_universal:
+                header_txt = "🎁 Universal Gift Code Generated"
+            elif target_username:
+                header_txt = "🎁 Reserved Gift Generated"
+            else:
+                header_txt = "🎁 Targeted Gift Generated"
+                
             safe_header = escape_markdown(header_txt, version=2)
-            desc_txt = f"Forward this link to @{target_username} (Identity locked):" if target_username else "Forward this link (or wait for auto-notify):"
-            safe_desc = escape_markdown(desc_txt, version=2)
-            safe_url = escape_markdown(gift_url, version=2)
+            
+            safe_web_url = escape_markdown(web_gift_url, version=2)
+            safe_tg_url = escape_markdown(tg_gift_url, version=2)
             
             msg = (
-                f"{safe_header}\n\n"
+                f"*{safe_header}*\n\n"
                 f"Target: `{safe_id}`\n"
                 f"Gift Code: `{safe_code}`\n\n"
-                f"{safe_desc}\n"
-                f"`{safe_url}`"
+                f"🌐 *Web App Gift Link*:\n"
+                f"`{safe_web_url}`\n\n"
+                f"🤖 *Telegram Bot Gift Link*:\n"
+                f"`{safe_tg_url}`"
             )
             
             if target_username and not target_id:
@@ -392,7 +403,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     safe_gift_header = escape_markdown("🎁 Institutional Gift Received!", version=2)
                     safe_gift_desc1 = escape_markdown("The Sherpa Overlord has granted you 30 Days of Premium Institutional Access.", version=2)
                     safe_gift_desc2 = escape_markdown("Tap the link below to activate your account and unlock the full Sherpa Basket:", version=2)
-                    safe_gift_url = escape_markdown(gift_url, version=2)
+                    safe_gift_url = escape_markdown(tg_gift_url, version=2)
 
                     user_msg = (
                         f"*{safe_gift_header}*\n\n"
@@ -406,7 +417,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text(f"⚠️ Gift generated, but could not notify user directly: {notify_err}")
 
         except ValueError:
-            await update.message.reply_text("❌ Invalid Input. Please enter a numerical ID or @username.")
+            await update.message.reply_text("❌ Invalid Input. Please enter a numerical ID, @username, or ANY.")
         except Exception as e:
             await update.message.reply_text(f"❌ Failed to generate gift: {e}")
         

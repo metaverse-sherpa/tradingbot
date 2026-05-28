@@ -881,6 +881,65 @@ def redeem_gift_code(chat_id, code, current_username=None):
         c.execute('UPDATE GiftCodes SET is_used = 1 WHERE code = ?', (code,))
         
     return True, f"✅ Success! You have been granted {days} days of Premium Institutional access."
+
+def redeem_gift_code_web(web_user_id, code):
+    """Redeems a gift code for a web user, synchronizing premium status to linked bot account if exists."""
+    with db_session() as conn:
+        c = conn.cursor()
+        
+        # 1. Fetch gift code
+        c.execute('SELECT target_chat_id, target_username, expiry_days, is_used FROM GiftCodes WHERE code = ?', (code,))
+        row = c.fetchone()
+        if not row:
+            return False, "❌ Invalid gift code."
+            
+        target_id, target_username, days, is_used = row['target_chat_id'], row['target_username'], row['expiry_days'], row['is_used']
+        if is_used:
+            return False, "❌ This code has already been redeemed."
+            
+        # 2. Fetch web user details
+        c.execute('SELECT telegram_chat_id, premium_expiry FROM WebUsers WHERE id = ?', (web_user_id,))
+        w_row = c.fetchone()
+        if not w_row:
+            return False, "❌ User not found."
+        telegram_chat_id = w_row['telegram_chat_id']
+        w_expiry = w_row['premium_expiry'] or 0
+        
+        # 3. Check optional reservations
+        if target_id:
+            if not telegram_chat_id or int(target_id) != int(telegram_chat_id):
+                return False, "❌ This code is reserved for a specific Telegram account. Please link your Telegram or redeem it inside the Telegram bot."
+                
+        if target_username:
+            username = None
+            if telegram_chat_id:
+                c.execute('SELECT username FROM Users WHERE telegram_chat_id = ?', (telegram_chat_id,))
+                u_row = c.fetchone()
+                if u_row:
+                    username = u_row['username']
+            clean_target = target_username.lstrip('@')
+            clean_current = username.lstrip('@') if username else None
+            if not clean_current or clean_target.lower() != clean_current.lower():
+                return False, f"❌ This code is reserved for @{clean_target}. Please link your @{clean_target} Telegram account to redeem this."
+                
+        # 4. Grant premium in WebUsers
+        current_time = int(time.time())
+        new_expiry = max(w_expiry, current_time) + (days * 86400)
+        c.execute('UPDATE WebUsers SET premium_expiry = ? WHERE id = ?', (new_expiry, web_user_id))
+        
+        # 5. Sync to linked Users table (Bot) if linked
+        if telegram_chat_id:
+            c.execute('SELECT premium_expiry FROM Users WHERE telegram_chat_id = ?', (telegram_chat_id,))
+            u_row = c.fetchone()
+            current_expiry = u_row['premium_expiry'] if u_row else 0
+            new_bot_expiry = max(current_expiry, current_time) + (days * 86400)
+            c.execute('UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?', (new_bot_expiry, telegram_chat_id))
+            
+        # 6. Mark as used
+        c.execute('UPDATE GiftCodes SET is_used = 1 WHERE code = ?', (code,))
+        
+    return True, f"✅ Success! You have been granted {days} days of Premium Institutional access."
+
 def get_chat_id_by_username(username):
     """Resolves a @username to a telegram_chat_id from the database."""
     # Strip @ if present
