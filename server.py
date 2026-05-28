@@ -1686,11 +1686,7 @@ def get_trade_chart():
         print(f"Error generating chart endpoint: {e}")
         return f"Error: {str(e)}", 500
 
-# Start Flask Server
-if __name__ == '__main__':
-    port = int(os.getenv("PORT", 5001))
-    app.run(host='0.0.0.0', port=port, debug=True)
-
+# @app.route('/api/user/manual-trade', methods=['POST'])
 @app.route('/api/user/manual-trade', methods=['POST'])
 @require_auth
 def manual_trade():
@@ -1739,3 +1735,8 @@ def manual_trade():
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         loop.close()
+
+# Start Flask Server
+if __name__ == '__main__':
+    port = int(os.getenv("PORT", 5001))
+    app.run(host='0.0.0.0', port=port, debug=True)
