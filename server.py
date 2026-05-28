@@ -247,6 +247,19 @@ def profile():
     user["has_alpaca_keys"] = bool((tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key"))
     
     # Include server version details
+    # Fetch recruits for referral UI
+    recruit_list = []
+    if tg_user:
+        try:
+            import database
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT full_name, username, telegram_chat_id FROM Users WHERE referred_by = ?", (tg_user["telegram_chat_id"],))
+                recruit_list = [dict(rec) for rec in c.fetchall()]
+        except Exception as e:
+            print(f"Could not load recruits: {e}")
+    user["recruit_list"] = recruit_list
+
     user["server_time"] = now
     return jsonify(user), 200
 

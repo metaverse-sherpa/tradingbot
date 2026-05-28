@@ -301,6 +301,10 @@ def init_db():
         # Migration: Ensure WebUsers has avatar_url
         try: c.execute("ALTER TABLE WebUsers ADD COLUMN avatar_url TEXT")
         except: pass
+        
+        # Migration: Ensure WebUsers has premium_referrals
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN premium_referrals INTEGER DEFAULT 0")
+        except: pass
 
 
 

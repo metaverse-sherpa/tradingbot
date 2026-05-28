@@ -2109,7 +2109,9 @@ function renderReferralView() {
     const user = STATE.user || {};
     const refCount = user.referral_count || 0;
     const credits = user.referral_credits || 0.0;
-    const inviteLink = user.invite_link || `https://metaversesherpa.io/#/register?ref=${user.id}`;
+    const refId = user.telegram_chat_id || user.id;
+    const inviteLink = user.invite_link || `https://bot.metaversesherpa.io/#/register?ref=${refId}`;
+    const telegramInviteLink = `https://t.me/metaversesherpa_trading_bot?start=ref_${refId}`;
     
     return `
         ${renderHeader()}
@@ -2135,10 +2137,18 @@ function renderReferralView() {
             </div>
             
             <div class="glass-card rounded-xl p-card-padding space-y-4">
-                <h4 class="font-semibold text-on-surface">Your Personal Invite Link</h4>
+                <h4 class="font-semibold text-on-surface text-sm">Your Institutional Invite Link (Web)</h4>
                 <div class="flex gap-2">
                     <input class="flex-1 h-11 bg-surface-container-low text-on-surface text-xs font-mono border border-white/10 rounded-lg px-4 select-all" type="text" readonly value="${inviteLink}"/>
                     <button onclick="navigator.clipboard.writeText('${inviteLink}').then(() => showToast('Invite link copied!'))" class="h-11 px-3 bg-surface-container border border-white/10 rounded-lg text-primary hover:bg-white/5">
+                        Copy
+                    </button>
+                </div>
+                
+                <h4 class="font-semibold text-on-surface text-sm mt-4 pt-4 border-t border-white/10">Your Institutional Invite Link (Telegram)</h4>
+                <div class="flex gap-2">
+                    <input class="flex-1 h-11 bg-surface-container-low text-on-surface text-xs font-mono border border-white/10 rounded-lg px-4 select-all" type="text" readonly value="${telegramInviteLink}"/>
+                    <button onclick="navigator.clipboard.writeText('${telegramInviteLink}').then(() => showToast('Invite link copied!'))" class="h-11 px-3 bg-surface-container border border-white/10 rounded-lg text-primary hover:bg-white/5">
                         Copy
                     </button>
                 </div>

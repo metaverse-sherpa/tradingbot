@@ -29,18 +29,24 @@ async def show_refer_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
     stats = database.get_referral_stats(chat_id)
     
     invite_link = f"https://t.me/{bot_username}?start=ref_{chat_id}"
+    web_invite_link = f"https://bot.metaversesherpa.io/#/register?ref={chat_id}"
     
     refer_msg = (
         "🏔️ *Institutional Recruitment Dashboard*\n\n"
         "Expand the trail and unlock the **23x Wealth Gap** for free!\n\n"
         f"📊 *Your Status:* `{stats}` Recruits\n"
         f"📈 *Next Reward:* `{3 - (stats % 3)}` more for **30 Days Premium**\n\n"
-        "🔗 *Your Institutional Invite Link:*\n"
+        "🔗 *Your Institutional Invite Link (Telegram):*\n"
         f"`{invite_link}`\n\n"
+        "🌐 *Your Institutional Invite Link (Web):*\n"
+        f"`{web_invite_link}`\n\n"
         "💡 _Every 3 recruits who join the trail instantly unlocks 30 days of full 'Sherpa Basket' access._"
     )
     
-    kb = [[InlineKeyboardButton("📱 Share Invite Link", url=f"https://t.me/share/url?url={invite_link}&text=Unlock%20the%20Institutional%20Wealth%20Gap%20with%20the%20Metaverse%20Sherpa%20Trading%20Bot!%20🏔️")]]
+    kb = [
+        [InlineKeyboardButton("📱 Share Telegram Link", url=f"https://t.me/share/url?url={invite_link}&text=Unlock%20the%20Institutional%20Wealth%20Gap%20with%20the%20Metaverse%20Sherpa%20Trading%20Bot!%20🏔️")],
+        [InlineKeyboardButton("🌐 Share Web Link", url=f"https://t.me/share/url?url={web_invite_link}&text=Unlock%20the%20Institutional%20Wealth%20Gap%20with%20the%20Metaverse%20Sherpa%20Trading%20Bot!%20🏔️")]
+    ]
     await safe_edit_text(update, context, refer_msg, reply_markup=InlineKeyboardMarkup(kb))
 
 async def promote_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
