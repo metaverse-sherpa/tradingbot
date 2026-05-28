@@ -246,11 +246,6 @@ def profile():
     user["has_exchange_keys"] = bool((tg_user or {}).get("api_key") or user.get("api_key"))
     user["has_alpaca_keys"] = bool((tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key"))
     
-    # Standard security mask on sensitive tokens
-    for key in ["api_key", "api_secret", "api_password", "alpaca_api_key", "alpaca_api_secret"]:
-        if user.get(key):
-            user[key] = f"..."
-            
     # Include server version details
     user["server_time"] = now
     return jsonify(user), 200

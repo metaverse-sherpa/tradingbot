@@ -737,22 +737,43 @@ function renderDashboardView() {
     const startingCapital = balance - pnlVal;
     const pnlPct = startingCapital > 0 ? (pnlVal / startingCapital) * 100 : 0;
     
-    return `
-        ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <!-- Tier Badge & Tabs -->
-            <div class="flex justify-between items-center">
-                <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
-                    <span class="text-[10px]">${isPremium ? '💎' : '🥈'}</span>
-                    <span class="font-label-sm text-label-sm ${isPremium ? 'text-secondary-container' : 'text-primary'}">${isPremium ? 'Premium' : 'Standard'}</span>
+    const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
+    const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
+    const isTabLinked = isCrypto ? hasLinkedCrypto : hasLinkedStock;
+    
+    let dashboardContent = '';
+    
+    if (!isTabLinked) {
+        dashboardContent = `
+            <!-- No Exchange Linked / Active Signals -->
+            <div class="space-y-6 mt-6 animate-fade-in">
+                <div class="glass-card rounded-xl p-6 border border-white/10 text-center space-y-4">
+                    <div class="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
+                        <span class="material-symbols-outlined text-2xl">link_off</span>
+                    </div>
+                    <div>
+                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Exchange Account Not Connected</h3>
+                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[340px] mx-auto mt-2">
+                            To view your live portfolio equity, open trades, and stats, connect your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} API credentials in Settings.
+                        </p>
+                    </div>
+                    <a href="#/settings" class="inline-flex h-11 items-center justify-center px-6 bg-primary text-on-primary font-bold text-xs tracking-wider rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        CONNECT EXCHANGE
+                    </a>
                 </div>
                 
-                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
-                    <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
-                    <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
-                </div>
+                <h2 class="font-headline-sm text-headline-sm text-on-surface pt-4">🛰️ Active Signals</h2>
+                ${STATE.active_signals.length === 0 ? `
+                    <div class="text-center py-12">
+                        <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                        <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+                        <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
+                    </div>
+                ` : STATE.active_signals.map(s => renderSignalCard(s)).join('')}
             </div>
-            
+        `;
+    } else {
+        dashboardContent = `
             <!-- Balance Card -->
             <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${privacyHoverHandlers}>
                 <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
@@ -800,6 +821,26 @@ function renderDashboardView() {
             <section class="grid grid-cols-2 gap-stack-gap">
                 ${actionCards}
             </section>
+        `;
+    }
+
+    return `
+        ${renderHeader()}
+        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <!-- Tier Badge & Tabs -->
+            <div class="flex justify-between items-center">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
+                    <span class="text-[10px]">${isPremium ? '💎' : '🥈'}</span>
+                    <span class="font-label-sm text-label-sm ${isPremium ? 'text-secondary-container' : 'text-primary'}">${isPremium ? 'Premium' : 'Standard'}</span>
+                </div>
+                
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
+                    <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
+                    <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
+                </div>
+            </div>
+            
+            ${dashboardContent}
         </main>
     `;
 }
@@ -864,6 +905,40 @@ function renderTradesView() {
     }
 
     const isCrypto = STATE.dashboard_tab === 'crypto';
+    const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
+    const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
+    const isTabLinked = isCrypto ? hasLinkedCrypto : hasLinkedStock;
+    
+    if (isPremium && !isTabLinked) {
+        return `
+            ${renderHeader()}
+            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface">📈 Live Trades</h2>
+                    
+                    <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
+                        <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
+                        <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
+                    </div>
+                </div>
+                
+                <div class="glass-card rounded-xl p-6 border border-white/10 text-center space-y-4">
+                    <div class="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
+                        <span class="material-symbols-outlined text-2xl">smart_toy</span>
+                    </div>
+                    <div>
+                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Connect Your Exchange to Automate Trades</h3>
+                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[360px] mx-auto mt-2">
+                            To view live active positions and enable autonomous copy-trading setups, link your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} credentials in Settings.
+                        </p>
+                    </div>
+                    <a href="#/settings" class="inline-flex h-11 items-center justify-center px-6 bg-primary text-on-primary font-bold text-xs tracking-wider rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        GO TO SETTINGS
+                    </a>
+                </div>
+            </main>
+        `;
+    }
     const tradesMode = STATE.trades_mode || 'active';
     
     let listHtml = '';
@@ -1416,9 +1491,11 @@ function renderSettingsView() {
     const user = STATE.user || {};
     const isActive = user.is_active;
     const isPremium = user.is_premium;
-    
     // Check if the user is linked
     const isTelegramLinked = !!user.telegram_chat_id;
+    
+    const hasLinkedCrypto = !!user.api_key;
+    const hasLinkedStock = !!user.alpaca_api_key;
     
     // Parse expiration details
     let expiryText = 'Not Premium';
@@ -1467,10 +1544,89 @@ function renderSettingsView() {
             </section>
             ` : ''}
             
+            <!-- Connected Exchanges Summary -->
+            ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
+            <section class="glass-card rounded-xl p-card-padding space-y-4 border border-white/10 animate-fade-in">
+                <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">🔌 Connected Exchanges</h3>
+                <div class="space-y-4">
+                    ${hasLinkedCrypto ? `
+                    <div class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
+                                🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}</span>
+                            </span>
+                            <button onclick="editExchange('crypto')" class="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-[14px]">edit</span>Edit
+                            </button>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-on-surface-variant">API Key:</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="password" value="${user.api_key || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
+                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-key-display', this)">visibility</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-on-surface-variant">API Secret:</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="password" value="${user.api_secret || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
+                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-secret-display', this)">visibility</span>
+                                </div>
+                            </div>
+                            ${user.api_password ? `
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-on-surface-variant">Passphrase:</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="password" value="${user.api_password || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
+                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-pass-display', this)">visibility</span>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${hasLinkedStock ? `
+                    <div class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
+                                🦙 Stocks: <span class="text-primary font-mono">Alpaca</span>
+                            </span>
+                            <button onclick="editExchange('stock')" class="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-[14px]">edit</span>Edit
+                            </button>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-on-surface-variant">API Key:</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="password" value="${user.alpaca_api_key || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
+                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-key-display', this)">visibility</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-on-surface-variant">API Secret:</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="password" value="${user.alpaca_api_secret || ''}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
+                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-secret-display', this)">visibility</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-on-surface-variant">Endpoint URL:</span>
+                                <span class="text-on-surface font-mono text-xs">${user.alpaca_endpoint || 'https://paper-api.alpaca.markets'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            </section>
+            ` : ''}
+            
             <!-- Connect Exchange Wizard (Premium Only) -->
-            ${isPremium ? `
-            <section class="glass-card rounded-xl p-card-padding space-y-4">
-                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 Connect Exchange</h3>
+            ${isPremium && (!hasLinkedCrypto || !hasLinkedStock || STATE.editing_exchange) ? `
+            <section id="exchange-wizard-section" class="glass-card rounded-xl p-card-padding space-y-4 border border-white/10 animate-fade-in">
+                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 ${STATE.editing_exchange ? 'Edit Connected Exchange' : 'Connect Exchange'}</h3>
                 <div class="space-y-2">
                     <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
                     <div class="relative">
@@ -1504,9 +1660,16 @@ function renderSettingsView() {
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
                         <input id="alpaca-endpoint" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://paper-api.alpaca.markets" type="text" value="https://paper-api.alpaca.markets"/>
                     </div>
-                    <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
-                        Save Keys
-                    </button>
+                    <div class="flex gap-3">
+                        <button type="submit" class="flex-1 h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
+                            Save Keys
+                        </button>
+                        ${STATE.editing_exchange ? `
+                        <button type="button" onclick="STATE.editing_exchange = null; renderView();" class="flex-1 h-11 bg-white/5 border border-white/10 text-on-surface font-label-md text-label-md font-bold rounded-lg hover:bg-white/10 transition-all mt-2 cursor-pointer">
+                            Cancel
+                        </button>
+                        ` : ''}
+                    </div>
                 </form>
             </section>
             ` : ''}
@@ -2113,6 +2276,7 @@ async function handleExchangeSetup(e) {
     
     if (res) {
         showToast("Exchange keys saved successfully!");
+        STATE.editing_exchange = null;
         handleRoute();
     }
 }
@@ -2206,6 +2370,59 @@ window.toggleExchangeFields = function() {
             endpointDiv.classList.remove('hidden');
         } else {
             endpointDiv.classList.add('hidden');
+        }
+    }
+};
+
+window.editExchange = function(type) {
+    STATE.editing_exchange = type;
+    renderView();
+    
+    // Select correct platform in select box and trigger change
+    setTimeout(() => {
+        const exchangeSelect = document.getElementById('exchange-id');
+        if (exchangeSelect) {
+            if (type === 'crypto') {
+                exchangeSelect.value = STATE.user.exchange_id || 'blofin';
+            } else {
+                exchangeSelect.value = 'alpaca';
+            }
+            window.toggleExchangeFields();
+            
+            // Prefill credentials
+            const keyInput = document.getElementById('api-key');
+            const secretInput = document.getElementById('api-secret');
+            const passInput = document.getElementById('api-password');
+            const endpointInput = document.getElementById('alpaca-endpoint');
+            
+            if (type === 'crypto') {
+                if (keyInput) keyInput.value = STATE.user.api_key || '';
+                if (secretInput) secretInput.value = STATE.user.api_secret || '';
+                if (passInput) passInput.value = STATE.user.api_password || '';
+            } else {
+                if (keyInput) keyInput.value = STATE.user.alpaca_api_key || '';
+                if (secretInput) secretInput.value = STATE.user.alpaca_api_secret || '';
+                if (endpointInput) endpointInput.value = STATE.user.alpaca_endpoint || 'https://paper-api.alpaca.markets';
+            }
+            
+            // Scroll to the wizard
+            const wizardSection = document.getElementById('exchange-wizard-section');
+            if (wizardSection) {
+                wizardSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    }, 50);
+};
+
+window.toggleDisplayVisibility = function(inputId, iconEl) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            iconEl.textContent = 'visibility_off';
+        } else {
+            input.type = 'password';
+            iconEl.textContent = 'visibility';
         }
     }
 };
