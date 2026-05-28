@@ -561,10 +561,11 @@ function renderRegisterView() {
 function renderLandingView() {
     // Top Header for the landing page with premium Metaverse Sherpa theme
     const headerHtml = `
-        <div class="relative overflow-hidden rounded-2xl mb-8 p-6 bg-gradient-to-br from-[#0c1f30] via-surface-container/60 to-[#0a1420] border border-white/5 text-center shadow-xl">
+        <div class="relative overflow-hidden rounded-2xl mb-8 p-8 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
             <!-- Mountain neon glow in the background -->
-            <div class="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-tertiary/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -right-10 -top-10 w-64 h-64 bg-primary/30 rounded-full blur-[80px] pointer-events-none"></div>
+            <div class="absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-[80px] pointer-events-none"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
             
             <div class="relative z-10 flex flex-col items-center">
                 <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-primary/30 to-tertiary/30 border border-primary/40 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(60,215,255,0.2)]">
@@ -612,9 +613,9 @@ function renderLandingView() {
             <div class="relative">
                 <!-- Sticky CTA Panel -->
                 <div class="sticky top-24 z-20 mb-8 pointer-events-none">
-                    <div class="p-5 rounded-2xl border border-primary/40 text-center shadow-[0_15px_40px_rgba(0,212,255,0.25)] bg-[#0d1622]/95 backdrop-blur-xl pointer-events-auto relative overflow-hidden mx-auto max-w-[380px] transition-all hover:border-primary/60">
-                        <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-primary via-tertiary to-secondary-container"></div>
-                        <div class="absolute -inset-1 bg-gradient-to-r from-primary/20 via-transparent to-tertiary/20 blur-xl z-0 pointer-events-none"></div>
+                    <div class="p-6 rounded-2xl border-2 border-primary/60 text-center shadow-[0_0_30px_rgba(60,215,255,0.4)] bg-gradient-to-b from-[#0c1f30]/95 to-[#050a10]/95 backdrop-blur-xl pointer-events-auto relative overflow-hidden mx-auto max-w-[380px] transition-all hover:border-primary hover:shadow-[0_0_40px_rgba(60,215,255,0.6)]">
+                        <div class="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-primary via-tertiary to-secondary-container"></div>
+                        <div class="absolute -inset-1 bg-gradient-to-r from-primary/30 via-transparent to-tertiary/30 blur-2xl z-0 pointer-events-none"></div>
                         <div class="relative z-10 space-y-4">
                             <div class="flex items-center justify-center gap-2">
                                 <span class="material-symbols-outlined text-2xl text-secondary-container animate-bounce" style="font-variation-settings: 'FILL' 1;">lock</span>
@@ -1466,42 +1467,49 @@ function renderSettingsView() {
             </section>
             ` : ''}
             
-            <!-- Connect Exchange Wizard -->
+            <!-- Connect Exchange Wizard (Premium Only) -->
+            ${isPremium ? `
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 Connect Exchange</h3>
                 <div class="space-y-2">
                     <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
-                    <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" onchange="toggleExchangeFields()">
-                        <option value="blofin">Blofin</option>
-                        <option value="binance">Binance</option>
-                        <option value="mexc">MEXC</option>
-                        <option value="bitget">Bitget</option>
-                        <option value="bingx">BingX</option>
-                        <option value="alpaca">Alpaca Stocks</option>
-                    </select>
+                    <div class="relative">
+                        <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all animate-none appearance-none cursor-pointer" onchange="toggleExchangeFields()">
+                            <option value="blofin">Blofin</option>
+                            <option value="binance">Binance</option>
+                            <option value="mexc">MEXC</option>
+                            <option value="bitget">Bitget</option>
+                            <option value="bingx">BingX</option>
+                            <option value="alpaca">Alpaca Stocks</option>
+                        </select>
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                            <span class="material-symbols-outlined text-xl">expand_more</span>
+                        </div>
+                    </div>
                 </div>
                 <form onsubmit="handleExchangeSetup(event)" class="space-y-3">
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Key</label>
-                        <input id="api-key" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Key" type="text" required/>
+                        <input id="api-key" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Key" type="text" required/>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Secret</label>
-                        <input id="api-secret" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Secret" type="password" required/>
+                        <input id="api-secret" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Secret" type="password" required/>
                     </div>
                     <div id="pwd-field-container" class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Passphrase</label>
-                        <input id="api-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
+                        <input id="api-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
                     </div>
                     <div id="endpoint-field-container" class="space-y-1 hidden">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
-                        <input id="alpaca-endpoint" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://paper-api.alpaca.markets" type="text" value="https://paper-api.alpaca.markets"/>
+                        <input id="alpaca-endpoint" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://paper-api.alpaca.markets" type="text" value="https://paper-api.alpaca.markets"/>
                     </div>
                     <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
                         Save Keys
                     </button>
                 </form>
             </section>
+            ` : ''}
             
             <!-- Telegram Sync -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
