@@ -778,17 +778,16 @@ function renderDashboardView() {
         dashboardContent = `
             <!-- No Exchange Linked / Active Signals -->
             <div class="space-y-6 mt-6 animate-fade-in">
-                <div class="glass-card rounded-xl p-6 border border-white/10 text-center space-y-4">
-                    <div class="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
-                        <span class="material-symbols-outlined text-2xl">link_off</span>
-                    </div>
-                    <div>
-                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Exchange Account Not Connected</h3>
-                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[340px] mx-auto mt-2">
-                            To view your live portfolio equity, open trades, and stats, connect your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} API credentials in Settings.
+                <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
+                        </h3>
+                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[400px]">
+                            To view your live portfolio equity, open trades, and stats, connect your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} API credentials.
                         </p>
                     </div>
-                    <a href="#/settings" class="inline-flex h-11 items-center justify-center px-6 bg-primary text-on-primary font-bold text-xs tracking-wider rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
                         CONNECT EXCHANGE
                     </a>
                 </div>
@@ -953,17 +952,16 @@ function renderTradesView() {
                     </div>
                 </div>
                 
-                <div class="glass-card rounded-xl p-6 border border-white/10 text-center space-y-4">
-                    <div class="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
-                        <span class="material-symbols-outlined text-2xl">smart_toy</span>
-                    </div>
-                    <div>
-                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Connect Your Exchange to Automate Trades</h3>
-                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[360px] mx-auto mt-2">
-                            To view live active positions and enable autonomous copy-trading setups, link your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} credentials in Settings.
+                <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-on-surface-variant">smart_toy</span> Automate Trades
+                        </h3>
+                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[420px]">
+                            To view live active positions and enable autonomous copy-trading setups, link your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} credentials.
                         </p>
                     </div>
-                    <a href="#/settings" class="inline-flex h-11 items-center justify-center px-6 bg-primary text-on-primary font-bold text-xs tracking-wider rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
                         GO TO SETTINGS
                     </a>
                 </div>
@@ -2850,7 +2848,8 @@ async function checkAndRedeemPendingGift() {
 function showGiftSuccessModal(successMessage) {
     const backdrop = document.createElement('div');
     backdrop.id = 'gift-success-modal';
-    backdrop.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md';
+    backdrop.className = 'fixed inset-0 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md';
+    backdrop.style.zIndex = '99999';
     backdrop.innerHTML = `
         <div class="glass-card max-w-[480px] w-full rounded-2xl p-8 text-center relative overflow-hidden flex flex-col items-center justify-center gap-6 animate-fade-in gold-glow">
             <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
