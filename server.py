@@ -410,22 +410,28 @@ def get_balance():
                 "enableRateLimit": True,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
-            acc_type = "swap" if crypto_exchange_id in ['bitget', 'bingx'] else "futures"
-            bal = client.fetch_balance(params={"type": acc_type})
-            free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
-            
-            # Calculate true equity (free + margin + unrealized pnl)
-            total_equity = free_usdt
             try:
-                positions = client.fetch_positions()
-                for p in positions:
-                    margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
-                    upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
-                    total_equity += (margin + upnl)
-            except Exception as pos_err:
-                print(f"Error fetching positions for balance: {pos_err}")
+                acc_type = "swap" if crypto_exchange_id in ['bitget', 'bingx'] else "futures"
+                bal = client.fetch_balance(params={"type": acc_type})
+                free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
                 
-            balance_crypto = total_equity
+                # Calculate true equity (free + margin + unrealized pnl)
+                total_equity = free_usdt
+                try:
+                    positions = client.fetch_positions()
+                    for p in positions:
+                        margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
+                        upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
+                        total_equity += (margin + upnl)
+                except Exception as pos_err:
+                    print(f"Error fetching positions for balance: {pos_err}")
+                    
+                balance_crypto = total_equity
+            finally:
+                try:
+                    client.close()
+                except Exception:
+                    pass
         except Exception as e:
             print(f"Error fetching crypto balance: {e}")
             balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
@@ -703,42 +709,47 @@ def get_open_trades():
                 "enableRateLimit": True,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
-            positions = client.fetch_positions()
-            for pos in positions:
-                contracts = float(pos.get("contracts", 0.0) or 0.0)
-                if contracts > 0:
-                    # Lookup R:R in database
-                    tp_price = 0.0
-                    sl_price = 0.0
-                    open_time = 0
-                    try:
-                        with database.db_session() as conn:
-                            c = conn.cursor()
-                            symbol_clean = pos.get('symbol', '').split(':')[0].replace('-', '/')
-                            c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
-                            row = c.fetchone()
-                            if row:
-                                tp_price = float(row[0] or 0.0)
-                                sl_price = float(row[1] or 0.0)
-                                open_time = int(row[2] or 0)
-                    except Exception as db_err:
-                        print(f"Crypto DB lookup error: {db_err}")
+            try:
+                positions = client.fetch_positions()
+                for pos in positions:
+                    contracts = float(pos.get("contracts", 0.0) or 0.0)
+                    if contracts > 0:
+                        # Lookup R:R in database
+                        tp_price = 0.0
+                        sl_price = 0.0
+                        open_time = 0
+                        try:
+                            with database.db_session() as conn:
+                                c = conn.cursor()
+                                symbol_clean = pos.get('symbol', '').split(':')[0].replace('-', '/')
+                                c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
+                                row = c.fetchone()
+                                if row:
+                                    tp_price = float(row[0] or 0.0)
+                                    sl_price = float(row[1] or 0.0)
+                                    open_time = int(row[2] or 0)
+                        except Exception as db_err:
+                            print(f"Crypto DB lookup error: {db_err}")
 
-                    open_positions.append({
-                        "id": pos.get("id", f"crypto-{pos.get('symbol')}"),
-                        "type": "crypto",
-                        "symbol": pos.get("symbol"),
-                        "side": pos.get("side", "").upper(),
-                        "qty": contracts,
-                        "entry_price": float(pos.get("entryPrice") or 0),
-                        "mark_price": float(pos.get("markPrice") or 0),
-                        "unrealized_pnl": float(pos.get("unrealizedPnl") or 0),
-                        "roe": float(pos.get("percentage") or 0),
-                        "tp_price": tp_price,
-                        "sl_price": sl_price,
-                        "open_time": open_time
-                    })
-            client.close()
+                        open_positions.append({
+                            "id": pos.get("id", f"crypto-{pos.get('symbol')}"),
+                            "type": "crypto",
+                            "symbol": pos.get("symbol"),
+                            "side": pos.get("side", "").upper(),
+                            "qty": contracts,
+                            "entry_price": float(pos.get("entryPrice") or 0),
+                            "mark_price": float(pos.get("markPrice") or 0),
+                            "unrealized_pnl": float(pos.get("unrealizedPnl") or 0),
+                            "roe": float(pos.get("percentage") or 0),
+                            "tp_price": tp_price,
+                            "sl_price": sl_price,
+                            "open_time": open_time
+                        })
+            finally:
+                try:
+                    client.close()
+                except Exception:
+                    pass
         except Exception as e:
             print(f"Crypto positions fetch error: {e}")
         
@@ -822,29 +833,35 @@ def get_trades_history():
                         "enableRateLimit": True,
                     }
                     client = getattr(ccxt, crypto_exchange_id)(config)
-                    symbols_to_check = list(live_bot_multi.SYMBOLS)[:5]
-                    print(f"[HISTORY] CCXT checking symbols: {symbols_to_check}")
-                    for sym in symbols_to_check:
-                        norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
+                    try:
+                        symbols_to_check = list(live_bot_multi.SYMBOLS)[:5]
+                        print(f"[HISTORY] CCXT checking symbols: {symbols_to_check}")
+                        for sym in symbols_to_check:
+                            norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
+                            try:
+                                trades = client.fetch_my_trades(norm_sym, limit=5)
+                                for t in trades:
+                                    info = t.get("info", {})
+                                    gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
+                                    if gross_pnl != 0:
+                                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                                        net_pnl = gross_pnl - (fee * 2)
+                                        history.append({
+                                            "type": "crypto",
+                                            "symbol": sym,
+                                            "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
+                                            "timestamp": t.get('timestamp', 0),
+                                            "net_pnl": net_pnl,
+                                            "price": t.get('price', 0),
+                                        })
+                            except Exception as sym_err:
+                                print(f"[HISTORY] CCXT error for {sym}: {sym_err}")
+                        print(f"[HISTORY] CCXT fetched {len(history)} trades")
+                    finally:
                         try:
-                            trades = client.fetch_my_trades(norm_sym, limit=5)
-                            for t in trades:
-                                info = t.get("info", {})
-                                gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
-                                if gross_pnl != 0:
-                                    fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                                    net_pnl = gross_pnl - (fee * 2)
-                                    history.append({
-                                        "type": "crypto",
-                                        "symbol": sym,
-                                        "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
-                                        "timestamp": t.get('timestamp', 0),
-                                        "net_pnl": net_pnl,
-                                        "price": t.get('price', 0),
-                                    })
-                        except Exception as sym_err:
-                            print(f"[HISTORY] CCXT error for {sym}: {sym_err}")
-                    print(f"[HISTORY] CCXT fetched {len(history)} trades")
+                            client.close()
+                        except Exception:
+                            pass
                 except Exception as e:
                     print(f"[HISTORY] CCXT fallback error: {e}")
             
