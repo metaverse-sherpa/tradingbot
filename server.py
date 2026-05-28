@@ -1639,7 +1639,10 @@ def get_trade_chart():
                 mdm = live_bot_multi.MarketDataManager()
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, "15m"))
+                try:
+                    df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, "15m"))
+                finally:
+                    loop.run_until_complete(mdm.close())
                 loop.close()
             except Exception as e:
                 print(f"Error fetching CCXT OHLCV: {e}")
