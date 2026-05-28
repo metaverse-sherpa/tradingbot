@@ -1408,10 +1408,10 @@ def check_payment():
         return jsonify({"message": "Error querying Tron blockchain. Please try again later."}), 500
 
 @app.route('/api/premium/redeem-gift', methods=['POST'])
+@require_auth
 def redeem_gift():
-    user = get_current_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
+    user = g.user
+
         
     data = request.get_json() or {}
     code = data.get("code")
