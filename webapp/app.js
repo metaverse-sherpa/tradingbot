@@ -2066,8 +2066,9 @@ function renderSignalCard(sig, isLanding = false) {
     if (isExpanded) {
         const manualTradeHtml = showManualTradeButton ? `
             <div class="mt-4 pt-4 border-t border-white/5 flex justify-center">
-                <button id="manual-trade-btn-${sig.id}" onclick="event.stopPropagation(); window.openLiveTrade('${sig.id}')" class="px-6 py-2 bg-primary/20 text-primary font-bold rounded-lg border border-primary/30 hover:bg-primary/40 transition-colors flex items-center justify-center">
-                    ▶️ Open Live Trade
+                <button id="manual-trade-btn-${sig.id}" onclick="event.stopPropagation(); window.openLiveTrade('${sig.id}')" class="w-full h-12 flex items-center justify-center gap-2 bg-primary text-on-primary font-bold rounded-lg hover:brightness-110 transition-all shadow-[0_0_12px_rgba(168,232,255,0.4)] uppercase tracking-wide">
+                    <span class="material-symbols-outlined text-[20px]">bolt</span>
+                    Execute Live Trade
                 </button>
             </div>
         ` : '';
