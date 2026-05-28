@@ -1596,14 +1596,14 @@ function renderSettingsView() {
                                 <span class="text-on-surface-variant">API Key:</span>
                                 <div class="flex items-center gap-2">
                                     <input type="password" value="${user.api_key || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
-                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-key-display', this)">visibility</span>
+                                    <span class="material-symbols-outlined text-base ${user.api_key ? 'cursor-pointer hover:text-on-surface' : 'cursor-not-allowed opacity-50'} text-on-surface-variant select-none" onclick="${user.api_key ? "toggleDisplayVisibility('crypto-key-display', this)" : "showToast('For security, keys linked via Telegram cannot be displayed.', 'warning')"}">${user.api_key ? 'visibility' : 'visibility_off'}</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Secret:</span>
                                 <div class="flex items-center gap-2">
                                     <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
-                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-secret-display', this)">visibility</span>
+                                    <span class="material-symbols-outlined text-base ${user.api_secret ? 'cursor-pointer hover:text-on-surface' : 'cursor-not-allowed opacity-50'} text-on-surface-variant select-none" onclick="${user.api_secret ? "toggleDisplayVisibility('crypto-secret-display', this)" : "showToast('For security, keys linked via Telegram cannot be displayed.', 'warning')"}">${user.api_secret ? 'visibility' : 'visibility_off'}</span>
                                 </div>
                             </div>
                             ${user.has_exchange_keys ? `
@@ -1611,7 +1611,7 @@ function renderSettingsView() {
                                 <span class="text-on-surface-variant">Passphrase:</span>
                                 <div class="flex items-center gap-2">
                                     <input type="password" value="${user.api_password || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
-                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-pass-display', this)">visibility</span>
+                                    <span class="material-symbols-outlined text-base ${user.api_password ? 'cursor-pointer hover:text-on-surface' : 'cursor-not-allowed opacity-50'} text-on-surface-variant select-none" onclick="${user.api_password ? "toggleDisplayVisibility('crypto-pass-display', this)" : "showToast('For security, keys linked via Telegram cannot be displayed.', 'warning')"}">${user.api_password ? 'visibility' : 'visibility_off'}</span>
                                 </div>
                             </div>
                             ` : ''}
@@ -1634,14 +1634,14 @@ function renderSettingsView() {
                                 <span class="text-on-surface-variant">API Key:</span>
                                 <div class="flex items-center gap-2">
                                     <input type="password" value="${user.alpaca_api_key || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
-                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-key-display', this)">visibility</span>
+                                    <span class="material-symbols-outlined text-base ${user.alpaca_api_key ? 'cursor-pointer hover:text-on-surface' : 'cursor-not-allowed opacity-50'} text-on-surface-variant select-none" onclick="${user.alpaca_api_key ? "toggleDisplayVisibility('stock-key-display', this)" : "showToast('For security, keys linked via Telegram cannot be displayed.', 'warning')"}">${user.alpaca_api_key ? 'visibility' : 'visibility_off'}</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Secret:</span>
                                 <div class="flex items-center gap-2">
                                     <input type="password" value="${user.alpaca_api_secret || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
-                                    <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-secret-display', this)">visibility</span>
+                                    <span class="material-symbols-outlined text-base ${user.alpaca_api_secret ? 'cursor-pointer hover:text-on-surface' : 'cursor-not-allowed opacity-50'} text-on-surface-variant select-none" onclick="${user.alpaca_api_secret ? "toggleDisplayVisibility('stock-secret-display', this)" : "showToast('For security, keys linked via Telegram cannot be displayed.', 'warning')"}">${user.alpaca_api_secret ? 'visibility' : 'visibility_off'}</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center gap-2">
@@ -2907,7 +2907,7 @@ window.generateAdminGiftCode = async function() {
                     <div class="bg-surface-container-low p-3 rounded-lg border border-white/5 space-y-1">
                         <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">🌐 Web App Gift Link</span>
                         <div class="flex items-center justify-between gap-2">
-                            <input type="text" readonly value="${res.web_gift_url}" class="bg-transparent text-xs text-on-surface-variant font-mono border-none outline-none focus:ring-0 p-0 w-full select-all"/>
+                            <input type="text" readonly value="${res.web_gift_url}" autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-xs text-on-surface-variant font-mono border-none outline-none focus:ring-0 p-0 w-full select-all"/>
                             <button onclick="navigator.clipboard.writeText('${res.web_gift_url}').then(() => showToast('Web Gift Link copied!'))" class="text-xs text-primary font-bold hover:underline cursor-pointer">Copy</button>
                         </div>
                     </div>
@@ -2915,7 +2915,7 @@ window.generateAdminGiftCode = async function() {
                     <div class="bg-surface-container-low p-3 rounded-lg border border-white/5 space-y-1">
                         <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">🤖 Telegram Bot Gift Link</span>
                         <div class="flex items-center justify-between gap-2">
-                            <input type="text" readonly value="${res.tg_gift_url}" class="bg-transparent text-xs text-on-surface-variant font-mono border-none outline-none focus:ring-0 p-0 w-full select-all"/>
+                            <input type="text" readonly value="${res.tg_gift_url}" autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-xs text-on-surface-variant font-mono border-none outline-none focus:ring-0 p-0 w-full select-all"/>
                             <button onclick="navigator.clipboard.writeText('${res.tg_gift_url}').then(() => showToast('Telegram Gift Link copied!'))" class="text-xs text-primary font-bold hover:underline cursor-pointer">Copy</button>
                         </div>
                     </div>
