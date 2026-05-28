@@ -1587,7 +1587,7 @@ function renderSettingsView() {
             </section>
             
             <!-- Bot Status Panel (Gated to Premium Users Only) -->
-            ${isPremium ? `
+            ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 ${isActive ? 'border-tertiary/40' : 'border-error/40'}">
                 <div>
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Autopilot Status</h3>
