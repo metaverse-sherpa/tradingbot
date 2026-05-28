@@ -1595,14 +1595,14 @@ function renderSettingsView() {
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Key:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_key || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
+                                    <input type="password" value="${user.api_key || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-key-display', this)">visibility</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Secret:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
+                                    <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-secret-display', this)">visibility</span>
                                 </div>
                             </div>
@@ -1610,7 +1610,7 @@ function renderSettingsView() {
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">Passphrase:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_password || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
+                                    <input type="password" value="${user.api_password || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('crypto-pass-display', this)">visibility</span>
                                 </div>
                             </div>
@@ -1633,14 +1633,14 @@ function renderSettingsView() {
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Key:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.alpaca_api_key || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
+                                    <input type="password" value="${user.alpaca_api_key || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-key-display', this)">visibility</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">API Secret:</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.alpaca_api_secret || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
+                                    <input type="password" value="${user.alpaca_api_secret || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
                                     <span class="material-symbols-outlined text-base cursor-pointer text-on-surface-variant hover:text-on-surface select-none" onclick="toggleDisplayVisibility('stock-secret-display', this)">visibility</span>
                                 </div>
                             </div>
@@ -2491,6 +2491,7 @@ window.toggleDisplayVisibility = function(inputId, iconEl) {
     }
 };
 
+
 window.showRenewModal = function() {
     alert("💎 RENEW MEMBERSHIP VIA TRON\n\nPlease send exactly 20 USDT (TRC-20) to the address below:\n\nTUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3\n\nAfter submitting, please save your USDT wallet under the Premium panel to allow instant block confirmation.");
 };
@@ -2830,7 +2831,7 @@ async function checkAndRedeemPendingGift() {
     localStorage.removeItem('pending_gift_code');
     
     try {
-        const res = await apiRequest('/api/premium/redeem-gift', 'POST', { code });
+        const res = await apiRequest('/premium/redeem-gift', 'POST', { code });
         if (res && !res.error) {
             triggerConfetti();
             const profile = await apiRequest('/user/profile');
@@ -2891,7 +2892,7 @@ window.generateAdminGiftCode = async function() {
     `;
     
     try {
-        const res = await apiRequest('/api/admin/generate-gift', 'POST', {});
+        const res = await apiRequest('/admin/generate-gift', 'POST', {});
         if (res && res.code) {
             container.innerHTML = `
                 <div class="space-y-3 animate-fade-in text-left mt-2">

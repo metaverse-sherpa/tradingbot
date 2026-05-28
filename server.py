@@ -246,6 +246,9 @@ def profile():
     user["has_exchange_keys"] = bool((tg_user or {}).get("api_key") or user.get("api_key"))
     user["has_alpaca_keys"] = bool((tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key"))
     
+    user["exchange_id"] = user.get("exchange_id") or (tg_user or {}).get("exchange_id")
+    user["alpaca_endpoint"] = user.get("alpaca_endpoint") or (tg_user or {}).get("alpaca_endpoint")
+    
     # Include server version details
     # Fetch recruits for referral UI
     recruit_list = []
