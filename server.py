@@ -1164,37 +1164,62 @@ def _update_active_signals_cache():
     except Exception:
         sys_user = {}
 
-    async def fetch_price(sym, is_stk):
-        try:
-            if is_stk:
-                df_chart = await fetch_alpaca_daily_bars_async(sys_user, sym, limit=1)
-                if df_chart is not None and not df_chart.empty:
-                    return float(df_chart['close'].iloc[-1])
-                else:
-                    # Fallback to local daily cache if Alpaca live fetch fails or market closed
+    async def fetch_all_prices(sigs):
+        stock_syms = [sig.get("symbol", "") for sig in sigs if not ("/" in sig.get("symbol", ""))]
+        crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
+        prices = {}
+        
+        if stock_syms and sys_user.get("alpaca_api_key"):
+            try:
+                import aiohttp
+                sym_str = ",".join(stock_syms)
+                url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
+                headers = {
+                    "APCA-API-KEY-ID": sys_user.get("alpaca_api_key"),
+                    "APCA-API-SECRET-KEY": sys_user.get("alpaca_api_secret")
+                }
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=headers, timeout=10) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            for sym in stock_syms:
+                                if sym in data:
+                                    snap = data[sym]
+                                    if snap.get("latestTrade") and snap["latestTrade"].get("p"):
+                                        prices[sym] = float(snap["latestTrade"]["p"])
+                                    elif snap.get("dailyBar") and snap["dailyBar"].get("c"):
+                                        prices[sym] = float(snap["dailyBar"]["c"])
+                                    elif snap.get("prevDailyBar") and snap["prevDailyBar"].get("c"):
+                                        prices[sym] = float(snap["prevDailyBar"]["c"])
+            except Exception as e:
+                print(f"Error fetching Alpaca snapshots: {e}")
+                
+        for sym in stock_syms:
+            if sym not in prices:
+                try:
                     conn2 = sqlite3.connect("data/stock_daily_cache.db")
                     c2 = conn2.cursor()
                     c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
                     row = c2.fetchone()
                     conn2.close()
-                    if row:
-                        return float(row[0])
-            else:
-                if mdm:
-                    df_chart = await mdm.fetch_ohlcv(sym, "15m")
-                    if df_chart is not None and not df_chart.empty:
-                        return float(df_chart['close'].iloc[-1])
-        except Exception as e:
-            print(f"Error fetching live price for {sym} in signals: {e}")
-        return 0.0
-
-    async def fetch_all_prices(sigs):
-        tasks = []
-        for sig in sigs:
-            sym = sig.get("symbol", "")
-            is_stk = not ("/" in sym)
-            tasks.append(fetch_price(sym, is_stk))
-        return await asyncio.gather(*tasks)
+                    if row: prices[sym] = float(row[0])
+                    else: prices[sym] = 0.0
+                except:
+                    prices[sym] = 0.0
+                    
+        if crypto_syms and mdm:
+            async def get_crypto_price(sym):
+                try:
+                    df = await mdm.fetch_ohlcv(sym, "15m")
+                    if df is not None and not df.empty:
+                        return float(df['close'].iloc[-1])
+                except: pass
+                return 0.0
+            crypto_results = await asyncio.gather(*(get_crypto_price(sym) for sym in crypto_syms))
+            for i, sym in enumerate(crypto_syms):
+                prices[sym] = crypto_results[i]
+                
+        return [prices.get(sig.get("symbol", ""), 0.0) for sig in sigs]
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
