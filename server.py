@@ -713,21 +713,21 @@ def get_open_trades():
                 positions = client.fetch_positions()
                 for pos in positions:
                     contracts = float(pos.get("contracts", 0.0) or 0.0)
-                    if contracts > 0:
+                    if contracts != 0:
                         # Lookup R:R in database
                         tp_price = 0.0
                         sl_price = 0.0
                         open_time = 0
                         try:
-                            with database.db_session() as conn:
-                                c = conn.cursor()
-                                symbol_clean = pos.get('symbol', '').split(':')[0].replace('-', '/')
-                                c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
-                                row = c.fetchone()
-                                if row:
-                                    tp_price = float(row[0] or 0.0)
-                                    sl_price = float(row[1] or 0.0)
-                                    open_time = int(row[2] or 0)
+                             with database.db_session() as conn:
+                                 c = conn.cursor()
+                                 symbol_clean = pos.get('symbol', '').split(':')[0].replace('-', '/')
+                                 c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
+                                 row = c.fetchone()
+                                 if row:
+                                     tp_price = float(row[0] or 0.0)
+                                     sl_price = float(row[1] or 0.0)
+                                     open_time = int(row[2] or 0)
                         except Exception as db_err:
                             print(f"Crypto DB lookup error: {db_err}")
 
@@ -736,7 +736,7 @@ def get_open_trades():
                             "type": "crypto",
                             "symbol": pos.get("symbol"),
                             "side": pos.get("side", "").upper(),
-                            "qty": contracts,
+                            "qty": abs(contracts),
                             "entry_price": float(pos.get("entryPrice") or 0),
                             "mark_price": float(pos.get("markPrice") or 0),
                             "unrealized_pnl": float(pos.get("unrealizedPnl") or 0),
