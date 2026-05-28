@@ -175,6 +175,8 @@ async function handleRoute() {
     const refCode = getQueryParam('ref');
     if (refCode) {
         localStorage.setItem('referred_by', refCode);
+        navigate('#/login');
+        return;
     }
 
     let hash = window.location.hash || '#/landing';
