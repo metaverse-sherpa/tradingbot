@@ -1667,7 +1667,8 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
     Returns (success, message)
     """
     import database
-    from loguru import logger
+    import logging
+    logger = logging.getLogger(__name__)
     import time
     
     user = database.get_user(chat_id)
