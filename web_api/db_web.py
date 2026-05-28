@@ -145,7 +145,7 @@ def update_web_user_telegram(user_id, telegram_chat_id):
             
             # 2. Fetch Bot Settings
             c.execute('''
-                SELECT source_wallet, api_key, api_secret, api_password, exchange_id,
+                SELECT source_wallet, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id,
                        alpaca_api_key, alpaca_api_secret, alpaca_endpoint
                 FROM Users WHERE telegram_chat_id = ?
             ''', (telegram_chat_id,))
@@ -176,7 +176,7 @@ def update_web_user_telegram(user_id, telegram_chat_id):
                 # Update Users (Bot) with merged
                 c.execute('''
                     UPDATE Users 
-                    SET source_wallet = ?, api_key = ?, api_secret = ?, api_password = ?, exchange_id = ?,
+                    SET source_wallet = ?, blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, exchange_id = ?,
                         alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?
                     WHERE telegram_chat_id = ?
                 ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale, telegram_chat_id))
