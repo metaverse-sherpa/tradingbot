@@ -1145,7 +1145,7 @@ def _update_active_signals_cache():
     # Fetch free signal logs from TheoreticalTrades table
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' LIMIT 10")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC LIMIT 50")
         rows = c.fetchall()
     signals = [dict(r) for r in rows]
     
@@ -1660,3 +1660,52 @@ def get_trade_chart():
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5001))
     app.run(host='0.0.0.0', port=port, debug=True)
+
+@app.route('/api/user/manual-trade', methods=['POST'])
+@require_auth
+def manual_trade():
+    user = g.user
+    data = request.json
+    trade_id = data.get("signal_id")
+    
+    import time
+    now = int(time.time())
+    tg_user = _get_telegram_user(user)
+    
+    web_premium_expiry = user.get("premium_expiry", 0)
+    bot_premium_expiry = tg_user.get("premium_expiry", 0) if tg_user else 0
+    max_expiry = max(web_premium_expiry, bot_premium_expiry)
+    
+    is_super_admin = False
+    super_admin_id = utils_gcp.get_secret("SUPER_ADMIN_ID")
+    if super_admin_id:
+        try:
+            if user.get("telegram_chat_id") == int(super_admin_id) or (tg_user and tg_user.get("telegram_chat_id") == int(super_admin_id)):
+                is_super_admin = True
+        except ValueError:
+            pass
+            
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    is_premium = max_expiry > now or is_admin
+    
+    if not is_premium:
+        return jsonify({"success": False, "error": "Premium required"}), 403
+        
+    chat_id = user.get("telegram_chat_id")
+    if not chat_id:
+        return jsonify({"success": False, "error": "Please connect your Telegram account first."}), 400
+        
+    from bot.handlers.trading import execute_manual_trade
+    import asyncio
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        success, msg = loop.run_until_complete(execute_manual_trade(chat_id, trade_id))
+        return jsonify({"success": success, "message": msg}), 200 if success else 400
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        loop.close()

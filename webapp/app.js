@@ -1991,6 +1991,38 @@ window.toggleSignalExpand = function(id) {
     renderView();
 }
 
+window.openLiveTrade = async function(id) {
+    const btn = document.getElementById(`manual-trade-btn-${id}`);
+    if (btn) {
+        btn.innerHTML = `<span class="material-symbols-outlined animate-spin mr-2 text-[18px]">autorenew</span> Executing...`;
+        btn.disabled = true;
+    }
+    try {
+        const response = await fetch('/api/user/manual-trade', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ signal_id: id })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Live Trade Opened Successfully!');
+            updateDashboard(); // Reloads active trades
+        } else {
+            alert('Error opening trade: ' + (data.error || 'Unknown error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e);
+    } finally {
+        if (btn) {
+            btn.innerHTML = `▶️ Open Live Trade`;
+            btn.disabled = false;
+        }
+    }
+}
+
 function renderSignalCard(sig, isLanding = false) {
     const isExpanded = !isLanding && String(STATE.expanded_signal_id) === String(sig.id);
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
@@ -2025,15 +2057,28 @@ function renderSignalCard(sig, isLanding = false) {
         else pct = ((sl - mark) / (sl - tp)) * 100;
     }
     
+    const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
+    const userHasKeys = isCryptoSignal ? (STATE.user && STATE.user.has_exchange_keys) : (STATE.user && STATE.user.has_alpaca_keys);
+    const hasPosition = STATE.open_trades && STATE.open_trades.some(t => t.symbol === sig.symbol.split('/')[0]);
+    const showManualTradeButton = STATE.user && STATE.user.is_premium && userHasKeys && !hasPosition;
+    
     let progressBarHtml = '';
     if (isExpanded) {
+        const manualTradeHtml = showManualTradeButton ? `
+            <div class="mt-4 pt-4 border-t border-white/5 flex justify-center">
+                <button id="manual-trade-btn-${sig.id}" onclick="event.stopPropagation(); window.openLiveTrade('${sig.id}')" class="px-6 py-2 bg-primary/20 text-primary font-bold rounded-lg border border-primary/30 hover:bg-primary/40 transition-colors flex items-center justify-center">
+                    ▶️ Open Live Trade
+                </button>
+            </div>
+        ` : '';
+        
         progressBarHtml = `
             <div class="mt-4 pt-4 border-t border-white/5 space-y-4" onclick="event.stopPropagation()">
                 <h4 class="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Market Analysis & Setup</h4>
                 <div class="relative w-full aspect-[16/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center">
                     <img src="/api/trades/chart?symbol=${encodeURIComponent(sig.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${sideStr}&open_ts=${sig.open_time || 0}&type=${sig.symbol && sig.symbol.includes('/') ? 'crypto' : 'stock'}&current_price=${mark}" class="w-full h-full object-cover" alt="Signal Chart" />
                 </div>
-                
+                ${manualTradeHtml}
             </div>
         `;
     }
