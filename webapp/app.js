@@ -2851,7 +2851,7 @@ function showGiftSuccessModal(successMessage) {
     backdrop.className = 'fixed inset-0 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md';
     backdrop.style.zIndex = '99999';
     backdrop.innerHTML = `
-        <div class="glass-card max-w-[480px] w-full rounded-2xl p-8 text-center relative overflow-hidden flex flex-col items-center justify-center gap-6 animate-fade-in gold-glow">
+        <div class="glass-card max-w-[500px] w-full rounded-2xl p-8 text-center relative overflow-hidden flex flex-col items-center justify-center gap-6 animate-fade-in gold-glow" style="max-width: 500px;">
             <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
             <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-[#ffdb3c]/20 rounded-full blur-3xl pointer-events-none"></div>
             
