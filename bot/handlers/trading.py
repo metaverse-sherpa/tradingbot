@@ -1790,7 +1790,6 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
             
     else:
         # Crypto Logic
-        import ccxt
         equity = user.get('equity', 1000)
         user_risk = float(user.get('risk_pct', 1.5)) / 100.0
         
