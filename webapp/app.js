@@ -1339,7 +1339,7 @@ function renderHistoryView() {
     `;
 }
 
-function renderFreeStatsView() {
+function renderFreeStatsView(showPremiumBanner = false) {
     if (!STATE.free_stats) return `${renderHeader()}<main class="pt-20 px-container-margin"><div class="text-center p-8 text-on-surface-variant">Loading stats...</div></main>`;
 
     const strategyIcons = {
@@ -1389,9 +1389,26 @@ function renderFreeStatsView() {
         `;
     }).join('');
 
+    const premiumBanner = showPremiumBanner ? `
+        <div class="glass-card rounded-xl p-card-padding border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+            <div class="space-y-1">
+                <h3 class="font-body-lg text-body-lg font-bold text-primary flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">info</span> Live Stats Pending
+                </h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed max-w-[400px]">
+                    Your live portfolio performance will appear here once you connect your exchange API keys. Until then, you can view the forward-tested strategy performance below.
+                </p>
+            </div>
+            <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-primary/20 border border-primary/50 text-primary font-bold text-xs tracking-wider rounded-lg hover:bg-primary hover:text-on-primary transition-colors">
+                CONNECT
+            </a>
+        </div>
+    ` : '';
+
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            ${premiumBanner}
             <div class="flex items-center gap-3">
                 <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Free Forward Testing</h2>
             </div>
@@ -1415,6 +1432,11 @@ function renderFreeStatsView() {
 function renderStatsView() {
     if (!STATE.user || !STATE.user.is_premium) {
         return renderFreeStatsView();
+    }
+    
+    const hasLinkedKeys = STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys;
+    if (!hasLinkedKeys) {
+        return renderFreeStatsView(true);
     }
     
     const s = STATE.stats || {
