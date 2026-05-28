@@ -1246,6 +1246,9 @@ def _update_active_signals_cache():
         print(f"Error in concurrent fetch: {e}")
         current_prices = [0.0] * len(signals)
     finally:
+        if mdm:
+            try: loop.run_until_complete(mdm.close())
+            except: pass
         loop.close()
 
     for idx, sig in enumerate(signals):
