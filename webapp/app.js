@@ -559,13 +559,26 @@ function renderRegisterView() {
 }
 
 function renderLandingView() {
-    // Top Header for the landing page
+    // Top Header for the landing page with premium Metaverse Sherpa theme
     const headerHtml = `
-        <div class="text-center pt-8 pb-6">
-            <h1 class="font-headline-md text-headline-md text-on-surface mb-3">Alpha Signals</h1>
-            <p class="font-body-md text-body-md text-on-surface-variant max-w-[320px] mx-auto">
-                Real-time algorithmic trading setups.
-            </p>
+        <div class="relative overflow-hidden rounded-2xl mb-8 p-6 bg-gradient-to-br from-[#0c1f30] via-surface-container/60 to-[#0a1420] border border-white/5 text-center shadow-xl">
+            <!-- Mountain neon glow in the background -->
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-tertiary/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="relative z-10 flex flex-col items-center">
+                <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-primary/30 to-tertiary/30 border border-primary/40 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(60,215,255,0.2)]">
+                    <span class="material-symbols-outlined text-3xl text-primary-container" style="font-variation-settings: 'FILL' 1;">terrain</span>
+                </div>
+                <h1 class="font-headline-md text-headline-md text-transparent bg-clip-text bg-gradient-to-r from-primary-fixed-dim via-white to-tertiary-fixed-dim tracking-tight mb-1">Metaverse Sherpa</h1>
+                <p class="text-[10px] text-on-surface-variant max-w-[320px] leading-relaxed uppercase tracking-widest font-semibold text-primary/80">
+                    Algorithmic Intelligence
+                </p>
+                <div class="h-[1px] w-20 bg-gradient-to-r from-transparent via-primary/50 to-transparent my-3"></div>
+                <p class="text-sm text-on-surface-variant/90 font-medium max-w-[320px] leading-relaxed">
+                    Summit the markets with real-time autonomous trading setups.
+                </p>
+            </div>
         </div>
     `;
 
@@ -598,23 +611,24 @@ function renderLandingView() {
             ${headerHtml}
             <div class="relative">
                 <!-- Sticky CTA Panel -->
-                <div class="sticky top-24 z-20 mb-6 pointer-events-none">
-                    <div class="glass-card p-4 rounded-xl border border-primary/30 text-center shadow-2xl bg-[#121212]/90 backdrop-blur-md pointer-events-auto relative overflow-hidden mx-auto max-w-[360px]">
-                        <div class="absolute -inset-1 bg-gradient-to-r from-primary/20 to-tertiary/20 blur-xl z-0"></div>
-                        <div class="relative z-10">
-                            <div class="flex items-center justify-center gap-2 mb-2">
-                                <span class="material-symbols-outlined text-xl text-primary">lock_open</span>
-                                <h3 class="font-headline-sm text-headline-sm text-on-surface">Unlock Alpha Signals</h3>
+                <div class="sticky top-24 z-20 mb-8 pointer-events-none">
+                    <div class="p-5 rounded-2xl border border-primary/40 text-center shadow-[0_15px_40px_rgba(0,212,255,0.25)] bg-[#0d1622]/95 backdrop-blur-xl pointer-events-auto relative overflow-hidden mx-auto max-w-[380px] transition-all hover:border-primary/60">
+                        <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-primary via-tertiary to-secondary-container"></div>
+                        <div class="absolute -inset-1 bg-gradient-to-r from-primary/20 via-transparent to-tertiary/20 blur-xl z-0 pointer-events-none"></div>
+                        <div class="relative z-10 space-y-4">
+                            <div class="flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-2xl text-secondary-container animate-bounce" style="font-variation-settings: 'FILL' 1;">lock</span>
+                                <h3 class="text-lg font-bold text-white tracking-wide">Unlock Alpha Signals</h3>
                             </div>
-                            <p class="text-xs text-on-surface-variant mb-4">
-                                Join for free to view live entry points & performance.
+                            <p class="text-xs text-on-surface-variant/90 leading-relaxed font-medium">
+                                Join our network of elite copy-traders to view live entry values, target parameters, and real-time execution audits.
                             </p>
-                            <div class="flex gap-3">
-                                <button onclick="navigate('#/login')" class="flex-1 btn-primary py-2.5 rounded-full font-bold text-xs tracking-wide">
-                                    Create Account
+                            <div class="flex gap-3 pt-1">
+                                <button onclick="navigate('#/register')" class="flex-1 h-11 bg-primary text-on-primary font-bold text-xs tracking-wider rounded-lg shadow-[0_0_12px_rgba(168,232,255,0.3)] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">
+                                    CREATE ACCOUNT
                                 </button>
-                                <button onclick="navigate('#/login')" class="flex-1 py-2.5 glass-card rounded-full text-primary font-bold text-xs hover:bg-white/5 transition-colors border border-white/10">
-                                    Log In
+                                <button onclick="navigate('#/login')" class="flex-1 h-11 bg-white/5 text-primary border border-white/10 hover:bg-white/10 font-bold text-xs tracking-wider rounded-lg active:scale-[0.98] transition-all cursor-pointer">
+                                    LOG IN
                                 </button>
                             </div>
                         </div>
