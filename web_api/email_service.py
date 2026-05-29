@@ -16,12 +16,18 @@ logger = logging.getLogger("email_service")
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 
-SMTP_USERNAME = get_secret("SMTP_USERNAME") or os.getenv("SMTP_USERNAME", "")
-SMTP_PASSWORD = get_secret("SMTP_PASSWORD") or os.getenv("SMTP_PASSWORD", "")
-SMTP_SENDER_EMAIL = get_secret("SMTP_SENDER_EMAIL") or os.getenv("SMTP_SENDER_EMAIL", "")
-
 # Generous fallback to Resend API endpoint if Resend API Key is provided
 RESEND_API_KEY = get_secret("RESEND_API_KEY") or os.getenv("RESEND_API_KEY", "")
+
+SMTP_SENDER_EMAIL = get_secret("SMTP_SENDER_EMAIL") or os.getenv("SMTP_SENDER_EMAIL", "")
+
+# Only attempt to fetch SMTP credentials if we are NOT using Resend
+if not RESEND_API_KEY:
+    SMTP_USERNAME = get_secret("SMTP_USERNAME") or os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD = get_secret("SMTP_PASSWORD") or os.getenv("SMTP_PASSWORD", "")
+else:
+    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 
 def _send_email_thread(to_email, subject, html_content):
     """
