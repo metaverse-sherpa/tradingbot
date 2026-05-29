@@ -180,7 +180,7 @@ def reset_password():
         
     import time
     from database import db_session
-    import werkzeug.security
+    from web_api.auth import hash_password
     
     with db_session() as conn:
         c = conn.cursor()
@@ -196,7 +196,7 @@ def reset_password():
         if not expiry or int(time.time()) > expiry:
             return jsonify({"error": "Reset link has expired. Please request a new one."}), 400
             
-        password_hash = werkzeug.security.generate_password_hash(new_password)
+        password_hash = hash_password(new_password)
         c.execute('UPDATE WebUsers SET password_hash=?, reset_token=NULL, reset_token_expiry=NULL WHERE id=?', (password_hash, user_id))
         conn.commit()
         
