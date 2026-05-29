@@ -608,7 +608,7 @@ function renderLoginView() {
                     <input id="login-email" autocomplete="username" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
                     <div class="relative w-full">
                                     <input id="login-password" autocomplete="current-password" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
@@ -651,13 +651,13 @@ function renderRegisterView() {
                     <input id="reg-email" autocomplete="username" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
                     <div class="relative w-full">
                                     <input id="reg-password" autocomplete="new-password" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
                     <div class="relative w-full">
                                     <input id="reg-password-confirm" autocomplete="new-password" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Confirm Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('reg-password-confirm', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('reg-password-confirm', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
@@ -735,13 +735,13 @@ function renderLandingView() {
                                     <input id="reg-email" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
                                     <div class="relative w-full">
                                     <input id="reg-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('reg-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
                                     <div class="relative w-full">
                                     <input id="reg-password-confirm" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Confirm Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('reg-password-confirm', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('reg-password-confirm', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
@@ -774,13 +774,13 @@ function renderLandingView() {
                                     </div>
                                     <div class="relative w-full">
                                     <input id="reset-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="New Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('reset-password', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('reset-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
                                     <div class="relative w-full">
                                     <input id="reset-password-confirm" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Confirm New Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('reset-password-confirm', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('reset-password-confirm', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
@@ -812,7 +812,7 @@ function renderLandingView() {
                                     <input id="login-email" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
                                     <div class="relative w-full">
                                     <input id="login-password" autocomplete="current-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg pl-4 pr-12 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
-                                    <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-0 top-0 h-full px-3 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
+                                    <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-on-surface-variant hover:text-white transition-colors" tabindex="-1">
                                         <span class="material-symbols-outlined text-[20px]">visibility</span>
                                     </button>
                                 </div>
