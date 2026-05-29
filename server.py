@@ -1348,15 +1348,16 @@ def get_free_stats():
     
     if crypto_syms:
         try:
-            resp = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=3)
+            resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
             if resp.status_code == 200:
-                price_map = {item['symbol']: float(item['price']) for item in resp.json()}
+                data = resp.json().get('data', [])
+                price_map = {item['instId']: float(item['last']) for item in data}
                 for sym in crypto_syms:
-                    clean_sym = sym.split(':')[0].replace('/', '')
+                    clean_sym = sym.split(':')[0].replace('/', '-')
                     if clean_sym in price_map:
                         live_prices[sym] = price_map[clean_sym]
         except Exception as e:
-            print(f"Error fetching Binance prices: {e}")
+            print(f"Error fetching Blofin prices: {e}")
             
     if stock_syms:
         try:
