@@ -2130,13 +2130,13 @@ function renderSettingsView() {
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
                     <div class="flex gap-2 pt-2">
                         ${hasLinkedCrypto ? `
-                        <button onclick="navigate('#/backtest'); setTimeout(() => { document.getElementById('bt-strategy').value = '${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'; document.getElementById('bt-capital').value = '${STATE.crypto_balance || 1000}'; document.getElementById('bt-risk').value = '${user.risk_pct || 1.5}'; document.getElementById('bt-risk-val').innerText = '${user.risk_pct || 1.5}%'; triggerBacktest(); }, 100);" class="flex-1 h-10 bg-primary/10 border border-primary/30 text-primary font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all cursor-pointer">
+                        <button onclick="navigate('#/backtest'); setTimeout(() => { const sEl=document.getElementById('bt-strategy'); if(sEl) sEl.value = '${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'; const cEl=document.getElementById('bt-capital'); if(cEl) cEl.value = '${STATE.crypto_balance ? Number(STATE.crypto_balance).toFixed(2) : 10000}'; const rEl=document.getElementById('bt-risk'); if(rEl) rEl.value = '${user.risk_pct || 1.5}'; const rvEl=document.getElementById('bt-risk-val'); if(rvEl) rvEl.innerText = '${user.risk_pct || 1.5}%'; triggerBacktest(); }, 150);" class="flex-1 h-10 bg-primary/10 border border-primary/30 text-primary font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all cursor-pointer">
                             <span class="material-symbols-outlined text-[14px]">science</span>
                             Backtest Crypto
                         </button>
                         ` : ''}
                         ${hasLinkedStock ? `
-                        <button onclick="navigate('#/backtest'); setTimeout(() => { document.getElementById('bt-strategy').value = 'Sherpa Velocity Pullback'; document.getElementById('bt-capital').value = '${STATE.stock_balance || 10000}'; document.getElementById('bt-risk').value = '${user.stock_risk_pct || 1.0}'; document.getElementById('bt-risk-val').innerText = '${user.stock_risk_pct || 1.0}%'; triggerBacktest(); }, 100);" class="flex-1 h-10 bg-secondary-container/10 border border-secondary-container/30 text-secondary-container font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-secondary-container/20 transition-all cursor-pointer">
+                        <button onclick="navigate('#/backtest'); setTimeout(() => { const sEl=document.getElementById('bt-strategy'); if(sEl) sEl.value = 'Sherpa Velocity Pullback'; const cEl=document.getElementById('bt-capital'); if(cEl) cEl.value = '${STATE.stock_balance ? Number(STATE.stock_balance).toFixed(2) : 10000}'; const rEl=document.getElementById('bt-risk'); if(rEl) rEl.value = '${user.stock_risk_pct || 1.0}'; const rvEl=document.getElementById('bt-risk-val'); if(rvEl) rvEl.innerText = '${user.stock_risk_pct || 1.0}%'; triggerBacktest(); }, 150);" class="flex-1 h-10 bg-secondary-container/10 border border-secondary-container/30 text-secondary-container font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-secondary-container/20 transition-all cursor-pointer">
                             <span class="material-symbols-outlined text-[14px]">science</span>
                             Backtest Stocks
                         </button>
@@ -2345,15 +2345,15 @@ function renderBacktestView() {
                     
                     <div class="space-y-1">
                         <label class="text-xs text-on-surface-variant font-semibold uppercase">Starting Capital ($)</label>
-                        <input id="bt-capital" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" type="number" min="100" max="10000000" value="${STATE.crypto_balance || 10000}"/>
+                        <input id="bt-capital" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" type="number" min="100" max="10000000" value="${STATE.crypto_balance ? Number(STATE.crypto_balance).toFixed(2) : 10000}"/>
                     </div>
                     
                     <div class="space-y-2">
                         <div class="flex justify-between text-xs font-semibold uppercase text-on-surface-variant">
                             <span>Risk per Trade</span>
-                            <span id="bt-risk-val" class="text-primary font-bold">1.5%</span>
+                            <span id="bt-risk-val" class="text-primary font-bold">${user.risk_pct || 1.5}%</span>
                         </div>
-                        <input id="bt-risk" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="1.5" oninput="document.getElementById('bt-risk-val').innerText = this.value + '%'"/>
+                        <input id="bt-risk" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || 1.5}" oninput="document.getElementById('bt-risk-val').innerText = this.value + '%'"/>
                     </div>
                     
                     <button onclick="triggerBacktest()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all cursor-pointer">
@@ -3224,22 +3224,25 @@ window.adjustBacktestDefaults = function(strategyName) {
     const slider = document.getElementById('bt-risk');
     const label = document.getElementById('bt-risk-val');
     const capitalInput = document.getElementById('bt-capital');
+    const user = STATE.user || {};
     
     if (strategyName === 'Sherpa Velocity Pullback') {
         if (slider && label) {
-            slider.value = '1.0';
-            label.innerText = '1.0%';
+            const risk = user.stock_risk_pct || 1.0;
+            slider.value = risk;
+            label.innerText = risk + '%';
         }
         if (capitalInput) {
-            capitalInput.value = STATE.stock_balance || 10000;
+            capitalInput.value = STATE.stock_balance ? Number(STATE.stock_balance).toFixed(2) : 10000;
         }
     } else {
         if (slider && label) {
-            slider.value = '1.5';
-            label.innerText = '1.5%';
+            const risk = user.risk_pct || 1.5;
+            slider.value = risk;
+            label.innerText = risk + '%';
         }
         if (capitalInput) {
-            capitalInput.value = STATE.crypto_balance || 10000;
+            capitalInput.value = STATE.crypto_balance ? Number(STATE.crypto_balance).toFixed(2) : 10000;
         }
     }
 };
