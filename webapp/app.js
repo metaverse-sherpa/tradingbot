@@ -193,6 +193,21 @@ async function handleRoute() {
         hash = hash.split('?')[0];
     }
     
+    // Auto-login redirect logic
+    const token = localStorage.getItem('session_token');
+    if (token && (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/')) {
+        try {
+            const profile = await apiRequest('/user/profile');
+            if (profile) {
+                STATE.user = profile;
+                navigate('#/dashboard');
+                return;
+            }
+        } catch (e) {
+            // Proceed to Auth Guard if validation fails
+        }
+    }
+    
     // Auth Guard
     if (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/') {
         const view = (hash === '#/' || hash === '#/landing') ? 'landing' : hash.substring(2);
@@ -721,6 +736,7 @@ function renderDashboardView() {
 
     const isPremium = STATE.user && STATE.user.is_premium;
     const isCrypto = STATE.dashboard_tab === 'crypto';
+    const hasLinkedKeys = STATE.user && (STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys);
     
     const tierBadge = `
         <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
@@ -885,11 +901,12 @@ function renderDashboardView() {
                     <span class="text-[10px]">${isPremium ? '💎' : '🥈'}</span>
                     <span class="font-label-sm text-label-sm ${isPremium ? 'text-secondary-container' : 'text-primary'}">${isPremium ? 'Premium' : 'Standard'}</span>
                 </div>
-                
+                ${hasLinkedKeys ? `
                 <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
                     <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
                     <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
                 </div>
+                ` : ''}
             </div>
             
             ${dashboardContent}
@@ -967,11 +984,12 @@ function renderTradesView() {
             <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">📈 Live Trades</h2>
-                    
+                    ${(hasLinkedCrypto || hasLinkedStock) ? `
                     <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
                         <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
                         <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
                     </div>
+                    ` : ''}
                 </div>
                 
                 <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1282,10 +1300,12 @@ function renderHistoryView() {
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <div class="flex justify-between items-center">
                 <h2 class="font-headline-sm text-headline-sm text-on-surface">📜 History</h2>
+                ${(STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys) ? `
                 <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
                     <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
                     <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
                 </div>
+                ` : ''}
             </div>
             
             <div class="space-y-stack-gap">
