@@ -424,8 +424,9 @@ window.refreshSignals = function(showSpinner = false) {
     
     return Promise.all([
         apiRequest('/signals/active'),
-        apiRequest('/signals/closed')
-    ]).then(([active, closed]) => {
+        apiRequest('/signals/closed'),
+        apiRequest('/stats/free')
+    ]).then(([active, closed, freeStats]) => {
         STATE.is_loading_signals = false;
         
         // Trigger desktop push notification if a new signal is found
@@ -441,6 +442,7 @@ window.refreshSignals = function(showSpinner = false) {
         
         if (active) STATE.active_signals = active;
         if (closed) STATE.closed_signals = closed;
+        if (freeStats) STATE.free_stats = freeStats;
         if (STATE.current_view === 'signals') {
             renderView();
         }
@@ -2505,8 +2507,15 @@ function renderClosedSignalCard(sig) {
     `;
 }
 
+window.toggleSignalsStats = function() {
+    STATE.show_signals_stats = !STATE.show_signals_stats;
+    renderView();
+};
+
 window.setSignalsTab = function(tab) {
     STATE.signals_tab = tab;
+    // Reset the stats accordion state when changing tabs
+    STATE.show_signals_stats = false;
     renderView();
 };
 
@@ -2557,6 +2566,78 @@ function renderSignalsView() {
             </div>
         ` : STATE.closed_signals.map(s => renderClosedSignalCard(s)).join(''));
 
+    let statsSection = '';
+    if (currentTab === 'closed') {
+        const isOpen = !!STATE.show_signals_stats;
+        let statsContent = '';
+        if (isOpen) {
+            if (STATE.free_stats && STATE.free_stats.strategies) {
+                const strategyIcons = {
+                    "Mean Reversion Scalper": "📈",
+                    "Valkyrie Elite Scalper": "🛡️",
+                    "Sherpa Velocity Pullback": "🦙"
+                };
+                const strategyCards = STATE.free_stats.strategies.map(s => {
+                    const icon = strategyIcons[s.name] || "📈";
+                    const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
+                    const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
+                    return `
+                        <div class="bg-surface-container rounded-lg p-3 space-y-1.5 border-l-2 border-primary/50 text-xs">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-on-surface flex items-center gap-1">
+                                    <span>${icon}</span> ${s.name}
+                                </span>
+                                <span class="text-on-surface-variant font-mono">Active: ${s.active_count}</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 pt-1 border-t border-white/5 font-mono text-[10px]">
+                                <div>
+                                    <span class="text-on-surface-variant block">Win Rate</span>
+                                    <span class="text-primary font-bold">${s.win_rate.toFixed(1)}%</span>
+                                </div>
+                                <div>
+                                    <span class="text-on-surface-variant block">Realized</span>
+                                    <span class="${realizedClass} font-bold">${s.realized_pct >= 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span>
+                                </div>
+                                <div>
+                                    <span class="text-on-surface-variant block">Unrealized</span>
+                                    <span class="${unrealizedClass} font-bold">${(s.unrealized_pct || 0) >= 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                statsContent = `
+                    <div class="pt-3 border-t border-white/10 space-y-2 animate-fade-in">
+                        <p class="text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Strategy Performance Summary</p>
+                        <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                            ${strategyCards}
+                        </div>
+                    </div>
+                `;
+            } else {
+                statsContent = `
+                    <div class="pt-3 border-t border-white/10 text-center py-4 text-xs text-on-surface-variant animate-fade-in">
+                        Loading strategy stats...
+                    </div>
+                `;
+            }
+        }
+        
+        statsSection = `
+            <div class="glass-card rounded-xl p-3 border border-white/10 mb-4 transition-all duration-300">
+                <button onclick="window.toggleSignalsStats()" class="flex items-center justify-between w-full text-on-surface-variant hover:text-on-surface transition-colors active:scale-[0.99]">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px] text-primary">analytics</span>
+                        <span class="font-semibold text-sm text-on-surface">Alpha Signals Stats</span>
+                    </div>
+                    <span class="material-symbols-outlined text-[20px] transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : ''}">expand_more</span>
+                </button>
+                ${statsContent}
+            </div>
+        `;
+    }
+
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto animate-fade-in">
@@ -2574,6 +2655,8 @@ function renderSignalsView() {
                     <button onclick="setSignalsTab('closed')" class="flex-1 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${currentTab === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Closed Signals</button>
                 </div>
             </div>
+            
+            ${statsSection}
             
             <div class="space-y-stack-gap">
                 ${listHtml}
