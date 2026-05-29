@@ -2048,7 +2048,6 @@ function renderSignalCard(sig, isLanding = false) {
         else pct = ((sl - mark) / (sl - tp)) * 100;
     }
     
-    const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
     const userHasKeys = isCryptoSignal ? (STATE.user && STATE.user.has_exchange_keys) : (STATE.user && STATE.user.has_alpaca_keys);
     
     const cleanSigSym = (sig.symbol || '').split(':')[0].replace(/\//g, '');
