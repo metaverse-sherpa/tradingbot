@@ -5,17 +5,23 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+# Import utils_gcp to fetch secrets from Google Secret Manager
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils_gcp import get_secret
+
 logger = logging.getLogger("email_service")
 
 # Default configurations loaded from environment
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_SENDER_EMAIL = os.getenv("SMTP_SENDER_EMAIL", "")
+
+SMTP_USERNAME = get_secret("SMTP_USERNAME") or os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = get_secret("SMTP_PASSWORD") or os.getenv("SMTP_PASSWORD", "")
+SMTP_SENDER_EMAIL = get_secret("SMTP_SENDER_EMAIL") or os.getenv("SMTP_SENDER_EMAIL", "")
 
 # Generous fallback to Resend API endpoint if Resend API Key is provided
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_API_KEY = get_secret("RESEND_API_KEY") or os.getenv("RESEND_API_KEY", "")
 
 def _send_email_thread(to_email, subject, html_content):
     """
