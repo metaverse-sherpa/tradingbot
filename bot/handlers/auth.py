@@ -440,13 +440,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 target_id = int(target_input)
 
             if target_id:
-                database.revoke_premium(target_id)
-                await update.message.reply_text(f"✅ Premium access for user `{target_id}` has been successfully revoked.", parse_mode="Markdown")
-                try:
-                    revoke_msg = "🚫 *Premium Access Revoked*\n\nYour institutional Premium access has been revoked by the Overlord. Your active automation has been paused."
-                    await context.bot.send_message(chat_id=target_id, text=revoke_msg, parse_mode="Markdown")
-                except:
-                    pass
+                keyboard = [
+                    [InlineKeyboardButton("✅ Confirm Revoke", callback_data=f"admin_revoke_confirm_{target_id}")],
+                    [InlineKeyboardButton("❌ Cancel", callback_data="admin_command")]
+                ]
+                await update.message.reply_text(
+                    f"⚠️ *Confirm Revocation*\n\nAre you sure you want to instantly revoke Premium access for user `{target_id}`?",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode="Markdown"
+                )
             else:
                 await update.message.reply_text(f"❌ User '{target_input}' not found in the database. Cannot revoke.", parse_mode="Markdown")
         except Exception as e:

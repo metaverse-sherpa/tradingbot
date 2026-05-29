@@ -320,6 +320,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "admin_revoke_prompt":
+        if chat_id != SUPER_ADMIN_ID: return
         clear_input_states(context)
         context.user_data['admin_revoking'] = True
         await query.message.reply_text(
@@ -328,6 +329,22 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Tap /cancel to abort.",
             parse_mode="Markdown"
         )
+        return
+
+    if query.data.startswith("admin_revoke_confirm_"):
+        if chat_id != SUPER_ADMIN_ID: return
+        target_id = int(query.data.split("_")[-1])
+        database.revoke_premium(target_id)
+        
+        await query.message.edit_text(
+            f"✅ Premium access for user `{target_id}` has been successfully revoked.", 
+            parse_mode="Markdown"
+        )
+        try:
+            revoke_msg = "🚫 *Premium Access Revoked*\n\nYour institutional Premium access has been revoked by the Overlord. Your active automation has been paused."
+            await context.bot.send_message(chat_id=target_id, text=revoke_msg, parse_mode="Markdown")
+        except:
+            pass
         return
 
     if query.data == "view_logs":
