@@ -500,6 +500,92 @@ def update_user_crypto_strategy(chat_id, strategy):
 def update_user_stock_strategy(chat_id, strategy):
     update_user_preference(chat_id, "active_stock_strategy", strategy)
 
+async def rebuild_history_cache_from_engine(chat_id, exchange):
+    """
+    Called from the engine loop (running on the VPS with active whitelisting)
+    to rebuild the history_cache column for the user in the database.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Rebuilding history cache from engine for chat_id: {chat_id}")
+    try:
+        import live_bot_multi
+        all_closed = []
+        
+        async def fetch_sym_history(sym):
+            try:
+                norm_sym = normalize_symbol(sym, exchange.id)
+                trades = await exchange.fetch_my_trades(norm_sym, limit=50)
+                
+                order_groups = {}
+                for t in trades:
+                    info = t.get("info", {})
+                    gross_pnl = 0
+                    if exchange.id == 'blofin':
+                        gross_pnl = float(info.get("fillPnl") or 0)
+                    else:
+                        gross_pnl = float(info.get("realizedPnl") or 0)
+                        
+                    if gross_pnl != 0:
+                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                        net_pnl = gross_pnl - (fee * 2)
+                        
+                        side_raw = t.get('side', 'buy').lower()
+                        is_long = (side_raw == 'sell')
+                        
+                        order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
+                        if order_id not in order_groups:
+                            order_groups[order_id] = []
+                            
+                        order_groups[order_id].append({
+                            "net_pnl": net_pnl,
+                            "price": t['price'],
+                            "amount": t['amount'],
+                            "timestamp": t['timestamp'],
+                            "is_long": is_long
+                        })
+                        
+                for order_id, fills in order_groups.items():
+                    total_net_pnl = sum(f['net_pnl'] for f in fills)
+                    total_amount = sum(f['amount'] for f in fills)
+                    total_cost = sum(f['price'] * f['amount'] for f in fills)
+                    avg_price = total_cost / total_amount if total_amount > 0 else fills[0]['price']
+                    
+                    max_timestamp = max(f['timestamp'] for f in fills)
+                    is_long = fills[0]['is_long']
+                    
+                    try:
+                        market = exchange.market(sym)
+                        contract_size = float(market.get('contractSize', 1))
+                        initial_margin = (avg_price * total_amount * contract_size) / 20
+                        roe_val = (total_net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                    except:
+                        roe_val = 0
+                        
+                    all_closed.append({
+                        "symbol": sym,
+                        "timestamp": max_timestamp,
+                        "net_pnl": total_net_pnl,
+                        "price": avg_price,
+                        "amount": total_amount,
+                        "side": "l" if is_long else "s",
+                        "roe_val": roe_val
+                    })
+            except Exception as sym_err:
+                logger.error(f"Error fetching history for {sym}: {sym_err}")
+
+        # Fetch in parallel
+        await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
+        
+        all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
+        last_10 = all_closed[:10]
+        
+        if last_10:
+            set_history_cache(chat_id, last_10)
+            logger.info(f"Rebuild cache success. Saved {len(last_10)} trades for chat_id {chat_id}.")
+    except Exception as e:
+        logger.error(f"Failed to rebuild history cache from engine: {e}")
+
 async def update_user_stats_from_engine(chat_id, equity, exchange, application):
     """
     Syncs trades from exchange and updates DB stats.
@@ -601,6 +687,26 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
             
         if new_closed:
             clear_history_cache(chat_id)
+
+        # Robust engine cache synchronization: check if cache is empty or if we had new closed trades
+        cache_empty = False
+        try:
+            with db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+                row = c.fetchone()
+                if not row or not row[0]:
+                    cache_empty = True
+        except Exception as cache_check_err:
+            import logging
+            logging.getLogger(__name__).error(f"Error checking cache: {cache_check_err}")
+
+        if new_closed or cache_empty:
+            try:
+                await rebuild_history_cache_from_engine(chat_id, exchange)
+            except Exception as cache_rebuild_err:
+                import logging
+                logging.getLogger(__name__).error(f"Error rebuilding cache: {cache_rebuild_err}")
             
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         # Update DB
@@ -729,12 +835,22 @@ def set_history_cache(chat_id, trades):
     with db_session() as conn:
         c = conn.cursor()
         c.execute("UPDATE Users SET history_cache = ? WHERE telegram_chat_id = ?", (json.dumps(trades), chat_id))
+        try:
+            c.execute("UPDATE WebUsers SET history_cache = ? WHERE telegram_chat_id = ?", (json.dumps(trades), chat_id))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to sync WebUsers history_cache: {e}")
 
 def clear_history_cache(chat_id):
     """Clears the trade history cache."""
     with db_session() as conn:
         c = conn.cursor()
         c.execute("UPDATE Users SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
+        try:
+            c.execute("UPDATE WebUsers SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to sync WebUsers clear cache: {e}")
 
 def is_premium(user):
     """Returns True if the user has an active premium subscription or is the Admin."""

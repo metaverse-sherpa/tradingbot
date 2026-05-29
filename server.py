@@ -855,17 +855,41 @@ def get_trades_history():
     
     history = []
     
-    # 1. Try the history_cache from the Telegram bot's Users table
-    if tg_user:
-        # The bot's get_user() returns history_cache as a raw field.
+    # 1. Try the history_cache from the WebUsers table first
+    raw_cache = user.get("history_cache")
+    if not raw_cache:
+        try:
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT history_cache FROM WebUsers WHERE id = ?", (user.get("id"),))
+                row = c.fetchone()
+                if row and row[0]:
+                    raw_cache = row[0]
+        except Exception as e:
+            print(f"[HISTORY] Error loading history_cache from WebUsers: {e}")
+            
+    if raw_cache:
+        try:
+            import json
+            cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
+            print(f"[HISTORY] Parsed {len(cached)} trades from WebUsers history_cache")
+            for tr in cached:
+                is_stk = is_stock(tr.get("symbol", ""))
+                tr["type"] = "stock" if is_stk else "crypto"
+                history.append(tr)
+        except Exception as e:
+            print(f"[HISTORY] Error parsing WebUsers history_cache: {e}")
+
+    # 2. Try the history_cache from the Telegram bot's Users table if empty
+    if not history and tg_user:
         # Try reading it directly from tg_user first, then fall back to DB query.
-        raw_cache = tg_user.get("history_cache")
-        print(f"[HISTORY] tg_user history_cache type={type(raw_cache).__name__}, truthy={bool(raw_cache)}")
+        raw_cache_tg = tg_user.get("history_cache")
+        print(f"[HISTORY] tg_user history_cache type={type(raw_cache_tg).__name__}, truthy={bool(raw_cache_tg)}")
         
-        if raw_cache:
+        if raw_cache_tg:
             try:
                 import json
-                cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
+                cached = json.loads(raw_cache_tg) if isinstance(raw_cache_tg, str) else raw_cache_tg
                 print(f"[HISTORY] Parsed {len(cached)} trades from tg_user history_cache")
                 for tr in cached:
                     is_stk = is_stock(tr.get("symbol", ""))
