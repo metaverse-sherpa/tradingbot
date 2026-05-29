@@ -280,12 +280,20 @@ async function handleRoute() {
             }
         }).catch(err => console.error("Error updating profile in background:", err));
     } else {
-        // Blocking: first load requires profile
-        const profile = await apiRequest('/user/profile');
+        // Blocking: first load requires profile and balance
+        const [profile, bal] = await Promise.all([
+            apiRequest('/user/profile'),
+            apiRequest('/user/balance')
+        ]);
         if (!profile && hash !== '#/help') {
             return;
         }
         STATE.user = profile;
+        if (bal) {
+            STATE.crypto_balance = bal.crypto_balance;
+            STATE.stock_balance = bal.stock_balance;
+            STATE.total_balance = bal.total_balance;
+        }
     }
     
     // Check and redeem pending gift code if any
@@ -339,12 +347,20 @@ async function handleRoute() {
         });
     } else if (hash === '#/trades') {
         STATE.current_view = 'trades';
-        const [open, hist] = await Promise.all([
+        // Render instantly using cached data (stale) for maximum responsiveness
+        renderView();
+        
+        // Fetch fresh data in the background (revalidate) without blocking the UI
+        Promise.all([
             apiRequest('/trades/open'),
             apiRequest('/trades/history')
-        ]);
-        if (open) STATE.open_trades = open;
-        if (hist) STATE.history = hist;
+        ]).then(([open, hist]) => {
+            if (open) STATE.open_trades = open;
+            if (hist) STATE.history = hist;
+            if (STATE.current_view === 'trades') {
+                renderView();
+            }
+        }).catch(err => console.error("Error fetching trades in background:", err));
     } else if (hash === '#/history') {
         STATE.current_view = 'history';
         if (STATE.user && STATE.user.is_premium) {
@@ -374,6 +390,18 @@ async function handleRoute() {
         STATE.current_view = 'strategy';
     } else if (hash === '#/backtest') {
         STATE.current_view = 'backtest';
+        if (STATE.crypto_balance === 0 && STATE.stock_balance === 0) {
+            apiRequest('/user/balance').then(bal => {
+                if (bal) {
+                    STATE.crypto_balance = bal.crypto_balance;
+                    STATE.stock_balance = bal.stock_balance;
+                    STATE.total_balance = bal.total_balance;
+                    if (STATE.current_view === 'backtest') {
+                        renderView();
+                    }
+                }
+            }).catch(err => console.error("Error loading backtest balance:", err));
+        }
     } else if (hash === '#/signals') {
         STATE.current_view = 'signals';
         // Render immediately using cached data for a lightning fast load
