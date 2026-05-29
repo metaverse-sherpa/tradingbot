@@ -1597,11 +1597,11 @@ function renderHistoryView() {
                         return `
                             <div class="glass-card p-4 rounded-lg flex justify-between items-center border border-white/5">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-lg">
-                                        ${assetIcon}
+                                    <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-xl">
+                                        ${sideEmoji}
                                     </div>
                                     <div>
-                                        <p class="font-label-md text-label-md font-bold text-on-surface">${sideEmoji} ${cleanSymbol}</p>
+                                        <p class="font-label-md text-label-md font-bold text-on-surface">${cleanSymbol}</p>
                                         <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr}${openDurationStr}</p>
                                     </div>
                                 </div>
