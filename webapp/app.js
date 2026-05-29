@@ -2525,6 +2525,35 @@ async function handleForgotPassword(e) {
     }
 }
 
+window.handleResetPasswordSubmit = async function(e) {
+    e.preventDefault();
+    const password = document.getElementById('reset-password').value;
+    const passwordConfirm = document.getElementById('reset-password-confirm').value;
+    
+    if (password !== passwordConfirm) {
+        showToast("Passwords do not match", "error");
+        return;
+    }
+    
+    if (!STATE.reset_token) {
+        showToast("Missing or invalid reset token. Please click the link in your email again.", "error");
+        return;
+    }
+    
+    try {
+        await apiRequest('/auth/reset-password', 'POST', {
+            token: STATE.reset_token,
+            password: password
+        });
+        showToast("Password updated successfully! Please sign in with your new password.", "success");
+        STATE.reset_token = null;
+        setLandingAuthMode('login');
+        navigate('#/login');
+    } catch (error) {
+        showToast("Error updating password: " + error.message, "error");
+    }
+}
+
 async function handleEmailRegister(e) {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
