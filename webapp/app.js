@@ -87,7 +87,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     
     try {
         const response = await fetch(url, options);
-        if (response.status === 401 && window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/') {
+        if (response.status === 401 && window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/' && window.location.hash !== '#/help') {
             // Unauthorized → redirect to landing
             STATE.user = null;
             navigate('#/landing');
@@ -240,7 +240,7 @@ async function handleRoute() {
     
     // Fetch profile status on every navigation to keep session sync
     const profile = await apiRequest('/user/profile');
-    if (!profile) {
+    if (!profile && hash !== '#/help') {
         // Redirection handled by apiRequest if unauthorized
         return;
     }
@@ -250,10 +250,12 @@ async function handleRoute() {
     await checkAndRedeemPendingGift();
     
     // Check for deployment success message if admin
-    const isSuperAdmin = STATE.user.telegram_chat_id === 1567788633;
-    const isAdmin = STATE.user.is_admin || isSuperAdmin;
-    if (isAdmin) {
-        checkDeploymentAlert();
+    if (STATE.user) {
+        const isSuperAdmin = STATE.user.telegram_chat_id === 1567788633;
+        const isAdmin = STATE.user.is_admin || isSuperAdmin;
+        if (isAdmin) {
+            checkDeploymentAlert();
+        }
     }
     
     // Determine view route
@@ -450,10 +452,10 @@ function renderBottomNav() {
 function renderHeader(title) {
     return `
         <header class="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-[0_2px_10px_rgba(0,212,255,0.1)] flex justify-between items-center px-container-margin py-3">
-            <div class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight flex items-center gap-2">
+            <a href="#/" class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
                 <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">terrain</span>
                 Metaverse Sherpa
-            </div>
+            </a>
             <div class="flex items-center gap-4">
                 <a class="text-on-surface-variant hover:opacity-80 transition-opacity" href="#/help">
                     <span class="material-symbols-outlined">help</span>
