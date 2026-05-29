@@ -1574,7 +1574,9 @@ function renderHistoryView() {
                         const pnlPctStr = pnlVal > 0 ? `+${pnlVal.toFixed(2)}%` : `${pnlVal.toFixed(2)}%`;
                         
                         const dollarStr = (t.net_pnl || 0) >= 0 ? `+$${Math.abs(t.net_pnl || 0).toFixed(2)}` : `-$${Math.abs(t.net_pnl || 0).toFixed(2)}`;
-                        const blurClass = STATE.user.hide_dollars ? 'blur-[4px] opacity-70 select-none' : '';
+                        
+                        const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+                        const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
                         
                         const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
                         
@@ -1607,7 +1609,7 @@ function renderHistoryView() {
                                     <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
                                         ${pnlPctStr}
                                     </p>
-                                    <p class="font-label-sm text-label-sm text-on-surface-variant ${blurClass}">
+                                    <p class="font-label-sm text-label-sm text-on-surface-variant" ${inlineBlur}>
                                         ${dollarStr}
                                     </p>
                                 </div>
