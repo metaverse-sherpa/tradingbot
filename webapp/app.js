@@ -1550,7 +1550,7 @@ function renderHistoryView() {
                         <p class="font-body-lg text-body-lg text-on-surface font-semibold">No trade history</p>
                     </div>
                 ` : filteredHistory.map(t => {
-                        const dateStr = 'Just now';
+                        const dateStr = t.timestamp ? new Date(t.timestamp * (t.timestamp > 1000000000000 ? 1 : 1000)).toLocaleString() : 'Just now';
                         const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
                         const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
                         

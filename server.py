@@ -893,40 +893,44 @@ def get_trades_history():
             except Exception as e:
                 print(f"[HISTORY] Error loading history_cache from DB: {e}")
         
-        # Fallback: fetch directly from CCXT if both caches are empty
-        if not history:
-            print("[HISTORY] Cache empty, trying CCXT fallback...")
-            crypto_api_key = tg_user.get("api_key") or user.get("api_key")
-            crypto_api_secret = tg_user.get("api_secret") or user.get("api_secret")
-            crypto_api_password = tg_user.get("api_password") or user.get("api_password") or ""
-            crypto_exchange_id = tg_user.get("exchange_id") or user.get("exchange_id", "blofin")
-            print(f"[HISTORY] CCXT: exchange={crypto_exchange_id}, has_key={bool(crypto_api_key)}, has_secret={bool(crypto_api_secret)}")
-            if crypto_api_key and crypto_api_secret:
-                try:
-                    import ccxt
-                    from bot import live_bot_multi
-                    config = {
-                        "apiKey": crypto_api_key,
-                        "secret": crypto_api_secret,
-                        "password": crypto_api_password,
-                        "options": {"defaultType": "swap"},
-                        "enableRateLimit": True,
-                    }
-                    client = getattr(ccxt, crypto_exchange_id)(config)
+    # Fallback: fetch directly from CCXT if both caches are empty or user is web-only
+    if not history:
+        print("[HISTORY] Cache empty or web-only premium, trying CCXT fallback...")
+        crypto_api_key = (tg_user.get("api_key") if tg_user else None) or user.get("api_key")
+        crypto_api_secret = (tg_user.get("api_secret") if tg_user else None) or user.get("api_secret")
+        crypto_api_password = (tg_user.get("api_password") if tg_user else None) or user.get("api_password") or ""
+        crypto_exchange_id = (tg_user.get("exchange_id") if tg_user else None) or user.get("exchange_id", "blofin")
+        print(f"[HISTORY] CCXT: exchange={crypto_exchange_id}, has_key={bool(crypto_api_key)}, has_secret={bool(crypto_api_secret)}")
+        if crypto_api_key and crypto_api_secret:
+            try:
+                import ccxt.async_support as ccxt_async
+                from bot import live_bot_multi
+                
+                config = {
+                    "apiKey": crypto_api_key,
+                    "secret": crypto_api_secret,
+                    "password": crypto_api_password,
+                    "options": {"defaultType": "swap"},
+                    "enableRateLimit": True,
+                }
+                
+                async def fetch_my_trades_async():
+                    client = getattr(ccxt_async, crypto_exchange_id)(config)
                     try:
-                        symbols_to_check = list(live_bot_multi.SYMBOLS)[:5]
-                        print(f"[HISTORY] CCXT checking symbols: {symbols_to_check}")
-                        for sym in symbols_to_check:
-                            norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
+                        await client.load_markets()
+                        
+                        async def fetch_sym_history(sym):
                             try:
-                                trades = client.fetch_my_trades(norm_sym, limit=5)
+                                norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
+                                trades = await client.fetch_my_trades(norm_sym, limit=20)
+                                results = []
                                 for t in trades:
                                     info = t.get("info", {})
                                     gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
                                     if gross_pnl != 0:
                                         fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
                                         net_pnl = gross_pnl - (fee * 2)
-                                        history.append({
+                                        results.append({
                                             "type": "crypto",
                                             "symbol": sym,
                                             "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
@@ -934,16 +938,34 @@ def get_trades_history():
                                             "net_pnl": net_pnl,
                                             "price": t.get('price', 0),
                                         })
-                            except Exception as sym_err:
-                                print(f"[HISTORY] CCXT error for {sym}: {sym_err}")
-                        print(f"[HISTORY] CCXT fetched {len(history)} trades")
+                                return results
+                            except Exception as e:
+                                print(f"[HISTORY] Error fetching {sym}: {e}")
+                                return []
+                        
+                        all_results = await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
+                        return [item for sublist in all_results for item in sublist]
                     finally:
+                        await client.close()
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    ccxt_trades = loop.run_until_complete(fetch_my_trades_async())
+                    history.extend(ccxt_trades)
+                    print(f"[HISTORY] Concurrently fetched {len(ccxt_trades)} crypto trades from exchange")
+                    
+                    if tg_user and ccxt_trades:
                         try:
-                            client.close()
-                        except Exception:
-                            pass
-                except Exception as e:
-                    print(f"[HISTORY] CCXT fallback error: {e}")
+                            # Cache the last 10 sorted trades
+                            last_10 = sorted(ccxt_trades, key=lambda x: x.get('timestamp', 0), reverse=True)[:10]
+                            database.set_history_cache(trade_chat_id, last_10)
+                        except Exception as cache_err:
+                            print(f"[HISTORY] Error saving history cache: {cache_err}")
+                finally:
+                    loop.close()
+            except Exception as e:
+                print(f"[HISTORY] CCXT fallback error: {e}")
             
     # 2. Fetch stock history
     print(f"[HISTORY] Checking Alpaca trades for chat_id={trade_chat_id}")
