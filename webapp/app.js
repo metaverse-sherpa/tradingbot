@@ -87,10 +87,12 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     
     try {
         const response = await fetch(url, options);
-        if (response.status === 401 && window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/' && window.location.hash !== '#/help') {
-            // Unauthorized → redirect to landing
-            STATE.user = null;
-            navigate('#/landing');
+        if (response.status === 401) {
+            if (window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/' && window.location.hash !== '#/help') {
+                // Unauthorized → redirect to landing
+                STATE.user = null;
+                navigate('#/landing');
+            }
             return null;
         }
         
