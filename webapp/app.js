@@ -2577,42 +2577,40 @@ function renderSignalsView() {
                     "Valkyrie Elite Scalper": "🛡️",
                     "Sherpa Velocity Pullback": "🦙"
                 };
-                const strategyCards = STATE.free_stats.strategies.map(s => {
+                const strategyRows = STATE.free_stats.strategies.map(s => {
                     const icon = strategyIcons[s.name] || "📈";
                     const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
                     const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
                     return `
-                        <div class="bg-surface-container rounded-lg p-3 space-y-1.5 border-l-2 border-primary/50 text-xs">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold text-on-surface flex items-center gap-1">
-                                    <span>${icon}</span> ${s.name}
-                                </span>
-                                <span class="text-on-surface-variant font-mono">Active: ${s.active_count}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 pt-1 border-t border-white/5 font-mono text-[10px]">
-                                <div>
-                                    <span class="text-on-surface-variant block">Win Rate</span>
-                                    <span class="text-primary font-bold">${s.win_rate.toFixed(1)}%</span>
-                                </div>
-                                <div>
-                                    <span class="text-on-surface-variant block">Realized</span>
-                                    <span class="${realizedClass} font-bold">${s.realized_pct >= 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span>
-                                </div>
-                                <div>
-                                    <span class="text-on-surface-variant block">Unrealized</span>
-                                    <span class="${unrealizedClass} font-bold">${(s.unrealized_pct || 0) >= 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span>
-                                </div>
-                            </div>
-                        </div>
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="py-1.5 text-on-surface flex items-center gap-1 font-sans text-xs">
+                                <span>${icon}</span>
+                                <span class="truncate max-w-[130px]" title="${s.name}">${s.name}</span>
+                            </td>
+                            <td class="py-1.5 text-center text-on-surface-variant">${s.active_count}</td>
+                            <td class="py-1.5 text-center text-primary font-bold">${s.win_rate.toFixed(1)}%</td>
+                            <td class="py-1.5 text-right ${realizedClass} font-bold">${s.realized_pct >= 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</td>
+                            <td class="py-1.5 text-right ${unrealizedClass} font-bold">${(s.unrealized_pct || 0) >= 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</td>
+                        </tr>
                     `;
                 }).join('');
                 
                 statsContent = `
-                    <div class="pt-3 border-t border-white/10 space-y-2 animate-fade-in">
-                        <p class="text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Strategy Performance Summary</p>
-                        <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                            ${strategyCards}
-                        </div>
+                    <div class="pt-2 border-t border-white/10 animate-fade-in overflow-x-auto">
+                        <table class="w-full text-left text-[10px] font-mono whitespace-nowrap">
+                            <thead>
+                                <tr class="text-on-surface-variant border-b border-white/5">
+                                    <th class="pb-1.5 font-semibold uppercase tracking-wider text-[9px] font-sans">Strategy</th>
+                                    <th class="pb-1.5 text-center font-semibold uppercase tracking-wider text-[9px] font-sans">Active</th>
+                                    <th class="pb-1.5 text-center font-semibold uppercase tracking-wider text-[9px] font-sans">Win Rate</th>
+                                    <th class="pb-1.5 text-right font-semibold uppercase tracking-wider text-[9px] font-sans">Realized</th>
+                                    <th class="pb-1.5 text-right font-semibold uppercase tracking-wider text-[9px] font-sans">Unrealized</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                ${strategyRows}
+                            </tbody>
+                        </table>
                     </div>
                 `;
             } else {
