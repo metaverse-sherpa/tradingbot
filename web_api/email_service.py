@@ -48,7 +48,7 @@ def _send_email_thread(to_email, subject, html_content):
                 "Content-Type": "application/json"
             }
             payload = {
-                "from": SMTP_SENDER_EMAIL or "Metaverse Sherpa <alerts@metaversesherpa.io>",
+                "from": "Metaverse Sherpa Bot Alerts <" + (SMTP_SENDER_EMAIL or "alerts@metaversesherpa.io") + ">",
                 "to": [to_email],
                 "subject": subject,
                 "html": html_content
