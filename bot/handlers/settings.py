@@ -1547,7 +1547,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                 entry_str = f"${entry:.2f}"
                 caption += f"\n• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
             else:
-                caption += "\n\n_🔒 Upgrade to /Premium to unlock Entry, SL, TP, and chart details!_"
+                caption += "\n\n_🔒 Upgrade to /Premium to unlock signal details (e.g. Entry, TP, SL, chart) and to automate the trades on your favorite exchange!_"
             
             # Conditionally generate the 'Open Live Trade' button
             reply_markup = None
