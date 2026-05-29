@@ -3773,21 +3773,21 @@ window.showStrategyGuideModal = function(strategyName) {
                     </div>
 
                     <!-- 2. Scrollable descriptive text loaded below -->
-                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-3.5 text-xs max-h-[180px] overflow-y-auto custom-scrollbar">
+                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 text-[11px] max-h-[105px] overflow-y-auto custom-scrollbar">
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Philosophy</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Philosophy</span>
                             <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
                         </div>
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Indicators</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Indicators</span>
                             <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
                         </div>
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Execution Pace</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Execution Pace</span>
                             <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
                         </div>
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Drawdown Profile</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Drawdown Profile</span>
                             <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
                         </div>
                     </div>
@@ -3814,25 +3814,25 @@ window.showStrategyGuideModal = function(strategyName) {
                     </div>
 
                     <!-- 2. Scrollable Comparative Matrix text loaded below -->
-                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-3.5 text-xs max-h-[180px] overflow-y-auto custom-scrollbar">
+                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 text-[11px] max-h-[105px] overflow-y-auto custom-scrollbar">
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Focus</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Focus</span>
                             <p class="text-on-surface mt-0.5">Volatility Extremes vs Wick Rejection vs Equities Pullbacks</p>
                         </div>
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Active Basket</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Active Basket</span>
                             <p class="text-on-surface mt-0.5">29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40</p>
                         </div>
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Trigger Logic</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Trigger Logic</span>
                             <p class="text-on-surface mt-0.5">Close outside bands vs Wick pierce & close inside vs 3-Period RSI &lt; 10</p>
                         </div>
                         <div>
-                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Risk Profile</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Risk Profile</span>
                             <p class="text-on-surface mt-0.5">Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)</p>
                         </div>
                         <div class="pt-1.5 border-t border-white/5">
-                            <p class="text-[11px] text-on-surface-variant italic leading-relaxed">
+                            <p class="text-[10px] text-on-surface-variant italic leading-relaxed">
                                 💡 <strong>Recommendation</strong>: Use <em>Mean Reversion</em> if you prefer maximum trade frequency and compounding potential. Use <em>Valkyrie Elite</em> if you prioritize capital safety and smooth growth curves in crypto. Activate <em>Sherpa Velocity Pullback (SVP)</em> to diversify into high-liquidity megacap US equities with low drawdown.
                             </p>
                         </div>
@@ -3842,18 +3842,18 @@ window.showStrategyGuideModal = function(strategyName) {
         }
 
         backdrop.innerHTML = `
-            <div class="glass-card max-w-[500px] w-full max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl p-6 relative overflow-hidden flex flex-col gap-6 animate-fade-in ${guide.glow}" style="max-width: 500px;">
+            <div class="glass-card max-w-[500px] w-full rounded-2xl p-5 relative overflow-hidden flex flex-col gap-4 animate-fade-in ${guide.glow}" style="max-width: 500px;">
                 <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer focus:outline-none">
+                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer focus:outline-none" title="Close Guide">
                     <span class="material-symbols-outlined text-[18px]">close</span>
                 </button>
 
                 <!-- Custom Elegant Tabs -->
                 <div class="flex border-b border-white/5 w-full">
-                    <button id="modal-tab-guide" class="flex-1 py-2 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer focus:outline-none ${activeTab === 'guide' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}" onclick="window.updateStrategyModalTab('guide')">
+                    <button id="modal-tab-guide" class="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer focus:outline-none ${activeTab === 'guide' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}" onclick="window.updateStrategyModalTab('guide')">
                         Infographic & Guide
                     </button>
-                    <button id="modal-tab-comparison" class="flex-1 py-2 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer focus:outline-none ${activeTab === 'comparison' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}" onclick="window.updateStrategyModalTab('comparison')">
+                    <button id="modal-tab-comparison" class="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer focus:outline-none ${activeTab === 'comparison' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}" onclick="window.updateStrategyModalTab('comparison')">
                         Comparison Matrix
                     </button>
                 </div>
@@ -3862,7 +3862,7 @@ window.showStrategyGuideModal = function(strategyName) {
                     ${contentHtml}
                 </div>
 
-                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="w-full h-11 bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-on-surface font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="w-full h-10 bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-on-surface text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <span>Close Guide</span>
                 </button>
             </div>
