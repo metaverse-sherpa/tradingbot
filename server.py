@@ -1287,111 +1287,117 @@ def run_backtest():
         events.sort(key=lambda x: (x["date"], 0 if x["type"] == "exit" else 1))
         
         # Simulation Parameters
-        cash = capital
-        active_positions = {}
-        equity_history = []
-        drawdown_history = []
-        
         risk_decimal = risk_pct / 100.0
         TAKER_FEE = 0.0006
         FEE_RATE = 0.001  # Stock FEE_RATE
         LEVERAGE = 20.0
         
+        active_positions = {}
+        equity_history = []
+        drawdown_history = []
         wins = 0
         losses = 0
         max_equity = capital
         max_dd = 0.0
         is_crypto = strategy_trades[0]["type"] == "crypto"
         
-        def get_current_portfolio_equity():
-            current_eq = cash
-            for t_idx, pos in active_positions.items():
-                if pos["shares"] > 0:
-                    current_eq += pos["shares"] * pos["entry_price"]
-            return current_eq
-            
-        # 3. Compounding Chronological Pass
-        for ev in events:
-            t_idx = ev["trade_idx"]
-            t = strategy_trades[t_idx]
-            portfolio_equity = get_current_portfolio_equity()
-            
-            if ev["type"] == "entry":
-                risk_amt = portfolio_equity * risk_decimal
-                sl_dist = t["sl_dist"]
-                entry_price = t["entry_price"]
+        if is_crypto:
+            equity = capital
+            # Compounding Chronological Pass for Crypto (marked-to-market using simple realized compounding)
+            for ev in events:
+                t_idx = ev["trade_idx"]
+                t = strategy_trades[t_idx]
                 
-                if is_crypto:
-                    shares = min(risk_amt / sl_dist, (portfolio_equity * LEVERAGE) / entry_price)
-                    position_notional = shares * entry_price
-                    entry_fee = position_notional * TAKER_FEE
-                    cash -= entry_fee
+                if ev["type"] == "entry":
+                    risk_amt = equity * risk_decimal
+                    size = min(risk_amt / t["sl_dist"], (equity * LEVERAGE) / t["entry_price"])
                     
                     active_positions[t_idx] = {
-                        "shares": shares,
-                        "entry_price": entry_price,
-                        "entry_fee": entry_fee,
-                        "side": t["side"]
+                        "size": size,
+                        "risk_amt": risk_amt
                     }
-                else:
-                    shares = risk_amt / sl_dist
-                    position_notional = shares * entry_price
+                    equity -= t["entry_price"] * size * TAKER_FEE
+                    
+                elif ev["type"] == "exit":
+                    pos = active_positions.pop(t_idx, None)
+                    if pos:
+                        size = pos["size"]
+                        risk_amt = pos["risk_amt"]
+                        pnl = risk_amt * t["rr_ratio"] if t["win"] else -risk_amt
+                        exit_fee = t["exit_price"] * size * t["fee_rate"]
+                        
+                        equity += pnl - exit_fee
+                        equity_history.append((ev["date"], equity))
+                        
+                        max_equity = max(max_equity, equity)
+                        dd = (max_equity - equity) / max_equity * 100
+                        max_dd = max(max_dd, dd)
+                        drawdown_history.append((ev["date"], -dd))
+                        
+                        if t["win"]:
+                            wins += 1
+                        else:
+                            losses += 1
+        else:
+            cash = capital
+            # Compounding Chronological Pass for Stocks (cash-gated, no leverage)
+            for ev in events:
+                t_idx = ev["trade_idx"]
+                t = strategy_trades[t_idx]
+                
+                def get_stock_portfolio_equity():
+                    eq = cash
+                    for active_idx, active_pos in active_positions.items():
+                        eq += active_pos["shares"] * active_pos["entry_price"]
+                    return eq
+                
+                if ev["type"] == "entry":
+                    portfolio_equity = get_stock_portfolio_equity()
+                    risk_amt = portfolio_equity * risk_decimal
+                    shares = risk_amt / t["sl_dist"]
+                    position_notional = shares * t["entry_price"]
+                    
                     if position_notional > cash:
-                        shares = cash / entry_price
-                        position_notional = shares * entry_price
+                        shares = cash / t["entry_price"]
+                        position_notional = shares * t["entry_price"]
                         
                     entry_fee = position_notional * FEE_RATE
-                    if cash >= (position_notional + entry_fee):
+                    if cash >= (position_notional + entry_fee) and shares > 0.01:
                         cash -= (position_notional + entry_fee)
                         active_positions[t_idx] = {
                             "shares": shares,
-                            "entry_price": entry_price,
-                            "entry_fee": entry_fee,
-                            "side": t["side"]
+                            "entry_price": t["entry_price"],
+                            "entry_fee": entry_fee
                         }
                     else:
                         active_positions[t_idx] = {
                             "shares": 0.0,
-                            "entry_price": entry_price,
-                            "entry_fee": 0.0,
-                            "side": t["side"]
+                            "entry_price": t["entry_price"],
+                            "entry_fee": 0.0
                         }
                         
-            elif ev["type"] == "exit":
-                pos = active_positions.pop(t_idx, None)
-                if pos and pos["shares"] > 0:
-                    shares = pos["shares"]
-                    entry_price = pos["entry_price"]
-                    exit_price = t["exit_price"]
-                    fee_rate = t["fee_rate"]
-                    win = t["win"]
-                    rr_ratio = t["rr_ratio"]
-                    
-                    if is_crypto:
-                        pnl = (portfolio_equity * risk_decimal) * rr_ratio if win else -(portfolio_equity * risk_decimal)
-                        exit_fee = exit_price * shares * fee_rate
-                        net_pnl = pnl - pos["entry_fee"] - exit_fee
-                        cash += net_pnl
-                    else:
-                        gross_pnl = (exit_price - entry_price) * shares if pos["side"] == "LONG" else (entry_price - exit_price) * shares
-                        exit_value = exit_price * shares
-                        exit_fee = exit_value * fee_rate
-                        net_pnl = gross_pnl - pos["entry_fee"] - exit_fee
+                elif ev["type"] == "exit":
+                    pos = active_positions.pop(t_idx, None)
+                    if pos and pos["shares"] > 0:
+                        shares = pos["shares"]
+                        gross_pnl = (t["exit_price"] - pos["entry_price"]) * shares if t["side"] == "LONG" else (pos["entry_price"] - t["exit_price"]) * shares
+                        exit_value = t["exit_price"] * shares
+                        exit_fee = exit_value * t["fee_rate"]
+                        
                         cash += exit_value - exit_fee
+                        portfolio_equity = get_stock_portfolio_equity()
                         
-                    if win:
-                        wins += 1
-                    else:
-                        losses += 1
+                        equity_history.append((ev["date"], portfolio_equity))
+                        max_equity = max(max_equity, portfolio_equity)
+                        dd = (max_equity - portfolio_equity) / max_equity * 100
+                        max_dd = max(max_dd, dd)
+                        drawdown_history.append((ev["date"], -dd))
                         
-                current_portfolio_equity = get_current_portfolio_equity()
-                equity_history.append((ev["date"], current_portfolio_equity))
-                
-                max_equity = max(max_equity, current_portfolio_equity)
-                dd = (max_equity - current_portfolio_equity) / max_equity * 100
-                max_dd = max(max_dd, dd)
-                drawdown_history.append((ev["date"], -dd))
-                
+                        if t["win"]:
+                            wins += 1
+                        else:
+                            losses += 1
+                            
         if not equity_history:
             return jsonify({"error": "Backtest engine failed to execute trades. Starting balance or risk is too low."}), 400
             
@@ -1464,7 +1470,9 @@ def run_backtest():
                 "total_trades": total_trades,
                 "net_pnl": final_equity - capital,
                 "profit_factor": round(sharpe, 2),  # Render Sharpe ratio
-                "chart_url": f"/api/charts/{chart_name}"
+                "chart_url": f"/api/charts/{chart_name}",
+                "risk_pct": risk_pct,
+                "capital": capital
             }
         }), 200
     except Exception as e:
