@@ -541,6 +541,17 @@ def get_balance():
 @require_auth
 def get_stats():
     user = g.user
+    user_id = user["id"]
+    
+    # Check cache
+    now = time.time()
+    cache_key = ("stats", user_id)
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            if now < expiry:
+                return jsonify(cached_data), 200
+
     tg_user = _get_telegram_user(user) or user
     
     # 1. Crypto Stats
@@ -669,6 +680,9 @@ def get_stats():
         "active_stock_strategy": tg_user.get("active_stock_strategy") or "None"
     }
     
+    with RESPONSE_CACHE_LOCK:
+        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, response_data)
+        
     return jsonify(response_data), 200
 
 @app.route('/api/trades/open', methods=['GET'])

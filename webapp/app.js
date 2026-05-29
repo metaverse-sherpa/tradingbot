@@ -267,13 +267,26 @@ async function handleRoute() {
         return;
     }
     
-    // Fetch profile status on every navigation to keep session sync
-    const profile = await apiRequest('/user/profile');
-    if (!profile && hash !== '#/help') {
-        // Redirection handled by apiRequest if unauthorized
-        return;
+    // Fetch profile status to keep session sync
+    if (STATE.user) {
+        // Background sync: update profile asynchronously without blocking the route transition
+        apiRequest('/user/profile').then(profile => {
+            if (profile) {
+                const oldPremium = STATE.user.is_premium;
+                STATE.user = profile;
+                if (oldPremium !== profile.is_premium && STATE.current_view === 'dashboard') {
+                    renderView();
+                }
+            }
+        }).catch(err => console.error("Error updating profile in background:", err));
+    } else {
+        // Blocking: first load requires profile
+        const profile = await apiRequest('/user/profile');
+        if (!profile && hash !== '#/help') {
+            return;
+        }
+        STATE.user = profile;
     }
-    STATE.user = profile;
     
     // Check and redeem pending gift code if any
     await checkAndRedeemPendingGift();
