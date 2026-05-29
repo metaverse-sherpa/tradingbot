@@ -954,11 +954,13 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 logger.error(f"Failed to find entry filled time for stock {sym}: {order_err}")
                                 
                             df_daily = None
-                            if is_mkt_open:
+                            try:
                                 df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=60)
                                 if df_daily is not None and not df_daily.empty:
                                     if hasattr(df_daily['timestamp'].dt, 'tz') and df_daily['timestamp'].dt.tz is not None:
                                         df_daily['timestamp'] = df_daily['timestamp'].dt.tz_localize(None)
+                            except Exception as live_err:
+                                logger.error(f"Failed to fetch live stock data for {sym}: {live_err}")
                                         
                             if df_daily is None or (hasattr(df_daily, 'empty') and df_daily.empty):
                                 try:
