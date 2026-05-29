@@ -114,7 +114,7 @@ def login():
         
     user = get_web_user_by_email(email)
     if not user or not user.get("password_hash") or not check_password(password, user["password_hash"]):
-        return jsonify({"error": "Invalid email or password"}), 401
+        return jsonify({"error": "Invalid email or password. If you can't remember it, click 'Forgot password?' to reset it."}), 401
         
     token = generate_token(user["id"])
     response = make_response(jsonify({"message": "Login successful", "token": token, "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"]}}), 200)

@@ -102,6 +102,14 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
                 STATE.user = null;
                 navigate('#/landing');
             }
+            if (url === '/auth/login') {
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Invalid password. If you can't remember it, click 'Forgot password?' to reset it.");
+                } catch (e) {
+                    throw new Error("Invalid password. If you can't remember it, click 'Forgot password?' to reset it.");
+                }
+            }
             return null;
         }
         
