@@ -889,7 +889,7 @@ function renderDashboardView() {
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
                     <button onclick="toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
                         <span class="material-symbols-outlined text-[16px]">${STATE.active_signals_sort_by === 'pnl' ? 'trending_up' : 'calendar_month'}</span>
-                        <span>Sorted by: ${STATE.active_signals_sort_by === 'pnl' ? 'PnL' : 'Date'}</span>
+                        <span>${STATE.active_signals_sort_by === 'pnl' ? 'Most Profitable First' : 'Newest First'}</span>
                     </button>
                 </div>
                 
@@ -983,7 +983,7 @@ function renderDashboardView() {
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
                     <button onclick="toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
                         <span class="material-symbols-outlined text-[16px]">${STATE.active_signals_sort_by === 'pnl' ? 'trending_up' : 'calendar_month'}</span>
-                        <span>Sorted by: ${STATE.active_signals_sort_by === 'pnl' ? 'PnL' : 'Date'}</span>
+                        <span>${STATE.active_signals_sort_by === 'pnl' ? 'Most Profitable First' : 'Newest First'}</span>
                     </button>
                 </div>
                 
