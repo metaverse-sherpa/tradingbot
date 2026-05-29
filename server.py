@@ -169,6 +169,39 @@ def forgot_password():
     
     return jsonify({"message": "Password reset link sent to your email."}), 200
 
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    data = request.json or {}
+    token = data.get("token")
+    new_password = data.get("password")
+    
+    if not token or not new_password:
+        return jsonify({"error": "Token and new password are required."}), 400
+        
+    import time
+    from database import db_session
+    import werkzeug.security
+    
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, reset_token_expiry FROM WebUsers WHERE reset_token=?', (token,))
+        user = c.fetchone()
+        
+        if not user:
+            return jsonify({"error": "Invalid or expired reset token."}), 400
+            
+        user_id = user[0]
+        expiry = user[1]
+        
+        if not expiry or int(time.time()) > expiry:
+            return jsonify({"error": "Reset link has expired. Please request a new one."}), 400
+            
+        password_hash = werkzeug.security.generate_password_hash(new_password)
+        c.execute('UPDATE WebUsers SET password_hash=?, reset_token=NULL, reset_token_expiry=NULL WHERE id=?', (password_hash, user_id))
+        conn.commit()
+        
+    return jsonify({"message": "Password successfully updated."}), 200
+
 @app.route('/api/auth/google', methods=['POST'])
 def google_auth():
     data = request.json or {}

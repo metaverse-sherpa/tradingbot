@@ -215,7 +215,7 @@ async function handleRoute() {
     
     // Auto-login redirect logic
     const token = localStorage.getItem('session_token');
-    if (token && (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/')) {
+    if (token && (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/' || window.location.hash.startsWith('#/reset-password'))) {
         try {
             const profile = await apiRequest('/user/profile');
             if (profile) {
@@ -229,8 +229,15 @@ async function handleRoute() {
     }
     
     // Auth Guard
-    if (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/') {
-        const view = (hash === '#/' || hash === '#/landing') ? 'landing' : hash.substring(2);
+    if (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/' || window.location.hash.startsWith('#/reset-password')) {
+        let view = (hash === '#/' || hash === '#/landing') ? 'landing' : hash.substring(2);
+        
+        if (window.location.hash.startsWith('#/reset-password')) {
+            const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+            STATE.reset_token = urlParams.get('token');
+            STATE.landing_auth_mode = 'reset_password';
+            view = 'landing';
+        }
         STATE.current_view = view;
         
         if (view === 'landing') {
@@ -638,6 +645,7 @@ function renderRegisterView() {
                     <input id="reg-name" autocomplete="name" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Full Name" type="text" required/>
                     <input id="reg-email" autocomplete="username" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
                     <input id="reg-password" autocomplete="new-password" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
+                    <input id="reg-password-confirm" autocomplete="new-password" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Confirm Password" type="password" required/>
                     
                     <button type="submit" class="w-full h-12 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg neon-button-glow hover:brightness-110 active:scale-[0.98] transition-all mt-2">
                         Create Account
@@ -711,6 +719,7 @@ function renderLandingView() {
                                     <input id="reg-name" autocomplete="name" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Full Name" type="text" required/>
                                     <input id="reg-email" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
                                     <input id="reg-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
+                                    <input id="reg-password-confirm" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Confirm Password" type="password" required/>
                                     <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg neon-button-glow hover:brightness-110 active:scale-[0.98] transition-all mt-1">
                                         Create Account
                                     </button>
@@ -731,6 +740,21 @@ function renderLandingView() {
                                 </form>
                                 <div class="flex flex-col items-center gap-1 mt-1">
                                     <a class="text-primary font-bold cursor-pointer font-label-sm" onclick="setLandingAuthMode('login')">Back to Sign In</a>
+                                </div>
+                            ` : STATE.landing_auth_mode === 'reset_password' ? `
+                                <form id="reset-form" class="space-y-3" onsubmit="handleResetPasswordSubmit(event)">
+                                    <div class="text-center mb-2">
+                                        <h3 class="font-label-lg text-label-lg text-on-surface mb-1">Create New Password</h3>
+                                        <p class="font-label-sm text-label-sm text-on-surface-variant/80">Enter your new secure password.</p>
+                                    </div>
+                                    <input id="reset-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="New Password" type="password" required/>
+                                    <input id="reset-password-confirm" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Confirm New Password" type="password" required/>
+                                    <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg neon-button-glow hover:brightness-110 active:scale-[0.98] transition-all mt-1">
+                                        Update Password
+                                    </button>
+                                </form>
+                                <div class="flex flex-col items-center gap-1 mt-1">
+                                    <a class="text-primary font-bold cursor-pointer font-label-sm" onclick="setLandingAuthMode('login')">Cancel & Sign In</a>
                                 </div>
                             ` : `
                                 <button onclick="triggerGoogleLogin()" class="w-full h-11 bg-white text-surface-dim font-label-md text-label-md rounded-full flex items-center justify-center gap-3 hover:bg-white/90 transition-colors">
