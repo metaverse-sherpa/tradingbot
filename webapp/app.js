@@ -1726,7 +1726,7 @@ function renderFreeStatsView(showPremiumBanner = false) {
                     <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
                 </div>
                 <div class="pt-2">
-                    <button onclick="navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${s.name}'); triggerBacktest(); }, 150);" class="w-full h-9 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                    <button onclick="resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${s.name}'); triggerBacktest(); }, 150);" class="w-full h-9 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                         <span class="material-symbols-outlined text-[14px]">science</span>
                         Backtest
                     </button>
@@ -2149,13 +2149,13 @@ function renderSettingsView() {
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
                     <div class="flex gap-3 pt-4">
                         ${hasLinkedCrypto ? `
-                        <button onclick="navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-primary to-[#3cd7ff] text-background font-bold text-xs uppercase rounded-lg shadow-lg cyan-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                        <button onclick="resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-primary to-[#3cd7ff] text-background font-bold text-xs uppercase rounded-lg shadow-lg cyan-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                             <span class="material-symbols-outlined text-[16px]">science</span>
                             Backtest Crypto
                         </button>
                         ` : ''}
                         ${hasLinkedStock ? `
-                        <button onclick="navigate('#/backtest'); setTimeout(() => { window.selectStrategy('Sherpa Velocity Pullback'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-[#ffdb3c] to-[#f9a826] text-background font-bold text-xs uppercase rounded-lg shadow-lg gold-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                        <button onclick="resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('Sherpa Velocity Pullback'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-[#ffdb3c] to-[#f9a826] text-background font-bold text-xs uppercase rounded-lg shadow-lg gold-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                             <span class="material-symbols-outlined text-[16px]">science</span>
                             Backtest Stocks
                         </button>
@@ -3218,7 +3218,7 @@ async function triggerBacktest() {
     
     const strategy = strategyEl ? strategyEl.value : 'Mean Reversion Scalper';
     const capital = capitalEl ? parseFloat(capitalEl.value) : 10000.0;
-    const risk = riskEl ? parseFloat(riskEl.value) : 1.5;
+    const risk = riskEl ? parseFloat(riskEl.value) : 1.0;
 
     STATE.backtest.running = true;
     renderView();
