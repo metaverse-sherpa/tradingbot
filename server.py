@@ -1174,7 +1174,7 @@ def _update_active_signals_cache():
     signals = [dict(r) for r in rows]
     
     # Calculate live PnL dynamically
-    CRYPTO_LEVERAGE = 10
+    CRYPTO_LEVERAGE = 20
     
     try:
         mdm = live_bot_multi.MarketDataManager()
@@ -1317,7 +1317,7 @@ def get_active_signals():
 def get_closed_signals():
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'closed' ORDER BY close_time DESC LIMIT 10")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' ORDER BY close_time DESC LIMIT 10")
         rows = c.fetchall()
     signals = [dict(r) for r in rows]
     

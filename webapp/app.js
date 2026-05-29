@@ -22,6 +22,7 @@ let STATE = {
     current_view: 'login',
     dashboard_tab: 'crypto',
     trades_mode: 'active',
+    signals_tab: 'active',
     expanded_trade_id: null,
     expanded_signal_id: null,
     is_loading_signals: false,
@@ -328,6 +329,18 @@ async function handleRoute() {
             apiRequest('/signals/closed')
         ]).then(([active, closed]) => {
             STATE.is_loading_signals = false;
+            
+            // Trigger desktop push notification if a new signal is found
+            if (active && STATE.active_signals.length > 0 && active.length > STATE.active_signals.length) {
+                const newSignal = active.find(s => !STATE.active_signals.some(old => old.id === s.id));
+                if (newSignal && window.Notification && Notification.permission === 'granted') {
+                    new Notification(`🛰️ New Alpha Signal: ${newSignal.symbol}`, {
+                        body: `${newSignal.strategy} • ${newSignal.side} Setup`,
+                        icon: '/favicon.png'
+                    });
+                }
+            }
+            
             if (active) STATE.active_signals = active;
             if (closed) STATE.closed_signals = closed;
             if (STATE.current_view === 'signals') {
@@ -374,6 +387,10 @@ window.addEventListener('hashchange', handleRoute);
 window.addEventListener('load', () => {
     handleRoute();
     initParticles();
+    // Prompt for Web Push Notification permissions on load
+    if (window.Notification && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
     // Check for new deployments dynamically every 30 seconds in the background
     setInterval(() => {
         if (STATE.user) {
@@ -515,11 +532,11 @@ function renderLoginView() {
                     <span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">terrain</span>
                     <h1 class="font-headline-md text-headline-md text-on-surface tracking-tight">Metaverse Sherpa</h1>
                 </div>
-                <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest opacity-80">Institutional-Grade AI Trading</p>
+                <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest opacity-80">Algorithmic Intelligence</p>
             </header>
             
-            <div class="mb-10 text-center">
-                <h2 class="font-display-lg text-display-lg text-white font-bold leading-tight">Trade Smarter.<br/>Not Harder.</h2>
+            <div class="mb-10 text-center max-w-[320px]">
+                <h2 class="font-body-lg text-body-lg text-white font-medium leading-relaxed">Summit the markets with real-time autonomous trading setups.</h2>
             </div>
             
             <div id="referral-banner-container" class="w-full"></div>
@@ -733,7 +750,7 @@ function renderDashboardView() {
         `;
     }
     
-    const activeStats = STATE.stats || STATE.free_stats || { cumulative_pnl: 0, win_rate: 0 };
+    const activeStats = STATE.stats ? (isCrypto ? STATE.stats.crypto : STATE.stats.stock) : { cumulative_pnl: 0, win_rate: 0 };
     const activeStrategy = STATE.user ? (isCrypto ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCrypto ? 'Mean Reversion Scalper' : 'None');
     const balance = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
     const activeTradesCount = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock')).length;
@@ -769,9 +786,9 @@ function renderDashboardView() {
     const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
     const privacyHoverHandlers = shouldBlurDollars ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(5px)')"` : '';
     
-    const pnlVal = activeStats.cumulative_pnl || 0;
+    const pnlVal = activeStats.overall_pnl !== undefined ? activeStats.overall_pnl : (activeStats.cumulative_pnl || 0);
     const startingCapital = balance - pnlVal;
-    const pnlPct = startingCapital > 0 ? (pnlVal / startingCapital) * 100 : 0;
+    const pnlPct = activeStats.overall_pnl_pct !== undefined ? activeStats.overall_pnl_pct : (startingCapital > 0 ? (pnlVal / startingCapital) * 100 : 0);
     
     const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
     const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
@@ -1026,11 +1043,6 @@ function renderTradesView() {
                     const sl_pct = ((sl - entry) / entry) * 100;
                     const tp_pct = ((tp - entry) / entry) * 100;
                     
-                    const current_pnl_pct = trade.roe || 0;
-                    const current_pnl_val = trade.unrealized_pnl || 0;
-                    const target_pnl_pct = Math.abs(tp_pct);
-                    const target_pnl_val = Math.abs(tp - entry) * (trade.qty || 0);
-                    
                     progressBarHtml = `
                         <div class="mt-4 pt-4 border-t border-white/5 space-y-4" onclick="event.stopPropagation()">
                             <h4 class="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Market Analysis & Setup</h4>
@@ -1038,38 +1050,6 @@ function renderTradesView() {
                                 <img src="/api/trades/chart?symbol=${encodeURIComponent(trade.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${trade.side}&open_ts=${trade.open_time}&type=${trade.type}" class="w-full h-full object-cover" alt="Trade Chart" />
                             </div>
                             
-                            <div class="bg-[#121212] p-4 rounded-lg border border-white/5 space-y-4">
-                                <div class="space-y-1 font-mono text-[11px] text-left leading-relaxed text-on-surface-variant">
-                                    <div class="flex items-center gap-1.5 font-bold text-xs text-on-surface">
-                                        <span class="inline-block w-2.5 h-2.5 rounded-full ${current_pnl_val >= 0 ? 'bg-tertiary animate-pulse shadow-[0_0_8px_#3cd7ff]' : 'bg-error animate-pulse shadow-[0_0_8px_#ff5c5c]'}"></span>
-                                        ${trade.symbol} <span class="material-symbols-outlined text-[14px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${trade.side === 'LONG' ? 'trending_up' : 'trending_down'}</span>
-                                    </div>
-                                    <div>
-                                        • Entry: <span class="text-primary font-bold">$${entry.toFixed(2)}</span> | SL: <span class="text-error font-bold">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span> | TP: <span class="text-tertiary font-bold">$${tp.toFixed(2)} (+${tp_pct.toFixed(0)}%)</span>
-                                    </div>
-                                </div>
-
-                                <div class="relative py-2">
-                                    <div class="h-1 w-full bg-surface-container rounded-full relative">
-                                        <div class="absolute w-3.5 h-3.5 -top-1.5 bg-[#00E5FF] rounded-full border-2 border-white shadow-[0_0_8px_#00E5FF]" style="left: calc(${pct}% - 7px);"></div>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between items-center text-[10px] text-on-surface-variant font-mono">
-                                    <div class="text-left">
-                                        <div class="font-bold text-error">${sl_pct.toFixed(1)}%</div>
-                                        <div>$${sl.toFixed(2)}</div>
-                                    </div>
-                                    <div class="text-center">
-                                        <div class="font-bold text-white">ENTRY</div>
-                                        <div>$${entry.toFixed(2)}</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="font-bold text-tertiary">+${tp_pct.toFixed(1)}%</div>
-                                        <div>$${tp.toFixed(2)}</div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <button onclick="confirmClosePosition('${trade.id}', '${trade.type}', '${trade.symbol}')" class="w-full h-10 bg-error/15 hover:bg-error/25 border border-error/30 text-error font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 mt-2 cursor-pointer transition-all active:scale-[0.98]">
                                 <span class="material-symbols-outlined text-[16px]">close</span>
                                 Market Close ${trade.symbol}
@@ -1556,7 +1536,9 @@ function renderSettingsView() {
     
     // Parse expiration details
     let expiryText = 'Not Premium';
-    if (isPremium && user.premium_expiry) {
+    if (isAdmin) {
+        expiryText = 'Lifetime Active (Admin)';
+    } else if (isPremium && user.premium_expiry) {
         expiryText = `Expires: ${new Date(user.premium_expiry * 1000).toLocaleDateString()}`;
     } else if (isPremium) {
         expiryText = 'Lifetime Active';
@@ -1575,11 +1557,11 @@ function renderSettingsView() {
                     </h3>
                     <p class="text-xs text-on-surface-variant mt-1">${expiryText}</p>
                 </div>
-                ${isPremium ? `
+                ${isPremium ? (isAdmin ? '' : `
                     <button onclick="showRenewModal()" class="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg font-bold hover:brightness-110 transition-all text-xs flex items-center gap-1 shadow-[0_0_8px_rgba(212,175,55,0.3)]">
                         <span class="material-symbols-outlined text-[14px]">autorenew</span> Renew
                     </button>
-                ` : `
+                `) : `
                     <a href="#/premium" class="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg font-bold hover:brightness-110 transition-all text-xs">
                         Upgrade
                     </a>
@@ -1780,6 +1762,22 @@ function renderSettingsView() {
                             <option value="None" ${user.active_stock_strategy === 'None' ? 'selected' : ''}>None (Disabled)</option>
                         </select>
                     </div>
+                    ${(hasLinkedCrypto || hasLinkedStock) ? `
+                    <div class="flex gap-2 pt-2">
+                        ${hasLinkedCrypto ? `
+                        <button onclick="navigate('#/backtest'); setTimeout(() => { document.getElementById('bt-strategy').value = '${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'; document.getElementById('bt-capital').value = '${STATE.crypto_balance || 1000}'; document.getElementById('bt-risk').value = '${user.risk_pct || 1.5}'; document.getElementById('bt-risk-val').innerText = '${user.risk_pct || 1.5}%'; triggerBacktest(); }, 100);" class="flex-1 h-10 bg-primary/10 border border-primary/30 text-primary font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-[14px]">science</span>
+                            Backtest Crypto
+                        </button>
+                        ` : ''}
+                        ${hasLinkedStock ? `
+                        <button onclick="navigate('#/backtest'); setTimeout(() => { document.getElementById('bt-strategy').value = 'Sherpa Velocity Pullback'; document.getElementById('bt-capital').value = '${STATE.stock_balance || 10000}'; document.getElementById('bt-risk').value = '${user.stock_risk_pct || 1.0}'; document.getElementById('bt-risk-val').innerText = '${user.stock_risk_pct || 1.0}%'; triggerBacktest(); }, 100);" class="flex-1 h-10 bg-secondary-container/10 border border-secondary-container/30 text-secondary-container font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-secondary-container/20 transition-all cursor-pointer">
+                            <span class="material-symbols-outlined text-[14px]">science</span>
+                            Backtest Stocks
+                        </button>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                 </div>
             </section>
             
@@ -2033,7 +2031,8 @@ function renderSignalCard(sig, isLanding = false) {
     
     const current_pnl_pct = sig.pnl_pct || 0;
     const current_pnl_val = sig.pnl_usdt || 0;
-    const target_pnl_pct = Math.abs(tp_pct);
+    const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
+    const target_pnl_pct = Math.abs(tp_pct) * (isCryptoSignal ? 20.0 : 1.0);
     const pos_size = sig.position_size || (current_pnl_pct !== 0 ? (current_pnl_val / (current_pnl_pct / 100)) : 1000);
     const simulated_target_val = (target_pnl_pct / 100) * pos_size;
 
@@ -2109,16 +2108,74 @@ function renderSignalCard(sig, isLanding = false) {
             </div>
             <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                    SL: <span class="text-on-surface">$${sl.toFixed(2)} (${sl_pct.toFixed(0)}%)</span>
+                    SL: <span class="text-on-surface">$${sl.toFixed(4)} (${sl_pct.toFixed(0)}%)</span>
                 </div>
                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                    TP: <span class="text-on-surface">$${tp.toFixed(2)} (+${tp_pct.toFixed(0)}%)</span>
+                    TP: <span class="text-on-surface">$${tp.toFixed(4)} (+${tp_pct.toFixed(0)}%)</span>
                 </div>
             </div>
             ${progressBarHtml}
         </div>
     `;
 }
+
+function renderClosedSignalCard(sig) {
+    const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+    const privacyStyle = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
+    const privacyClass = isPrivacyOn ? 'privacy-blur' : '';
+    
+    const entry = sig.entry_price || 0;
+    const isCrypto = sig.symbol && sig.symbol.includes('/');
+    const exitPrice = sig.status === 'tp' ? (sig.tp_price || 0) : (sig.sl_price || 0);
+    const pnl_pct = sig.pnl_pct || 0;
+    
+    const leverage = isCrypto ? 20.0 : 1.0;
+    const display_pnl_pct = pnl_pct * leverage;
+    
+    const isWin = display_pnl_pct >= 0;
+    const statusText = sig.status === 'tp' ? '🏆 Take Profit' : (sig.status === 'sl' ? '❌ Stop Loss' : '🔒 Closed');
+    const statusColor = sig.status === 'tp' ? 'text-tertiary' : (sig.status === 'sl' ? 'text-error' : 'text-[#ffdb3c]');
+    const pnlColor = isWin ? 'text-tertiary' : 'text-error';
+    const cardBorderColor = sig.status === 'tp' ? 'border-tertiary/20' : (sig.status === 'sl' ? 'border-error/20' : 'border-white/5');
+    
+    const openTimeStr = sig.open_time ? new Date(sig.open_time * (sig.open_time > 1000000000000 ? 1 : 1000)).toLocaleString() : 'N/A';
+    const closeTimeStr = sig.close_time ? new Date(sig.close_time * (sig.close_time > 1000000000000 ? 1 : 1000)).toLocaleString() : 'N/A';
+
+    return `
+        <div class="glass-card rounded-lg p-4 border ${cardBorderColor} flex flex-col gap-3 transition-all hover:bg-white/5">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h4 class="font-bold text-on-surface flex items-center gap-1">
+                        ${sig.symbol}
+                        <span class="text-[10px] ${statusColor} font-bold px-2 py-0.5 rounded-full bg-white/5 ml-2">${statusText}</span>
+                    </h4>
+                    <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-numeric-data text-numeric-data font-bold text-lg ${pnlColor}">
+                        ${isWin ? '+' : ''}${display_pnl_pct.toFixed(2)}%
+                    </p>
+                    <p class="text-on-surface-variant/50 text-[10px] uppercase tracking-wider mt-0.5 ${privacyClass}" ${privacyStyle}>
+                        ${isWin ? '+' : ''}$${(sig.pnl_usdt || 0).toFixed(2)} USDT
+                    </p>
+                </div>
+            </div>
+            <div class="flex justify-between items-center pt-3 border-t border-white/10 font-numeric-data text-numeric-data text-sm text-on-surface-variant">
+                <div>Entry: <span class="text-on-surface">$${entry.toFixed(4)}</span></div>
+                <div>Exit: <span class="text-on-surface">$${exitPrice.toFixed(4)}</span></div>
+            </div>
+            <div class="flex justify-between items-center text-[10px] text-on-surface-variant/60 font-mono mt-1 pt-1">
+                <div>Opened: <span>${openTimeStr}</span></div>
+                <div>Closed: <span>${closeTimeStr}</span></div>
+            </div>
+        </div>
+    `;
+}
+
+window.setSignalsTab = function(tab) {
+    STATE.signals_tab = tab;
+    renderView();
+};
 
 function renderSignalsView() {
     if (STATE.is_loading_signals) {
@@ -2150,19 +2207,38 @@ function renderSignalsView() {
         `;
     }
 
+    const currentTab = STATE.signals_tab || 'active';
+    const listHtml = currentTab === 'active' 
+        ? (STATE.active_signals.length === 0 ? `
+            <div class="text-center py-12">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
+            </div>
+        ` : STATE.active_signals.map(s => renderSignalCard(s)).join(''))
+        : (STATE.closed_signals.length === 0 ? `
+            <div class="text-center py-12">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No closed signals</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Closed signals will appear here once resolved.</p>
+            </div>
+        ` : STATE.closed_signals.map(s => renderClosedSignalCard(s)).join(''));
+
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto animate-fade-in">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
             
+            <!-- Tabs -->
+            <div class="flex justify-between items-center mb-6">
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 w-full">
+                    <button onclick="setSignalsTab('active')" class="flex-1 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${currentTab === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Active Signals</button>
+                    <button onclick="setSignalsTab('closed')" class="flex-1 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${currentTab === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Closed Signals</button>
+                </div>
+            </div>
+            
             <div class="space-y-stack-gap">
-                ${STATE.active_signals.length === 0 ? `
-                    <div class="text-center py-12">
-                        <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
-                        <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                        <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
-                    </div>
-                ` : STATE.active_signals.map(s => renderSignalCard(s)).join('')}
+                ${listHtml}
             </div>
         </main>
     `;

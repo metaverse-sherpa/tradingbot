@@ -98,16 +98,38 @@ def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity
             SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?
             WHERE id = ?
         ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, user_id))
+        
+        # Sync to Telegram bot if linked
+        c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row and row[0]:
+            c.execute('''
+                UPDATE Users
+                SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?
+                WHERE telegram_chat_id = ?
+            ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, row[0]))
 
 def update_web_user_symbols(user_id, symbols_str):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('UPDATE WebUsers SET enabled_symbols = ? WHERE id = ?', (symbols_str, user_id))
+        
+        # Sync to Telegram bot if linked
+        c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row and row[0]:
+            c.execute('UPDATE Users SET enabled_symbols = ? WHERE telegram_chat_id = ?', (symbols_str, row[0]))
 
 def update_web_user_status(user_id, is_active):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('UPDATE WebUsers SET is_active = ? WHERE id = ?', (is_active, user_id))
+        
+        # Sync to Telegram bot if linked
+        c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row and row[0]:
+            c.execute('UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?', (1 if is_active else 0, row[0]))
 
 def update_web_user_strategy(user_id, strategy_type, strategy_name):
     with db_session() as conn:
@@ -116,6 +138,15 @@ def update_web_user_strategy(user_id, strategy_type, strategy_name):
             c.execute('UPDATE WebUsers SET active_crypto_strategy = ? WHERE id = ?', (strategy_name, user_id))
         else:
             c.execute('UPDATE WebUsers SET active_stock_strategy = ? WHERE id = ?', (strategy_name, user_id))
+            
+        # Sync to Telegram bot if linked
+        c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row and row[0]:
+            if strategy_type == "crypto":
+                c.execute('UPDATE Users SET active_crypto_strategy = ?, strategy = ? WHERE telegram_chat_id = ?', (strategy_name, strategy_name, row[0]))
+            else:
+                c.execute('UPDATE Users SET active_stock_strategy = ? WHERE telegram_chat_id = ?', (strategy_name, row[0]))
 
 def update_web_user_wallet(user_id, source_wallet):
     with db_session() as conn:

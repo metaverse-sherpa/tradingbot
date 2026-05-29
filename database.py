@@ -430,7 +430,13 @@ def get_all_active_users():
 def set_active(chat_id, is_active):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?", (1 if is_active else 0, chat_id))
+        val = 1 if is_active else 0
+        c.execute("UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?", (val, chat_id))
+        # Sync to WebUsers if linked
+        try:
+            c.execute("UPDATE WebUsers SET is_active = ? WHERE telegram_chat_id = ?", (val, chat_id))
+        except Exception as e:
+            print(f"Sync to WebUsers status failed: {e}")
 
 def update_user_preference(chat_id, key, value):
     with db_session() as conn:
@@ -460,6 +466,23 @@ def update_user_preference(chat_id, key, value):
             # Use parameter substitution for the value, but we still have to format the column name
             # since SQL parameters don't work for column/table names. Whitelist ensures safety.
             c.execute(f"UPDATE Users SET {col_name} = ? WHERE telegram_chat_id = ?", (value, chat_id))
+            
+            # Sync corresponding fields to WebUsers if linked
+            web_sync_cols = {
+                "active_crypto_strategy": "active_crypto_strategy",
+                "active_stock_strategy": "active_stock_strategy",
+                "risk_pct": "risk_pct",
+                "stock_risk_pct": "stock_risk_pct",
+                "custom_equity_type": "custom_equity_type",
+                "custom_equity_value": "custom_equity_value",
+                "hide_dollars": "hide_dollars"
+            }
+            if key in web_sync_cols:
+                web_col = web_sync_cols[key]
+                try:
+                    c.execute(f"UPDATE WebUsers SET {web_col} = ? WHERE telegram_chat_id = ?", (value, chat_id))
+                except Exception as e:
+                    print(f"Sync preference {key} to WebUsers failed: {e}")
 
 def increment_opened(chat_id):
     with db_session() as conn:
