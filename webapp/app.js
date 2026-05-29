@@ -3756,37 +3756,39 @@ window.showStrategyGuideModal = function(strategyName) {
             contentHtml = `
                 <div class="space-y-4 text-left">
                     <div class="flex items-center gap-3">
-                        <span class="text-3xl">${guide.icon}</span>
+                        <span class="text-2xl">${guide.icon}</span>
                         <div>
-                            <h2 class="text-xl font-bold text-on-surface">${guide.title}</h2>
-                            <p class="text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Strategy Overview</p>
+                            <h2 class="text-lg font-bold text-on-surface">${guide.title}</h2>
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Strategy Overview</p>
                         </div>
                     </div>
 
-                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-4 text-sm max-h-[300px] overflow-y-auto custom-scrollbar">
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Philosophy</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
-                        </div>
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Indicators</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
-                        </div>
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Execution Pace</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
-                        </div>
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Drawdown Profile</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
-                        </div>
-                    </div>
-
+                    <!-- 1. Infographic image displayed first -->
                     <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center group cursor-zoom-in" onclick="window.open('${guide.img}', '_blank')">
                         <img src="${guide.img}" alt="${guide.title} Infographic" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
                             <span class="text-xs text-white font-bold uppercase tracking-wider">View Full Infographic</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Scrollable descriptive text loaded below -->
+                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-3.5 text-xs max-h-[180px] overflow-y-auto custom-scrollbar">
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Philosophy</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Indicators</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Execution Pace</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Drawdown Profile</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
                         </div>
                     </div>
                 </div>
@@ -3795,42 +3797,44 @@ window.showStrategyGuideModal = function(strategyName) {
             contentHtml = `
                 <div class="space-y-4 text-left">
                     <div class="flex items-center gap-3">
-                        <span class="text-3xl">📊</span>
+                        <span class="text-2xl">📊</span>
                         <div>
-                            <h2 class="text-xl font-bold text-on-surface">3-Year Strategy Comparison</h2>
-                            <p class="text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Performance Comparison Matrix</p>
+                            <h2 class="text-lg font-bold text-on-surface">3-Year Strategy Comparison</h2>
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Performance Comparison Matrix</p>
                         </div>
                     </div>
 
-                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-4 text-sm max-h-[300px] overflow-y-auto custom-scrollbar">
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Focus</span>
-                            <p class="text-on-surface mt-0.5">Volatility Extremes vs Wick Rejection vs Equities Pullbacks</p>
-                        </div>
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Active Basket</span>
-                            <p class="text-on-surface mt-0.5">29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40</p>
-                        </div>
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Trigger Logic</span>
-                            <p class="text-on-surface mt-0.5">Close outside bands vs Wick pierce & close inside vs 3-Period RSI &lt; 10</p>
-                        </div>
-                        <div>
-                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Risk Profile</span>
-                            <p class="text-on-surface mt-0.5">Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)</p>
-                        </div>
-                        <div class="pt-1 border-t border-white/5">
-                            <p class="text-xs text-on-surface-variant italic leading-relaxed">
-                                💡 <strong>Recommendation</strong>: Use <em>Mean Reversion</em> if you prefer maximum trade frequency and compounding potential. Use <em>Valkyrie Elite</em> if you prioritize capital safety and smooth growth curves in crypto. Activate <em>Sherpa Velocity Pullback (SVP)</em> to diversify into high-liquidity megacap US equities with low drawdown.
-                            </p>
-                        </div>
-                    </div>
-
+                    <!-- 1. Comparison chart displayed first -->
                     <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center group cursor-zoom-in" onclick="window.open('/api/charts/strategy_comparison.png', '_blank')">
                         <img src="/api/charts/strategy_comparison.png" alt="Strategy Comparison Chart" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
                             <span class="text-xs text-white font-bold uppercase tracking-wider">View Full Performance Chart</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Scrollable Comparative Matrix text loaded below -->
+                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-3.5 text-xs max-h-[180px] overflow-y-auto custom-scrollbar">
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Focus</span>
+                            <p class="text-on-surface mt-0.5">Volatility Extremes vs Wick Rejection vs Equities Pullbacks</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Active Basket</span>
+                            <p class="text-on-surface mt-0.5">29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Trigger Logic</span>
+                            <p class="text-on-surface mt-0.5">Close outside bands vs Wick pierce & close inside vs 3-Period RSI &lt; 10</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Risk Profile</span>
+                            <p class="text-on-surface mt-0.5">Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)</p>
+                        </div>
+                        <div class="pt-1.5 border-t border-white/5">
+                            <p class="text-[11px] text-on-surface-variant italic leading-relaxed">
+                                💡 <strong>Recommendation</strong>: Use <em>Mean Reversion</em> if you prefer maximum trade frequency and compounding potential. Use <em>Valkyrie Elite</em> if you prioritize capital safety and smooth growth curves in crypto. Activate <em>Sherpa Velocity Pullback (SVP)</em> to diversify into high-liquidity megacap US equities with low drawdown.
+                            </p>
                         </div>
                     </div>
                 </div>
