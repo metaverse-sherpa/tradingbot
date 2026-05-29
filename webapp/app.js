@@ -637,21 +637,21 @@ function renderRegisterView() {
 function renderLandingView() {
     // Top Header for the landing page with premium Metaverse Sherpa theme
     const headerHtml = `
-        <div class="relative overflow-hidden rounded-2xl mb-8 p-8 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
+        <div class="relative overflow-hidden rounded-2xl mb-4 p-6 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
             <!-- Mountain neon glow in the background -->
             <div class="absolute -right-10 -top-10 w-64 h-64 bg-primary/30 rounded-full blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-[80px] pointer-events-none"></div>
             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
             
             <div class="relative z-10 flex flex-col items-center">
-                <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-primary/30 to-tertiary/30 border border-primary/40 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(60,215,255,0.2)]">
-                    <span class="material-symbols-outlined text-3xl text-primary-container" style="font-variation-settings: 'FILL' 1;">terrain</span>
+                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-primary/30 to-tertiary/30 border border-primary/40 flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(60,215,255,0.2)]">
+                    <span class="material-symbols-outlined text-2xl text-primary-container" style="font-variation-settings: 'FILL' 1;">terrain</span>
                 </div>
                 <h1 class="font-headline-md text-headline-md text-transparent bg-clip-text bg-gradient-to-r from-primary-fixed-dim via-white to-tertiary-fixed-dim tracking-tight mb-1">Metaverse Sherpa</h1>
                 <p class="text-[10px] text-on-surface-variant max-w-[320px] leading-relaxed uppercase tracking-widest font-semibold text-primary/80">
                     Algorithmic Intelligence
                 </p>
-                <div class="h-[1px] w-20 bg-gradient-to-r from-transparent via-primary/50 to-transparent my-3"></div>
+                <div class="h-[1px] w-20 bg-gradient-to-r from-transparent via-primary/50 to-transparent my-2"></div>
                 <p class="text-sm text-on-surface-variant/90 font-medium max-w-[320px] leading-relaxed">
                     Summit the markets with real-time autonomous trading setups.
                 </p>
@@ -688,12 +688,12 @@ function renderLandingView() {
             ${headerHtml}
             <div class="relative">
                 <!-- Sticky CTA Panel -->
-                <div class="sticky top-24 z-20 mb-8 pointer-events-none">
-                    <div class="p-6 rounded-2xl border-2 border-primary/60 text-center shadow-[0_0_30px_rgba(60,215,255,0.4)] bg-gradient-to-b from-[#0c1f30]/95 to-[#050a10]/95 backdrop-blur-xl pointer-events-auto relative overflow-hidden mx-auto max-w-[380px] transition-all hover:border-primary hover:shadow-[0_0_40px_rgba(60,215,255,0.6)]">
+                <div class="sticky top-20 z-20 mb-6 pointer-events-none">
+                    <div class="p-5 rounded-2xl border-2 border-primary/60 text-center shadow-[0_0_30px_rgba(60,215,255,0.4)] bg-gradient-to-b from-[#0c1f30]/95 to-[#050a10]/95 backdrop-blur-xl pointer-events-auto relative overflow-hidden mx-auto max-w-[380px] transition-all hover:border-primary hover:shadow-[0_0_40px_rgba(60,215,255,0.6)]">
                         <div class="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-primary via-tertiary to-secondary-container"></div>
                         <div class="absolute -inset-1 bg-gradient-to-r from-primary/30 via-transparent to-tertiary/30 blur-2xl z-0 pointer-events-none"></div>
-                        <div class="relative z-10 flex flex-col gap-4 text-left">
-                            <button onclick="triggerGoogleLogin()" class="w-full h-12 bg-white text-surface-dim font-label-md text-label-md rounded-full flex items-center justify-center gap-3 hover:bg-white/90 transition-colors">
+                        <div class="relative z-10 flex flex-col gap-3 text-left">
+                            <button onclick="triggerGoogleLogin()" class="w-full h-11 bg-white text-surface-dim font-label-md text-label-md rounded-full flex items-center justify-center gap-3 hover:bg-white/90 transition-colors">
                                 <svg height="20" viewbox="0 0 24 24" width="20">
                                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
                                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
@@ -703,21 +703,21 @@ function renderLandingView() {
                                 Continue with Google
                             </button>
                             
-                            <div class="flex items-center gap-4 py-1">
+                            <div class="flex items-center gap-4">
                                 <div class="h-[1px] flex-1 bg-white/10"></div>
                                 <span class="font-label-sm text-label-sm text-on-surface-variant/50">or</span>
                                 <div class="h-[1px] flex-1 bg-white/10"></div>
                             </div>
                             
-                            <form id="login-form" class="space-y-4" onsubmit="handleEmailLogin(event)">
-                                <input id="login-email" autocomplete="username" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
-                                <input id="login-password" autocomplete="current-password" class="w-full h-12 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
-                                <button type="submit" class="w-full h-12 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg neon-button-glow hover:brightness-110 active:scale-[0.98] transition-all mt-2">
+                            <form id="login-form" class="space-y-3" onsubmit="handleEmailLogin(event)">
+                                <input id="login-email" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
+                                <input id="login-password" autocomplete="current-password" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Password" type="password" required/>
+                                <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg neon-button-glow hover:brightness-110 active:scale-[0.98] transition-all mt-1">
                                     Sign In
                                 </button>
                             </form>
                             
-                            <div class="flex flex-col items-center gap-2 mt-2">
+                            <div class="flex flex-col items-center gap-1 mt-1">
                                 <a class="font-label-md text-label-md text-primary hover:opacity-80 transition-opacity" href="#">Forgot password?</a>
                                 <p class="font-label-sm text-label-sm text-on-surface-variant text-center">Don't have an account? <a class="text-primary font-bold" href="#/register">Create one</a></p>
                             </div>
