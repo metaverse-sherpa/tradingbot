@@ -1533,42 +1533,37 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             target_pnl_str = f"{'+' if target_pnl_val >= 0 else '-'}${abs(target_pnl_val):.2f}"
             
             is_premium = user.get('is_premium', False)
-            if is_premium:
-                sl_str = f"${sl:.2f} ({sl_pct_val:+.0f}%)" if sl > 0 else "None"
-                tp_str = f"${tp:.2f} ({tp_pct_val:+.0f}%)" if tp > 0 else "None"
-                entry_str = f"${entry:.2f}"
-            else:
-                sl_str = "████"
-                tp_str = "████"
-                entry_str = "████"
-            
             sym_link = get_symbol_link(sym, text=f"*{sym}*")
             caption = (
                 f"🛰️ *ACTIVE FREE SIGNAL* (Forward Test)\n"
                 f"🤖 Strategy: *{strat}*\n\n"
                 f"{'🟢' if side_str == 'LONG' else '🔴'} {sym_link} ({side_str})\n"
-                f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
-                f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
+                f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})"
             )
             
-            if not is_premium:
-                caption += "\n\n_🔒 Upgrade to Premium to unlock Entry, SL, TP, and unblurred charts!_"
+            if is_premium:
+                sl_str = f"${sl:.2f} ({sl_pct_val:+.0f}%)" if sl > 0 else "None"
+                tp_str = f"${tp:.2f} ({tp_pct_val:+.0f}%)" if tp > 0 else "None"
+                entry_str = f"${entry:.2f}"
+                caption += f"\n• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
+            else:
+                caption += "\n\n_🔒 Upgrade to Premium to unlock Entry, SL, TP, and chart details!_"
             
             # Conditionally generate the 'Open Live Trade' button
             reply_markup = None
-            clean_t_sym = sym.replace('/', '')
-            if clean_t_sym not in active_live_symbols:
-                reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(f"▶️ Open Live Trade", callback_data=f"manual_exec_{t['id']}")]])
+            if is_premium:
+                clean_t_sym = sym.replace('/', '')
+                if clean_t_sym not in active_live_symbols:
+                    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton(f"▶️ Open Live Trade", callback_data=f"manual_exec_{t['id']}")]])
             
-            if chart_file and os.path.exists(chart_file):
+            if is_premium and chart_file and os.path.exists(chart_file):
                 with open(chart_file, 'rb') as photo:
                     msg = await context.bot.send_photo(
                         chat_id=chat_id,
                         photo=photo,
                         caption=caption,
                         reply_markup=reply_markup,
-                        parse_mode="Markdown",
-                        has_spoiler=(not is_premium)
+                        parse_mode="Markdown"
                     )
                     photo_ids.append(msg.message_id)
                 if chart_file != cached_chart_path:
