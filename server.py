@@ -142,7 +142,7 @@ def forgot_password():
         return jsonify({"error": "No account found with that email address."}), 404
         
     if user.get("google_id") and not user.get("password_hash"):
-        return jsonify({"error": "This email address is registered with a Google account. Please use 'Continue with Google' to sign in."}), 400
+        return jsonify({"is_google_auth": True, "message": "This email address is registered with a Google account. Please use 'Continue with Google' to sign in."}), 200
         
     import secrets
     import time

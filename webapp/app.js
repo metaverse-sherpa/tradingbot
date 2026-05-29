@@ -2478,8 +2478,17 @@ async function handleForgotPassword(e) {
     
     const res = await apiRequest('/auth/forgot-password', 'POST', { email });
     if (res) {
-        showToast(res.message || "Password reset link sent to your email.");
-        setLandingAuthMode('login');
+        if (res.is_google_auth) {
+            showToast(res.message, "warning");
+            setLandingAuthMode('login');
+            // Allow a small delay for UI to render the login form before triggering Google popup
+            setTimeout(() => {
+                triggerGoogleLogin();
+            }, 100);
+        } else {
+            showToast(res.message || "Password reset link sent to your email.");
+            setLandingAuthMode('login');
+        }
     }
 }
 
