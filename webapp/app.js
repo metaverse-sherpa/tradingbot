@@ -16,6 +16,7 @@ let STATE = {
     history: [],
     free_history: [],
     active_signals: [],
+    active_signals_sort_by: 'pnl',
     closed_signals: [],
     stats: null,
     free_stats: null,
@@ -410,6 +411,11 @@ async function handleRoute() {
 
 window.setDashboardTab = function(tab) {
     STATE.dashboard_tab = tab;
+    renderView();
+};
+
+window.toggleActiveSignalsSort = function() {
+    STATE.active_signals_sort_by = STATE.active_signals_sort_by === 'pnl' ? 'date' : 'pnl';
     renderView();
 };
 
@@ -879,14 +885,31 @@ function renderDashboardView() {
                     ${tierBadge}
                 </div>
                 
-                <h2 class="font-headline-sm text-headline-sm text-on-surface mt-6">🛰️ Active Signals</h2>
-                    ${STATE.active_signals.length === 0 ? `
-                        <div class="text-center py-12">
-                            <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
-                            <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                            <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
-                        </div>
-                    ` : STATE.active_signals.map(s => renderSignalCard(s)).join('')}
+                <div class="flex items-center justify-between mt-6">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
+                    <button onclick="toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
+                        <span class="material-symbols-outlined text-[16px]">${STATE.active_signals_sort_by === 'pnl' ? 'trending_up' : 'calendar_month'}</span>
+                        <span>Sorted by: ${STATE.active_signals_sort_by === 'pnl' ? 'PnL' : 'Date'}</span>
+                    </button>
+                </div>
+                
+                <div class="space-y-stack-gap">
+                    ${(() => {
+                        const sorted = [...STATE.active_signals].sort((a, b) => {
+                            if (STATE.active_signals_sort_by === 'date') {
+                                return (b.open_time || 0) - (a.open_time || 0);
+                            } else {
+                                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+                            }
+                        });
+                        return sorted.length === 0 ? `
+                            <div class="text-center py-12">
+                                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
+                            </div>
+                        ` : sorted.map(s => renderSignalCard(s)).join('');
+                    })()}
                 </div>
             </main>
         `;
@@ -956,14 +979,32 @@ function renderDashboardView() {
                     </a>
                 </div>
                 
-                <h2 class="font-headline-sm text-headline-sm text-on-surface pt-4">🛰️ Active Signals</h2>
-                ${STATE.active_signals.length === 0 ? `
-                    <div class="text-center py-12">
-                        <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
-                        <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                        <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
-                    </div>
-                ` : STATE.active_signals.map(s => renderSignalCard(s)).join('')}
+                <div class="flex items-center justify-between pt-4">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
+                    <button onclick="toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
+                        <span class="material-symbols-outlined text-[16px]">${STATE.active_signals_sort_by === 'pnl' ? 'trending_up' : 'calendar_month'}</span>
+                        <span>Sorted by: ${STATE.active_signals_sort_by === 'pnl' ? 'PnL' : 'Date'}</span>
+                    </button>
+                </div>
+                
+                <div class="space-y-stack-gap">
+                    ${(() => {
+                        const sorted = [...STATE.active_signals].sort((a, b) => {
+                            if (STATE.active_signals_sort_by === 'date') {
+                                return (b.open_time || 0) - (a.open_time || 0);
+                            } else {
+                                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+                            }
+                        });
+                        return sorted.length === 0 ? `
+                            <div class="text-center py-12">
+                                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
+                            </div>
+                        ` : sorted.map(s => renderSignalCard(s)).join('');
+                    })()}
+                </div>
             </div>
         `;
     } else {
