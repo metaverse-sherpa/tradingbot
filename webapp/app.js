@@ -2520,7 +2520,13 @@ async function handleEmailRegister(e) {
 async function triggerGoogleLogin() {
     // Falls back to direct instructions if Google SDK is uninitialized/blocked
     if (window.google) {
-        window.google.accounts.id.prompt();
+        // Clear the Google One Tap cooldown cookie so manual clicks always work
+        document.cookie = "g_state=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT";
+        window.google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                console.log("Google Sign-In prompt suppressed or skipped:", notification.getNotDisplayedReason(), notification.getSkippedReason());
+            }
+        });
     } else {
         showToast("Initializing Google Sign-in... Please try again in a moment.", "warning");
         initGoogleSignIn();
