@@ -363,37 +363,10 @@ async function handleRoute() {
         STATE.current_view = 'backtest';
     } else if (hash === '#/signals') {
         STATE.current_view = 'signals';
-        if (STATE.active_signals.length === 0) {
-            STATE.is_loading_signals = true;
-        }
-        
         // Render immediately using cached data for a lightning fast load
         renderView();
-        
         // Fetch fresh data in the background (Stale-While-Revalidate)
-        Promise.all([
-            apiRequest('/signals/active'),
-            apiRequest('/signals/closed')
-        ]).then(([active, closed]) => {
-            STATE.is_loading_signals = false;
-            
-            // Trigger desktop push notification if a new signal is found
-            if (active && STATE.active_signals.length > 0 && active.length > STATE.active_signals.length) {
-                const newSignal = active.find(s => !STATE.active_signals.some(old => old.id === s.id));
-                if (newSignal && window.Notification && Notification.permission === 'granted') {
-                    new Notification(`🛰️ New Alpha Signal: ${newSignal.symbol}`, {
-                        body: `${newSignal.strategy} • ${newSignal.side} Setup`,
-                        icon: '/favicon.png'
-                    });
-                }
-            }
-            
-            if (active) STATE.active_signals = active;
-            if (closed) STATE.closed_signals = closed;
-            if (STATE.current_view === 'signals') {
-                renderView();
-            }
-        });
+        window.refreshSignals(STATE.active_signals.length === 0);
     } else if (hash === '#/premium') {
         STATE.current_view = 'premium';
     } else if (hash === '#/referral') {
@@ -443,6 +416,43 @@ window.toggleTradeExpand = function(tradeId) {
     renderView();
 };
 
+window.refreshSignals = function(showSpinner = false) {
+    if (showSpinner) {
+        STATE.is_loading_signals = true;
+        renderView();
+    }
+    
+    return Promise.all([
+        apiRequest('/signals/active'),
+        apiRequest('/signals/closed')
+    ]).then(([active, closed]) => {
+        STATE.is_loading_signals = false;
+        
+        // Trigger desktop push notification if a new signal is found
+        if (active && STATE.active_signals.length > 0 && active.length > STATE.active_signals.length) {
+            const newSignal = active.find(s => !STATE.active_signals.some(old => old.id === s.id));
+            if (newSignal && window.Notification && Notification.permission === 'granted') {
+                new Notification(`🛰️ New Alpha Signal: ${newSignal.symbol}`, {
+                    body: `${newSignal.strategy} • ${newSignal.side} Setup`,
+                    icon: '/favicon.png'
+                });
+            }
+        }
+        
+        if (active) STATE.active_signals = active;
+        if (closed) STATE.closed_signals = closed;
+        if (STATE.current_view === 'signals') {
+            renderView();
+        }
+    }).catch(err => {
+        console.error("Error refreshing signals:", err);
+        STATE.is_loading_signals = false;
+        if (STATE.current_view === 'signals') {
+            renderView();
+        }
+    });
+};
+
 window.addEventListener('hashchange', handleRoute);
 window.addEventListener('load', () => {
     handleRoute();
@@ -461,6 +471,13 @@ window.addEventListener('load', () => {
             }
         }
     }, 30000);
+    
+    // Auto-refresh Alpha Signals every 60 seconds if active on that page
+    setInterval(() => {
+        if (STATE.current_view === 'signals' && !STATE.is_loading_signals) {
+            window.refreshSignals(false);
+        }
+    }, 60000);
 });
 
 // ----------------- Bottom Navigation Component -----------------
@@ -2543,7 +2560,12 @@ function renderSignalsView() {
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto animate-fade-in">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
+                <button onclick="window.refreshSignals(true)" class="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all text-on-surface-variant hover:text-primary active:scale-95 group" title="Refresh Signals">
+                    <span class="material-symbols-outlined text-[20px] ${STATE.is_loading_signals ? 'animate-spin text-primary' : 'group-hover:rotate-180 transition-transform duration-500'}">refresh</span>
+                </button>
+            </div>
             
             <!-- Tabs -->
             <div class="flex justify-between items-center mb-6">
