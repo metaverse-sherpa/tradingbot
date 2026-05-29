@@ -220,7 +220,6 @@ async def build_forward_test_stats_block():
         f"{mr_block}\n"
         f"{vk_block}\n"
         f"{svp_block}\n"
-        f"_Each strategy starts with an independent $1,000 allocation_"
     )
     
     return text
