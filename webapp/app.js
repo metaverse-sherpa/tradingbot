@@ -1716,9 +1716,14 @@ function renderFreeStatsView(showPremiumBanner = false) {
 
         return `
             <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50">
-                <h3 class="font-headline-sm text-on-surface flex items-center gap-2">
-                    <span>${icon}</span> ${s.name}
-                </h3>
+                <div class="flex justify-between items-center">
+                    <h3 class="font-headline-sm text-on-surface flex items-center gap-2">
+                        <span>${icon}</span> ${s.name}
+                    </h3>
+                    <button onclick="showStrategyGuideModal('${s.name}')" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all cursor-pointer" title="Strategy Information">
+                        <span class="material-symbols-outlined text-[18px]">info</span>
+                    </button>
+                </div>
                 <div class="text-sm space-y-1">
                     <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
                     <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
@@ -3694,4 +3699,176 @@ window.togglePasswordVisibility = function(inputId, btnElement) {
         input.type = 'password';
         icon.innerText = 'visibility';
     }
+};
+
+window.showStrategyGuideModal = function(strategyName) {
+    const modalId = 'strategy-guide-modal';
+    // Remove if already exists
+    const existing = document.getElementById(modalId);
+    if (existing) {
+        try { document.body.removeChild(existing); } catch(e) {}
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.id = modalId;
+    backdrop.className = 'fixed inset-0 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md transition-all duration-300 animate-fade-in';
+    backdrop.style.zIndex = '99999';
+
+    // Set up content based on strategyName
+    const guides = {
+        "Mean Reversion Scalper": {
+            icon: "📈",
+            title: "Mean Reversion Scalper",
+            philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
+            indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
+            pace: "Highly active. Averages ~0.84 trades/day.",
+            drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> (well below the 25% safety ceiling) while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
+            img: "/api/charts/mean_reversion_infographic.png",
+            glow: "blue-glow"
+        },
+        "Valkyrie Elite Scalper": {
+            icon: "🛡️",
+            title: "Valkyrie Elite Scalper",
+            philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
+            indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
+            pace: "Patient and calculated. Averages ~0.68 trades/day.",
+            drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
+            img: "/api/charts/valkyrie_elite_infographic.png",
+            glow: "teal-glow"
+        },
+        "Sherpa Velocity Pullback": {
+            icon: "🦙",
+            title: "Sherpa Velocity Pullback",
+            philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
+            indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
+            pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
+            drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
+            img: "/api/charts/stock_strategy_infographic.png",
+            glow: "gold-glow"
+        }
+    };
+
+    const guide = guides[strategyName] || guides["Mean Reversion Scalper"];
+
+    const renderModalContent = (activeTab) => {
+        let contentHtml = '';
+        if (activeTab === 'guide') {
+            contentHtml = `
+                <div class="space-y-4 text-left">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">${guide.icon}</span>
+                        <div>
+                            <h2 class="text-xl font-bold text-on-surface">${guide.title}</h2>
+                            <p class="text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Strategy Overview</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-4 text-sm max-h-[300px] overflow-y-auto custom-scrollbar">
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Philosophy</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Indicators</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Execution Pace</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Drawdown Profile</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
+                        </div>
+                    </div>
+
+                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center group cursor-zoom-in" onclick="window.open('${guide.img}', '_blank')">
+                        <img src="${guide.img}" alt="${guide.title} Infographic" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                            <span class="text-xs text-white font-bold uppercase tracking-wider">View Full Infographic</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            contentHtml = `
+                <div class="space-y-4 text-left">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">📊</span>
+                        <div>
+                            <h2 class="text-xl font-bold text-on-surface">3-Year Strategy Comparison</h2>
+                            <p class="text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Performance Comparison Matrix</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 bg-surface-container/60 border border-white/5 rounded-xl p-4 text-sm max-h-[300px] overflow-y-auto custom-scrollbar">
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Focus</span>
+                            <p class="text-on-surface mt-0.5">Volatility Extremes vs Wick Rejection vs Equities Pullbacks</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Active Basket</span>
+                            <p class="text-on-surface mt-0.5">29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Trigger Logic</span>
+                            <p class="text-on-surface mt-0.5">Close outside bands vs Wick pierce & close inside vs 3-Period RSI &lt; 10</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-on-surface-variant font-bold uppercase tracking-wider block">Risk Profile</span>
+                            <p class="text-on-surface mt-0.5">Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)</p>
+                        </div>
+                        <div class="pt-1 border-t border-white/5">
+                            <p class="text-xs text-on-surface-variant italic leading-relaxed">
+                                💡 <strong>Recommendation</strong>: Use <em>Mean Reversion</em> if you prefer maximum trade frequency and compounding potential. Use <em>Valkyrie Elite</em> if you prioritize capital safety and smooth growth curves in crypto. Activate <em>Sherpa Velocity Pullback (SVP)</em> to diversify into high-liquidity megacap US equities with low drawdown.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center group cursor-zoom-in" onclick="window.open('/api/charts/strategy_comparison.png', '_blank')">
+                        <img src="/api/charts/strategy_comparison.png" alt="Strategy Comparison Chart" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                            <span class="text-xs text-white font-bold uppercase tracking-wider">View Full Performance Chart</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        backdrop.innerHTML = `
+            <div class="glass-card max-w-[500px] w-full max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl p-6 relative overflow-hidden flex flex-col gap-6 animate-fade-in ${guide.glow}" style="max-width: 500px;">
+                <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer focus:outline-none">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+
+                <!-- Custom Elegant Tabs -->
+                <div class="flex border-b border-white/5 w-full">
+                    <button id="modal-tab-guide" class="flex-1 py-2 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer focus:outline-none ${activeTab === 'guide' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}" onclick="window.updateStrategyModalTab('guide')">
+                        Infographic & Guide
+                    </button>
+                    <button id="modal-tab-comparison" class="flex-1 py-2 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer focus:outline-none ${activeTab === 'comparison' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}" onclick="window.updateStrategyModalTab('comparison')">
+                        Comparison Matrix
+                    </button>
+                </div>
+
+                <div id="modal-body-content" class="w-full">
+                    ${contentHtml}
+                </div>
+
+                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="w-full h-11 bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-on-surface font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <span>Close Guide</span>
+                </button>
+            </div>
+        `;
+    };
+
+    window.updateStrategyModalTab = function(tabName) {
+        renderModalContent(tabName);
+    };
+
+    renderModalContent('guide');
+    document.body.appendChild(backdrop);
 };
