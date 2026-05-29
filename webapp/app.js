@@ -3772,8 +3772,8 @@ window.showStrategyGuideModal = function(strategyName) {
                         </div>
                     </div>
 
-                    <!-- 2. Scrollable descriptive text loaded below -->
-                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 overflow-y-auto custom-scrollbar" style="max-height: 110px;">
+                    <!-- 2. Descriptive text loaded below -->
+                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3">
                         <div>
                             <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Philosophy</span>
                             <p class="text-on-surface leading-relaxed mt-0.5" style="font-size: 11px;">${guide.philosophy}</p>
@@ -3813,8 +3813,8 @@ window.showStrategyGuideModal = function(strategyName) {
                         </div>
                     </div>
 
-                    <!-- 2. Scrollable Comparative Matrix text loaded below -->
-                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 overflow-y-auto custom-scrollbar" style="max-height: 110px;">
+                    <!-- 2. Comparative Matrix text loaded below -->
+                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3">
                         <div>
                             <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Focus</span>
                             <p class="text-on-surface mt-0.5" style="font-size: 11px;">Volatility Extremes vs Wick Rejection vs Equities Pullbacks</p>
@@ -3842,14 +3842,14 @@ window.showStrategyGuideModal = function(strategyName) {
         }
 
         backdrop.innerHTML = `
-            <div class="glass-card max-w-[500px] w-full rounded-2xl p-5 relative overflow-hidden flex flex-col gap-4 animate-fade-in ${guide.glow}" style="max-width: 500px;">
+            <div class="glass-card max-w-[500px] w-full rounded-2xl p-5 relative overflow-hidden flex flex-col gap-4 animate-fade-in ${guide.glow}" style="max-width: 500px; max-height: 95vh;">
                 <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer focus:outline-none" title="Close Guide">
+                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer focus:outline-none" style="z-index: 10;" title="Close Guide">
                     <span class="material-symbols-outlined text-[18px]">close</span>
                 </button>
 
                 <!-- Custom Elegant Tabs -->
-                <div class="flex border-b border-white/5 w-full">
+                <div class="flex border-b border-white/5 w-full shrink-0">
                     <button id="modal-tab-guide" class="flex-1 py-2 text-center text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer focus:outline-none ${activeTab === 'guide' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}" onclick="window.updateStrategyModalTab('guide')">
                         Infographic & Guide
                     </button>
@@ -3858,11 +3858,11 @@ window.showStrategyGuideModal = function(strategyName) {
                     </button>
                 </div>
 
-                <div id="modal-body-content" class="w-full">
+                <div id="modal-body-content" class="w-full overflow-y-auto custom-scrollbar flex-1" style="overscroll-behavior: contain; padding-bottom: 8px;">
                     ${contentHtml}
                 </div>
 
-                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="w-full h-10 bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-on-surface text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {};" class="w-full h-10 shrink-0 bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-on-surface text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <span>Close Guide</span>
                 </button>
             </div>
