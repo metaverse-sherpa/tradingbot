@@ -1532,9 +1532,15 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             upnl_str = f"{'+' if pnl_val >= 0 else '-'}${abs(pnl_val):.2f}"
             target_pnl_str = f"{'+' if target_pnl_val >= 0 else '-'}${abs(target_pnl_val):.2f}"
             
-            sl_str = f"${sl:.2f} ({sl_pct_val:+.0f}%)" if sl > 0 else "None"
-            tp_str = f"${tp:.2f} ({tp_pct_val:+.0f}%)" if tp > 0 else "None"
-            entry_str = f"${entry:.2f}"
+            is_premium = user.get('is_premium', False)
+            if is_premium:
+                sl_str = f"${sl:.2f} ({sl_pct_val:+.0f}%)" if sl > 0 else "None"
+                tp_str = f"${tp:.2f} ({tp_pct_val:+.0f}%)" if tp > 0 else "None"
+                entry_str = f"${entry:.2f}"
+            else:
+                sl_str = "████"
+                tp_str = "████"
+                entry_str = "████"
             
             sym_link = get_symbol_link(sym, text=f"*{sym}*")
             caption = (
@@ -1544,6 +1550,9 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                 f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})\n"
                 f"• Entry: `{entry_str}` | SL: `{sl_str}` | TP: `{tp_str}`"
             )
+            
+            if not is_premium:
+                caption += "\n\n_🔒 Upgrade to Premium to unlock Entry, SL, TP, and unblurred charts!_"
             
             # Conditionally generate the 'Open Live Trade' button
             reply_markup = None
@@ -1558,7 +1567,8 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                         photo=photo,
                         caption=caption,
                         reply_markup=reply_markup,
-                        parse_mode="Markdown"
+                        parse_mode="Markdown",
+                        has_spoiler=(not is_premium)
                     )
                     photo_ids.append(msg.message_id)
                 if chart_file != cached_chart_path:
@@ -1568,7 +1578,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                 msg = await context.bot.send_message(
                     chat_id=chat_id,
                     text=caption,
-                    reply_markup=btn,
+                    reply_markup=reply_markup,
                     parse_mode="Markdown"
                 )
                 photo_ids.append(msg.message_id)
