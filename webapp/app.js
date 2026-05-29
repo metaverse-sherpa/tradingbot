@@ -2375,9 +2375,9 @@ function renderBacktestView() {
                     <div class="space-y-2">
                         <div class="flex justify-between text-xs font-semibold uppercase text-on-surface-variant">
                             <span>Risk per Trade</span>
-                            <span id="bt-risk-val" class="text-primary font-bold">${user.risk_pct || 1.5}%</span>
+                            <span id="bt-risk-val" class="text-primary font-bold">${user.risk_pct || 1.0}%</span>
                         </div>
-                        <input id="bt-risk" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || 1.5}" oninput="document.getElementById('bt-risk-val').innerText = this.value + '%'"/>
+                        <input id="bt-risk" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || 1.0}" oninput="document.getElementById('bt-risk-val').innerText = this.value + '%'"/>
                     </div>
                     
                     <button onclick="triggerBacktest()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all cursor-pointer">
@@ -3261,7 +3261,7 @@ window.adjustBacktestDefaults = function(strategyName) {
         }
     } else {
         if (slider && label) {
-            const risk = user.risk_pct || 1.5;
+            const risk = user.risk_pct || 1.0;
             slider.value = risk;
             label.innerText = risk + '%';
         }
