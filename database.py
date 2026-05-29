@@ -255,6 +255,10 @@ def init_db():
         except: pass
         try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN pnl_pct REAL")
         except: pass
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN reset_token TEXT")
+        except: pass
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN reset_token_expiry INTEGER")
+        except: pass
 
                       
         # Set default theoretical balance

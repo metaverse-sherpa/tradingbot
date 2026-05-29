@@ -129,6 +129,46 @@ def login():
     )
     return response
 
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json or {}
+    email = data.get("email", "").strip().lower()
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+        
+    user = get_web_user_by_email(email)
+    if not user:
+        return jsonify({"error": "No account found with that email address."}), 404
+        
+    if user.get("google_id") and not user.get("password_hash"):
+        return jsonify({"error": "This email address is registered with a Google account. Please use 'Continue with Google' to sign in."}), 400
+        
+    import secrets
+    import time
+    from database import db_session
+    token = secrets.token_urlsafe(32)
+    expiry = int(time.time()) + 3600 # 1 hour
+    
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('UPDATE WebUsers SET reset_token=?, reset_token_expiry=? WHERE id=?', (token, expiry, user["id"]))
+        conn.commit()
+        
+    from web_api.email_service import send_alert_email
+    reset_url = f"https://bot.metaversesherpa.io/#/reset-password?token={token}"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0c1f30; color: #fff; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #3cd7ff;">Password Reset Request</h2>
+        <p>You requested a password reset for Metaverse Sherpa.</p>
+        <p><a href="{reset_url}" style="display: inline-block; padding: 12px 24px; background-color: #3cd7ff; color: #000; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">Reset Your Password</a></p>
+        <p style="margin-top: 20px; font-size: 12px; color: #888;">If you didn't request this, you can safely ignore this email. The link will expire in 1 hour.</p>
+    </div>
+    """
+    send_alert_email(email, "Metaverse Sherpa Password Reset", html)
+    
+    return jsonify({"message": "Password reset link sent to your email."}), 200
+
 @app.route('/api/auth/google', methods=['POST'])
 def google_auth():
     data = request.json or {}

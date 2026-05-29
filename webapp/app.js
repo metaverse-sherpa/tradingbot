@@ -709,6 +709,20 @@ function renderLandingView() {
                                 <div class="flex flex-col items-center gap-1 mt-1">
                                     <p class="font-label-sm text-label-sm text-on-surface-variant text-center">Already have an account? <a class="text-primary font-bold cursor-pointer" onclick="setLandingAuthMode('login')">Sign in</a></p>
                                 </div>
+                            ` : STATE.landing_auth_mode === 'forgot_password' ? `
+                                <form id="forgot-form" class="space-y-3" onsubmit="handleForgotPassword(event)">
+                                    <div class="text-center mb-2">
+                                        <h3 class="font-label-lg text-label-lg text-on-surface mb-1">Reset Password</h3>
+                                        <p class="font-label-sm text-label-sm text-on-surface-variant/80">Enter your email and we'll send a reset link.</p>
+                                    </div>
+                                    <input id="forgot-email" autocomplete="email" class="w-full h-11 bg-surface-container-low text-on-surface font-body-md text-body-md border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all placeholder:text-on-surface-variant/40" placeholder="Email Address" type="email" required/>
+                                    <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg neon-button-glow hover:brightness-110 active:scale-[0.98] transition-all mt-1">
+                                        Send Reset Link
+                                    </button>
+                                </form>
+                                <div class="flex flex-col items-center gap-1 mt-1">
+                                    <a class="text-primary font-bold cursor-pointer font-label-sm" onclick="setLandingAuthMode('login')">Back to Sign In</a>
+                                </div>
                             ` : `
                                 <button onclick="triggerGoogleLogin()" class="w-full h-11 bg-white text-surface-dim font-label-md text-label-md rounded-full flex items-center justify-center gap-3 hover:bg-white/90 transition-colors">
                                     <svg height="20" viewbox="0 0 24 24" width="20">
@@ -735,7 +749,7 @@ function renderLandingView() {
                                 </form>
                                 
                                 <div class="flex flex-col items-center gap-1 mt-1">
-                                    <a class="font-label-md text-label-md text-primary hover:opacity-80 transition-opacity" href="#">Forgot password?</a>
+                                    <a class="font-label-md text-label-md text-primary hover:opacity-80 transition-opacity cursor-pointer" onclick="setLandingAuthMode('forgot_password')">Forgot password?</a>
                                     <p class="font-label-sm text-label-sm text-on-surface-variant text-center">Don't have an account? <a class="text-primary font-bold cursor-pointer" onclick="setLandingAuthMode('register')">Create one</a></p>
                                 </div>
                             `}
@@ -2455,6 +2469,17 @@ async function handleEmailLogin(e) {
         if (res.token) localStorage.setItem('session_token', res.token);
         showToast("Welcome back, Sherpa trader!");
         navigate('#/dashboard');
+    }
+}
+
+async function handleForgotPassword(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value;
+    
+    const res = await apiRequest('/auth/forgot-password', 'POST', { email });
+    if (res) {
+        showToast(res.message || "Password reset link sent to your email.");
+        setLandingAuthMode('login');
     }
 }
 
