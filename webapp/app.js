@@ -3130,12 +3130,16 @@ window.showRenewModal = function() {
 };
 
 async function triggerBacktest() {
+    const strategyEl = document.getElementById('bt-strategy');
+    const capitalEl = document.getElementById('bt-capital');
+    const riskEl = document.getElementById('bt-risk');
+    
+    const strategy = strategyEl ? strategyEl.value : 'Mean Reversion Scalper';
+    const capital = capitalEl ? parseFloat(capitalEl.value) : 10000.0;
+    const risk = riskEl ? parseFloat(riskEl.value) : 1.5;
+
     STATE.backtest.running = true;
     renderView();
-    
-    const strategy = document.getElementById('bt-strategy').value;
-    const capital = parseFloat(document.getElementById('bt-capital').value) || 10000.0;
-    const risk = parseFloat(document.getElementById('bt-risk').value) || 1.5;
     
     const res = await apiRequest('/backtest/run', 'POST', {
         strategy: strategy,
