@@ -1338,6 +1338,41 @@ def get_free_stats():
         if strat in strategy_open_trades:
             strategy_open_trades[strat].append(t)
             
+    # Fetch live prices for open symbols
+    import requests
+    open_symbols = list(set([t['symbol'] for t in open_sim_trades]))
+    stock_syms = [s for s in open_symbols if "/" not in s and ":" not in s]
+    crypto_syms = [s for s in open_symbols if s not in stock_syms]
+    
+    live_prices = {}
+    
+    if crypto_syms:
+        try:
+            resp = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=3)
+            if resp.status_code == 200:
+                price_map = {item['symbol']: float(item['price']) for item in resp.json()}
+                for sym in crypto_syms:
+                    clean_sym = sym.split(':')[0].replace('/', '')
+                    if clean_sym in price_map:
+                        live_prices[sym] = price_map[clean_sym]
+        except Exception as e:
+            print(f"Error fetching Binance prices: {e}")
+            
+    if stock_syms:
+        try:
+            import utils_gcp
+            alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY")
+            alpaca_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
+            if alpaca_key and alpaca_secret:
+                headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
+                sym_str = ",".join(stock_syms)
+                resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
+                if resp.status_code == 200:
+                    for sym, snapshot in resp.json().items():
+                        live_prices[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
+        except Exception as e:
+            print(f"Error fetching Alpaca prices: {e}")
+            
     stats_data = []
     starting_capital = 1000.0
     
@@ -1346,24 +1381,36 @@ def get_free_stats():
         realized_pct = (s_stats['cumulative_pnl'] / starting_capital) * 100
         open_trades = strategy_open_trades[name]
         
-        # Format the active trades to send to frontend
-        active_list = []
+        unrealized_pnl = 0.0
         for t in open_trades:
-            active_list.append({
-                "symbol": t['symbol'],
-                "side": t['side'],
-                "entry_price": t['entry_price'],
-                "tp_price": t.get('tp_price', 0)
-            })
+            sym = t['symbol']
+            entry = t['entry_price']
+            pos_size = t['position_size']
+            side = str(t['side']).lower()
+            current = live_prices.get(sym, entry)
             
+            is_long = side in ['buy', 'long', 'l']
+            pnl_raw = current - entry if is_long else entry - current
+            
+            if "/" in sym or ":" in sym:
+                # Crypto leverage is 20
+                pnl_val = pos_size * pnl_raw
+            else:
+                pnl_val = pos_size * (pnl_raw / entry)
+                
+            unrealized_pnl += pnl_val
+            
+        unrealized_pct = (unrealized_pnl / starting_capital) * 100
+        
         stats_data.append({
             "name": name,
             "win_rate": s_stats['win_rate'],
             "wins": s_stats['wins'],
             "losses": s_stats['losses'],
             "realized_pct": realized_pct,
+            "unrealized_pct": unrealized_pct,
             "active_count": len(open_trades),
-            "active_trades": active_list
+            "active_trades": []
         })
         
     return jsonify({

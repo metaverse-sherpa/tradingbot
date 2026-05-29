@@ -1357,27 +1357,9 @@ function renderFreeStatsView(showPremiumBanner = false) {
         const icon = strategyIcons[s.name] || "📈";
         
         let activeTradesHtml = "";
-        if (s.active_count > 0 && s.active_trades.length > 0) {
-            activeTradesHtml = `<div class="mt-3 space-y-1 bg-surface-container-low p-3 rounded-lg border border-white/5">`;
-            s.active_trades.forEach(t => {
-                const isLong = String(t.side).toLowerCase() === 'long' || String(t.side).toLowerCase() === 'buy';
-                const direction = isLong ? "⬆️" : "⬇️";
-                const isStock = t.symbol && !t.symbol.includes('/');
-                let targetPct = t.tp_price > 0 ? (((Math.abs(t.tp_price - t.entry_price)) / t.entry_price) * 100) : 0;
-                if (!isStock) targetPct *= 10; // crypto leverage
-                
-                activeTradesHtml += `
-                    <div class="flex items-center text-sm font-mono">
-                        <span class="mr-2">${direction}</span>
-                        <span class="text-primary">${t.symbol}</span>
-                        <span class="ml-auto text-on-surface-variant">tgt: +${targetPct.toFixed(2)}%</span>
-                    </div>
-                `;
-            });
-            activeTradesHtml += `</div>`;
-        }
 
         const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
+        const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
 
         return `
             <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50">
@@ -1387,9 +1369,9 @@ function renderFreeStatsView(showPremiumBanner = false) {
                 <div class="text-sm space-y-1">
                     <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
                     <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
+                    <p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>
                     <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
                 </div>
-                ${activeTradesHtml}
             </div>
         `;
     }).join('');
