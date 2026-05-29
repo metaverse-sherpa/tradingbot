@@ -2034,7 +2034,8 @@ window.openLiveTrade = async function(id) {
 }
 
 function renderSignalCard(sig, isLanding = false) {
-    const isExpanded = !isLanding && String(STATE.expanded_signal_id) === String(sig.id);
+    const isPremium = STATE.user && STATE.user.is_premium;
+    const isExpanded = !isLanding && isPremium && String(STATE.expanded_signal_id) === String(sig.id);
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
     const privacyStyle = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
     const privacyClass = isPrivacyOn ? 'privacy-blur' : '';
@@ -2102,7 +2103,7 @@ function renderSignalCard(sig, isLanding = false) {
     }
 
     return `
-        <div ${isLanding ? '' : `onclick="toggleSignalExpand('${sig.id}')"`} class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3 ${isLanding ? '' : 'cursor-pointer hover:border-white/20'} transition-all group" ${privacyHoverHandlers}>
+        <div ${isLanding ? '' : (isPremium ? `onclick="toggleSignalExpand('${sig.id}')"` : `onclick="showToast('Upgrade to Premium to view charts and details!', 'warning')" tabindex="0"`)} class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3 ${isLanding ? '' : 'cursor-pointer hover:border-white/20'} transition-all group" ${privacyHoverHandlers}>
             <div class="flex justify-between items-center pointer-events-none">
                 <div>
                     <h4 class="font-bold text-on-surface flex items-center gap-1">
@@ -2118,14 +2119,14 @@ function renderSignalCard(sig, isLanding = false) {
                         </p>
                         ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
                     </div>
-                    ${!isLanding ? `
+                    ${(!isLanding && isPremium) ? `
                     <div class="text-on-surface-variant/40 group-hover:text-primary transition-colors flex items-center justify-center">
                         <span class="material-symbols-outlined text-xl transition-transform duration-300 ${isExpanded ? 'rotate-180 text-primary' : ''}">expand_more</span>
                     </div>
                     ` : ''}
                 </div>
             </div>
-            <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
+            <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none" ${(isLanding || !isPremium) ? 'style="filter: blur(8px); user-select: none;"' : ''}>
                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
                     SL: <span class="text-on-surface">$${sl.toFixed(4)} (${sl_pct.toFixed(0)}%)</span>
                 </div>
