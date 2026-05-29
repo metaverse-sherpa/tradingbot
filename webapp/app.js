@@ -2265,14 +2265,24 @@ function renderBacktestView() {
                             <p class="text-lg font-bold text-primary">${bt.result.total_trades}</p>
                         </div>
                         <div class="bg-surface-container rounded-lg p-3 text-center">
+                            <p class="text-xs text-on-surface-variant">Sharpe Ratio</p>
+                            <p class="text-lg font-bold text-secondary-container">${bt.result.profit_factor}</p>
+                        </div>
+                        <div class="bg-surface-container rounded-lg p-3 text-center">
+                            <p class="text-xs text-on-surface-variant">Max Drawdown</p>
+                            <p class="text-lg font-bold text-error">-${bt.result.max_drawdown}%</p>
+                        </div>
+                        <div class="bg-surface-container rounded-lg p-3 text-center">
                             <p class="text-xs text-on-surface-variant">Net PnL</p>
                             <p class="text-lg font-bold ${bt.result.net_pnl >= 0 ? 'text-tertiary' : 'text-error'}">
-                                ${bt.result.net_pnl >= 0 ? '+' : ''}$${bt.result.net_pnl.toFixed(2)}
+                                ${bt.result.net_pnl >= 0 ? '+' : ''}$${bt.result.net_pnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </p>
                         </div>
                         <div class="bg-surface-container rounded-lg p-3 text-center">
-                            <p class="text-xs text-on-surface-variant">Sharpe Ratio</p>
-                            <p class="text-lg font-bold text-secondary-container">${bt.result.profit_factor}</p>
+                            <p class="text-xs text-on-surface-variant">Final Balance</p>
+                            <p class="text-lg font-bold text-on-surface">
+                                $${((bt.result.capital || 10000) + bt.result.net_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </p>
                         </div>
                     </div>
                     <button onclick="resetBacktester()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all cursor-pointer">

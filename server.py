@@ -1462,6 +1462,8 @@ def run_backtest():
         plt.savefig(chart_path, dpi=150, facecolor="#121212")
         plt.close()
         
+        max_dd = round(abs(df_dd["drawdown"].min()), 1) if not df_dd.empty else 0.0
+
         return jsonify({
             "status": "success",
             "result": {
@@ -1470,6 +1472,7 @@ def run_backtest():
                 "total_trades": total_trades,
                 "net_pnl": final_equity - capital,
                 "profit_factor": round(sharpe, 2),  # Render Sharpe ratio
+                "max_drawdown": max_dd,
                 "chart_url": f"/api/charts/{chart_name}",
                 "risk_pct": risk_pct,
                 "capital": capital
