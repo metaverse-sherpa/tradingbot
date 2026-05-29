@@ -1304,17 +1304,34 @@ def _update_active_signals_cache():
                 except:
                     prices[sym] = 0.0
                     
-        if crypto_syms and mdm:
-            async def get_crypto_price(sym):
-                try:
-                    df = await mdm.fetch_ohlcv(sym, "15m")
-                    if df is not None and not df.empty:
-                        return float(df['close'].iloc[-1])
-                except: pass
-                return 0.0
-            crypto_results = await asyncio.gather(*(get_crypto_price(sym) for sym in crypto_syms))
-            for i, sym in enumerate(crypto_syms):
-                prices[sym] = crypto_results[i]
+        if crypto_syms:
+            # 1. Fast Batch Fetch via Blofin API
+            try:
+                import requests
+                resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=3)
+                if resp.status_code == 200:
+                    data = resp.json().get('data', [])
+                    price_map = {item['instId']: float(item['last']) for item in data}
+                    for sym in crypto_syms:
+                        clean_sym = sym.split(':')[0].replace('/', '-')
+                        if clean_sym in price_map:
+                            prices[sym] = price_map[clean_sym]
+            except Exception as e:
+                print(f"Error fetching Blofin tickers in signals: {e}")
+
+            # 2. CCXT Fallback for any symbols still missing
+            remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
+            if remaining_crypto and mdm:
+                async def get_crypto_price(sym):
+                    try:
+                        df = await mdm.fetch_ohlcv(sym, "15m")
+                        if df is not None and not df.empty:
+                            return float(df['close'].iloc[-1])
+                    except: pass
+                    return 0.0
+                crypto_results = await asyncio.gather(*(get_crypto_price(sym) for sym in remaining_crypto))
+                for i, sym in enumerate(remaining_crypto):
+                    prices[sym] = crypto_results[i]
                 
         return [prices.get(sig.get("symbol", ""), 0.0) for sig in sigs]
 

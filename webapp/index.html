@@ -56,6 +56,14 @@
         .safe-bottom {
             padding-bottom: env(safe-area-inset-bottom);
         }
+        @keyframes shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        .animate-shimmer {
+            animation: shimmer 1.5s infinite;
+        }
     </style>
     
     
@@ -71,6 +79,6 @@
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Single Page Application Logic Script -->
-    <script src="app.js?v=1.0.3"></script>
+    <script src="app.js?v=1.0.5"></script>
 </body>
 </html>

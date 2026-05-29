@@ -28,6 +28,7 @@ let STATE = {
     expanded_trade_id: null,
     expanded_signal_id: null,
     is_loading_signals: false,
+    is_loading_active_signals: true,
     is_loading_dashboard: false,
     is_loading_balance: false,
     history_expanded_id: null,
@@ -303,6 +304,7 @@ async function handleRoute() {
             apiRequest(statsRoute)
         ]).then(([bal, sigs, open, stats]) => {
             STATE.is_loading_balance = false;
+            STATE.is_loading_active_signals = false;
             let stateChanged = true; // Always re-render to remove the blur
             
             if (bal) {
@@ -415,7 +417,9 @@ window.setDashboardTab = function(tab) {
 };
 
 window.toggleActiveSignalsSort = function() {
+    console.log("[SORT] Before toggle:", STATE.active_signals_sort_by);
     STATE.active_signals_sort_by = STATE.active_signals_sort_by === 'pnl' ? 'date' : 'pnl';
+    console.log("[SORT] After toggle:", STATE.active_signals_sort_by);
     renderView();
 };
 
@@ -887,14 +891,42 @@ function renderDashboardView() {
                 
                 <div class="flex items-center justify-between mt-6">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
-                    <button onclick="toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
+                    <button onclick="window.toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
                         <span class="material-symbols-outlined text-[16px]">${STATE.active_signals_sort_by === 'pnl' ? 'calendar_month' : 'trending_up'}</span>
                         <span>${STATE.active_signals_sort_by === 'pnl' ? 'Newest First' : 'Most Profitable First'}</span>
                     </button>
                 </div>
                 
                 <div class="space-y-stack-gap">
-                    ${(() => {
+                    ${STATE.is_loading_active_signals && STATE.active_signals.length === 0 ? `
+                        <div class="flex flex-col gap-4 animate-fade-in">
+                            <!-- Shimmer Card 1 -->
+                            <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20">
+                                <div class="flex justify-between items-center mb-3">
+                                    <div class="h-6 w-32 bg-white/10 rounded-full animate-pulse"></div>
+                                    <div class="h-6 w-20 bg-primary/20 rounded-full animate-pulse"></div>
+                                </div>
+                                <div class="h-4 w-40 bg-white/5 rounded-full mb-6 animate-pulse"></div>
+                                <div class="flex justify-between items-center pt-4 border-t border-white/5">
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                </div>
+                                <div class="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)] -translate-x-full animate-shimmer" style="animation: shimmer 1.5s infinite;"></div>
+                            </div>
+                            <!-- Shimmer Card 2 -->
+                            <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20 opacity-60">
+                                <div class="flex justify-between items-center mb-3">
+                                    <div class="h-6 w-28 bg-white/10 rounded-full animate-pulse"></div>
+                                    <div class="h-6 w-24 bg-primary/20 rounded-full animate-pulse"></div>
+                                </div>
+                                <div class="h-4 w-48 bg-white/5 rounded-full mb-6 animate-pulse"></div>
+                                <div class="flex justify-between items-center pt-4 border-t border-white/5">
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : (() => {
                         const sorted = [...STATE.active_signals].sort((a, b) => {
                             if (STATE.active_signals_sort_by === 'date') {
                                 return (b.open_time || 0) - (a.open_time || 0);
@@ -903,10 +935,14 @@ function renderDashboardView() {
                             }
                         });
                         return sorted.length === 0 ? `
-                            <div class="text-center py-12">
-                                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                            <div class="text-center py-12 flex flex-col items-center justify-center animate-fade-in">
+                                <div class="relative w-20 h-20 mb-4 flex items-center justify-center">
+                                    <div class="absolute inset-0 rounded-full bg-primary/5 animate-ping" style="animation-duration: 3s;"></div>
+                                    <div class="absolute w-14 h-14 rounded-full bg-primary/10 animate-pulse"></div>
+                                    <span class="material-symbols-outlined text-primary text-4xl relative z-10 animate-bounce" style="animation-duration: 4s;">satellite_alt</span>
+                                </div>
                                 <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 mt-1.5 max-w-[280px] leading-relaxed">Sherpa is waiting for a setup...</p>
                             </div>
                         ` : sorted.map(s => renderSignalCard(s)).join('');
                     })()}
@@ -981,14 +1017,42 @@ function renderDashboardView() {
                 
                 <div class="flex items-center justify-between pt-4">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
-                    <button onclick="toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
+                    <button onclick="console.log('Sorting signals...'); window.toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
                         <span class="material-symbols-outlined text-[16px]">${STATE.active_signals_sort_by === 'pnl' ? 'calendar_month' : 'trending_up'}</span>
                         <span>${STATE.active_signals_sort_by === 'pnl' ? 'Newest First' : 'Most Profitable First'}</span>
                     </button>
                 </div>
                 
                 <div class="space-y-stack-gap">
-                    ${(() => {
+                    ${STATE.is_loading_active_signals && STATE.active_signals.length === 0 ? `
+                        <div class="flex flex-col gap-4 animate-fade-in">
+                            <!-- Shimmer Card 1 -->
+                            <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20">
+                                <div class="flex justify-between items-center mb-3">
+                                    <div class="h-6 w-32 bg-white/10 rounded-full animate-pulse"></div>
+                                    <div class="h-6 w-20 bg-primary/20 rounded-full animate-pulse"></div>
+                                </div>
+                                <div class="h-4 w-40 bg-white/5 rounded-full mb-6 animate-pulse"></div>
+                                <div class="flex justify-between items-center pt-4 border-t border-white/5">
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                </div>
+                                <div class="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)] -translate-x-full animate-shimmer" style="animation: shimmer 1.5s infinite;"></div>
+                            </div>
+                            <!-- Shimmer Card 2 -->
+                            <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20 opacity-60">
+                                <div class="flex justify-between items-center mb-3">
+                                    <div class="h-6 w-28 bg-white/10 rounded-full animate-pulse"></div>
+                                    <div class="h-6 w-24 bg-primary/20 rounded-full animate-pulse"></div>
+                                </div>
+                                <div class="h-4 w-48 bg-white/5 rounded-full mb-6 animate-pulse"></div>
+                                <div class="flex justify-between items-center pt-4 border-t border-white/5">
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : (() => {
                         const sorted = [...STATE.active_signals].sort((a, b) => {
                             if (STATE.active_signals_sort_by === 'date') {
                                 return (b.open_time || 0) - (a.open_time || 0);
@@ -997,10 +1061,14 @@ function renderDashboardView() {
                             }
                         });
                         return sorted.length === 0 ? `
-                            <div class="text-center py-12">
-                                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                            <div class="text-center py-12 flex flex-col items-center justify-center animate-fade-in">
+                                <div class="relative w-20 h-20 mb-4 flex items-center justify-center">
+                                    <div class="absolute inset-0 rounded-full bg-primary/5 animate-ping" style="animation-duration: 3s;"></div>
+                                    <div class="absolute w-14 h-14 rounded-full bg-primary/10 animate-pulse"></div>
+                                    <span class="material-symbols-outlined text-primary text-4xl relative z-10 animate-bounce" style="animation-duration: 4s;">satellite_alt</span>
+                                </div>
                                 <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is waiting for a setup...</p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 mt-1.5 max-w-[280px] leading-relaxed">Sherpa is waiting for a setup...</p>
                             </div>
                         ` : sorted.map(s => renderSignalCard(s)).join('');
                     })()}
@@ -2190,6 +2258,20 @@ function renderSignalCard(sig, isLanding = false) {
     const privacyClass = isPrivacyOn ? 'privacy-blur' : '';
     const privacyHoverHandlers = isPrivacyOn ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(5px)')"` : '';
     
+    const getSignalAge = (openTime) => {
+        if (!openTime) return 'N/A';
+        const now = Date.now();
+        const ts = openTime * (openTime > 1000000000000 ? 1 : 1000);
+        const diffMs = now - ts;
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHrs = Math.floor(diffMins / 60);
+        if (diffHrs < 24) return `${diffHrs}h ago`;
+        const diffDays = Math.floor(diffHrs / 24);
+        return `${diffDays}d ago`;
+    };
+
     const entry = sig.entry_price || 0;
     const tp = sig.tp_price || 0;
     const sl = sig.sl_price || 0;
@@ -2259,7 +2341,14 @@ function renderSignalCard(sig, isLanding = false) {
                         ${sig.symbol} 
                         <span class="material-symbols-outlined text-[16px] ${isLong ? 'text-primary' : 'text-error'}">${isLong ? 'trending_up' : 'trending_down'}</span>
                     </h4>
-                    <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
+                    <p class="text-[11px] text-on-surface-variant mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span>${sig.strategy}</span>
+                        <span class="text-on-surface-variant/30">•</span>
+                        <span class="text-primary/90 font-semibold flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-[13px] translate-y-[-0.5px]">schedule</span>
+                            ${getSignalAge(sig.open_time)}
+                        </span>
+                    </p>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="text-right flex flex-col justify-center" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
