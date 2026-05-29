@@ -3773,22 +3773,22 @@ window.showStrategyGuideModal = function(strategyName) {
                     </div>
 
                     <!-- 2. Scrollable descriptive text loaded below -->
-                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 text-[11px] max-h-[105px] overflow-y-auto custom-scrollbar">
+                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 overflow-y-auto custom-scrollbar" style="max-height: 110px;">
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Philosophy</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Philosophy</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5" style="font-size: 11px;">${guide.philosophy}</p>
                         </div>
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Indicators</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Indicators</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5" style="font-size: 11px;">${guide.indicators}</p>
                         </div>
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Execution Pace</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Execution Pace</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5" style="font-size: 11px;">${guide.pace}</p>
                         </div>
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Drawdown Profile</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Drawdown Profile</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5" style="font-size: 11px;">${guide.drawdown}</p>
                         </div>
                     </div>
                 </div>
@@ -3800,7 +3800,7 @@ window.showStrategyGuideModal = function(strategyName) {
                         <span class="text-2xl">📊</span>
                         <div>
                             <h2 class="text-lg font-bold text-on-surface">3-Year Strategy Comparison</h2>
-                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Performance Comparison Matrix</p>
+                            <p class="text-on-surface-variant uppercase tracking-wider font-bold" style="font-size: 10px;">Performance Comparison Matrix</p>
                         </div>
                     </div>
 
@@ -3814,25 +3814,25 @@ window.showStrategyGuideModal = function(strategyName) {
                     </div>
 
                     <!-- 2. Scrollable Comparative Matrix text loaded below -->
-                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 text-[11px] max-h-[105px] overflow-y-auto custom-scrollbar">
+                    <div class="space-y-2 bg-surface-container/60 border border-white/5 rounded-xl p-3 overflow-y-auto custom-scrollbar" style="max-height: 110px;">
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Focus</span>
-                            <p class="text-on-surface mt-0.5">Volatility Extremes vs Wick Rejection vs Equities Pullbacks</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Focus</span>
+                            <p class="text-on-surface mt-0.5" style="font-size: 11px;">Volatility Extremes vs Wick Rejection vs Equities Pullbacks</p>
                         </div>
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Active Basket</span>
-                            <p class="text-on-surface mt-0.5">29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Active Basket</span>
+                            <p class="text-on-surface mt-0.5" style="font-size: 11px;">29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40</p>
                         </div>
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Trigger Logic</span>
-                            <p class="text-on-surface mt-0.5">Close outside bands vs Wick pierce & close inside vs 3-Period RSI &lt; 10</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Trigger Logic</span>
+                            <p class="text-on-surface mt-0.5" style="font-size: 11px;">Close outside bands vs Wick pierce & close inside vs 3-Period RSI &lt; 10</p>
                         </div>
                         <div>
-                            <span class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider block">Risk Profile</span>
-                            <p class="text-on-surface mt-0.5">Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)</p>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 10px;">Risk Profile</span>
+                            <p class="text-on-surface mt-0.5" style="font-size: 11px;">Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)</p>
                         </div>
                         <div class="pt-1.5 border-t border-white/5">
-                            <p class="text-[10px] text-on-surface-variant italic leading-relaxed">
+                            <p class="text-on-surface-variant italic leading-relaxed" style="font-size: 11px;">
                                 💡 <strong>Recommendation</strong>: Use <em>Mean Reversion</em> if you prefer maximum trade frequency and compounding potential. Use <em>Valkyrie Elite</em> if you prioritize capital safety and smooth growth curves in crypto. Activate <em>Sherpa Velocity Pullback (SVP)</em> to diversify into high-liquidity megacap US equities with low drawdown.
                             </p>
                         </div>
