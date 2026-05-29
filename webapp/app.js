@@ -635,29 +635,7 @@ function renderRegisterView() {
 }
 
 function renderLandingView() {
-    // Top Header for the landing page with premium Metaverse Sherpa theme
-    const headerHtml = `
-        <div class="relative overflow-hidden rounded-2xl mb-4 p-6 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
-            <!-- Mountain neon glow in the background -->
-            <div class="absolute -right-10 -top-10 w-64 h-64 bg-primary/30 rounded-full blur-[80px] pointer-events-none"></div>
-            <div class="absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-[80px] pointer-events-none"></div>
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
-            
-            <div class="relative z-10 flex flex-col items-center">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-primary/30 to-tertiary/30 border border-primary/40 flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(60,215,255,0.2)]">
-                    <span class="material-symbols-outlined text-2xl text-primary-container" style="font-variation-settings: 'FILL' 1;">terrain</span>
-                </div>
-                <h1 class="font-headline-md text-headline-md text-transparent bg-clip-text bg-gradient-to-r from-primary-fixed-dim via-white to-tertiary-fixed-dim tracking-tight mb-1">Metaverse Sherpa</h1>
-                <p class="text-[10px] text-on-surface-variant max-w-[320px] leading-relaxed uppercase tracking-widest font-semibold text-primary/80">
-                    Algorithmic Intelligence
-                </p>
-                <div class="h-[1px] w-20 bg-gradient-to-r from-transparent via-primary/50 to-transparent my-2"></div>
-                <p class="text-sm text-on-surface-variant/90 font-medium max-w-[320px] leading-relaxed">
-                    Summit the markets with real-time autonomous trading setups.
-                </p>
-            </div>
-        </div>
-    `;
+    // Removed Top Header to save space for the login form
 
     let signalsList = '';
     if (STATE.is_loading_signals) {
@@ -685,7 +663,6 @@ function renderLandingView() {
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 max-w-[500px] mx-auto relative">
-            ${headerHtml}
             <div class="relative">
                 <!-- Sticky CTA Panel -->
                 <div class="sticky top-20 z-20 mb-6 pointer-events-none">
