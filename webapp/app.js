@@ -1522,6 +1522,21 @@ function renderFreeHistoryView() {
     `;
 }
 
+function timeAgo(ts) {
+    if (!ts) return 'Just now';
+    const now = Date.now();
+    const tsMs = ts > 1000000000000 ? ts : ts * 1000;
+    const diff = Math.max(0, now - tsMs);
+    const seconds = Math.floor(diff / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+}
+
 function renderHistoryView() {
     if (!STATE.user || !STATE.user.is_premium) {
         return renderFreeHistoryView();
@@ -1550,10 +1565,33 @@ function renderHistoryView() {
                         <p class="font-body-lg text-body-lg text-on-surface font-semibold">No trade history</p>
                     </div>
                 ` : filteredHistory.map(t => {
-                        const dateStr = t.timestamp ? new Date(t.timestamp * (t.timestamp > 1000000000000 ? 1 : 1000)).toLocaleString() : 'Just now';
-                        const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
+                        const cleanSymbol = t.symbol ? t.symbol.split('/')[0].split(':')[0] : 'Unknown';
+                        const sideEmoji = (t.side === 'l' || t.side === 'buy') ? '📈' : '📉';
+                        const dateStr = timeAgo(t.timestamp);
+                        
+                        const pnlVal = t.roe_val || t.roe_pct || t.pnl_pct || 0;
+                        const pnlColor = pnlVal >= 0 ? 'text-tertiary' : 'text-error';
+                        const pnlPctStr = pnlVal > 0 ? `+${pnlVal.toFixed(2)}%` : `${pnlVal.toFixed(2)}%`;
+                        
+                        const dollarStr = (t.net_pnl || 0) >= 0 ? `+$${Math.abs(t.net_pnl || 0).toFixed(2)}` : `-$${Math.abs(t.net_pnl || 0).toFixed(2)}`;
+                        const blurClass = STATE.user.hide_dollars ? 'blur-[4px] opacity-70 select-none' : '';
+                        
                         const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
                         
+                        // We do not have open time for crypto cache currently, so only display closed time
+                        // If open_time was added in the future, we could subtract it.
+                        let openDurationStr = "";
+                        if (t.open_time && t.timestamp) {
+                            const openTsMs = t.open_time > 1000000000000 ? t.open_time : t.open_time * 1000;
+                            const closeTsMs = t.timestamp > 1000000000000 ? t.timestamp : t.timestamp * 1000;
+                            const durSec = Math.floor((closeTsMs - openTsMs) / 1000);
+                            if (durSec > 0) {
+                                const dh = Math.floor(durSec / 3600);
+                                const dm = Math.floor((durSec % 3600) / 60);
+                                openDurationStr = ` • Open ${dh > 0 ? dh + 'h ' : ''}${dm}m`;
+                            }
+                        }
+
                         return `
                             <div class="glass-card p-4 rounded-lg flex justify-between items-center border border-white/5">
                                 <div class="flex items-center gap-3">
@@ -1561,15 +1599,17 @@ function renderHistoryView() {
                                         ${assetIcon}
                                     </div>
                                     <div>
-                                        <p class="font-label-md text-label-md font-bold text-on-surface">${t.symbol}</p>
-                                        <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr} • ${t.side}</p>
+                                        <p class="font-label-md text-label-md font-bold text-on-surface">${sideEmoji} ${cleanSymbol}</p>
+                                        <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr}${openDurationStr}</p>
                                     </div>
                                 </div>
                                 <div class="text-right">
                                     <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                        ${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}
+                                        ${pnlPctStr}
                                     </p>
-                                    <p class="font-label-sm text-label-sm text-on-surface-variant">Closed</p>
+                                    <p class="font-label-sm text-label-sm text-on-surface-variant ${blurClass}">
+                                        ${dollarStr}
+                                    </p>
                                 </div>
                             </div>
                         `;
