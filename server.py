@@ -1244,44 +1244,227 @@ def run_backtest():
     risk_pct = float(data.get("risk_pct", 1.5))
     
     user = g.user
-    tg_user = _get_telegram_user(user) or user
     user_id = user.get("email") or str(user.get("id"))
     
     try:
-        if strategy == "Sherpa Velocity Pullback":
-            from stock_backtester_daily import run_stock_visual_audit
-            stats, chart_path, df_eq = run_stock_visual_audit(
-                risk_val_pct=risk_pct,
-                user_id=user_id,
-                start_balance=capital
-            )
-        else:
-            from scripts.sherpa_visual_audit import run_visual_audit
-            syms = tg_user.get("enabled_symbols", []) if isinstance(tg_user, dict) else []
-            if not syms:
-                syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
-            elif isinstance(syms, str):
-                syms = syms.split(",")
-            stats, chart_path, df_eq = run_visual_audit(
-                risk_val_pct=risk_pct,
-                enabled_symbols=syms,
-                user_id=user_id,
-                start_balance=capital,
-                strategy_name=strategy
-            )
+        import json
+        import os
+        import pandas as pd
+        import numpy as np
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        import time
+        
+        # 1. Load Precalculated Trades Cache
+        cache_path = "data/precalculated_trades.json"
+        if not os.path.exists(cache_path):
+            return jsonify({"error": "Precalculated trades cache file not found."}), 500
             
-        if not stats or not chart_path:
+        with open(cache_path, "r") as f:
+            all_trades = json.load(f)
+            
+        # 2. Filter Trades by Strategy
+        strategy_trades = [t for t in all_trades if t["strategy"] == strategy]
+        if not strategy_trades:
+            return jsonify({"error": f"No baseline trades found for strategy {strategy}."}), 400
+            
+        # Parse Dates
+        for t in strategy_trades:
+            t["entry_dt"] = pd.to_datetime(t["entry_date"])
+            t["exit_dt"] = pd.to_datetime(t["exit_date"])
+            
+        # Sort trades by entry
+        strategy_trades.sort(key=lambda x: x["entry_dt"])
+        
+        # Build timeline
+        events = []
+        for idx, t in enumerate(strategy_trades):
+            events.append({"type": "entry", "date": t["entry_dt"], "trade_idx": idx})
+            events.append({"type": "exit", "date": t["exit_dt"], "trade_idx": idx})
+            
+        # Sort events: exits first in case of timestamp tie
+        events.sort(key=lambda x: (x["date"], 0 if x["type"] == "exit" else 1))
+        
+        # Simulation Parameters
+        cash = capital
+        active_positions = {}
+        equity_history = []
+        drawdown_history = []
+        
+        risk_decimal = risk_pct / 100.0
+        TAKER_FEE = 0.0006
+        FEE_RATE = 0.001  # Stock FEE_RATE
+        LEVERAGE = 20.0
+        
+        wins = 0
+        losses = 0
+        max_equity = capital
+        max_dd = 0.0
+        is_crypto = strategy_trades[0]["type"] == "crypto"
+        
+        def get_current_portfolio_equity():
+            current_eq = cash
+            for t_idx, pos in active_positions.items():
+                if pos["shares"] > 0:
+                    current_eq += pos["shares"] * pos["entry_price"]
+            return current_eq
+            
+        # 3. Compounding Chronological Pass
+        for ev in events:
+            t_idx = ev["trade_idx"]
+            t = strategy_trades[t_idx]
+            portfolio_equity = get_current_portfolio_equity()
+            
+            if ev["type"] == "entry":
+                risk_amt = portfolio_equity * risk_decimal
+                sl_dist = t["sl_dist"]
+                entry_price = t["entry_price"]
+                
+                if is_crypto:
+                    shares = min(risk_amt / sl_dist, (portfolio_equity * LEVERAGE) / entry_price)
+                    position_notional = shares * entry_price
+                    entry_fee = position_notional * TAKER_FEE
+                    cash -= entry_fee
+                    
+                    active_positions[t_idx] = {
+                        "shares": shares,
+                        "entry_price": entry_price,
+                        "entry_fee": entry_fee,
+                        "side": t["side"]
+                    }
+                else:
+                    shares = risk_amt / sl_dist
+                    position_notional = shares * entry_price
+                    if position_notional > cash:
+                        shares = cash / entry_price
+                        position_notional = shares * entry_price
+                        
+                    entry_fee = position_notional * FEE_RATE
+                    if cash >= (position_notional + entry_fee):
+                        cash -= (position_notional + entry_fee)
+                        active_positions[t_idx] = {
+                            "shares": shares,
+                            "entry_price": entry_price,
+                            "entry_fee": entry_fee,
+                            "side": t["side"]
+                        }
+                    else:
+                        active_positions[t_idx] = {
+                            "shares": 0.0,
+                            "entry_price": entry_price,
+                            "entry_fee": 0.0,
+                            "side": t["side"]
+                        }
+                        
+            elif ev["type"] == "exit":
+                pos = active_positions.pop(t_idx, None)
+                if pos and pos["shares"] > 0:
+                    shares = pos["shares"]
+                    entry_price = pos["entry_price"]
+                    exit_price = t["exit_price"]
+                    fee_rate = t["fee_rate"]
+                    win = t["win"]
+                    rr_ratio = t["rr_ratio"]
+                    
+                    if is_crypto:
+                        pnl = (portfolio_equity * risk_decimal) * rr_ratio if win else -(portfolio_equity * risk_decimal)
+                        exit_fee = exit_price * shares * fee_rate
+                        net_pnl = pnl - pos["entry_fee"] - exit_fee
+                        cash += net_pnl
+                    else:
+                        gross_pnl = (exit_price - entry_price) * shares if pos["side"] == "LONG" else (entry_price - exit_price) * shares
+                        exit_value = exit_price * shares
+                        exit_fee = exit_value * fee_rate
+                        net_pnl = gross_pnl - pos["entry_fee"] - exit_fee
+                        cash += exit_value - exit_fee
+                        
+                    if win:
+                        wins += 1
+                    else:
+                        losses += 1
+                        
+                current_portfolio_equity = get_current_portfolio_equity()
+                equity_history.append((ev["date"], current_portfolio_equity))
+                
+                max_equity = max(max_equity, current_portfolio_equity)
+                dd = (max_equity - current_portfolio_equity) / max_equity * 100
+                max_dd = max(max_dd, dd)
+                drawdown_history.append((ev["date"], -dd))
+                
+        if not equity_history:
             return jsonify({"error": "Backtest engine failed to execute trades. Starting balance or risk is too low."}), 400
             
+        df_eq = pd.DataFrame(equity_history, columns=["date", "equity"]).set_index("date")
+        df_dd = pd.DataFrame(drawdown_history, columns=["date", "drawdown"]).set_index("date")
+        
+        # Calculate final stats
+        final_equity = df_eq["equity"].iloc[-1]
+        pnl_pct = (final_equity - capital) / capital * 100
+        total_trades = wins + losses
+        win_rate = (wins / total_trades * 100) if total_trades > 0 else 0.0
+        
+        # Sharpe ratio
+        daily_returns = df_eq["equity"].resample('D').last().pct_change(fill_method=None).dropna()
+        if len(daily_returns) > 1:
+            sharpe = (daily_returns.mean() / (daily_returns.std() + 1e-10)) * np.sqrt(365 if is_crypto else 252)
+        else:
+            sharpe = 0.0
+            
+        # 4. Generate Neon institutional chart
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#121212")
+        
+        theme_color = "#39FF14" if strategy == "Sherpa Velocity Pullback" else "cyan"
+        ax1.plot(df_eq.index, df_eq["equity"], color=theme_color, linewidth=2)
+        ax1.set_title(f"Sherpa 3-Year Audit: {user_id}", color="white", fontsize=16)
+        ax1.tick_params(colors="white")
+        ax1.grid(alpha=0.1)
+        ax1.set_facecolor("#121212")
+        
+        ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color=theme_color, fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+        ax1.text(0.02, 0.05, f"Start: ${capital:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+        ax1.text(0.98, 0.9, f"Final: ${final_equity:,.2f}", transform=ax1.transAxes, color='#39FF14' if final_equity >= capital else 'red', fontweight='bold', ha='right', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+        
+        ax2.fill_between(df_dd.index, df_dd["drawdown"], 0, color="red", alpha=0.2)
+        ax2.plot(df_dd.index, df_dd["drawdown"], color="red", linewidth=0.8)
+        ax2.tick_params(colors="white")
+        ax2.set_facecolor("#121212")
+        ax2.set_title("Drawdown (%)", color="white", fontsize=10)
+        ax2.set_ylabel("Drawdown (%)", color="white")
+        ax2.set_ylim(-100, 5)
+        ax2.grid(True, alpha=0.1); ax2.tick_params(colors="white")
+        
+        if not df_dd.empty:
+            max_dd_date = df_dd["drawdown"].idxmin()
+            min_dd_val = df_dd["drawdown"].min()
+            ax2.annotate(f"Peak DD: {abs(min_dd_val):.1f}%", 
+                         xy=(max_dd_date, min_dd_val), 
+                         xytext=(0, -25), 
+                         textcoords="offset points", 
+                         ha='center', 
+                         color="white", 
+                         fontweight='bold',
+                         bbox=dict(facecolor='#1A1A1A', alpha=0.8, edgecolor='red'),
+                         arrowprops=dict(arrowstyle='->', color='red'))
+                         
+        fig.patch.set_facecolor("#121212")
+        plt.tight_layout()
+        
+        os.makedirs("results", exist_ok=True)
+        chart_name = f"audit_{user_id}_{int(time.time())}.png"
+        chart_path = os.path.join("results", chart_name)
+        plt.savefig(chart_path, dpi=150, facecolor="#121212")
+        plt.close()
+        
         return jsonify({
             "status": "success",
             "result": {
                 "strategy": strategy,
-                "win_rate": round(stats["win_rate"], 1),
-                "total_trades": stats["total_trades"],
-                "net_pnl": stats["final_equity"] - capital,
-                "profit_factor": round(stats.get("sharpe", 0.0), 2), # Render Sharpe ratio
-                "chart_url": f"/api/charts/{os.path.basename(chart_path)}"
+                "win_rate": round(win_rate, 1),
+                "total_trades": total_trades,
+                "net_pnl": final_equity - capital,
+                "profit_factor": round(sharpe, 2),  # Render Sharpe ratio
+                "chart_url": f"/api/charts/{chart_name}"
             }
         }), 200
     except Exception as e:
