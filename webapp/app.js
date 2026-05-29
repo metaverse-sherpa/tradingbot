@@ -2292,7 +2292,7 @@ function renderBacktestView() {
                     
                     <div class="space-y-1">
                         <label class="text-xs text-on-surface-variant font-semibold uppercase">Starting Capital ($)</label>
-                        <input id="bt-capital" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" type="number" min="100" max="10000000" value="10000"/>
+                        <input id="bt-capital" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" type="number" min="100" max="10000000" value="${STATE.crypto_balance || 10000}"/>
                     </div>
                     
                     <div class="space-y-2">
@@ -3167,14 +3167,24 @@ function resetBacktester() {
 window.adjustBacktestDefaults = function(strategyName) {
     const slider = document.getElementById('bt-risk');
     const label = document.getElementById('bt-risk-val');
-    if (!slider || !label) return;
+    const capitalInput = document.getElementById('bt-capital');
     
     if (strategyName === 'Sherpa Velocity Pullback') {
-        slider.value = '1.0';
-        label.innerText = '1.0%';
+        if (slider && label) {
+            slider.value = '1.0';
+            label.innerText = '1.0%';
+        }
+        if (capitalInput) {
+            capitalInput.value = STATE.stock_balance || 10000;
+        }
     } else {
-        slider.value = '1.5';
-        label.innerText = '1.5%';
+        if (slider && label) {
+            slider.value = '1.5';
+            label.innerText = '1.5%';
+        }
+        if (capitalInput) {
+            capitalInput.value = STATE.crypto_balance || 10000;
+        }
     }
 };
 
