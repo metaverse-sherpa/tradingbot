@@ -413,6 +413,12 @@ async function handleRoute() {
 
 window.setDashboardTab = function(tab) {
     STATE.dashboard_tab = tab;
+    STATE.history_limit = 10;
+    renderView();
+};
+
+window.loadMoreHistory = function() {
+    STATE.history_limit = (STATE.history_limit || 10) + 10;
     renderView();
 };
 
@@ -1545,11 +1551,15 @@ function renderHistoryView() {
     const isCrypto = STATE.dashboard_tab === 'crypto';
     const filteredHistory = STATE.history.filter(t => t.type === (isCrypto ? 'crypto' : 'stock'));
     
+    STATE.history_limit = STATE.history_limit || 10;
+    const historyToRender = filteredHistory.slice(0, STATE.history_limit);
+    const hasMoreHistory = filteredHistory.length > STATE.history_limit;
+    
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <div class="flex justify-between items-center">
-                <h2 class="font-headline-sm text-headline-sm text-on-surface">📜 History</h2>
+            <div class="flex items-center gap-6 justify-between">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface whitespace-nowrap">📜 History</h2>
                 ${(STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys) ? `
                 <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
                     <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
@@ -1564,7 +1574,7 @@ function renderHistoryView() {
                         <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">history</span>
                         <p class="font-body-lg text-body-lg text-on-surface font-semibold">No trade history</p>
                     </div>
-                ` : filteredHistory.map(t => {
+                ` : historyToRender.map(t => {
                         const cleanSymbol = t.symbol ? t.symbol.split('/')[0].split(':')[0] : 'Unknown';
                         const sideEmoji = (t.side === 'l' || t.side === 'buy') ? '📈' : '📉';
                         const dateStr = timeAgo(t.timestamp);
@@ -1616,6 +1626,12 @@ function renderHistoryView() {
                             </div>
                         `;
                     }).join('')}
+                    
+                    ${hasMoreHistory ? `
+                        <button onclick="loadMoreHistory()" class="w-full py-3 mt-4 glass-card rounded-lg font-label-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors text-center border border-white/5">
+                            Load More
+                        </button>
+                    ` : ''}
             </div>
         </main>
     `;
