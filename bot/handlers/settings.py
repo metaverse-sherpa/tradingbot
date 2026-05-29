@@ -1532,7 +1532,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             upnl_str = f"{'+' if pnl_val >= 0 else '-'}${abs(pnl_val):.2f}"
             target_pnl_str = f"{'+' if target_pnl_val >= 0 else '-'}${abs(target_pnl_val):.2f}"
             
-            is_premium = user.get('is_premium', False)
+            is_premium = database.is_premium(user)
             sym_link = get_symbol_link(sym, text=f"*{sym}*")
             caption = (
                 f"🛰️ *ACTIVE FREE SIGNAL* (Forward Test)\n"
