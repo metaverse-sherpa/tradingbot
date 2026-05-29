@@ -2000,13 +2000,13 @@ window.openLiveTrade = async function(id) {
     try {
         const res = await apiRequest('/user/manual-trade', 'POST', { signal_id: id });
         if (res && res.success) {
-            alert('Live Trade Opened Successfully!');
-            updateDashboard(); // Reloads active trades
+            showToast('Live Trade Opened Successfully!', 'success');
+            handleRoute(); // Reloads active trades and signals
         } else {
-            alert('Error opening trade: ' + ((res && res.error) || 'Unknown error'));
+            showToast('Error opening trade: ' + ((res && res.error) || 'Unknown error'), 'error');
         }
     } catch (e) {
-        alert('Error: ' + e);
+        showToast('Error: ' + e, 'error');
     } finally {
         if (btn) {
             btn.innerHTML = `▶️ Open Live Trade`;
