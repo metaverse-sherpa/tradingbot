@@ -1940,11 +1940,17 @@ function renderSettingsView() {
             
             <!-- Connected Exchanges Summary -->
             ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
-            <section class="glass-card rounded-xl p-card-padding space-y-4 border border-white/10 animate-fade-in">
-                <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">🔌 Connected Exchanges</h3>
-                <form class="space-y-4" onsubmit="event.preventDefault()">
+            <section class="glass-card rounded-xl p-card-padding border border-white/10 animate-fade-in">
+                <details class="group">
+                    <summary class="font-body-lg text-body-lg font-bold text-on-surface flex justify-between items-center cursor-pointer list-none [&::-webkit-details-marker]:hidden select-none">
+                        <div class="flex items-center gap-2">
+                            🔌 Connected Exchanges
+                        </div>
+                        <span class="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 text-on-surface-variant">expand_more</span>
+                    </summary>
+                    <div class="space-y-4 mt-4">
                     ${hasLinkedCrypto ? `
-                    <div class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3">
+                    <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
                                 🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}</span>
@@ -1978,11 +1984,11 @@ function renderSettingsView() {
                             </div>
                             ` : ''}
                         </div>
-                    </div>
+                    </form>
                     ` : ''}
                     
                     ${hasLinkedStock ? `
-                    <div class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3">
+                    <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
                                 🦙 Stocks: <span class="text-primary font-mono">Alpaca</span>
@@ -2011,9 +2017,10 @@ function renderSettingsView() {
                                 <span class="text-on-surface font-mono text-xs">${user.alpaca_endpoint || 'https://paper-api.alpaca.markets'}</span>
                             </div>
                         </div>
-                    </div>
+                    </form>
                     ` : ''}
-                </form>
+                </div>
+                </details>
             </section>
             ` : ''}
             
@@ -2134,16 +2141,16 @@ function renderSettingsView() {
                         </div>
                     </div>
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
-                    <div class="flex gap-2 pt-2">
+                    <div class="flex gap-3 pt-4">
                         ${hasLinkedCrypto ? `
-                        <button onclick="navigate('#/backtest'); setTimeout(() => { const sEl=document.getElementById('bt-strategy'); if(sEl) sEl.value = '${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'; const cEl=document.getElementById('bt-capital'); if(cEl) cEl.value = '${STATE.crypto_balance ? Number(STATE.crypto_balance).toFixed(2) : 10000}'; const rEl=document.getElementById('bt-risk'); if(rEl) rEl.value = '${user.risk_pct || 1.5}'; const rvEl=document.getElementById('bt-risk-val'); if(rvEl) rvEl.innerText = '${user.risk_pct || 1.5}%'; triggerBacktest(); }, 150);" class="flex-1 h-10 bg-primary/10 border border-primary/30 text-primary font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all cursor-pointer">
-                            <span class="material-symbols-outlined text-[14px]">science</span>
+                        <button onclick="navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-primary to-[#3cd7ff] text-background font-bold text-xs uppercase rounded-lg shadow-lg cyan-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">science</span>
                             Backtest Crypto
                         </button>
                         ` : ''}
                         ${hasLinkedStock ? `
-                        <button onclick="navigate('#/backtest'); setTimeout(() => { const sEl=document.getElementById('bt-strategy'); if(sEl) sEl.value = 'Sherpa Velocity Pullback'; const cEl=document.getElementById('bt-capital'); if(cEl) cEl.value = '${STATE.stock_balance ? Number(STATE.stock_balance).toFixed(2) : 10000}'; const rEl=document.getElementById('bt-risk'); if(rEl) rEl.value = '${user.stock_risk_pct || 1.0}'; const rvEl=document.getElementById('bt-risk-val'); if(rvEl) rvEl.innerText = '${user.stock_risk_pct || 1.0}%'; triggerBacktest(); }, 150);" class="flex-1 h-10 bg-secondary-container/10 border border-secondary-container/30 text-secondary-container font-bold text-xs uppercase rounded-lg flex items-center justify-center gap-1.5 hover:bg-secondary-container/20 transition-all cursor-pointer">
-                            <span class="material-symbols-outlined text-[14px]">science</span>
+                        <button onclick="navigate('#/backtest'); setTimeout(() => { window.selectStrategy('Sherpa Velocity Pullback'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-[#ffdb3c] to-[#f9a826] text-background font-bold text-xs uppercase rounded-lg shadow-lg gold-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">science</span>
                             Backtest Stocks
                         </button>
                         ` : ''}
