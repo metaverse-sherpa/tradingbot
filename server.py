@@ -1774,6 +1774,16 @@ def get_trade_chart():
         print(f"Error generating chart endpoint: {e}")
         return f"Error: {str(e)}", 500
 
+from flask import send_from_directory
+
+@app.route('/favicon.svg')
+def favicon_svg():
+    return send_from_directory('webapp', 'favicon.svg', mimetype='image/svg+xml')
+
+@app.route('/favicon.ico')
+def favicon_ico():
+    return send_from_directory('webapp', 'favicon.svg', mimetype='image/svg+xml')
+
 # @app.route('/api/user/manual-trade', methods=['POST'])
 @app.route('/api/user/manual-trade', methods=['POST'])
 @require_auth
