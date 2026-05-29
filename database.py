@@ -653,6 +653,12 @@ def add_premium_days(chat_id, days):
         c = conn.cursor()
         c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = 0, had_premium_before = 1 WHERE telegram_chat_id = ?", (new_expiry, chat_id))
 
+def revoke_premium(chat_id):
+    """Revokes a user's premium status immediately."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE Users SET premium_expiry = 0, premium_expired_notified = 1 WHERE telegram_chat_id = ?", (chat_id,))
+
 def get_referral_stats(chat_id):
     """Returns the total number of referrals for a user."""
     with db_session() as conn:

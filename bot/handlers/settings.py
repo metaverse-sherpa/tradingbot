@@ -31,7 +31,7 @@ import media_gen
 
 def clear_input_states(context):
     """Clears all mutually exclusive interactive input states from user_data."""
-    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'setting_crypto_risk', 'setting_stock_risk', 'setup_step', 'setting_cap_amount', 'setting_cap_pct']:
+    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'admin_revoking', 'setting_crypto_risk', 'setting_stock_risk', 'setup_step', 'setting_cap_amount', 'setting_cap_pct']:
         context.user_data.pop(key, None)
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -314,6 +314,17 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎁 *Institutional Gifting Center*\n\n"
             "Please enter the **Telegram Chat ID** or **@username** of the user you wish to gift a free month of Premium access to.\n\n"
             "Alternatively, type **`ANY`** to generate a universal unreserved gift code/link that can be redeemed on either the Web App or the Telegram bot.\n\n"
+            "Tap /cancel to abort.",
+            parse_mode="Markdown"
+        )
+        return
+
+    if query.data == "admin_revoke_prompt":
+        clear_input_states(context)
+        context.user_data['admin_revoking'] = True
+        await query.message.reply_text(
+            "🚫 *Revoke Premium Access*\n\n"
+            "Please enter the **Telegram Chat ID** or **@username** of the user whose Premium access you want to revoke.\n\n"
             "Tap /cancel to abort.",
             parse_mode="Markdown"
         )

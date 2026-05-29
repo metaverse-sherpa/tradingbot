@@ -425,6 +425,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_admin_dashboard(update, context)
         return
 
+    elif context.user_data.get('admin_revoking'):
+        context.user_data.pop('admin_revoking', None)
+        try:
+            target_input = text.strip()
+            target_id = None
+            target_username = None
+            
+            if target_input.startswith('@') or not target_input.isdigit():
+                target_id = database.get_chat_id_by_username(target_input)
+                if not target_id:
+                    target_username = target_input.lstrip('@')
+            else:
+                target_id = int(target_input)
+
+            if target_id:
+                database.revoke_premium(target_id)
+                await update.message.reply_text(f"✅ Premium access for user `{target_id}` has been successfully revoked.", parse_mode="Markdown")
+                try:
+                    revoke_msg = "🚫 *Premium Access Revoked*\n\nYour institutional Premium access has been revoked by the Overlord. Your active automation has been paused."
+                    await context.bot.send_message(chat_id=target_id, text=revoke_msg, parse_mode="Markdown")
+                except:
+                    pass
+            else:
+                await update.message.reply_text(f"❌ User '{target_input}' not found in the database. Cannot revoke.", parse_mode="Markdown")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Failed to revoke premium: {e}")
+        
+        from bot.handlers.admin import show_admin_dashboard
+        await show_admin_dashboard(update, context)
+        return
+
     elif context.user_data.get('admin_broadcasting'):
         context.user_data.pop('admin_broadcasting', None)
         text = update.message.text
