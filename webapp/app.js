@@ -2104,18 +2104,28 @@ function renderSettingsView() {
                 <div class="space-y-3">
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Crypto Strategy</label>
-                        <select onchange="handleStrategyChange('crypto', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cursor-pointer">
-                            <option value="Mean Reversion Scalper" ${user.active_crypto_strategy === 'Mean Reversion Scalper' ? 'selected' : ''}>Mean Reversion Scalper</option>
-                            <option value="Valkyrie Elite Scalper" ${user.active_crypto_strategy === 'Valkyrie Elite Scalper' ? 'selected' : ''}>Valkyrie Elite Scalper</option>
-                            <option value="None" ${user.active_crypto_strategy === 'None' ? 'selected' : ''}>None (Disabled)</option>
-                        </select>
+                        <div class="relative">
+                            <select onchange="handleStrategyChange('crypto', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 appearance-none cursor-pointer">
+                                <option value="Mean Reversion Scalper" ${user.active_crypto_strategy === 'Mean Reversion Scalper' ? 'selected' : ''}>Mean Reversion Scalper</option>
+                                <option value="Valkyrie Elite Scalper" ${user.active_crypto_strategy === 'Valkyrie Elite Scalper' ? 'selected' : ''}>Valkyrie Elite Scalper</option>
+                                <option value="None" ${user.active_crypto_strategy === 'None' ? 'selected' : ''}>None (Disabled)</option>
+                            </select>
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-xl">expand_more</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Stock Strategy</label>
-                        <select onchange="handleStrategyChange('stock', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cursor-pointer">
-                            <option value="Sherpa Velocity Pullback" ${user.active_stock_strategy === 'Sherpa Velocity Pullback' ? 'selected' : ''}>Sherpa Velocity Pullback</option>
-                            <option value="None" ${user.active_stock_strategy === 'None' ? 'selected' : ''}>None (Disabled)</option>
-                        </select>
+                        <div class="relative">
+                            <select onchange="handleStrategyChange('stock', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 appearance-none cursor-pointer">
+                                <option value="Sherpa Velocity Pullback" ${user.active_stock_strategy === 'Sherpa Velocity Pullback' ? 'selected' : ''}>Sherpa Velocity Pullback</option>
+                                <option value="None" ${user.active_stock_strategy === 'None' ? 'selected' : ''}>None (Disabled)</option>
+                            </select>
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-xl">expand_more</span>
+                            </div>
+                        </div>
                     </div>
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
                     <div class="flex gap-2 pt-2">
@@ -2321,11 +2331,16 @@ function renderBacktestView() {
                 <div class="glass-card rounded-xl p-card-padding space-y-4">
                     <div class="space-y-2">
                         <label class="text-xs text-on-surface-variant font-semibold uppercase">Strategy</label>
-                        <select id="bt-strategy" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cursor-pointer" onchange="window.adjustBacktestDefaults(this.value)">
-                            <option value="Mean Reversion Scalper">Mean Reversion Scalper</option>
-                            <option value="Valkyrie Elite Scalper">Valkyrie Elite Scalper</option>
-                            <option value="Sherpa Velocity Pullback">Sherpa Velocity Pullback</option>
-                        </select>
+                        <div class="relative">
+                            <select id="bt-strategy" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 appearance-none cursor-pointer" onchange="window.adjustBacktestDefaults(this.value)">
+                                <option value="Mean Reversion Scalper">Mean Reversion Scalper</option>
+                                <option value="Valkyrie Elite Scalper">Valkyrie Elite Scalper</option>
+                                <option value="Sherpa Velocity Pullback">Sherpa Velocity Pullback</option>
+                            </select>
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-xl">expand_more</span>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="space-y-1">
@@ -3191,8 +3206,11 @@ async function triggerBacktest() {
     });
     
     STATE.backtest.running = false;
-    if (res) {
+    if (res && res.result) {
         STATE.backtest.result = res.result;
+        if (res.result.max_drawdown > 25.0) {
+            showToast("Warning: Max drawdown is >25%. Consider adjusting your Risk per Trade.", "warning");
+        }
     }
     renderView();
 }
