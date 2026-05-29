@@ -1942,7 +1942,7 @@ function renderSettingsView() {
             ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
             <section class="glass-card rounded-xl p-card-padding space-y-4 border border-white/10 animate-fade-in">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">🔌 Connected Exchanges</h3>
-                <div class="space-y-4">
+                <form class="space-y-4" onsubmit="event.preventDefault()">
                     ${hasLinkedCrypto ? `
                     <div class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3">
                         <div class="flex justify-between items-center">
@@ -2013,7 +2013,7 @@ function renderSettingsView() {
                         </div>
                     </div>
                     ` : ''}
-                </div>
+                </form>
             </section>
             ` : ''}
             
@@ -2266,6 +2266,7 @@ function renderStrategyView() {
 
 function renderBacktestView() {
     const bt = STATE.backtest;
+    const user = STATE.user || {};
     
     return `
         ${renderHeader()}
