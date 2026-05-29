@@ -307,7 +307,7 @@ def profile():
     
     # Merge active strategies from bot user
     user["active_crypto_strategy"] = (tg_user or {}).get("active_crypto_strategy") or user.get("active_crypto_strategy", "Mean Reversion Scalper")
-    user["active_stock_strategy"] = (tg_user or {}).get("active_stock_strategy") or user.get("active_stock_strategy", "None")
+    user["active_stock_strategy"] = (tg_user or {}).get("active_stock_strategy") or user.get("active_stock_strategy", "Sherpa Velocity Pullback")
     
     # Sync hide_dollars setting from Telegram user if linked, otherwise default to True
     if tg_user:
@@ -677,7 +677,7 @@ def get_stats():
             "closed_trades": stock_closed_count
         },
         "active_crypto_strategy": tg_user.get("active_crypto_strategy") or "Mean Reversion Scalper",
-        "active_stock_strategy": tg_user.get("active_stock_strategy") or "None"
+        "active_stock_strategy": tg_user.get("active_stock_strategy") or "Sherpa Velocity Pullback"
     }
     
     with RESPONSE_CACHE_LOCK:

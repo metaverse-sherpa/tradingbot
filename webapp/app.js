@@ -1725,6 +1725,12 @@ function renderFreeStatsView(showPremiumBanner = false) {
                     <p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>
                     <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
                 </div>
+                <div class="pt-2">
+                    <button onclick="navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${s.name}'); triggerBacktest(); }, 150);" class="w-full h-9 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[14px]">science</span>
+                        Backtest
+                    </button>
+                </div>
             </div>
         `;
     }).join('');
@@ -2106,7 +2112,7 @@ function renderSettingsView() {
             </section>
 
             <!-- Algorithmic Strategies Dropdowns -->
-            <section class="glass-card rounded-xl p-card-padding space-y-4">
+            <section class="glass-card rounded-xl p-card-padding space-y-4 relative z-50">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🤖 Algorithmic Strategies</h3>
                 <div class="space-y-3">
                     <div class="space-y-1">
