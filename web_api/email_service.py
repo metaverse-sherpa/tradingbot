@@ -119,11 +119,11 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
     
     if resolution == "tp":
         status_header = f"🏆 TARGET PROFIT ACHIEVED: {pnl_str}"
-        status_sub = "Strategy reached target profit limit seamlessly!"
+        status_sub = "Boom! That's one more step up the mountain!"
         status_color = "#00C853"
     elif resolution == "sl":
         status_header = f"❌ STOP LOSS TRIGGERED: {pnl_str}"
-        status_sub = "Risk parameters guarded capital successfully."
+        status_sub = "Sometimes on a hike, you get off course.. Let's get back on course and continue up the mountain!"
         status_color = "#FF1744"
     elif resolution == "closed":
         status_header = f"🔒 POSITION EXITED: {pnl_str}"
