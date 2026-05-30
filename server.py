@@ -1743,7 +1743,35 @@ def get_active_signals():
                     app.signals_active_updating = True
                     threading.Thread(target=_update_active_signals_cache).start()
                 return jsonify(cached_data), 200
-                
+        
+        # Cache is empty (e.g., immediately after a server restart).
+        # Avoid blocking the main request thread! Instantly return signals from DB
+        # and spawn the update engine in a background thread to hydrate live prices.
+        if not getattr(app, "signals_active_updating", False):
+            app.signals_active_updating = True
+            
+            # Fast DB fallback
+            try:
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC LIMIT 50")
+                    rows = c.fetchall()
+                signals = [dict(r) for r in rows]
+                for s in signals:
+                    s["pnl_pct"] = 0.0
+                    s["pnl_usdt"] = 0.0
+            except Exception:
+                signals = []
+            
+            # Prepopulate a temporary fast cache expiring in 15 seconds so it updates soon
+            RESPONSE_CACHE[cache_key] = (now + 15, signals)
+            
+            # Start background thread to calculate real live prices and PnLs
+            threading.Thread(target=_update_active_signals_cache).start()
+            
+            return jsonify(signals), 200
+
+    # Fallback to prevent any rare race conditions/unhandled scenarios from hanging
     signals = _update_active_signals_cache()
     return jsonify(signals), 200
 
