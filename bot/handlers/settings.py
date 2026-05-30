@@ -440,6 +440,68 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_admin_dashboard(update, context)
         return
 
+    if query.data == "admin_manage_strategies":
+        if chat_id != SUPER_ADMIN_ID:
+            logger.warning(f"UNAUTHORIZED STRATEGY MANAGEMENT ATTEMPT: {chat_id}")
+            return
+        await query.answer()
+        disabled = database.get_disabled_strategies()
+        
+        mr_status = "🔴 Retired" if "Mean Reversion Scalper" in disabled else "🟢 Active"
+        vk_status = "🔴 Retired" if "Valkyrie Elite Scalper" in disabled else "🟢 Active"
+        svp_status = "🔴 Retired" if "Sherpa Velocity Pullback" in disabled else "🟢 Active"
+        
+        msg = (
+            "🎯 *Sherpa Strategy Disablement Center*\n\n"
+            "Enable or disable strategies globally. Disabling a strategy will gracefully close active trades before fully retiring the model. No new entry signals will be triggered for retired strategies."
+        )
+        
+        kb = [
+            [InlineKeyboardButton(f"📈 Mean Reversion ({mr_status})", callback_data="admin_toggle_strategy_mr")],
+            [InlineKeyboardButton(f"🛡️ Valkyrie Elite ({vk_status})", callback_data="admin_toggle_strategy_vk")],
+            [InlineKeyboardButton(f"🦙 Stock Pullback ({svp_status})", callback_data="admin_toggle_strategy_svp")],
+            [InlineKeyboardButton("🔙 Back to Admin Console", callback_data="admin_command")]
+        ]
+        await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    if query.data.startswith("admin_toggle_strategy_"):
+        if chat_id != SUPER_ADMIN_ID:
+            logger.warning(f"UNAUTHORIZED STRATEGY TOGGLE ATTEMPT: {chat_id}")
+            return
+        strat_key = query.data.split("_")[-1]
+        
+        strat_mapping = {
+            "mr": "Mean Reversion Scalper",
+            "vk": "Valkyrie Elite Scalper",
+            "svp": "Sherpa Velocity Pullback"
+        }
+        strat_name = strat_mapping.get(strat_key)
+        if strat_name:
+            is_now_disabled = database.toggle_strategy(strat_name)
+            action_str = "Retired (Disabled)" if is_now_disabled else "Activated (Enabled)"
+            await query.answer(f"✅ {strat_name} is now {action_str}!", show_alert=True)
+            
+            # Refresh view
+            disabled = database.get_disabled_strategies()
+            mr_status = "🔴 Retired" if "Mean Reversion Scalper" in disabled else "🟢 Active"
+            vk_status = "🔴 Retired" if "Valkyrie Elite Scalper" in disabled else "🟢 Active"
+            svp_status = "🔴 Retired" if "Sherpa Velocity Pullback" in disabled else "🟢 Active"
+            
+            msg = (
+                "🎯 *Sherpa Strategy Disablement Center*\n\n"
+                "Enable or disable strategies globally. Disabling a strategy will gracefully close active trades before fully retiring the model. No new entry signals will be triggered for retired strategies."
+            )
+            
+            kb = [
+                [InlineKeyboardButton(f"📈 Mean Reversion ({mr_status})", callback_data="admin_toggle_strategy_mr")],
+                [InlineKeyboardButton(f"🛡️ Valkyrie Elite ({vk_status})", callback_data="admin_toggle_strategy_vk")],
+                [InlineKeyboardButton(f"🦙 Stock Pullback ({svp_status})", callback_data="admin_toggle_strategy_svp")],
+                [InlineKeyboardButton("🔙 Back to Admin Console", callback_data="admin_command")]
+            ]
+            await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
+        return
+
 
     if query.data == "admin_view_free_trades":
         if chat_id != SUPER_ADMIN_ID and not (user and user.get('is_admin')):
@@ -618,15 +680,23 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "view_strategy_guide":
         await query.answer()
+        disabled = database.get_disabled_strategies()
+        mr_active = "Mean Reversion Scalper" not in disabled
+        vk_active = "Valkyrie Elite Scalper" not in disabled
+        svp_active = "Sherpa Velocity Pullback" not in disabled
+
         intro_text = (
             "📖 *Sherpa Strategy Guide & Comparison*\n\n"
             "Choose the algorithm that best aligns with your risk tolerance and market outlook:\n\n"
-            "📈 *Mean Reversion Scalper*\n"
-            "• *Philosophy*: Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.\n"
-            "• *Indicators*: Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.\n"
-            "• *Pace*: Highly active. Averages ~0.84 trades/day.\n"
-            "• *Drawdown Profile*: Optimized for recommended **1.0% risk**, maintaining a safe drawdown of **~21.9%** (well below the 25% safety ceiling) while delivering **+384.1%** PnL."
         )
+        if mr_active:
+            intro_text += (
+                "📈 *Mean Reversion Scalper*\n"
+                "• *Philosophy*: Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.\n"
+                "• *Indicators*: Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.\n"
+                "• *Pace*: Highly active. Averages ~0.84 trades/day.\n"
+                "• *Drawdown Profile*: Optimized for recommended **1.0% risk**, maintaining a safe drawdown of **~21.9%** (well below the 25% safety ceiling) while delivering **+384.1%** PnL.\n\n"
+            )
         valk_text = (
             "🛡️ *Valkyrie Elite Scalper*\n"
             "• *Philosophy*: Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.\n"
@@ -641,24 +711,21 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• *Pace*: Daily swing. Executes scans daily at market open (9:31 AM EST).\n"
             "• *Drawdown Profile*: Ultra-safe equity curve, maintaining a tight **14.2%** maximum drawdown with a verified **+113.5%** return and high **66.9%** win rate over a 3-year period."
         )
-        matrix_text = (
-            "📊 *Comparative Matrix:*\n"
-            "• *Focus*: Volatility Extremes vs Wick Rejection vs Equities Pullbacks\n"
-            "• *Active Basket*: 29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40\n"
-            "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside vs 3-Period RSI < 10\n"
-            "• *Risk Profile*: Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)\n\n"
-            "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety and smooth growth curves in crypto. Activate *Sherpa Velocity Pullback (SVP)* to diversify into high-liquidity megacap US equities with low drawdown."
-        )
-        guide_text = (
-            "📖 *Sherpa Strategy Guide & Comparison*\n\n"
-            "📈 *Mean Reversion Scalper*\n"
-            "• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
-            "🛡️ *Valkyrie Elite Scalper*\n"
-            "• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
-            "🦙 *Sherpa Velocity Pullback*\n"
-            "• Philosophy: Momentum pullbacks on megacap US equities.\n\n"
-            "Full visual and interactive infographics are displayed in the sequential guide above."
-        )
+
+        matrix_parts = ["📊 *Comparative Matrix:*\n"]
+        rec_parts = []
+        if mr_active:
+            matrix_parts.append("• *Mean Reversion*: Focus on Volatility Extremes | 29-Token Basket | Trigger: Close outside bands | 21.9% DD")
+            rec_parts.append("Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential.")
+        if vk_active:
+            matrix_parts.append("• *Valkyrie Elite*: Focus on Wick Rejection | 7-Token Premium | Trigger: Wick pierce & close inside | 19.5% DD")
+            rec_parts.append("Use *Valkyrie Elite* if you prioritize capital safety and smooth growth curves in crypto.")
+        if svp_active:
+            matrix_parts.append("• *Stock Daily Swing*: Focus on Equities Pullbacks | NASDAQ/NYSE Top 40 | Trigger: 3-Period RSI < 10 | 14.2% DD")
+            rec_parts.append("Activate *Sherpa Velocity Pullback (SVP)* to diversify into high-liquidity megacap US equities with low drawdown.")
+
+        matrix_text = "\n".join(matrix_parts) + "\n\n💡 _Recommendation_: " + " ".join(rec_parts)
+        
         kb = [
             [InlineKeyboardButton("🔙 Back to Strategy Menu", callback_data="strategy_menu")],
             *get_nav_buttons(user.get('has_open_positions', False))
@@ -672,71 +739,69 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chart_sent = False
         
         try:
-            if not os.path.exists(chart_path):
-                from sherpa_visual_audit import generate_strategy_comparison_chart
-                await asyncio.to_thread(generate_strategy_comparison_chart)
+            try:
+                await query.message.delete()
+            except:
+                pass
+            
+            photo_ids = []
+            from bot.ui.keyboards import send_cached_photo
+            
+            # 1. Send the comparison visual chart first (if at least two strategies are active)
+            if (int(mr_active) + int(vk_active) + int(svp_active)) >= 2:
+                if not os.path.exists(chart_path):
+                    from sherpa_visual_audit import generate_strategy_comparison_chart
+                    await asyncio.to_thread(generate_strategy_comparison_chart)
+                if os.path.exists(chart_path):
+                    msg = await send_cached_photo(update, context, chart_path, caption="📊 *Metaverse Sherpa: Strategy Comparison Visual*")
+                    if msg: photo_ids.append(msg.message_id)
+            
+            # 2. Send Intro & Mean Reversion text description
+            if mr_active:
+                await context.bot.send_message(chat_id=chat_id, text=intro_text, parse_mode="Markdown")
+                if os.path.exists(mr_path):
+                    msg = await send_cached_photo(update, context, mr_path)
+                    if msg: photo_ids.append(msg.message_id)
+            else:
+                # If MR is disabled but others are active, still send a base intro text
+                await context.bot.send_message(chat_id=chat_id, text="📖 *Sherpa Strategy Guide & Comparison*\n\nChoose the active algorithm that best aligns with your risk tolerance:", parse_mode="Markdown")
+            
+            # 3. Send Valkyrie Elite
+            if vk_active:
+                await context.bot.send_message(chat_id=chat_id, text=valk_text, parse_mode="Markdown")
+                if os.path.exists(valk_path):
+                    msg = await send_cached_photo(update, context, valk_path)
+                    if msg: photo_ids.append(msg.message_id)
                 
-            if os.path.exists(chart_path) and os.path.exists(mr_path) and os.path.exists(valk_path) and os.path.exists(stock_path):
-                try:
-                    await query.message.delete()
-                except:
-                    pass
-                
-                photo_ids = []
-                
-                from bot.ui.keyboards import send_cached_photo
-                
-                # 1. Send the comparison visual chart first
-                msg = await send_cached_photo(update, context, chart_path, caption="📊 *Metaverse Sherpa: 3-Year Strategy Comparison Visual*")
-                if msg: photo_ids.append(msg.message_id)
-                
-                # 2. Send Intro & Mean Reversion text description
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=intro_text,
-                    parse_mode="Markdown"
-                )
-                
-                # 3. Send Mean Reversion Infographic
-                msg = await send_cached_photo(update, context, mr_path)
-                if msg: photo_ids.append(msg.message_id)
-                
-                # 4. Send Valkyrie Elite text description
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=valk_text,
-                    parse_mode="Markdown"
-                )
-                
-                # 5. Send Valkyrie Elite Infographic
-                msg = await send_cached_photo(update, context, valk_path)
-                if msg: photo_ids.append(msg.message_id)
-                    
-                # 6. Send Sherpa Velocity Pullback text description
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=stock_text,
-                    parse_mode="Markdown"
-                )
-                
-                # 7. Send Sherpa Velocity Pullback Infographic
-                msg = await send_cached_photo(update, context, stock_path)
-                if msg: photo_ids.append(msg.message_id)
-                
-                # 8. Send Comparative Matrix & final keyboard menu
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=matrix_text,
-                    parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup(kb)
-                )
-                
-                context.user_data['strategy_guide_photo_ids'] = photo_ids
-                chart_sent = True
+            # 4. Send Sherpa Velocity Pullback
+            if svp_active:
+                await context.bot.send_message(chat_id=chat_id, text=stock_text, parse_mode="Markdown")
+                if os.path.exists(stock_path):
+                    msg = await send_cached_photo(update, context, stock_path)
+                    if msg: photo_ids.append(msg.message_id)
+            
+            # 5. Send Comparative Matrix & final keyboard menu
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=matrix_text,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(kb)
+            )
+            
+            context.user_data['strategy_guide_photo_ids'] = photo_ids
+            chart_sent = True
         except Exception as e:
             logger.error(f"❌ Error generating/sending strategy guide chart: {e}")
             
         if not chart_sent:
+            guide_text = "📖 *Sherpa Strategy Guide & Comparison*\n\n"
+            if mr_active:
+                guide_text += "📈 *Mean Reversion Scalper*\n• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
+            if vk_active:
+                guide_text += "🛡️ *Valkyrie Elite Scalper*\n• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
+            if svp_active:
+                guide_text += "🦙 *Sherpa Velocity Pullback*\n• Philosophy: Momentum pullbacks on megacap US equities.\n\n"
+            guide_text += "Full visual and interactive infographics are displayed in the sequential guide above."
             await safe_edit_text(update, context, guide_text, reply_markup=InlineKeyboardMarkup(kb))
         return
 

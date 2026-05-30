@@ -221,15 +221,22 @@ def get_main_inline_menu(chat_id=None):
 
 def get_admin_keyboard(master_wallet):
     """Generates the specialized keyboard for the Sherpa Overlord."""
+    disabled = database.get_disabled_strategies()
+    
+    share_row = []
+    if "Mean Reversion Scalper" not in disabled:
+        share_row.append(InlineKeyboardButton("📈 Share MR Stats", callback_data="shf_mr"))
+    if "Valkyrie Elite Scalper" not in disabled:
+        share_row.append(InlineKeyboardButton("🛡️ Share VK Stats", callback_data="shf_vk"))
+    if "Sherpa Velocity Pullback" not in disabled:
+        share_row.append(InlineKeyboardButton("🦙 Share SVP Stats", callback_data="shf_svp"))
+        
     return [
         [InlineKeyboardButton("🌍 Global Broadcast", callback_data="admin_broadcast_prompt")],
         [InlineKeyboardButton("📊 Detailed User Report", callback_data="admin_user_audit")],
         [InlineKeyboardButton("🔬 View Free Signals", callback_data="admin_view_free_trades")],
-        [
-            InlineKeyboardButton("📈 Share MR Stats", callback_data="shf_mr"),
-            InlineKeyboardButton("🛡️ Share VK Stats", callback_data="shf_vk"),
-            InlineKeyboardButton("🦙 Share SVP Stats", callback_data="shf_svp")
-        ],
+        share_row if share_row else [],
+        [InlineKeyboardButton("🚫 Manage Strategies", callback_data="admin_manage_strategies")],
         [InlineKeyboardButton("🎁 Generate Gift Code", callback_data="admin_gift_prompt")],
         [InlineKeyboardButton("🚫 Revoke Premium Access", callback_data="admin_revoke_prompt")],
         [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
@@ -237,7 +244,6 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("📧 Toggle Email Premium-Only", callback_data="toggle_emails_premium")],
         [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="toggle_undercover")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="close_admin")]
-
     ]
 
 def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='crypto'):

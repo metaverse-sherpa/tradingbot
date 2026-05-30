@@ -2194,8 +2194,12 @@ function renderSettingsView() {
                                 </div>
                             </div>
                             <div id="crypto-strategy-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-surface-container border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                                ${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? `
                                 <div onclick="document.getElementById('crypto-strategy-display').innerText = 'Mean Reversion Scalper'; handleStrategyChange('crypto', 'Mean Reversion Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Mean Reversion Scalper</div>
+                                ` : ''}
+                                ${!(user.disabled_strategies || []).includes('Valkyrie Elite Scalper') ? `
                                 <div onclick="document.getElementById('crypto-strategy-display').innerText = 'Valkyrie Elite Scalper'; handleStrategyChange('crypto', 'Valkyrie Elite Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Valkyrie Elite Scalper</div>
+                                ` : ''}
                                 <div onclick="document.getElementById('crypto-strategy-display').innerText = 'None'; handleStrategyChange('crypto', 'None')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">None (Disabled)</div>
                             </div>
                         </div>
@@ -2210,7 +2214,9 @@ function renderSettingsView() {
                                 </div>
                             </div>
                             <div id="stock-strategy-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-surface-container border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                                ${!(user.disabled_strategies || []).includes('Sherpa Velocity Pullback') ? `
                                 <div onclick="document.getElementById('stock-strategy-display').innerText = 'Sherpa Velocity Pullback'; handleStrategyChange('stock', 'Sherpa Velocity Pullback')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Sherpa Velocity Pullback</div>
+                                ` : ''}
                                 <div onclick="document.getElementById('stock-strategy-display').innerText = 'None'; handleStrategyChange('stock', 'None')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">None (Disabled)</div>
                             </div>
                         </div>
@@ -2366,7 +2372,7 @@ function renderSettingsView() {
 
 function renderStrategyView() {
     const user = STATE.user || {};
-    const current = user.active_crypto_strategy || 'Mean Reversion Scalper';
+    const current = user.active_crypto_strategy || 'Valkyrie Elite Scalper';
     
     return `
         ${renderHeader()}
@@ -2379,6 +2385,7 @@ function renderStrategyView() {
             </div>
             
             <div class="space-y-stack-gap">
+                ${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? `
                 <button onclick="changeStrategy('Mean Reversion Scalper')" class="w-full glass-card rounded-xl p-4 flex justify-between items-center hover:bg-white/5 text-left border ${current === 'Mean Reversion Scalper' ? 'border-primary' : 'border-white/10'}">
                     <div>
                         <h4 class="font-semibold text-on-surface">Mean Reversion Scalper</h4>
@@ -2386,7 +2393,19 @@ function renderStrategyView() {
                     </div>
                     ${current === 'Mean Reversion Scalper' ? '<span class="material-symbols-outlined text-primary">check_circle</span>' : ''}
                 </button>
+                ` : ''}
+
+                ${!(user.disabled_strategies || []).includes('Valkyrie Elite Scalper') ? `
+                <button onclick="changeStrategy('Valkyrie Elite Scalper')" class="w-full glass-card rounded-xl p-4 flex justify-between items-center hover:bg-white/5 text-left border ${current === 'Valkyrie Elite Scalper' ? 'border-primary' : 'border-white/10'}">
+                    <div>
+                        <h4 class="font-semibold text-on-surface">Valkyrie Elite Scalper</h4>
+                        <p class="text-xs text-on-surface-variant mt-1">Advanced volatility and trend tracker optimized for active crypto markets.</p>
+                    </div>
+                    ${current === 'Valkyrie Elite Scalper' ? '<span class="material-symbols-outlined text-primary">check_circle</span>' : ''}
+                </button>
+                ` : ''}
                 
+                ${!(user.disabled_strategies || []).includes('Sherpa Velocity Pullback') ? `
                 <button onclick="changeStrategy('Sherpa Velocity Pullback')" class="w-full glass-card rounded-xl p-4 flex justify-between items-center hover:bg-white/5 text-left border ${current === 'Sherpa Velocity Pullback' ? 'border-primary' : 'border-white/10'}">
                     <div>
                         <h4 class="font-semibold text-on-surface">Sherpa Velocity Pullback</h4>
@@ -2394,6 +2413,7 @@ function renderStrategyView() {
                     </div>
                     ${current === 'Sherpa Velocity Pullback' ? '<span class="material-symbols-outlined text-primary">check_circle</span>' : ''}
                 </button>
+                ` : ''}
             </div>
         </main>
     `;
@@ -2468,17 +2488,23 @@ function renderBacktestView() {
                     <div class="space-y-2">
                         <label class="text-xs text-on-surface-variant font-semibold uppercase">Strategy</label>
                         <div class="relative">
-                            <input type="hidden" id="bt-strategy" value="Mean Reversion Scalper" />
+                            <input type="hidden" id="bt-strategy" value="${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? 'Mean Reversion Scalper' : 'Valkyrie Elite Scalper'}" />
                             <div tabindex="0" onblur="setTimeout(() => { const d = document.getElementById('bt-strategy-dropdown'); if(d) d.classList.add('hidden'); }, 200)" onclick="document.getElementById('bt-strategy-dropdown').classList.toggle('hidden')" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 flex items-center cursor-pointer relative cyan-glow-focus outline-none">
-                                <span id="bt-strategy-display">Mean Reversion Scalper</span>
+                                <span id="bt-strategy-display">${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? 'Mean Reversion Scalper' : 'Valkyrie Elite Scalper'}</span>
                                 <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
                                     <span class="material-symbols-outlined text-xl">expand_more</span>
                                 </div>
                             </div>
                             <div id="bt-strategy-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-surface-container border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                                ${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? `
                                 <div onclick="window.selectStrategy('Mean Reversion Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Mean Reversion Scalper</div>
+                                ` : ''}
+                                ${!(user.disabled_strategies || []).includes('Valkyrie Elite Scalper') ? `
                                 <div onclick="window.selectStrategy('Valkyrie Elite Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Valkyrie Elite Scalper</div>
+                                ` : ''}
+                                ${!(user.disabled_strategies || []).includes('Sherpa Velocity Pullback') ? `
                                 <div onclick="window.selectStrategy('Sherpa Velocity Pullback')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Sherpa Velocity Pullback</div>
+                                ` : ''}
                             </div>
                         </div>
                     </div>

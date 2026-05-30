@@ -1313,3 +1313,108 @@ async def make_alpaca_request_async(user, method, path, params=None, json_data=N
     import asyncio
     return await asyncio.to_thread(make_alpaca_request, user, method, path, params, json_data)
 
+# --- 🚫 Strategy Disablement & Graceful Retirement ---
+
+def get_disabled_strategies():
+    """Returns a list of disabled strategies from Config."""
+    disabled = get_config("disabled_strategies", "")
+    return [d.strip() for d in disabled.split(",") if d.strip()]
+
+def is_strategy_disabled(strategy_name):
+    """Returns True if the strategy is disabled."""
+    return strategy_name in get_disabled_strategies()
+
+def toggle_strategy(strategy_name):
+    """Toggles a strategy's disabled state. Automatically migrates users with 0 open positions."""
+    disabled_list = get_disabled_strategies()
+    if strategy_name in disabled_list:
+        disabled_list.remove(strategy_name)
+        new_val = ",".join(disabled_list)
+        update_config("disabled_strategies", new_val)
+        return False # Strategy is now active (Enabled)
+    else:
+        disabled_list.append(strategy_name)
+        new_val = ",".join(disabled_list)
+        update_config("disabled_strategies", new_val)
+        
+        # Strategy disabled! Run immediate migration for users who have no open positions
+        with db_session() as conn:
+            c = conn.cursor()
+            if strategy_name == "Mean Reversion Scalper":
+                c.execute("""
+                    UPDATE Users 
+                    SET active_crypto_strategy = 'Valkyrie Elite Scalper', strategy = 'Valkyrie Elite Scalper'
+                    WHERE (active_crypto_strategy = 'Mean Reversion Scalper' OR strategy = 'Mean Reversion Scalper')
+                      AND (has_open_positions = 0 OR has_open_positions IS NULL)
+                """)
+                c.execute("""
+                    UPDATE WebUsers 
+                    SET active_crypto_strategy = 'Valkyrie Elite Scalper'
+                    WHERE active_crypto_strategy = 'Mean Reversion Scalper'
+                      AND (has_open_positions = 0 OR has_open_positions IS NULL)
+                """)
+            elif strategy_name == "Valkyrie Elite Scalper":
+                c.execute("""
+                    UPDATE Users 
+                    SET active_crypto_strategy = 'Mean Reversion Scalper', strategy = 'Mean Reversion Scalper'
+                    WHERE (active_crypto_strategy = 'Valkyrie Elite Scalper' OR strategy = 'Valkyrie Elite Scalper')
+                      AND (has_open_positions = 0 OR has_open_positions IS NULL)
+                """)
+                c.execute("""
+                    UPDATE WebUsers 
+                    SET active_crypto_strategy = 'Mean Reversion Scalper'
+                    WHERE active_crypto_strategy = 'Valkyrie Elite Scalper'
+                      AND (has_open_positions = 0 OR has_open_positions IS NULL)
+                """)
+            elif strategy_name == "Sherpa Velocity Pullback":
+                c.execute("""
+                    UPDATE Users 
+                    SET active_stock_strategy = 'None'
+                    WHERE active_stock_strategy = 'Sherpa Velocity Pullback'
+                      AND (has_open_positions = 0 OR has_open_positions IS NULL)
+                """)
+                c.execute("""
+                    UPDATE WebUsers 
+                    SET active_stock_strategy = 'None'
+                    WHERE active_stock_strategy = 'Sherpa Velocity Pullback'
+                      AND (has_open_positions = 0 OR has_open_positions IS NULL)
+                """)
+            conn.commit()
+        return True # Strategy is now disabled
+
+def migrate_user_if_no_open_positions(chat_id):
+    """If the user has a disabled strategy active and 0 open positions, migrates them to an enabled alternative."""
+    user = get_user(chat_id)
+    if not user:
+        return
+        
+    disabled_list = get_disabled_strategies()
+    if not disabled_list:
+        return
+        
+    active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    active_stock = user.get('active_stock_strategy', 'None')
+    has_open = user.get('has_open_positions', False)
+    
+    if not has_open:
+        with db_session() as conn:
+            c = conn.cursor()
+            if active_crypto in disabled_list:
+                next_strat = 'Valkyrie Elite Scalper' if active_crypto == 'Mean Reversion Scalper' else 'Mean Reversion Scalper'
+                if next_strat in disabled_list:
+                    next_strat = 'None'
+                c.execute("UPDATE Users SET active_crypto_strategy = ?, strategy = ? WHERE telegram_chat_id = ?", (next_strat, next_strat, chat_id))
+                try:
+                    c.execute("UPDATE WebUsers SET active_crypto_strategy = ? WHERE telegram_chat_id = ?", (next_strat, chat_id))
+                except:
+                    pass
+                
+            if active_stock in disabled_list:
+                c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE telegram_chat_id = ?", (chat_id,))
+                try:
+                    c.execute("UPDATE WebUsers SET active_stock_strategy = 'None' WHERE telegram_chat_id = ?", (chat_id,))
+                except:
+                    pass
+            conn.commit()
+
+

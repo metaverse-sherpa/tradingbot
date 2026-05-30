@@ -403,6 +403,8 @@ def profile():
         except Exception as e:
             print(f"Could not load recruits: {e}")
     user["recruit_list"] = recruit_list
+    import database
+    user["disabled_strategies"] = database.get_disabled_strategies()
 
     user["server_time"] = now
     return jsonify(user), 200
@@ -518,6 +520,10 @@ def settings_strategy():
     
     if not strategy_name:
         return jsonify({"error": "Strategy name required"}), 400
+        
+    import database
+    if database.is_strategy_disabled(strategy_name):
+        return jsonify({"error": f"The strategy '{strategy_name}' has been disabled by the administrator."}), 400
         
     update_web_user_strategy(g.user["id"], strategy_type, strategy_name)
     return jsonify({"message": f"Active {strategy_type} strategy updated to {strategy_name}"}), 200
@@ -1750,7 +1756,8 @@ def get_closed_signals():
 
 @app.route('/api/stats/free', methods=['GET'])
 def get_free_stats():
-    strategy_names = ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"]
+    disabled = database.get_disabled_strategies()
+    strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
     open_sim_trades = database.get_open_theoretical_trades()
     
     strategy_open_trades = {s: [] for s in strategy_names}

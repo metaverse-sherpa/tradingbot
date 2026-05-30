@@ -264,6 +264,13 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
     # 5. Run the visual audit in background thread
     sim_user_id = "admin" if is_default else chat_id
     if force_asset == 'stock':
+        strategy = user.get('active_stock_strategy', 'Sherpa Velocity Pullback')
+        if strategy != 'None' and database.is_strategy_disabled(strategy):
+            await status_msg.edit_text(
+                f"❌ *Simulation Aborted*\n\nThe strategy `{strategy}` has been disabled by the administrator and cannot be backtested at this time.", 
+                parse_mode="Markdown"
+            )
+            return
         audit_task = asyncio.create_task(asyncio.to_thread(
             run_stock_visual_audit, 
             risk_val_pct=target_risk, 
@@ -272,6 +279,12 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         ))
     else:
         strategy = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+        if database.is_strategy_disabled(strategy):
+            await status_msg.edit_text(
+                f"❌ *Simulation Aborted*\n\nThe strategy `{strategy}` has been disabled by the administrator and cannot be backtested at this time.", 
+                parse_mode="Markdown"
+            )
+            return
         if strategy == 'None':
             strategy = 'Mean Reversion Scalper'
         audit_task = asyncio.create_task(asyncio.to_thread(
@@ -282,6 +295,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             start_balance=start_balance, 
             strategy_name=strategy
         ))
+        
         
     idx = 1
     while not audit_task.done():

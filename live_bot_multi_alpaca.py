@@ -360,6 +360,13 @@ async def run_real_trader_execution(today_opens):
             positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
             active_positions = {p['symbol']: p for p in positions if float(p.get("qty", 0)) != 0}
             
+            # Graceful strategy retirement check
+            is_disabled = database.is_strategy_disabled("Sherpa Velocity Pullback")
+            if is_disabled and len(active_positions) == 0:
+                database.migrate_user_if_no_open_positions(chat_id)
+                logger.info(f"User {chat_id} stock strategy retired gracefully (0 active positions).")
+                continue
+            
             # --- PHASE 1: PROCESS DYNAMIC EXITS ---
             for sym, pos in active_positions.items():
                 indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
@@ -386,7 +393,7 @@ async def run_real_trader_execution(today_opens):
                                 f"• Approximate Exit Price: `${close_price:.2f}`\n"
                                 "🚀 _Associated Stop-Loss and Take-Profit orders have been automatically cancelled._\n\n"
                                 "Closed at: "
-                            )
+                             )
                             placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
                             close_entity = MessageEntity(
                                 type=MessageEntity.DATE_TIME,
@@ -401,6 +408,10 @@ async def run_real_trader_execution(today_opens):
                             await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} dynamically: {e}")
             
             # --- PHASE 2: PROCESS NEW BUY ENTRIES ---
+            if is_disabled:
+                logger.info(f"Stock strategy is disabled. Skipping new entries for user {chat_id}.")
+                continue
+            
             import stock_data_cache_daily
             for sym in stock_data_cache_daily.SYMBOLS:
                 if sym in active_positions:

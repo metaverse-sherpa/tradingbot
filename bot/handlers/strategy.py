@@ -31,18 +31,32 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_stock = user.get('active_stock_strategy', 'None')
     risk_val = user.get('risk_pct', 1.5)
     
-    keyboard = [
-        [
-            InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
-            InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"),
-        ],
-        [InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")],
-        [
+    disabled = database.get_disabled_strategies()
+    mr_active = "Mean Reversion Scalper" not in disabled
+    vk_active = "Valkyrie Elite Scalper" not in disabled
+    svp_active = "Sherpa Velocity Pullback" not in disabled
+    
+    # Dynamically build strategy buttons row
+    crypto_row = []
+    if mr_active:
+        crypto_row.append(InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"))
+    if vk_active:
+        crypto_row.append(InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"))
+        
+    keyboard = []
+    if crypto_row:
+        keyboard.append(crypto_row)
+    keyboard.append([InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")])
+    
+    if svp_active:
+        keyboard.append([
             InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"),
             InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause")
-        ],
-        [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
-    ]
+        ])
+    else:
+        keyboard.append([InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause")])
+        
+    keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.effective_message.reply_text(
@@ -62,142 +76,55 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def strategy_guide_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Provides a sequential visual walkthrough of both active strategies with pre-rendered infographics."""
-    chat_id = update.effective_chat.id
-    user = database.get_user(chat_id)
-    if not user:
-        await update.effective_message.reply_text("Please run /setup first.")
-        return
+    # We will trigger the same dynamic view_strategy_guide callback to prevent code duplication!
+    query = update.callback_query
+    if query:
+        query.data = "view_strategy_guide"
+        from bot.handlers.settings import settings_callback
+        await settings_callback(update, context)
+    else:
+        # Send strategy manual text
+        chat_id = update.effective_chat.id
+        user = database.get_user(chat_id)
+        if not user:
+            await update.effective_message.reply_text("Please run /setup first.")
+            return
         
-    intro_text = (
-        "📖 *Sherpa Strategy Guide & Comparison*\n\n"
-        "Choose the algorithm that best aligns with your risk tolerance and market outlook:\n\n"
-        "📈 *Mean Reversion Scalper*\n"
-        "• *Philosophy*: Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.\n"
-        "• *Indicators*: Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.\n"
-        "• *Pace*: Highly active. Averages ~0.84 trades/day.\n"
-        "• *Drawdown Profile*: Optimized for recommended **1.0% risk**, maintaining a safe drawdown of **~21.9%** (well below the 25% safety ceiling) while delivering **+384.1%** PnL."
-    )
-    valk_text = (
-        "🛡️ *Valkyrie Elite Scalper*\n"
-        "• *Philosophy*: Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.\n"
-        "• *Indicators*: Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.\n"
-        "• *Pace*: Patient and calculated. Averages ~0.68 trades/day.\n"
-        "• *Drawdown Profile*: Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket)."
-    )
-    stock_text = (
-        "🦙 *Sherpa Velocity Pullback (SVP)*\n"
-        "• *Philosophy*: Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.\n"
-        "• *Indicators*: Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).\n"
-        "• *Pace*: Daily swing. Executes scans daily at market open (9:31 AM EST).\n"
-        "• *Drawdown Profile*: Ultra-safe equity curve, maintaining a tight **14.2%** maximum drawdown with a verified **+113.5%** return and high **66.9%** win rate over a 3-year period."
-    )
-    matrix_text = (
-        "📊 *Comparative Matrix:*\n"
-        "• *Focus*: Volatility Extremes vs Wick Rejection vs Equities Pullbacks\n"
-        "• *Active Basket*: 29-Token Basket vs 7-Token Premium vs NASDAQ/NYSE Top 40\n"
-        "• *Trigger Logic*: Close outside bands vs Wick pierce & close inside vs 3-Period RSI < 10\n"
-        "• *Risk Profile*: Crypto Scalper (21.9% DD) vs Safe Crypto Scalper (19.5% DD) vs Stock Daily Swing (14.2% DD)\n\n"
-        "💡 _Recommendation_: Use *Mean Reversion* if you prefer maximum trade frequency and compounding potential. Use *Valkyrie Elite* if you prioritize capital safety and smooth growth curves in crypto. Activate *Sherpa Velocity Pullback (SVP)* to diversify into high-liquidity megacap US equities with low drawdown."
-    )
-    
-    kb = [
-        [InlineKeyboardButton("🔙 Back to Strategy Menu", callback_data="strategy_menu")],
-        *get_nav_buttons(user.get('has_open_positions', False))
-    ]
-    
-    chart_path = os.path.join(BASE_DIR, "results", "strategy_comparison.png")
-    mr_path = os.path.join(BASE_DIR, "results", "mean_reversion_infographic.png")
-    valk_path = os.path.join(BASE_DIR, "results", "valkyrie_elite_infographic.png")
-    stock_path = os.path.join(BASE_DIR, "results", "stock_strategy_infographic.png")
-    
-    try:
-        # Resolve sherpa_visual_audit path dynamically
-        sys.path.append(os.path.join(BASE_DIR, "scripts"))
-        if not os.path.exists(chart_path):
-            from sherpa_visual_audit import generate_strategy_comparison_chart
-            await asyncio.to_thread(generate_strategy_comparison_chart)
-            
-        photo_ids = []
+        disabled = database.get_disabled_strategies()
+        mr_active = "Mean Reversion Scalper" not in disabled
+        vk_active = "Valkyrie Elite Scalper" not in disabled
+        svp_active = "Sherpa Velocity Pullback" not in disabled
         
-        from bot.ui.keyboards import send_cached_photo
+        guide_text = "📖 *Sherpa Strategy Guide & Comparison*\n\n"
+        if mr_active:
+            guide_text += "📈 *Mean Reversion Scalper*\n• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
+        if vk_active:
+            guide_text += "🛡️ *Valkyrie Elite Scalper*\n• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
+        if svp_active:
+            guide_text += "🦙 *Sherpa Velocity Pullback*\n• Philosophy: Momentum pullbacks on megacap US equities.\n\n"
+        guide_text += "Please tap /strategy to swap strategy brains or configure settings."
         
-        # 1. Send the comparison visual chart first
-        msg = await send_cached_photo(update, context, chart_path, caption="📊 *Metaverse Sherpa: 3-Year Strategy Comparison Visual*")
-        if msg: photo_ids.append(msg.message_id)
-        
-        # 2. Send Intro & Mean Reversion text description
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=intro_text,
-            parse_mode="Markdown"
-        )
-        
-        # 3. Send Mean Reversion Infographic
-        msg = await send_cached_photo(update, context, mr_path)
-        if msg: photo_ids.append(msg.message_id)
-        
-        # 4. Send Valkyrie Elite text description
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=valk_text,
-            parse_mode="Markdown"
-        )
-        
-        # 5. Send Valkyrie Elite Infographic
-        msg = await send_cached_photo(update, context, valk_path)
-        if msg: photo_ids.append(msg.message_id)
-            
-        # 6. Send Sherpa Velocity Pullback text description
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=stock_text,
-            parse_mode="Markdown"
-        )
-        
-        # 7. Send Sherpa Velocity Pullback Infographic
-        msg = await send_cached_photo(update, context, stock_path)
-        if msg: photo_ids.append(msg.message_id)
-        
-        # 8. Send Comparative Matrix & final keyboard menu
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=matrix_text,
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(kb)
-        )
-        
-        context.user_data['strategy_guide_photo_ids'] = photo_ids
-    except Exception as e:
-        logger.error(f"❌ Error in /strategyguide command: {e}")
-        # Fallback
-        guide_text = (
-            "📖 *Sherpa Strategy Guide & Comparison*\n\n"
-            "📈 *Mean Reversion Scalper*\n"
-            "• Philosophy: Revert to 200 EMA from overextended Bollinger Bands.\n\n"
-            "🛡️ *Valkyrie Elite Scalper*\n"
-            "• Philosophy: Wick rejection pullbacks during squeezes.\n\n"
-            "🦙 *Sherpa Velocity Pullback*\n"
-            "• Philosophy: Momentum pullbacks on megacap US equities.\n\n"
-            "Full visual and interactive infographics are displayed in the sequential guide above."
-        )
-        await update.effective_message.reply_text(
-            guide_text,
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(kb)
-        )
+        kb = [[InlineKeyboardButton("🔙 Back to Strategy Menu", callback_data="strategy_menu")]]
+        await update.effective_message.reply_text(guide_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
 
 async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     
     chat_id = query.message.chat.id
     user = database.get_user(chat_id)
     if not user:
+        await query.answer()
         return
         
     current_risk = user.get('risk_pct', 1.5)
+    disabled = database.get_disabled_strategies()
     
     if query.data == "set_strat_mean":
+        if "Mean Reversion Scalper" in disabled:
+            await query.answer("❌ This strategy is currently retired (disabled) by the administrator.", show_alert=True)
+            return
+            
+        await query.answer()
         database.update_user_crypto_strategy(chat_id, "Mean Reversion Scalper")
         msg = "✅ Crypto strategy set to: *Mean Reversion Scalper*"
         
@@ -217,6 +144,11 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
             
     elif query.data == "set_strat_valk":
+        if "Valkyrie Elite Scalper" in disabled:
+            await query.answer("❌ This strategy is currently retired (disabled) by the administrator.", show_alert=True)
+            return
+            
+        await query.answer()
         database.update_user_crypto_strategy(chat_id, "Valkyrie Elite Scalper")
         msg = "✅ Crypto strategy set to: *Valkyrie Elite Scalper*"
         
@@ -236,16 +168,23 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
             
     elif query.data == "set_strat_crypto_pause":
+        await query.answer()
         database.update_user_crypto_strategy(chat_id, "None")
         msg = "⏸️ Crypto strategy has been *Paused*!"
         await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
         
     elif query.data == "set_strat_stock_pause":
+        await query.answer()
         database.update_user_stock_strategy(chat_id, "None")
         msg = "⏸️ Stock strategy has been *Paused*!"
         await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
         
     elif query.data == "set_strat_svp":
+        if "Sherpa Velocity Pullback" in disabled:
+            await query.answer("❌ This strategy is currently retired (disabled) by the administrator.", show_alert=True)
+            return
+            
+        await query.answer()
         # Check if the user has Alpaca credentials set
         if not user.get('alpaca_api_key') or not user.get('alpaca_api_secret') or not user.get('alpaca_endpoint'):
             # Start Alpaca onboarding flow!

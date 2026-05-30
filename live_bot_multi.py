@@ -319,15 +319,27 @@ async def run():
         await asyncio.gather(*market_data_tasks)
 
         # Parallelize Signal Computation and User Processing by grouping users by strategy
+        disabled_strats = database.get_disabled_strategies()
         strategy_groups = {}
         for user in active_users:
             strat = user.get("strategy", "Mean Reversion Scalper")
+            if strat in disabled_strats:
+                if not user.get('has_open_positions', False):
+                    database.migrate_user_if_no_open_positions(user['telegram_chat_id'])
+                    # Load the migrated strategy preference
+                    migrated_user = database.get_user(user['telegram_chat_id'])
+                    strat = migrated_user.get("strategy", "Valkyrie Elite Scalper") if migrated_user else "Valkyrie Elite Scalper"
+
             if strat not in strategy_groups:
                 strategy_groups[strat] = []
             strategy_groups[strat].append(user)
             
         processing_tasks = []
         for strat_name, users in strategy_groups.items():
+            if strat_name in disabled_strats:
+                log.info(f"Strategy '{strat_name}' is disabled. Skipping new signal entries.")
+                continue
+                
             for symbol in SYMBOLS:
                 df = await mdm.fetch_ohlcv(symbol, TIMEFRAME)
                 if df is not None:
