@@ -90,14 +90,15 @@ def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
             WHERE id = ?
         ''', (encrypt(api_key), encrypt(api_secret), endpoint, user_id))
 
-def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars):
+def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, email_notifications=1, email_frequency='realtime', browser_notifications=1):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('''
             UPDATE WebUsers
-            SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?
+            SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?,
+                email_notifications = ?, email_frequency = ?, browser_notifications = ?
             WHERE id = ?
-        ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, user_id))
+        ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, int(email_notifications), email_frequency, int(browser_notifications), user_id))
         
         # Sync to Telegram bot if linked
         c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
@@ -375,3 +376,23 @@ def award_premium_referral_on_upgrade(referee_id):
                     f"You have now referred **{p_ref}** Premium members (you need 3 to get 1 month free Premium. Next reward at **{((p_ref // 3) + 1) * 3}**)."
                 )
                 send_telegram_notification(tg_chat_id, msg_upgrade)
+
+def get_users_for_email_alerts(frequency="realtime"):
+    """
+    Returns a list of WebUsers who want email alerts for a given frequency.
+    Checks if emails_premium_only flag is enabled and filters premium users if true.
+    """
+    from database import get_config, is_premium
+    emails_prem_only = get_config("emails_premium_only", "0") == "1"
+    
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT * FROM WebUsers WHERE email_notifications = 1 AND email_frequency = ?', (frequency,))
+        rows = c.fetchall()
+        
+    users = [dict(r) for r in rows]
+    if emails_prem_only:
+        users = [u for u in users if is_premium(u)]
+        
+    return users
+

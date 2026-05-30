@@ -226,13 +226,17 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
 
     admin_status = "🕵️‍♂️ Undercover" if user.get('undercover_mode') else "👑 Overlord"
     
+    emails_prem_only = database.get_config("emails_premium_only", "0") == "1"
+    emails_prem_status = "💎 Premium Only" if emails_prem_only else "🌍 Everyone"
+    
     # 🧪 Simulated Forward Testing — shared analytics block
     forward_test_block = await build_forward_test_stats_block()
     
     last_sync = time.strftime('%H:%M:%S')
     admin_msg = (
         "👑 *Sherpa Overlord Mission Control*\n\n"
-        f"Identity Status: *{admin_status}*\n\n"
+        f"Identity Status: *{admin_status}*\n"
+        f"Email Alerts Tier: *{emails_prem_status}*\n\n"
         "📊 *Platform Analytics*\n"
         f"• Total Users: `{stats['total_users']}`\n"
         f"• Total Referrals: `{stats['total_referrals']}`\n"
@@ -245,6 +249,7 @@ async def show_admin_dashboard(update: Update, context: ContextTypes.DEFAULT_TYP
         f"• **Live Balance: {balance_display}**\n\n"
         f"🕒 _Last Sync: {last_sync}_"
     )
+
     
     kb = get_admin_keyboard(master_wallet)
     await safe_edit_text(update, context, admin_msg, reply_markup=InlineKeyboardMarkup(kb))

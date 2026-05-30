@@ -382,7 +382,16 @@ def settings_preferences():
         custom_equity_value = float(custom_equity_value)
     hide_dollars = bool(data.get("hide_dollars", g.user.get("hide_dollars", False)))
     
-    update_web_user_preferences(g.user["id"], risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars)
+    # Notification preferences
+    email_notifications = bool(data.get("email_notifications", g.user.get("email_notifications", True)))
+    email_frequency = data.get("email_frequency", g.user.get("email_frequency", "realtime"))
+    browser_notifications = bool(data.get("browser_notifications", g.user.get("browser_notifications", True)))
+    
+    update_web_user_preferences(
+        g.user["id"], risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars,
+        email_notifications, email_frequency, browser_notifications
+    )
+
     
     # Sync with linked Telegram account
     tg_user = _get_telegram_user(g.user)

@@ -263,3 +263,207 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
     </body>
     </html>
     """
+
+def get_daily_summary_html(signals_opened, signals_closed):
+    """
+    Generates premium responsive HTML email template for daily trading summaries.
+    """
+    color_bg = "#0B0E14"
+    color_card = "#141A24"
+    
+    opened_rows = ""
+    if not signals_opened:
+        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">No new signals opened today.</td></tr>'
+    else:
+        for s in signals_opened:
+            direction_color = "#00C853" if s['side'] in ['buy', 'long', 'LONG'] else "#FF1744"
+            direction_label = "LONG" if s['side'] in ['buy', 'long', 'LONG'] else "SHORT"
+            opened_rows += f"""
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{s['symbol']}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: {direction_color}; font-size: 12px;">{direction_label}</td>
+                <td style="padding: 12px 10px; color: #FFF; font-size: 13px;">${s['entry_price']:.4f}</td>
+                <td style="padding: 12px 10px; color: rgba(255,255,255,0.6); font-size: 12px;">{s['strategy']}</td>
+            </tr>
+            """
+            
+    closed_rows = ""
+    if not signals_closed:
+        closed_rows = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">No positions resolved today.</td></tr>'
+    else:
+        for s in signals_closed:
+            direction_color = "#00C853" if s['side'] in ['buy', 'long', 'LONG'] else "#FF1744"
+            direction_label = "LONG" if s['side'] in ['buy', 'long', 'LONG'] else "SHORT"
+            
+            pnl_pct = s.get('pnl_pct', 0.0)
+            from bot.config import is_stock, CRYPTO_LEVERAGE
+            # Apply crypto leverage display multiplier
+            if not is_stock(s['symbol']):
+                pnl_pct *= CRYPTO_LEVERAGE
+                
+            pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
+            pnl_str = f"{pnl_pct:+.2f}%"
+            
+            closed_rows += f"""
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{s['symbol']}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: {direction_color}; font-size: 12px;">{direction_label}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: {pnl_color}; font-size: 13px;">{pnl_str}</td>
+                <td style="padding: 12px 10px; color: rgba(255,255,255,0.6); font-size: 12px;">{s['status'].upper()}</td>
+                <td style="padding: 12px 10px; color: rgba(255,255,255,0.5); font-size: 12px;">{s['strategy']}</td>
+            </tr>
+            """
+            
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Metaverse Sherpa Daily Digest</title>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                background-color: {color_bg};
+                color: #FFFFFF;
+                margin: 0;
+                padding: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 20px auto;
+                background-color: {color_card};
+                border: 1px solid rgba(60, 215, 255, 0.15);
+                border-radius: 12px;
+                overflow: hidden;
+            }}
+            .header {{
+                padding: 35px 30px;
+                text-align: center;
+                background: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(12, 31, 48, 0.5) 100%);
+                border-bottom: 1px solid rgba(60, 215, 255, 0.1);
+            }}
+            .header h1 {{
+                font-size: 22px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                margin: 0;
+                color: #3cd7ff;
+            }}
+            .header p {{
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.6);
+                margin: 8px 0 0 0;
+            }}
+            .content {{
+                padding: 30px;
+            }}
+            .section-title {{
+                font-size: 15px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #D500F9;
+                margin: 0 0 15px 0;
+                border-left: 3px solid #D500F9;
+                padding-left: 10px;
+            }}
+            .table-container {{
+                background-color: rgba(0, 0, 0, 0.2);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                margin-bottom: 30px;
+                overflow: hidden;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                text-align: left;
+            }}
+            th {{
+                background-color: rgba(255, 255, 255, 0.02);
+                padding: 12px 10px;
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: rgba(255,255,255,0.4);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }}
+            .btn-cta {{
+                display: block;
+                width: 220px;
+                margin: 20px auto 10px auto;
+                text-align: center;
+                background: linear-gradient(90deg, #3cd7ff 0%, #00C853 100%);
+                color: #000000 !important;
+                text-decoration: none;
+                font-weight: bold;
+                padding: 12px 24px;
+                border-radius: 8px;
+                text-transform: uppercase;
+                font-size: 12px;
+                letter-spacing: 1px;
+            }}
+            .footer {{
+                padding: 20px;
+                text-align: center;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.3);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🏔️ Daily Signals Digest</h1>
+                <p>Metaverse Sherpa Institutional Algorithmic Performance Summary</p>
+            </div>
+            <div class="content">
+                
+                <h3 class="section-title">🛰️ New Signals Opened</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Side</th>
+                                <th>Entry</th>
+                                <th>Strategy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {opened_rows}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="section-title">🏆 Signals Resolved</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Side</th>
+                                <th>PnL</th>
+                                <th>Status</th>
+                                <th>Strategy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {closed_rows}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <a href="https://bot.metaversesherpa.io" class="btn-cta">Access Trading Console</a>
+            </div>
+            <div class="footer">
+                🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+

@@ -470,16 +470,30 @@ window.refreshSignals = function(showSpinner = false) {
     ]).then(([active, closed, freeStats]) => {
         STATE.is_loading_signals = false;
         
-        // Trigger desktop push notification if a new signal is found
-        if (active && STATE.active_signals.length > 0 && active.length > STATE.active_signals.length) {
-            const newSignal = active.find(s => !STATE.active_signals.some(old => old.id === s.id));
-            if (newSignal && window.Notification && Notification.permission === 'granted') {
-                new Notification(`🛰️ New Alpha Signal: ${newSignal.symbol}`, {
-                    body: `${newSignal.strategy} • ${newSignal.side} Setup`,
-                    icon: '/favicon.png'
-                });
+        // Trigger desktop push notification if a new signal is found or closed
+        const allowBrowserNotifications = STATE.user ? STATE.user.browser_notifications !== 0 : true;
+        if (allowBrowserNotifications && window.Notification && Notification.permission === 'granted') {
+            if (active && STATE.active_signals.length > 0 && active.length > STATE.active_signals.length) {
+                const newSignal = active.find(s => !STATE.active_signals.some(old => old.id === s.id));
+                if (newSignal) {
+                    new Notification(`🛰️ New Alpha Signal: ${newSignal.symbol}`, {
+                        body: `${newSignal.strategy} • ${newSignal.side.toUpperCase()} Setup`,
+                        icon: '/favicon.png'
+                    });
+                }
+            }
+            if (closed && STATE.closed_signals.length > 0 && closed.length > STATE.closed_signals.length) {
+                const newlyClosed = closed.find(s => !STATE.closed_signals.some(old => old.id === s.id));
+                if (newlyClosed) {
+                    const pnlStr = newlyClosed.pnl_pct ? `${newlyClosed.pnl_pct >= 0 ? '+' : ''}${newlyClosed.pnl_pct.toFixed(2)}%` : '0.00%';
+                    new Notification(`🏆 Signal Closed: ${newlyClosed.symbol}`, {
+                        body: `PnL: ${pnlStr} (${newlyClosed.status.toUpperCase()})`,
+                        icon: '/favicon.png'
+                    });
+                }
             }
         }
+
         
         if (active) STATE.active_signals = active;
         if (closed) STATE.closed_signals = closed;
@@ -2245,6 +2259,52 @@ function renderSettingsView() {
                 </button>
             </section>
 
+            <!-- Email Notifications Setting -->
+            <section class="glass-card rounded-xl p-card-padding space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface">📧 Email Alerts</h3>
+                        <p class="text-xs text-on-surface-variant mt-1">Receive signals & trade alerts via email</p>
+                    </div>
+                    <button onclick="toggleEmailNotifications()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                        (user.email_notifications !== 0) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
+                    }">
+                        ${(user.email_notifications !== 0) ? 'Enabled 🔔' : 'Disabled 🔕'}
+                    </button>
+                </div>
+                
+                ${(user.email_notifications !== 0) ? `
+                <div class="space-y-2 pt-2 border-t border-white/5 animate-fade-in">
+                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Email Alert Frequency</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setEmailFrequency('realtime')" class="h-10 rounded-lg text-xs font-bold transition-all border ${
+                            (user.email_frequency !== 'daily') ? 'bg-primary/20 text-primary border-primary/55' : 'bg-surface-container-low text-on-surface-variant border-white/10 hover:bg-white/5'
+                        }">
+                            Real-time
+                        </button>
+                        <button onclick="setEmailFrequency('daily')" class="h-10 rounded-lg text-xs font-bold transition-all border ${
+                            (user.email_frequency === 'daily') ? 'bg-primary/20 text-primary border-primary/55' : 'bg-surface-container-low text-on-surface-variant border-white/10 hover:bg-white/5'
+                        }">
+                            Daily Summary
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
+            </section>
+
+            <!-- Browser Notifications Setting -->
+            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-secondary-container/40">
+                <div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🖥️ Browser Notifications</h3>
+                    <p class="text-xs text-on-surface-variant mt-1">Receive native desktop popups for signal alerts</p>
+                </div>
+                <button onclick="toggleBrowserNotifications()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                    (user.browser_notifications !== 0) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
+                }">
+                    ${(user.browser_notifications !== 0) ? 'Notifications On 🔔' : 'Notifications Off 🔕'}
+                </button>
+            </section>
+
             <!-- Privacy Mode Setting -->
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-primary/40">
                 <div>
@@ -2257,6 +2317,7 @@ function renderSettingsView() {
                     ${(user.hide_dollars !== false) ? 'Privacy On 🔒' : 'Privacy Off 👁️'}
                 </button>
             </section>
+
 
             <!-- Premium Plan & Referral Buttons -->
             <section class="grid grid-cols-2 gap-stack-gap">
@@ -3750,3 +3811,76 @@ window.togglePasswordVisibility = function(inputId, btnElement) {
         icon.innerText = 'visibility';
     }
 };
+
+window.toggleEmailNotifications = async function() {
+    const user = STATE.user || {};
+    const currentVal = user.email_notifications !== 0;
+    const newVal = !currentVal;
+    
+    const res = await apiRequest('/settings/preferences', 'POST', {
+        risk_pct: user.risk_pct || 1.0,
+        stock_risk_pct: user.stock_risk_pct || 1.0,
+        hide_dollars: user.hide_dollars !== false,
+        email_notifications: newVal,
+        email_frequency: user.email_frequency || 'realtime',
+        browser_notifications: user.browser_notifications !== 0
+    });
+    
+    if (res) {
+        if (STATE.user) {
+            STATE.user.email_notifications = newVal ? 1 : 0;
+        }
+        showToast(`Email Alerts switched ${newVal ? 'ON 🔔' : 'OFF 🔕'}`);
+        renderView();
+    }
+};
+
+window.setEmailFrequency = async function(freq) {
+    const user = STATE.user || {};
+    const res = await apiRequest('/settings/preferences', 'POST', {
+        risk_pct: user.risk_pct || 1.0,
+        stock_risk_pct: user.stock_risk_pct || 1.0,
+        hide_dollars: user.hide_dollars !== false,
+        email_notifications: user.email_notifications !== 0,
+        email_frequency: freq,
+        browser_notifications: user.browser_notifications !== 0
+    });
+    
+    if (res) {
+        if (STATE.user) {
+            STATE.user.email_frequency = freq;
+        }
+        showToast(`Email alert frequency set to ${freq === 'realtime' ? 'Real-time ⚡' : 'Daily Summary 📅'}`);
+        renderView();
+    }
+};
+
+window.toggleBrowserNotifications = async function() {
+    const user = STATE.user || {};
+    const currentVal = user.browser_notifications !== 0;
+    const newVal = !currentVal;
+    
+    if (newVal && window.Notification) {
+        if (Notification.permission === 'default') {
+            await Notification.requestPermission();
+        }
+    }
+    
+    const res = await apiRequest('/settings/preferences', 'POST', {
+        risk_pct: user.risk_pct || 1.0,
+        stock_risk_pct: user.stock_risk_pct || 1.0,
+        hide_dollars: user.hide_dollars !== false,
+        email_notifications: user.email_notifications !== 0,
+        email_frequency: user.email_frequency || 'realtime',
+        browser_notifications: newVal
+    });
+    
+    if (res) {
+        if (STATE.user) {
+            STATE.user.browser_notifications = newVal ? 1 : 0;
+        }
+        showToast(`Browser Notifications switched ${newVal ? 'ON 🔔' : 'OFF 🔕'}`);
+        renderView();
+    }
+};
+

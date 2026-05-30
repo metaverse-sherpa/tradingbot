@@ -234,8 +234,10 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("🚫 Revoke Premium Access", callback_data="admin_revoke_prompt")],
         [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
         [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],
+        [InlineKeyboardButton("📧 Toggle Email Premium-Only", callback_data="toggle_emails_premium")],
         [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="toggle_undercover")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="close_admin")]
+
     ]
 
 def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='crypto'):

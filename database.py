@@ -316,6 +316,14 @@ def init_db():
         try: c.execute("ALTER TABLE WebUsers ADD COLUMN referral_reward_triggered BOOLEAN DEFAULT 0")
         except: pass
 
+        # Migration: Ensure WebUsers has email_notifications, email_frequency, browser_notifications
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN email_notifications INTEGER DEFAULT 1")
+        except: pass
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN email_frequency TEXT DEFAULT 'realtime'")
+        except: pass
+        try: c.execute("ALTER TABLE WebUsers ADD COLUMN browser_notifications INTEGER DEFAULT 1")
+        except: pass
+
 
 
 def reset_crypto_stats(chat_id):

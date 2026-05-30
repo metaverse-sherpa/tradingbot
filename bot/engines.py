@@ -193,6 +193,31 @@ async def signal_engine(application):
                             if not is_stock(symbol):
                                 display_pnl_pct *= CRYPTO_LEVERAGE
 
+                            # Email alerts for exit
+                            try:
+                                from web_api.db_web import get_users_for_email_alerts
+                                from web_api.email_service import send_alert_email, get_signal_alert_html
+                                rt_users = get_users_for_email_alerts("realtime")
+                                if rt_users:
+                                    subject = f"🏆 Position Exited: {symbol}" if status == 'tp' else f"🛡️ Position Exited: {symbol}"
+                                    side_str = "LONG" if side == 'buy' else "SHORT"
+                                    html_content = get_signal_alert_html(
+                                        symbol=symbol,
+                                        side=side_str,
+                                        strategy=t.get('strategy', 'Mean Reversion Scalper'),
+                                        entry=entry_price,
+                                        tp=tp_price,
+                                        sl=sl_price,
+                                        resolution=status,
+                                        pnl_pct=display_pnl_pct
+                                    )
+                                    for ru in rt_users:
+                                        if ru.get("email"):
+                                            send_alert_email(ru["email"], subject, html_content)
+                            except Exception as email_err:
+                                logger.error(f"Failed to dispatch exit email alerts: {email_err}")
+
+
                             strategy = t.get('strategy', 'Mean Reversion Scalper')
                             currency = get_currency(symbol)
                             if status == 'tp':
@@ -294,6 +319,29 @@ async def signal_engine(application):
                             open_time=open_ts,
                             position_size=position_size_units
                         )
+                        
+                        # Email alerts for entry
+                        try:
+                            from web_api.db_web import get_users_for_email_alerts
+                            from web_api.email_service import send_alert_email, get_signal_alert_html
+                            rt_users = get_users_for_email_alerts("realtime")
+                            if rt_users:
+                                subject = f"🛰️ New Alpha Signal: {symbol} ({'LONG' if side == 'buy' else 'SHORT'})"
+                                side_str = "LONG" if side == 'buy' else "SHORT"
+                                html_content = get_signal_alert_html(
+                                    symbol=symbol,
+                                    side=side_str,
+                                    strategy=strategy_name,
+                                    entry=entry,
+                                    tp=tp,
+                                    sl=sl
+                                )
+                                for ru in rt_users:
+                                    if ru.get("email"):
+                                        send_alert_email(ru["email"], subject, html_content)
+                        except Exception as email_err:
+                            logger.error(f"Failed to dispatch entry email alerts: {email_err}")
+
                         
                         chart_file = None
                         try:
@@ -669,3 +717,74 @@ async def premium_expiration_engine(application):
         except Exception as e:
             logger.error(f"⏳ Premium Expiration Engine error: {e}")
             await asyncio.sleep(3600)
+
+async def email_summary_engine(application):
+    """
+    Daily loop to compile and email daily summaries of trading signals
+    to users who have selected 'daily' frequency.
+    Runs once a day at 18:00 (6:00 PM) EST.
+    """
+    from zoneinfo import ZoneInfo
+    logger.info("⏳ Starting Daily Email Summary Engine...")
+    
+    while True:
+        try:
+            tz = ZoneInfo('US/Eastern')
+            now = datetime.now(tz)
+            
+            # Target is 6:00:00 PM EST today
+            target = now.replace(hour=18, minute=0, second=0, microsecond=0)
+            if now >= target:
+                target += timedelta(days=1)
+                
+            wait_time = (target - now).total_seconds()
+            logger.info(f"Daily Email Summary Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            
+            await asyncio.sleep(wait_time)
+            
+            logger.info("📧 Compiling daily signals summary...")
+            
+            # Fetch all signals from the last 24 hours
+            now_ms = int(time.time() * 1000)
+            since_ms = now_ms - (24 * 60 * 60 * 1000)
+            
+            # Fetch from database
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT * FROM TheoreticalTrades WHERE open_time >= ? OR (close_time >= ? AND status != 'open')", (since_ms, since_ms))
+                rows = c.fetchall()
+            
+            signals = [dict(r) for r in rows]
+            
+            if not signals:
+                logger.info("No trading signals to summarize in the last 24 hours.")
+                await asyncio.sleep(60) # Avoid instant refires
+                continue
+                
+            signals_opened = [s for s in signals if s['open_time'] >= since_ms and s['status'] == 'open']
+            signals_closed = [s for s in signals if s.get('close_time', 0) >= since_ms and s['status'] != 'open']
+            
+            # Dispatch to daily subscribers
+            from web_api.db_web import get_users_for_email_alerts
+            from web_api.email_service import send_alert_email, get_daily_summary_html
+            
+            daily_users = get_users_for_email_alerts("daily")
+            if daily_users:
+                html_content = get_daily_summary_html(signals_opened, signals_closed)
+                subject = f"🏔️ Metaverse Sherpa Daily Signals Digest - {datetime.now(tz).strftime('%Y-%m-%d')}"
+                
+                for ru in daily_users:
+                    if ru.get("email"):
+                        send_alert_email(ru["email"], subject, html_content)
+                logger.info(f"✅ Daily summary emails dispatched to {len(daily_users)} subscribers.")
+            
+            # Sleep 60 seconds to prevent double firing on exact boundary
+            await asyncio.sleep(60)
+            
+        except asyncio.CancelledError:
+            logger.info("⏳ Daily Email Summary Engine cancelled.")
+            break
+        except Exception as e:
+            logger.error(f"⏳ Daily Email Summary Engine error: {e}")
+            await asyncio.sleep(3600)
+

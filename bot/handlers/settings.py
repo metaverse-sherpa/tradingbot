@@ -429,6 +429,18 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_admin_dashboard(update, context)
         return
 
+    if query.data == "toggle_emails_premium":
+        if chat_id != SUPER_ADMIN_ID:
+            logger.warning(f"UNAUTHORIZED EMAIL TOGGLE ATTEMPT: {chat_id}")
+            return
+        current = database.get_config("emails_premium_only", "0")
+        new_val = "1" if current == "0" else "0"
+        database.update_config("emails_premium_only", new_val)
+        await query.answer(f"📧 Alerts Tier: {'Premium Only' if new_val == '1' else 'Everyone'}")
+        await show_admin_dashboard(update, context)
+        return
+
+
     if query.data == "admin_view_free_trades":
         if chat_id != SUPER_ADMIN_ID and not (user and user.get('is_admin')):
             logger.warning(f"UNAUTHORIZED FREE TRADES ACCESS ATTEMPT: {chat_id}")
