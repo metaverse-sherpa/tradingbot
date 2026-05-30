@@ -1036,6 +1036,10 @@ function renderDashboardView() {
     const balance = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
     const activeTradesCount = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock')).length;
     
+    const backtestOnclick = isCrypto 
+        ? `resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${activeStrategy === 'None' ? 'Mean Reversion Scalper' : activeStrategy}'); triggerBacktest(); }, 150);`
+        : `resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('Sherpa Velocity Pullback'); triggerBacktest(); }, 150);`;
+
     // Gated actions for premium
     const actionCards = `
         <a href="#/trades" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
@@ -1050,10 +1054,10 @@ function renderDashboardView() {
             <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">insights</span>
             <span class="font-label-md text-label-md text-on-surface font-semibold">My Stats</span>
         </a>
-        <a href="#/backtest" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
+        <button onclick="${backtestOnclick}" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center cursor-pointer w-full">
             <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">science</span>
             <span class="font-label-md text-label-md text-on-surface font-semibold">Backtest</span>
-        </a>
+        </button>
         <a href="#/signals" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center col-span-2">
             <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">satellite_alt</span>
             <span class="font-label-md text-label-md text-on-surface font-semibold">Alpha Signals</span>
