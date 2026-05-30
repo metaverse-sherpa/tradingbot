@@ -57,6 +57,74 @@ CORS(app, resources={r"/api/*": {"origins": [FRONTEND_ORIGIN, "https://metaverse
 def serve_index():
     return app.send_static_file('index.html')
 
+# ----------------- Unsubscribe Endpoint -----------------
+@app.route('/unsubscribe', methods=['GET'])
+def unsubscribe_page():
+    email = request.args.get('email', '').strip().lower()
+    if not email:
+        return "<h3>Missing email parameter.</h3>", 400
+        
+    # Update DB
+    from database import db_session
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('UPDATE WebUsers SET email_notifications = 0 WHERE email = ?', (email,))
+        success = conn.changes() > 0
+        
+    if success:
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Unsubscribed Successfully</title>
+            <style>
+                body {
+                    background-color: #0B0E14;
+                    color: #FFFFFF;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    margin: 0;
+                }
+                .card {
+                    background-color: #141A24;
+                    border: 1px solid rgba(60, 215, 255, 0.15);
+                    border-radius: 12px;
+                    padding: 40px;
+                    text-align: center;
+                    max-width: 400px;
+                }
+                h2 { color: #3cd7ff; margin-top: 0; }
+                p { color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; }
+                .btn {
+                    display: inline-block;
+                    margin-top: 20px;
+                    background: linear-gradient(90deg, #3cd7ff 0%, #00C853 100%);
+                    color: #000000;
+                    text-decoration: none;
+                    font-weight: bold;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    font-size: 13px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>🏔️ Trail Silenced Successfully</h2>
+                <p>You have been unsubscribed from Metaverse Sherpa trading email alerts.</p>
+                <p>If this was a mistake, you can easily turn email notifications back on anytime in your account Settings page.</p>
+                <a href="https://bot.metaversesherpa.io" class="btn">Return to Dashboard</a>
+            </div>
+        </body>
+        </html>
+        """, 200
+    else:
+        return "<h3>Account not found or already unsubscribed.</h3>", 404
+
+
 # ----------------- Health Endpoint -----------------
 @app.route('/api/health', methods=['GET'])
 def health():

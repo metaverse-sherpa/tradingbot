@@ -38,6 +38,11 @@ def _send_email_thread(to_email, subject, html_content):
         logger.warning("No recipient email provided. Skipping dispatch.")
         return
 
+    # Replace unsubscribe placeholder dynamically
+    unsub_url = f"https://bot.metaversesherpa.io/unsubscribe?email={to_email}"
+    html_content = html_content.replace("{{UNSUBSCRIBE_LINK}}", unsub_url)
+
+
     # Try Resend API first if key exists
     if RESEND_API_KEY:
         try:
@@ -258,7 +263,11 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
             </div>
             <div class="footer">
                 🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
+                <br><br>
+                Do you prefer silent hikes in the Metaverse? <br>
+                <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
             </div>
+
         </div>
     </body>
     </html>
@@ -461,9 +470,13 @@ def get_daily_summary_html(signals_opened, signals_closed):
             </div>
             <div class="footer">
                 🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
+                <br><br>
+                Do you prefer silent hikes in the Metaverse? <br>
+                <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
             </div>
         </div>
     </body>
     </html>
     """
+
 
