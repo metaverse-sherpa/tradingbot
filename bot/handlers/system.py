@@ -378,3 +378,26 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
             await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=plain_err_msg)
         except Exception as fallback_err:
             logger.error(f"Failed to send plain crash report to super admin: {fallback_err}")
+
+async def unknown_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles unrecognized Telegram commands by listing available commands and linking to help."""
+    available_commands = (
+        "❓ <b>Unrecognized Command</b>\n\n"
+        "Here are the available commands you can use:\n"
+        "• /start - Initial setup and landing\n"
+        "• /settings - Manage bot preferences & API keys\n"
+        "• /strategy - Configure active trading strategies\n"
+        "• /strategyguide - View educational strategy details\n"
+        "• /stats - View portfolio performance stats\n"
+        "• /forwardtest - View simulated forward-testing stats\n"
+        "• /opentrades - View active open positions\n"
+        "• /list - View closed trade history\n"
+        "• /balance - Check live exchange balance\n"
+        "• /refer - Share referral link & earn credits\n"
+        "• /premium - Upgrade account for autopilot execution\n"
+        "• /setup - Connect or update API credentials\n"
+        "• /diagnose - Run connection diagnostics\n"
+        "• /docs - Access documentation & guides\n\n"
+        "📖 Need more help? Try the /help command or visit our docs."
+    )
+    await update.effective_message.reply_text(available_commands, parse_mode="HTML")

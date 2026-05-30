@@ -1,5 +1,5 @@
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, filters
-from bot.handlers.system import start, setup, cancel_command, docs, stop_bot, resume_bot, diagnose_command
+from bot.handlers.system import start, setup, cancel_command, docs, stop_bot, resume_bot, diagnose_command, unknown_command_handler
 from bot.handlers.auth import handle_message
 from bot.handlers.trading import stats, stats_simulated, open_trades, list_trades, backtest, balance_command, share_callback, privacy_command
 from bot.handlers.strategy import strategy_command, strategy_guide_command, strategy_callback
@@ -41,6 +41,9 @@ def register_handlers(app):
     app.add_handler(CallbackQueryHandler(share_callback, pattern="^sh"))
     app.add_handler(CallbackQueryHandler(settings_callback, pattern="^capital_menu|^set_cap_all|^set_cap_amount_prompt|^set_cap_pct_prompt|^run_backtest|^admin_get_link|^send_blofin_guide|^apply_symbol_audit|^toggle_privacy|^strategy_menu|^toggle_active|^set_crypto_risk|^set_stock_risk|^set_risk_to_|^manage_symbols|^tsym_|^back_to_settings|^setex_|^check_balance_setup|^opentrades_menu|^history_menu|^stats_menu|^help_menu|^settings_menu|^contact_menu|^refer_menu|^referral_menu|^confirm_panic|^panic_execute|^confirm_close_|^execute_close_|^admin_user_audit|^admin_broadcast_prompt|^admin_command|^admin_gift_prompt|^admin_revoke_prompt|^admin_revoke_confirm_|^view_logs|^prompt_admin_wallet|^toggle_undercover|^toggle_emails_premium|^close_admin|^premium_menu|^check_payment|^prompt_set_wallet|^activate_with_credits|^admin_view_free_trades|^view_strategy_guide|^switch_exchange_prompt|^dummy_spacer|^free_active|^free_closed|^free_stats|^manual_exec_|^admin_manage_strategies|^admin_toggle_strategy_"))
 
+
+    # Catch unrecognized commands
+    app.add_handler(MessageHandler(filters.COMMAND, unknown_command_handler))
 
     # Catch all non-command messages (used for the setup step flow)
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))

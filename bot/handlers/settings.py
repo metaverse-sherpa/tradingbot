@@ -1212,28 +1212,31 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Use the controls below to independently activate or pause each engine:"
         )
         
+        disabled = database.get_disabled_strategies()
+        
+        crypto_row = []
+        if "Mean Reversion Scalper" not in disabled:
+            crypto_row.append(InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"))
+        if "Valkyrie Elite Scalper" not in disabled:
+            crypto_row.append(InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"))
+
+        stock_row = []
+        if "Sherpa Velocity Pullback" not in disabled:
+            stock_row.append(InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"))
+        stock_row.append(InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause"))
+
         keyboard = [
             [InlineKeyboardButton("🏔️ Preview My Performance", callback_data="run_backtest")],
             [InlineKeyboardButton("🪙 Set Crypto Risk %", callback_data="set_crypto_risk"),
              InlineKeyboardButton("🦙 Set Stock Risk %", callback_data="set_stock_risk")],
-            
-            # Crypto Toggles Row
-            [
-                InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"),
-                InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"),
-            ],
-            [InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")],
-            
-            # Stock Toggles Row
-            [
-                InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"),
-                InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause")
-            ],
-            
-            [InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")],
-            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")],
-            *get_nav_buttons(user.get('has_open_positions', False))
         ]
+        if crypto_row:
+            keyboard.append(crypto_row)
+        keyboard.append([InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")])
+        keyboard.append(stock_row)
+        keyboard.append([InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")])
+        keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
+        keyboard.append(get_nav_buttons(user.get('has_open_positions', False)))
         
         if query.message.photo:
             try:
