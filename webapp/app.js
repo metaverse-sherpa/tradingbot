@@ -162,7 +162,8 @@ async function initGoogleSignIn() {
             if (window.google) {
                 window.google.accounts.id.initialize({
                     client_id: clientId,
-                    callback: handleGoogleCredentialResponse
+                    callback: handleGoogleCredentialResponse,
+                    use_fedcm_for_prompt: true
                 });
             }
         };
@@ -3156,11 +3157,7 @@ async function triggerGoogleLogin() {
     if (window.google) {
         // Clear the Google One Tap cooldown cookie so manual clicks always work
         document.cookie = "g_state=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT";
-        window.google.accounts.id.prompt((notification) => {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                console.log("Google Sign-In prompt suppressed or skipped:", notification.getNotDisplayedReason(), notification.getSkippedReason());
-            }
-        });
+        window.google.accounts.id.prompt();
     } else {
         showToast("Initializing Google Sign-in... Please try again in a moment.", "warning");
         initGoogleSignIn();
