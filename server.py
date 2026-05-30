@@ -1603,7 +1603,14 @@ def _update_active_signals_cache():
         crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
         prices = {}
         
-        if stock_syms and sys_user.get("alpaca_api_key"):
+        is_mkt_open = False
+        try:
+            from live_bot_multi_alpaca import check_is_market_open
+            is_mkt_open = check_is_market_open()
+        except Exception as e:
+            print(f"Error checking market open status: {e}")
+
+        if is_mkt_open and stock_syms and sys_user.get("alpaca_api_key"):
             try:
                 import aiohttp
                 sym_str = ",".join(stock_syms)
@@ -1788,19 +1795,45 @@ def get_free_stats():
             print(f"Error fetching Blofin prices: {e}")
             
     if stock_syms:
+        is_mkt_open = False
         try:
-            import utils_gcp
-            alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY")
-            alpaca_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
-            if alpaca_key and alpaca_secret:
-                headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
-                sym_str = ",".join(stock_syms)
-                resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
-                if resp.status_code == 200:
-                    for sym, snapshot in resp.json().items():
-                        live_prices[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
+            from live_bot_multi_alpaca import check_is_market_open
+            is_mkt_open = check_is_market_open()
         except Exception as e:
-            print(f"Error fetching Alpaca prices: {e}")
+            print(f"Error checking market open status in get_free_stats: {e}")
+
+        if is_mkt_open:
+            try:
+                import utils_gcp
+                alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY")
+                alpaca_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
+                if alpaca_key and alpaca_secret:
+                    headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
+                    sym_str = ",".join(stock_syms)
+                    resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
+                    if resp.status_code == 200:
+                        for sym, snapshot in resp.json().items():
+                            live_prices[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
+            except Exception as e:
+                print(f"Error fetching Alpaca prices: {e}")
+                
+        # Fill in any missing/closed stock prices from local stock daily cache
+        for sym in stock_syms:
+            if sym not in live_prices:
+                try:
+                    import sqlite3
+                    conn2 = sqlite3.connect("data/stock_daily_cache.db")
+                    c2 = conn2.cursor()
+                    c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                    row = c2.fetchone()
+                    conn2.close()
+                    if row:
+                        live_prices[sym] = float(row[0])
+                    else:
+                        live_prices[sym] = 0.0
+                except Exception as db_err:
+                    print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
+                    live_prices[sym] = 0.0
             
     stats_data = []
     starting_capital = 1000.0
