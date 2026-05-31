@@ -1644,21 +1644,36 @@ def _update_active_signals_cache():
                     prices[sym] = 0.0
                     
         if crypto_syms:
-            # 1. Fast Batch Fetch via Blofin API
+            # 1. High-Speed Batch Fetch via Binance public API (completes in ~100ms, no authentication required)
             try:
                 import requests
-                resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=3)
-                if resp.status_code == 200:
-                    data = resp.json().get('data', [])
-                    price_map = {item['instId']: float(item['last']) for item in data}
+                r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
+                if r.status_code == 200:
+                    binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
                     for sym in crypto_syms:
-                        clean_sym = sym.split(':')[0].replace('/', '-')
-                        if clean_sym in price_map:
-                            prices[sym] = price_map[clean_sym]
+                        clean = sym.split(':')[0].replace('/', '')
+                        if clean in binance_prices:
+                            prices[sym] = binance_prices[clean]
             except Exception as e:
-                print(f"Error fetching Blofin tickers in signals: {e}")
+                print(f"Error fetching Binance tickers: {e}")
 
-            # 2. CCXT Fallback for any symbols still missing
+            # 2. Blofin Fallback
+            remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
+            if remaining_crypto:
+                try:
+                    import requests
+                    resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=3)
+                    if resp.status_code == 200:
+                        data = resp.json().get('data', [])
+                        price_map = {item['instId']: float(item['last']) for item in data}
+                        for sym in remaining_crypto:
+                            clean_sym = sym.split(':')[0].replace('/', '-')
+                            if clean_sym in price_map:
+                                prices[sym] = price_map[clean_sym]
+                except Exception as e:
+                    print(f"Error fetching Blofin tickers in signals: {e}")
+
+            # 3. CCXT Fallback for any symbols still missing
             remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
             if remaining_crypto and mdm:
                 async def get_crypto_price(sym):
@@ -1805,17 +1820,33 @@ def get_free_stats():
     live_prices = {}
     
     if crypto_syms:
+        # 1. High-Speed Batch Fetch via Binance public API (completes in ~100ms, no authentication required)
         try:
-            resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
-            if resp.status_code == 200:
-                data = resp.json().get('data', [])
-                price_map = {item['instId']: float(item['last']) for item in data}
+            import requests
+            r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
+            if r.status_code == 200:
+                binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
                 for sym in crypto_syms:
-                    clean_sym = sym.split(':')[0].replace('/', '-')
-                    if clean_sym in price_map:
-                        live_prices[sym] = price_map[clean_sym]
+                    clean = sym.split(':')[0].replace('/', '')
+                    if clean in binance_prices:
+                        live_prices[sym] = binance_prices[clean]
         except Exception as e:
-            print(f"Error fetching Blofin prices: {e}")
+            print(f"Error fetching Binance tickers in get_free_stats: {e}")
+
+        # 2. Blofin Fallback
+        remaining_crypto = [sym for sym in crypto_syms if sym not in live_prices]
+        if remaining_crypto:
+            try:
+                resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json().get('data', [])
+                    price_map = {item['instId']: float(item['last']) for item in data}
+                    for sym in remaining_crypto:
+                        clean_sym = sym.split(':')[0].replace('/', '-')
+                        if clean_sym in price_map:
+                            live_prices[sym] = price_map[clean_sym]
+            except Exception as e:
+                print(f"Error fetching Blofin prices: {e}")
             
     if stock_syms:
 
