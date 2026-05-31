@@ -318,12 +318,12 @@ async function handleRoute() {
         renderView();
         
         // 2. Fetch ALL data (including live balance) in the background
-        const statsRoute = (STATE.user && STATE.user.is_premium) ? '/user/stats' : '/stats/free';
+        const statsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats') : Promise.resolve(null);
         Promise.all([
             apiRequest('/user/balance'),
             apiRequest('/signals/active'),
             apiRequest('/trades/open'),
-            apiRequest(statsRoute)
+            statsPromise
         ]).then(([bal, sigs, open, stats]) => {
             STATE.is_loading_balance = false;
             STATE.is_loading_active_signals = false;
@@ -1032,7 +1032,7 @@ function renderDashboardView() {
         `;
     }
     
-    const activeStats = STATE.stats ? (isCrypto ? STATE.stats.crypto : STATE.stats.stock) : { cumulative_pnl: 0, win_rate: 0 };
+    const activeStats = (STATE.stats && (isCrypto ? STATE.stats.crypto : STATE.stats.stock)) || { cumulative_pnl: 0, win_rate: 0, overall_pnl: 0, overall_pnl_pct: 0 };
     const activeStrategy = STATE.user ? (isCrypto ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCrypto ? 'Mean Reversion Scalper' : 'None');
     const balance = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
     const activeTradesCount = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock')).length;
