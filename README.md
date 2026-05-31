@@ -19,12 +19,28 @@ A production-ready, multi-tenant Telegram trading bot for Blofin, Binance, MEXC,
 
 ## 📁 Codebase Architecture & File Reference
 
-This repository is organized into distinct components separating production operations, background engines, database state, and historical research scripts.
+This repository is organized into distinct components separating production operations, background engines, database state, and web services.
+
+### 🌐 Web API Backend (`web_api/`)
+
+The web dashboard's endpoints are highly modularized inside the `web_api/` directory using **Flask Blueprints** for enhanced legibility, structure, and extensibility:
+
+*   **`web_api/routes_auth.py`**: Blueprint route handler for register, login, forgot/reset password, and Google OAuth credentials.
+*   **`web_api/routes_settings.py`**: Blueprint route handler for user preference settings, active strategy controls, exchange API key configuration, and Telegram account linking.
+*   **`web_api/routes_trades.py`**: Blueprint route handler containing all core data streams, including real-time user stats, balances, open positions, close/panic overrides, inline charting, live signal triggers, and institutional backtesting engines.
+*   **`web_api/routes_premium.py`**: Blueprint route handler for Tron USDT transactions, universal gift code generation/redemption, referrals, and administrative release tools.
+*   **`web_api/auth.py`**: Cryptographic hash helper utilities and JWT token protection middleware.
+*   **`web_api/db_web.py`**: Database controller mapping operations for user records in the web system.
+*   **`web_api/email_service.py`**: Handles alert notifications, templates, and reset links.
+*   **`web_api/cache.py`**: Thread-safe in-memory cache definitions (`RESPONSE_CACHE`, locks, TTL values) ensuring high-speed data fetching under 1ms.
+
+---
 
 ### 🐍 Production Root Scripts
 
-The project root contains only active production-critical scripts that drive the Telegram interface and real-time execution engines:
+The project root contains only active production-critical scripts that drive the user interface and real-time execution engines:
 
+*   **`server.py`**: The lightweight entrypoint for the Flask backend. Initializes the database, defines static endpoints, sets CORS, and registers the dynamic `web_api/` Blueprints.
 *   **`telegram_bot.py`**: The main application entrypoint. Boots up the Telegram bot daemon using `python-telegram-bot`, maps command callbacks (e.g., `/setup`, `/settings`, `/stats`), manages user interactions, and schedules the async background trading loop.
 *   **`live_bot_multi.py`**: The core multi-exchange execution engine for crypto futures. It acts asynchronously to fetch market feeds, calculate Bollinger Band scalp levels, trigger order submissions (marketable limits) for user tenants, and manage active position lifecycles.
 *   **`live_bot_multi_alpaca.py`**: The production execution engine for equities trading via the Alpaca API. Automates the **Sherpa Velocity Pullback** strategy at the market open, manages orders, and tallies theoretical trade outcomes.
