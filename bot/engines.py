@@ -329,16 +329,17 @@ async def signal_engine(application):
                             if rt_users:
                                 subject = f"🛰️ New Alpha Signal: {symbol} ({'LONG' if side == 'buy' else 'SHORT'})"
                                 side_str = "LONG" if side == 'buy' else "SHORT"
-                                html_content = get_signal_alert_html(
-                                    symbol=symbol,
-                                    side=side_str,
-                                    strategy=strategy_name,
-                                    entry=entry,
-                                    tp=tp,
-                                    sl=sl
-                                )
                                 for ru in rt_users:
                                     if ru.get("email"):
+                                        html_content = get_signal_alert_html(
+                                            symbol=symbol,
+                                            side=side_str,
+                                            strategy=strategy_name,
+                                            entry=entry,
+                                            tp=tp,
+                                            sl=sl,
+                                            is_premium_user=ru.get("is_premium_user", False)
+                                        )
                                         send_alert_email(ru["email"], subject, html_content)
                         except Exception as email_err:
                             logger.error(f"Failed to dispatch entry email alerts: {email_err}")

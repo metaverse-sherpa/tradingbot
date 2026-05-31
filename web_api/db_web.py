@@ -391,16 +391,20 @@ def get_users_for_email_alerts(frequency="realtime"):
         rows = c.fetchall()
         
     users = [dict(r) for r in rows]
-    if emails_prem_only:
-        from database import get_user
-        premium_users = []
-        for u in users:
-            tg_id = u.get('telegram_chat_id')
-            if tg_id:
-                tg_user = get_user(tg_id)
-                if tg_user and is_premium(tg_user):
-                    premium_users.append(u)
-        users = premium_users
+    
+    from database import get_user
+    processed_users = []
+    for u in users:
+        tg_id = u.get('telegram_chat_id')
+        u['is_premium_user'] = False
+        if tg_id:
+            tg_user = get_user(tg_id)
+            if tg_user and is_premium(tg_user):
+                u['is_premium_user'] = True
+                
+        if emails_prem_only and not u['is_premium_user']:
+            continue
+        processed_users.append(u)
         
-    return users
+    return processed_users
 

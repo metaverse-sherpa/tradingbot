@@ -40,7 +40,7 @@ def _send_email_thread(to_email, subject, html_content):
 
     # Replace unsubscribe placeholder dynamically
     unsub_url = f"https://bot.metaversesherpa.io/unsubscribe?email={to_email}"
-    html_content = html_content.replace("{{UNSUBSCRIBE_LINK}}", unsub_url)
+    html_content = html_content.replace("{UNSUBSCRIBE_LINK}", unsub_url)
 
 
     # Try Resend API first if key exists
@@ -101,7 +101,7 @@ def send_alert_email(to_email, subject, html_content):
     thread.daemon = True
     thread.start()
 
-def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None, pnl_pct=None):
+def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None, pnl_pct=None, is_premium_user=True):
     """
     Generates premium responsive HTML email template for trading signals.
     """
@@ -130,17 +130,33 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
         status_sub = "Position was manually exited successfully."
         status_color = "#ffdb3c"
         
+    if not is_premium_user and resolution is None:
+        teaser_link = f'<a href="https://bot.metaversesherpa.io/#/premium" style="color: #D500F9; text-decoration: none; font-size: 12px; font-weight: bold; background: rgba(213, 0, 249, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(213, 0, 249, 0.3);">Upgrade to Premium</a>'
+        entry_val = teaser_link
+        tp_val = teaser_link
+        sl_val = teaser_link
+    else:
+        entry_val = f"${entry:.4f}"
+        tp_val = f'<span style="color: #00C853;">${tp:.4f}</span>'
+        sl_val = f'<span style="color: #FF1744;">${sl:.4f}</span>'
+        
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light dark">
+        <meta name="supported-color-schemes" content="light dark">
         <title>Metaverse Sherpa Alerts</title>
         <style>
+            :root {{
+                color-scheme: light dark;
+            }}
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 background-color: {color_bg};
+                background-image: linear-gradient({color_bg}, {color_bg});
                 color: #FFFFFF;
                 margin: 0;
                 padding: 0;
@@ -149,6 +165,7 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
                 max-width: 600px;
                 margin: 20px auto;
                 background-color: {color_card};
+                background-image: linear-gradient({color_card}, {color_card});
                 border: 1px solid rgba(60, 215, 255, 0.15);
                 border-radius: 12px;
                 overflow: hidden;
@@ -219,7 +236,7 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
             .footer {{
                 padding: 20px;
                 text-align: center;
-                border-t: 1px solid rgba(255, 255, 255, 0.05);
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
                 font-size: 11px;
                 color: rgba(255, 255, 255, 0.3);
             }}
@@ -247,15 +264,15 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
                     </div>
                     <div class="metric-row">
                         <span class="label">Entry Price</span>
-                        <span class="value">${entry:.4f}</span>
+                        <span class="value">{entry_val}</span>
                     </div>
                     <div class="metric-row">
                         <span class="label">Take Profit</span>
-                        <span class="value" style="color: #00C853;">${tp:.4f}</span>
+                        <span class="value">{tp_val}</span>
                     </div>
                     <div class="metric-row">
                         <span class="label">Stop Loss</span>
-                        <span class="value" style="color: #FF1744;">${sl:.4f}</span>
+                        <span class="value">{sl_val}</span>
                     </div>
                 </div>
                 
@@ -329,11 +346,17 @@ def get_daily_summary_html(signals_opened, signals_closed):
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light dark">
+        <meta name="supported-color-schemes" content="light dark">
         <title>Metaverse Sherpa Daily Digest</title>
         <style>
+            :root {{
+                color-scheme: light dark;
+            }}
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 background-color: {color_bg};
+                background-image: linear-gradient({color_bg}, {color_bg});
                 color: #FFFFFF;
                 margin: 0;
                 padding: 0;
@@ -342,6 +365,7 @@ def get_daily_summary_html(signals_opened, signals_closed):
                 max-width: 600px;
                 margin: 20px auto;
                 background-color: {color_card};
+                background-image: linear-gradient({color_card}, {color_card});
                 border: 1px solid rgba(60, 215, 255, 0.15);
                 border-radius: 12px;
                 overflow: hidden;
