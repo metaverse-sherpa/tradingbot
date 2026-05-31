@@ -1433,7 +1433,8 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
 
-    open_sim_trades = database.get_open_theoretical_trades()
+    disabled = database.get_disabled_strategies()
+    open_sim_trades = [t for t in database.get_open_theoretical_trades() if t.get('strategy') not in disabled]
     
     if not open_sim_trades:
         msg = (
@@ -1721,8 +1722,9 @@ async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
 
-    # Fetch last 20 theoretical trades to ensure we can get 10 closed ones
-    trades = database.get_recent_theoretical_trades(20)
+    # Fetch last 50 theoretical trades to ensure we can get 10 closed ones
+    disabled = database.get_disabled_strategies()
+    trades = [t for t in database.get_recent_theoretical_trades(50) if t.get('strategy') not in disabled]
     closed_trades = [t for t in trades if t.get('status') != 'open'][:10]
 
     if not closed_trades:
