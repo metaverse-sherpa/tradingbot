@@ -1265,6 +1265,7 @@ def _update_active_signals_cache():
 
 @trades_bp.route('/api/signals/active', methods=['GET'])
 def get_active_signals():
+    global SIGNALS_ACTIVE_UPDATING
     cache_key = "signals_active"
     now = time.time()
     
