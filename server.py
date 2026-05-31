@@ -1610,7 +1610,7 @@ def _update_active_signals_cache():
         except Exception as e:
             print(f"Error checking market open status: {e}")
 
-        if is_mkt_open and stock_syms and sys_user.get("alpaca_api_key"):
+        if stock_syms and sys_user.get("alpaca_api_key"):
             try:
                 import aiohttp
                 sym_str = ",".join(stock_syms)
@@ -1830,7 +1830,7 @@ def get_free_stats():
         except Exception as e:
             print(f"Error checking market open status in get_free_stats: {e}")
 
-        if is_mkt_open:
+        if True: # Always fetch latest price from Alpaca (works when market is closed too)
             try:
                 import utils_gcp
                 alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY")
