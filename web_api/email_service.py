@@ -249,32 +249,68 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
                 <p>{status_sub}</p>
             </div>
             <div class="content">
-                <div class="metric-box">
-                    <div class="metric-row">
-                        <span class="label">Symbol</span>
-                        <span class="value" style="color: #3cd7ff;">{symbol}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="label">Direction</span>
-                        <span class="value" style="color: {('#00C853' if side == 'LONG' else '#FF1744')};">{side}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="label">Strategy</span>
-                        <span class="value" style="color: #FFFFFF;">{strategy}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="label">Entry Price</span>
-                        <span class="value" style="color: #FFFFFF;">{entry_val}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="label">Take Profit</span>
-                        <span class="value">{tp_val}</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="label">Stop Loss</span>
-                        <span class="value">{sl_val}</span>
-                    </div>
-                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #1a222e; border-radius: 8px; margin-bottom: 20px; border: 1px solid #2a3546; border-collapse: separate; overflow: hidden;">
+                    <tr>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #2a3546;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left" style="color: #8892b0; font-size: 12px; text-transform: uppercase; font-weight: 600; width: 40%;">Symbol</td>
+                                    <td align="right" style="color: #3cd7ff; font-weight: bold; font-size: 14px; width: 60%;">{symbol}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #2a3546;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left" style="color: #8892b0; font-size: 12px; text-transform: uppercase; font-weight: 600; width: 40%;">Direction</td>
+                                    <td align="right" style="color: {('#00C853' if side == 'LONG' else '#FF1744')}; font-weight: bold; font-size: 14px; width: 60%;">{side}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #2a3546;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left" style="color: #8892b0; font-size: 12px; text-transform: uppercase; font-weight: 600; width: 40%;">Strategy</td>
+                                    <td align="right" style="color: #FFFFFF; font-weight: bold; font-size: 14px; width: 60%;">{strategy}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #2a3546;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left" style="color: #8892b0; font-size: 12px; text-transform: uppercase; font-weight: 600; width: 40%;">Entry Price</td>
+                                    <td align="right" style="color: #FFFFFF; font-weight: bold; font-size: 14px; width: 60%;">{entry_val}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 20px; border-bottom: 1px solid #2a3546;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left" style="color: #8892b0; font-size: 12px; text-transform: uppercase; font-weight: 600; width: 40%;">Take Profit</td>
+                                    <td align="right" style="font-weight: bold; font-size: 14px; width: 60%;">{tp_val}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 20px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="left" style="color: #8892b0; font-size: 12px; text-transform: uppercase; font-weight: 600; width: 40%;">Stop Loss</td>
+                                    <td align="right" style="font-weight: bold; font-size: 14px; width: 60%;">{sl_val}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
                 
                 <a href="https://bot.metaversesherpa.io" class="btn-cta">Go To Dashboard</a>
             </div>
