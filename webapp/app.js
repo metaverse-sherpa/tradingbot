@@ -2600,8 +2600,9 @@ function renderSignalCard(sig, isLanding = false) {
     const sl_pct = entry > 0 ? ((sl - entry) / entry) * 100 : 0;
     const tp_pct = entry > 0 ? ((tp - entry) / entry) * 100 : 0;
     
-    const current_pnl_pct = sig.pnl_pct || 0;
-    const current_pnl_val = sig.pnl_usdt || 0;
+    const isCalculating = sig.pnl_pct === null || sig.pnl_pct === undefined;
+    const current_pnl_pct = isCalculating ? 0 : sig.pnl_pct;
+    const current_pnl_val = isCalculating ? 0 : (sig.pnl_usdt || 0);
     const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
     const target_pnl_pct = Math.abs(tp_pct) * (isCryptoSignal ? 20.0 : 1.0);
     const pos_size = sig.position_size || (current_pnl_pct !== 0 ? (current_pnl_val / (current_pnl_pct / 100)) : 1000);
@@ -2671,10 +2672,17 @@ function renderSignalCard(sig, isLanding = false) {
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="text-right flex flex-col justify-center" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
-                        <p class="font-numeric-data text-numeric-data font-bold text-lg ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
-                            ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
-                        </p>
-                        ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
+                        ${isCalculating ? `
+                            <p class="font-numeric-data text-[10px] font-bold text-primary/80 animate-pulse flex items-center gap-1 justify-end uppercase tracking-wider">
+                                <span class="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+                                Hydrating...
+                            </p>
+                        ` : `
+                            <p class="font-numeric-data text-numeric-data font-bold text-lg ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">
+                                ${current_pnl_pct >= 0 ? '+' : ''}${current_pnl_pct.toFixed(2)}%
+                            </p>
+                            ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
+                        `}
                     </div>
                     ${(!isLanding && isPremium) ? `
                     <div class="text-on-surface-variant/40 group-hover:text-primary transition-colors flex items-center justify-center">
