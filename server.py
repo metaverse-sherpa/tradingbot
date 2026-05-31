@@ -1644,10 +1644,12 @@ def _update_active_signals_cache():
                     prices[sym] = 0.0
                     
         if crypto_syms:
-            # 1. High-Speed Batch Fetch via Binance public API (completes in ~100ms, no authentication required)
+            # 1. High-Speed Batch Fetch via Binance.US first (to bypass US VPS geopolitical blocks) / Binance.com
             try:
                 import requests
-                r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
+                r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
+                if r.status_code != 200:
+                    r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
                 if r.status_code == 200:
                     binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
                     for sym in crypto_syms:
@@ -1820,10 +1822,12 @@ def get_free_stats():
     live_prices = {}
     
     if crypto_syms:
-        # 1. High-Speed Batch Fetch via Binance public API (completes in ~100ms, no authentication required)
+        # 1. High-Speed Batch Fetch via Binance.US first (to bypass US VPS geopolitical blocks) / Binance.com
         try:
             import requests
-            r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
+            r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
+            if r.status_code != 200:
+                r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
             if r.status_code == 200:
                 binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
                 for sym in crypto_syms:
