@@ -382,17 +382,34 @@ async function handleRoute() {
         }
     } else if (hash === '#/stats') {
         STATE.current_view = 'stats';
+        // Render instantly using cached data (stale) for maximum responsiveness
+        renderView();
+        
+        // Fetch fresh stats in the background without blocking the UI transition
         if (STATE.user && STATE.user.is_premium) {
-            const stats = await apiRequest('/user/stats');
-            if (stats) STATE.stats = stats;
+            apiRequest('/user/stats').then(stats => {
+                if (stats) {
+                    STATE.stats = stats;
+                    if (STATE.current_view === 'stats') renderView();
+                }
+            }).catch(err => console.error("Error loading premium stats:", err));
+            
             const hasLinkedKeys = STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys;
             if (!hasLinkedKeys) {
-                const freeStats = await apiRequest('/stats/free');
-                if (freeStats) STATE.free_stats = freeStats;
+                apiRequest('/stats/free').then(freeStats => {
+                    if (freeStats) {
+                        STATE.free_stats = freeStats;
+                        if (STATE.current_view === 'stats') renderView();
+                    }
+                }).catch(err => console.error("Error loading free stats for premium user:", err));
             }
         } else {
-            const freeStats = await apiRequest('/stats/free');
-            if (freeStats) STATE.free_stats = freeStats;
+            apiRequest('/stats/free').then(freeStats => {
+                if (freeStats) {
+                    STATE.free_stats = freeStats;
+                    if (STATE.current_view === 'stats') renderView();
+                }
+            }).catch(err => console.error("Error loading free stats:", err));
         }
     } else if (hash === '#/settings') {
         STATE.current_view = 'settings';
@@ -422,12 +439,15 @@ async function handleRoute() {
         STATE.current_view = 'premium';
     } else if (hash === '#/referral') {
         STATE.current_view = 'referral';
-        const ref = await apiRequest('/referral/stats');
-        if (ref) {
-            STATE.user.referral_count = ref.referral_count;
-            STATE.user.referral_credits = ref.referral_credits;
-            STATE.user.invite_link = ref.invite_link;
-        }
+        // Fetch fresh referral stats in the background without blocking the UI transition
+        apiRequest('/referral/stats').then(ref => {
+            if (ref && STATE.user) {
+                STATE.user.referral_count = ref.referral_count;
+                STATE.user.referral_credits = ref.referral_credits;
+                STATE.user.invite_link = ref.invite_link;
+                if (STATE.current_view === 'referral') renderView();
+            }
+        }).catch(err => console.error("Error loading referral stats:", err));
     } else if (hash === '#/help') {
         STATE.current_view = 'help';
     }
