@@ -1584,6 +1584,9 @@ def _update_active_signals_cache():
             rows = c.fetchall()
         signals = [dict(r) for r in rows]
         
+        disabled = database.get_disabled_strategies()
+        signals = [s for s in signals if s.get("strategy") not in disabled]
+        
         # Calculate live PnL dynamically
         CRYPTO_LEVERAGE = 20
         
@@ -1753,13 +1756,15 @@ def get_active_signals():
     with RESPONSE_CACHE_LOCK:
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
+            disabled = database.get_disabled_strategies()
+            filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
             if now < expiry:
-                return jsonify(cached_data), 200
+                return jsonify(filtered_data), 200
             else:
                 if not getattr(app, "signals_active_updating", False):
                     app.signals_active_updating = True
                     threading.Thread(target=_update_active_signals_cache).start()
-                return jsonify(cached_data), 200
+                return jsonify(filtered_data), 200
         
         # Cache is empty (e.g., immediately after a server restart).
         # Avoid blocking the main request thread! Instantly return signals from DB
@@ -1774,6 +1779,8 @@ def get_active_signals():
                     c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC LIMIT 50")
                     rows = c.fetchall()
                 signals = [dict(r) for r in rows]
+                disabled = database.get_disabled_strategies()
+                signals = [s for s in signals if s.get("strategy") not in disabled]
                 for s in signals:
                     s["pnl_pct"] = None
                     s["pnl_usdt"] = None
@@ -1796,13 +1803,16 @@ def get_active_signals():
 def get_closed_signals():
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' ORDER BY close_time DESC LIMIT 10")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' ORDER BY close_time DESC LIMIT 50")
         rows = c.fetchall()
     signals = [dict(r) for r in rows]
     
+    disabled = database.get_disabled_strategies()
+    signals = [s for s in signals if s.get("strategy") not in disabled][:10]
+    
     if not signals:
         signals = [
-            {"id": 2, "symbol": "ETH/USDT", "strategy": "Mean Reversion Scalper", "side": "SHORT", "entry_price": 3450.0, "tp_price": 3310.0, "sl_price": 3520.0, "open_time": int(time.time()) - 24000, "close_time": int(time.time()) - 12000, "status": "closed", "pnl_pct": 4.05}
+            {"id": 2, "symbol": "ETH/USDT", "strategy": "Valkyrie Elite Scalper", "side": "SHORT", "entry_price": 3450.0, "tp_price": 3310.0, "sl_price": 3520.0, "open_time": int(time.time()) - 24000, "close_time": int(time.time()) - 12000, "status": "closed", "pnl_pct": 4.05}
         ]
     return jsonify(signals), 200
 
