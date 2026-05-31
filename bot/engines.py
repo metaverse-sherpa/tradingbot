@@ -268,7 +268,8 @@ async def signal_engine(application):
                                     logger.warning(f"Failed forward test exit broadcast to {target_id}: {e}")
 
                 # 🧪 B. EVALUATE NEW THEORETICAL SIGNALS FOR ALL STRATEGIES
-                strategies_to_test = ["Mean Reversion Scalper", "Valkyrie Elite Scalper"]
+                disabled_strats = database.get_disabled_strategies()
+                strategies_to_test = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper"] if s not in disabled_strats]
                 open_theory_trades = database.get_open_theoretical_trades()
                 open_theory_keys = {(t['symbol'], t['strategy']) for t in open_theory_trades}
                 
@@ -410,11 +411,14 @@ async def signal_engine(application):
                 # 2. Process Signals (Active Users)
                 active_users = database.get_all_active_users()
                 if active_users:
+                    disabled_strats = database.get_disabled_strategies()
                     strategy_groups = {}
                     for user in active_users:
                         strat = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
                         if strat == 'None' or not strat:
                             continue  # Crypto strategy is paused for this user
+                        if strat in disabled_strats:
+                            continue  # Skip new signal entries for disabled strategy
                         if strat not in strategy_groups: strategy_groups[strat] = []
                         strategy_groups[strat].append(user)
                     
