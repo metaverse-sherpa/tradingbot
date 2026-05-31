@@ -2675,7 +2675,7 @@ function renderSignalCard(sig, isLanding = false) {
                         ${isCalculating ? `
                             <p class="font-numeric-data text-[10px] font-bold text-primary/80 animate-pulse flex items-center gap-1 justify-end uppercase tracking-wider">
                                 <span class="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
-                                Hydrating...
+                                Calculating PnL...
                             </p>
                         ` : `
                             <p class="font-numeric-data text-numeric-data font-bold text-lg ${current_pnl_pct >= 0 ? 'text-tertiary' : 'text-error'}">

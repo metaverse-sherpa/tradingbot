@@ -1568,176 +1568,181 @@ def run_backtest():
 
 # ----------------- Free Signals Endpoint -----------------
 def _update_active_signals_cache():
-    import time
-    import sqlite3
-    import asyncio
-    import os
-    import utils_gcp
-    import live_bot_multi
-    from bot.handlers.trading import fetch_alpaca_daily_bars_async
-
-    # Fetch free signal logs from TheoreticalTrades table
-    with database.db_session() as conn:
-        c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC LIMIT 50")
-        rows = c.fetchall()
-    signals = [dict(r) for r in rows]
-    
-    # Calculate live PnL dynamically
-    CRYPTO_LEVERAGE = 20
-    
     try:
-        mdm = live_bot_multi.MarketDataManager()
-    except Exception:
-        mdm = None
+        import time
+        import sqlite3
+        import asyncio
+        import os
+        import utils_gcp
+        import live_bot_multi
+        from bot.handlers.trading import fetch_alpaca_daily_bars_async
+
+        # Fetch free signal logs from TheoreticalTrades table
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC LIMIT 50")
+            rows = c.fetchall()
+        signals = [dict(r) for r in rows]
         
-    try:
-        sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
-        sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
-        sys_user = {"alpaca_api_key": sys_key, "alpaca_api_secret": sys_sec}
-    except Exception:
-        sys_user = {}
-
-    async def fetch_all_prices(sigs):
-        stock_syms = [sig.get("symbol", "") for sig in sigs if not ("/" in sig.get("symbol", ""))]
-        crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
-        prices = {}
+        # Calculate live PnL dynamically
+        CRYPTO_LEVERAGE = 20
         
+        try:
+            mdm = live_bot_multi.MarketDataManager()
+        except Exception:
+            mdm = None
+            
+        try:
+            sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
+            sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
+            sys_user = {"alpaca_api_key": sys_key, "alpaca_api_secret": sys_sec}
+        except Exception:
+            sys_user = {}
 
+        async def fetch_all_prices(sigs):
+            stock_syms = [sig.get("symbol", "") for sig in sigs if not ("/" in sig.get("symbol", ""))]
+            crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
+            prices = {}
+            
 
-        if stock_syms and sys_user.get("alpaca_api_key"):
-            try:
-                import aiohttp
-                sym_str = ",".join(stock_syms)
-                url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
-                headers = {
-                    "APCA-API-KEY-ID": sys_user.get("alpaca_api_key"),
-                    "APCA-API-SECRET-KEY": sys_user.get("alpaca_api_secret")
-                }
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, headers=headers, timeout=10) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            for sym in stock_syms:
-                                if sym in data:
-                                    snap = data[sym]
-                                    if snap.get("latestTrade") and snap["latestTrade"].get("p"):
-                                        prices[sym] = float(snap["latestTrade"]["p"])
-                                    elif snap.get("dailyBar") and snap["dailyBar"].get("c"):
-                                        prices[sym] = float(snap["dailyBar"]["c"])
-                                    elif snap.get("prevDailyBar") and snap["prevDailyBar"].get("c"):
-                                        prices[sym] = float(snap["prevDailyBar"]["c"])
-            except Exception as e:
-                print(f"Error fetching Alpaca snapshots: {e}")
-                
-        for sym in stock_syms:
-            if sym not in prices:
+            if stock_syms and sys_user.get("alpaca_api_key"):
                 try:
-                    conn2 = sqlite3.connect("data/stock_daily_cache.db")
-                    c2 = conn2.cursor()
-                    c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
-                    row = c2.fetchone()
-                    conn2.close()
-                    if row: prices[sym] = float(row[0])
-                    else: prices[sym] = 0.0
-                except:
-                    prices[sym] = 0.0
+                    import aiohttp
+                    sym_str = ",".join(stock_syms)
+                    url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
+                    headers = {
+                        "APCA-API-KEY-ID": sys_user.get("alpaca_api_key"),
+                        "APCA-API-SECRET-KEY": sys_user.get("alpaca_api_secret")
+                    }
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, headers=headers, timeout=10) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                for sym in stock_syms:
+                                    if sym in data:
+                                        snap = data[sym]
+                                        if snap.get("latestTrade") and snap["latestTrade"].get("p"):
+                                            prices[sym] = float(snap["latestTrade"]["p"])
+                                        elif snap.get("dailyBar") and snap["dailyBar"].get("c"):
+                                            prices[sym] = float(snap["dailyBar"]["c"])
+                                        elif snap.get("prevDailyBar") and snap["prevDailyBar"].get("c"):
+                                            prices[sym] = float(snap["prevDailyBar"]["c"])
+                except Exception as e:
+                    print(f"Error fetching Alpaca snapshots: {e}")
                     
-        if crypto_syms:
-            # 1. High-Speed Batch Fetch via Binance.US first (to bypass US VPS geopolitical blocks) / Binance.com
-            try:
-                import requests
-                r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
-                if r.status_code != 200:
-                    r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
-                if r.status_code == 200:
-                    binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
-                    for sym in crypto_syms:
-                        clean = sym.split(':')[0].replace('/', '')
-                        if clean in binance_prices:
-                            prices[sym] = binance_prices[clean]
-            except Exception as e:
-                print(f"Error fetching Binance tickers: {e}")
-
-            # 2. Blofin Fallback
-            remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
-            if remaining_crypto:
+            for sym in stock_syms:
+                if sym not in prices:
+                    try:
+                        conn2 = sqlite3.connect("data/stock_daily_cache.db")
+                        c2 = conn2.cursor()
+                        c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                        row = c2.fetchone()
+                        conn2.close()
+                        if row: prices[sym] = float(row[0])
+                        else: prices[sym] = 0.0
+                    except:
+                        prices[sym] = 0.0
+                        
+            if crypto_syms:
+                # 1. High-Speed Batch Fetch via Binance.US first (to bypass US VPS geopolitical blocks) / Binance.com
                 try:
                     import requests
-                    resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=3)
-                    if resp.status_code == 200:
-                        data = resp.json().get('data', [])
-                        price_map = {item['instId']: float(item['last']) for item in data}
-                        for sym in remaining_crypto:
-                            clean_sym = sym.split(':')[0].replace('/', '-')
-                            if clean_sym in price_map:
-                                prices[sym] = price_map[clean_sym]
+                    r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
+                    if r.status_code != 200:
+                        r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
+                    if r.status_code == 200:
+                        binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
+                        for sym in crypto_syms:
+                            clean = sym.split(':')[0].replace('/', '')
+                            if clean in binance_prices:
+                                prices[sym] = binance_prices[clean]
                 except Exception as e:
-                    print(f"Error fetching Blofin tickers in signals: {e}")
+                    print(f"Error fetching Binance tickers: {e}")
 
-            # 3. CCXT Fallback for any symbols still missing
-            remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
-            if remaining_crypto and mdm:
-                async def get_crypto_price(sym):
+                # 2. Blofin Fallback
+                remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
+                if remaining_crypto:
                     try:
-                        df = await mdm.fetch_ohlcv(sym, "15m")
-                        if df is not None and not df.empty:
-                            return float(df['close'].iloc[-1])
-                    except: pass
-                    return 0.0
-                crypto_results = await asyncio.gather(*(get_crypto_price(sym) for sym in remaining_crypto))
-                for i, sym in enumerate(remaining_crypto):
-                    prices[sym] = crypto_results[i]
+                        import requests
+                        resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=3)
+                        if resp.status_code == 200:
+                            data = resp.json().get('data', [])
+                            price_map = {item['instId']: float(item['last']) for item in data}
+                            for sym in remaining_crypto:
+                                clean_sym = sym.split(':')[0].replace('/', '-')
+                                if clean_sym in price_map:
+                                    prices[sym] = price_map[clean_sym]
+                    except Exception as e:
+                        print(f"Error fetching Blofin tickers in signals: {e}")
+
+                # 3. CCXT Fallback for any symbols still missing
+                remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
+                if remaining_crypto and mdm:
+                    async def get_crypto_price(sym):
+                        try:
+                            df = await mdm.fetch_ohlcv(sym, "15m")
+                            if df is not None and not df.empty:
+                                return float(df['close'].iloc[-1])
+                        except: pass
+                        return 0.0
+                    crypto_results = await asyncio.gather(*(get_crypto_price(sym) for sym in remaining_crypto))
+                    for i, sym in enumerate(remaining_crypto):
+                        prices[sym] = crypto_results[i]
+                    
+            return [prices.get(sig.get("symbol", ""), 0.0) for sig in sigs]
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            current_prices = loop.run_until_complete(fetch_all_prices(signals))
+        except Exception as e:
+            print(f"Error in concurrent fetch: {e}")
+            current_prices = [0.0] * len(signals)
+        finally:
+            if mdm:
+                try: loop.run_until_complete(mdm.close())
+                except: pass
+            loop.close()
+
+        for idx, sig in enumerate(signals):
+            sym = sig.get("symbol", "")
+            entry = sig.get("entry_price", 0)
+            side = str(sig.get("side", "LONG")).upper()
+            is_long = side in ['BUY', 'LONG', 'L']
+            pos_size = sig.get("position_size") or 1000
+
+            is_stk = not ("/" in sym)
+            current = current_prices[idx]
+
+            if current > 0 and entry > 0:
+                pnl_raw = current - entry if is_long else entry - current
+                pnl_pct = (pnl_raw / entry) * 100
                 
-        return [prices.get(sig.get("symbol", ""), 0.0) for sig in sigs]
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        current_prices = loop.run_until_complete(fetch_all_prices(signals))
-    except Exception as e:
-        print(f"Error in concurrent fetch: {e}")
-        current_prices = [0.0] * len(signals)
-    finally:
-        if mdm:
-            try: loop.run_until_complete(mdm.close())
-            except: pass
-        loop.close()
-
-    for idx, sig in enumerate(signals):
-        sym = sig.get("symbol", "")
-        entry = sig.get("entry_price", 0)
-        side = str(sig.get("side", "LONG")).upper()
-        is_long = side in ['BUY', 'LONG', 'L']
-        pos_size = sig.get("position_size") or 1000
-
-        is_stk = not ("/" in sym)
-        current = current_prices[idx]
-
-        if current > 0 and entry > 0:
-            pnl_raw = current - entry if is_long else entry - current
-            pnl_pct = (pnl_raw / entry) * 100
-            
-            if not is_stk:
-                pnl_pct *= CRYPTO_LEVERAGE
+                if not is_stk:
+                    pnl_pct *= CRYPTO_LEVERAGE
+                    
+                pnl_val = pos_size * (pnl_pct / 100)
                 
-            pnl_val = pos_size * (pnl_pct / 100)
-            
-            sig["pnl_pct"] = pnl_pct
-            sig["pnl_usdt"] = pnl_val
-    
-    if not signals:
-        # Prepopulate standard indicators
-        signals = [
-            {"id": 1, "symbol": "BTC/USDT", "strategy": "Mean Reversion Scalper", "side": "LONG", "entry_price": 63400.0, "tp_price": 64800.0, "sl_price": 62500.0, "open_time": int(time.time()) - 600, "status": "open"}
-        ]
+                sig["pnl_pct"] = pnl_pct
+                sig["pnl_usdt"] = pnl_val
         
-    cache_key = "signals_active"
-    with RESPONSE_CACHE_LOCK:
-        RESPONSE_CACHE[cache_key] = (time.time() + CACHE_TTL_SECONDS, signals)
-    
-    app.signals_active_updating = False
-    return signals
+        if not signals:
+            # Prepopulate standard indicators
+            signals = [
+                {"id": 1, "symbol": "BTC/USDT", "strategy": "Mean Reversion Scalper", "side": "LONG", "entry_price": 63400.0, "tp_price": 64800.0, "sl_price": 62500.0, "open_time": int(time.time()) - 600, "status": "open"}
+            ]
+            
+        cache_key = "signals_active"
+        with RESPONSE_CACHE_LOCK:
+            RESPONSE_CACHE[cache_key] = (time.time() + CACHE_TTL_SECONDS, signals)
+        return signals
+    except Exception as e:
+        import traceback
+        print(f"[CACHE ERROR] Failed to update active signals cache: {e}")
+        traceback.print_exc()
+        return []
+    finally:
+        app.signals_active_updating = False
 
 @app.route('/api/signals/active', methods=['GET'])
 def get_active_signals():
