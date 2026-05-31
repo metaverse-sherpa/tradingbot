@@ -334,7 +334,24 @@ async function handleRoute() {
                 STATE.stock_balance = bal.stock_balance;
                 STATE.total_balance = bal.total_balance;
             }
-            if (sigs) STATE.active_signals = sigs;
+            if (sigs) {
+                STATE.active_signals = sigs;
+                
+                // Auto-refresh in 1.5 seconds if any signal is still calculating in the background
+                const isAnyCalculating = sigs.some(s => s.pnl_pct === null || s.pnl_pct === undefined);
+                if (isAnyCalculating && STATE.current_view === 'dashboard') {
+                    setTimeout(() => {
+                        if (STATE.current_view === 'dashboard') {
+                            apiRequest('/signals/active').then(freshSigs => {
+                                if (freshSigs) {
+                                    STATE.active_signals = freshSigs;
+                                    renderView();
+                                }
+                            });
+                        }
+                    }, 1500);
+                }
+            }
             if (open) STATE.open_trades = open;
             if (stats) {
                 if (STATE.user && STATE.user.is_premium) STATE.stats = stats;
@@ -496,7 +513,19 @@ window.refreshSignals = function(showSpinner = false) {
         }
 
         
-        if (active) STATE.active_signals = active;
+        if (active) {
+            STATE.active_signals = active;
+            
+            // Auto-refresh in 1.5 seconds if any signal is still calculating in the background
+            const isAnyCalculating = active.some(s => s.pnl_pct === null || s.pnl_pct === undefined);
+            if (isAnyCalculating && STATE.current_view === 'signals') {
+                setTimeout(() => {
+                    if (STATE.current_view === 'signals') {
+                        window.refreshSignals(false);
+                    }
+                }, 1500);
+            }
+        }
         if (closed) STATE.closed_signals = closed;
         if (freeStats) STATE.free_stats = freeStats;
         if (STATE.current_view === 'signals') {
