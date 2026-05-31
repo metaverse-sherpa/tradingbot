@@ -260,11 +260,11 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
                     </div>
                     <div class="metric-row">
                         <span class="label">Strategy</span>
-                        <span class="value">{strategy}</span>
+                        <span class="value" style="color: #FFFFFF;">{strategy}</span>
                     </div>
                     <div class="metric-row">
                         <span class="label">Entry Price</span>
-                        <span class="value">{entry_val}</span>
+                        <span class="value" style="color: #FFFFFF;">{entry_val}</span>
                     </div>
                     <div class="metric-row">
                         <span class="label">Take Profit</span>
