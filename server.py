@@ -1603,12 +1603,7 @@ def _update_active_signals_cache():
         crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
         prices = {}
         
-        is_mkt_open = False
-        try:
-            from live_bot_multi_alpaca import check_is_market_open
-            is_mkt_open = check_is_market_open()
-        except Exception as e:
-            print(f"Error checking market open status: {e}")
+
 
         if stock_syms and sys_user.get("alpaca_api_key"):
             try:
@@ -1823,12 +1818,7 @@ def get_free_stats():
             print(f"Error fetching Blofin prices: {e}")
             
     if stock_syms:
-        is_mkt_open = False
-        try:
-            from live_bot_multi_alpaca import check_is_market_open
-            is_mkt_open = check_is_market_open()
-        except Exception as e:
-            print(f"Error checking market open status in get_free_stats: {e}")
+
 
         if True: # Always fetch latest price from Alpaca (works when market is closed too)
             try:
