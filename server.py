@@ -1770,8 +1770,8 @@ def get_active_signals():
                     rows = c.fetchall()
                 signals = [dict(r) for r in rows]
                 for s in signals:
-                    s["pnl_pct"] = 0.0
-                    s["pnl_usdt"] = 0.0
+                    s["pnl_pct"] = None
+                    s["pnl_usdt"] = None
             except Exception:
                 signals = []
             
