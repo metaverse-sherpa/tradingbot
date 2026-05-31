@@ -1236,7 +1236,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append(stock_row)
         keyboard.append([InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")])
         keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
-        keyboard.append(get_nav_buttons(user.get('has_open_positions', False)))
+        keyboard.extend(get_nav_buttons(user.get('has_open_positions', False)))
         
         if query.message.photo:
             try:
