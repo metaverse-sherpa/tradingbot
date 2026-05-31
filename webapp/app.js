@@ -99,6 +99,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     try {
         const response = await fetch(url, options);
         if (response.status === 401) {
+            localStorage.removeItem('session_token');
             if (window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/' && window.location.hash !== '#/help') {
                 // Unauthorized → redirect to landing
                 STATE.user = null;
@@ -337,19 +338,10 @@ async function handleRoute() {
             if (sigs) {
                 STATE.active_signals = sigs;
                 
-                // Auto-refresh in 1.5 seconds if any signal is still calculating in the background
+                // Auto-refresh in background if any signal is still calculating in the background
                 const isAnyCalculating = sigs.some(s => s.pnl_pct === null || s.pnl_pct === undefined);
                 if (isAnyCalculating && STATE.current_view === 'dashboard') {
-                    setTimeout(() => {
-                        if (STATE.current_view === 'dashboard') {
-                            apiRequest('/signals/active').then(freshSigs => {
-                                if (freshSigs) {
-                                    STATE.active_signals = freshSigs;
-                                    renderView();
-                                }
-                            });
-                        }
-                    }, 1500);
+                    setTimeout(window.pollActiveSignalsForHydration, 2000);
                 }
             }
             if (open) STATE.open_trades = open;
@@ -461,6 +453,21 @@ window.toggleActiveSignalsSort = function() {
     renderView();
 };
 
+window.pollActiveSignalsForHydration = function() {
+    if (STATE.current_view !== 'dashboard' && STATE.current_view !== 'signals') return;
+    apiRequest('/signals/active').then(freshSigs => {
+        if (freshSigs) {
+            STATE.active_signals = freshSigs;
+            renderView();
+            
+            const isAnyCalculating = freshSigs.some(s => s.pnl_pct === null || s.pnl_pct === undefined);
+            if (isAnyCalculating) {
+                setTimeout(window.pollActiveSignalsForHydration, 2000);
+            }
+        }
+    });
+};
+
 window.setTradesMode = function(mode) {
     STATE.trades_mode = mode;
     renderView();
@@ -516,14 +523,10 @@ window.refreshSignals = function(showSpinner = false) {
         if (active) {
             STATE.active_signals = active;
             
-            // Auto-refresh in 1.5 seconds if any signal is still calculating in the background
+            // Auto-refresh in background if any signal is still calculating in the background
             const isAnyCalculating = active.some(s => s.pnl_pct === null || s.pnl_pct === undefined);
             if (isAnyCalculating && STATE.current_view === 'signals') {
-                setTimeout(() => {
-                    if (STATE.current_view === 'signals') {
-                        window.refreshSignals(false);
-                    }
-                }, 1500);
+                setTimeout(window.pollActiveSignalsForHydration, 2000);
             }
         }
         if (closed) STATE.closed_signals = closed;
