@@ -282,7 +282,7 @@ async function handleRoute() {
         STATE.current_view = view;
         
         if (view === 'landing') {
-            if (!STATE.signals || STATE.signals.length === 0) {
+            if ((!STATE.signals || STATE.signals.length === 0) && !STATE.free_stats) {
                 STATE.is_loading_signals = true;
                 renderView(); // Render loading skeleton
             } else {
@@ -291,8 +291,18 @@ async function handleRoute() {
             }
             
             // Revalidate in background
-            apiRequest('/signals/active').then(signals => {
+            Promise.all([
+                apiRequest('/signals/active'),
+                apiRequest('/stats/free')
+            ]).then(([signals, freeStats]) => {
                 STATE.signals = signals || [];
+                if (freeStats) {
+                    STATE.free_stats = freeStats;
+                }
+                STATE.is_loading_signals = false;
+                renderView();
+            }).catch(err => {
+                console.error("Error loading landing data in background:", err);
                 STATE.is_loading_signals = false;
                 renderView();
             });
@@ -854,23 +864,142 @@ function renderRegisterView() {
 
 function renderLandingView() {
     const headerHtml = `
-        <div class="relative overflow-hidden rounded-2xl mb-4 p-6 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
+        <div class="relative overflow-hidden rounded-2xl mb-6 p-6 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
             <!-- Mountain neon glow in the background -->
             <div class="absolute -right-10 -top-10 w-64 h-64 bg-primary/30 rounded-full blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-[80px] pointer-events-none"></div>
             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
             
             <div class="relative z-10 flex flex-col items-center">
-                <p class="text-[10px] text-on-surface-variant max-w-[320px] leading-relaxed uppercase tracking-widest font-semibold text-primary/80">
-                    Algorithmic Intelligence
-                </p>
-                <div class="h-[1px] w-20 bg-gradient-to-r from-transparent via-primary/50 to-transparent my-2"></div>
-                <p class="text-sm text-on-surface-variant/90 font-medium max-w-[320px] leading-relaxed">
-                    Summit the markets with real-time autonomous trading setups.
+                <span class="text-[10px] text-primary/80 font-bold uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/25 mb-3">🏔️ Algorithmic Intelligence</span>
+                <h2 class="font-headline-md text-headline-md text-white font-bold leading-tight">Institutional-Grade Autopilot Trading</h2>
+                <p class="text-xs text-on-surface-variant/90 font-medium max-w-[360px] leading-relaxed mt-2.5">
+                    Summit the markets with real-time autonomous trading setups executed with institutional precision.
                 </p>
             </div>
         </div>
     `;
+
+    const howItWorksHtml = `
+        <section class="grid grid-cols-1 gap-4 mb-6">
+            <!-- Standard Tier Card -->
+            <div class="glass-card rounded-xl p-5 border border-white/5 space-y-2.5 relative overflow-hidden group hover:border-primary/20 transition-all">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">🥈 Standard Tier</span>
+                    <span class="text-xs text-primary font-bold">100% Free</span>
+                </div>
+                <h3 class="font-bold text-on-surface text-base flex items-center gap-2">📡 Real-Time Alpha Signals</h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Receive institutional setups via our Webapp dashboard or instantly in our Telegram alerts. Learn strategies, audit results, and execute manually with zero cost.
+                </p>
+            </div>
+            
+            <!-- Premium Tier Card -->
+            <div class="glass-card rounded-xl p-5 border-t-2 border-primary/40 space-y-2.5 relative overflow-hidden group hover:shadow-[0_0_20px_rgba(60,215,255,0.15)] transition-all">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary font-bold border border-primary/20">💎 Premium Tier</span>
+                    <span class="text-xs text-[#ffdb3c] font-bold">Automated Autopilot</span>
+                </div>
+                <h3 class="font-bold text-on-surface text-base flex items-center gap-2">🤖 Zero-Latency Execution</h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Connect exchange APIs (Blofin, Bitget, MEXC, BingX, Binance, Alpaca) to automatically execute every signal with zero latency. Features advanced risk mitigation, Bollinger Bands, volatility squeezes, and up to 20x leverage.
+                </p>
+            </div>
+        </section>
+    `;
+
+    let strategiesCatalogHtml = '';
+    if (STATE.free_stats && STATE.free_stats.strategies) {
+        const strategyIcons = {
+            "Mean Reversion Scalper": "📈",
+            "Valkyrie Elite Scalper": "🛡️",
+            "Sherpa Velocity Pullback": "🦙"
+        };
+        const guides = {
+            "Mean Reversion Scalper": {
+                philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
+                indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
+                pace: "Highly active. Averages ~0.84 trades/day.",
+                drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
+                img: "/api/charts/mean_reversion_infographic.png"
+            },
+            "Valkyrie Elite Scalper": {
+                philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
+                indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
+                pace: "Patient and calculated. Averages ~0.68 trades/day.",
+                drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
+                img: "/api/charts/valkyrie_elite_infographic.png"
+            },
+            "Sherpa Velocity Pullback": {
+                philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
+                indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
+                pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
+                drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
+                img: "/api/charts/stock_strategy_infographic.png"
+            }
+        };
+
+        strategiesCatalogHtml = `
+            <section class="space-y-4 mb-6">
+                <h3 class="font-headline-sm text-on-surface flex items-center gap-2">🧪 Active Strategies Catalog</h3>
+                <div class="space-y-4">
+                    ${STATE.free_stats.strategies.map(s => {
+                        const icon = strategyIcons[s.name] || "📈";
+                        const guide = guides[s.name] || guides["Mean Reversion Scalper"];
+                        const guideId = `landing-guide-${s.name.replace(/\s+/g, '-')}`;
+                        const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
+                        const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
+
+                        return `
+                            <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50 transition-all duration-300">
+                                <div class="flex justify-between items-center cursor-pointer group" onclick="document.getElementById('${guideId}').classList.toggle('hidden'); const chev = document.getElementById('chev-${guideId}'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
+                                    <h4 class="font-headline-sm text-on-surface flex items-center gap-2 group-hover:text-primary transition-colors">
+                                        <span>${icon}</span> ${s.name}
+                                    </h4>
+                                    <span id="chev-${guideId}" class="material-symbols-outlined text-on-surface-variant transition-transform duration-300">expand_more</span>
+                                </div>
+                                <div class="text-sm space-y-1">
+                                    <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
+                                    <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
+                                    <p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>
+                                    <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
+                                </div>
+                                
+                                <!-- Expandable Guide Section -->
+                                <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in">
+                                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.img}', '_blank')">
+                                        <img src="${guide.img}" alt="${s.name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                                            <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2 bg-surface-container/30 rounded-xl p-3" style="font-size: 11px;">
+                                        <div>
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Philosophy</span>
+                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Indicators</span>
+                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Execution Pace</span>
+                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Drawdown Profile</span>
+                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </section>
+        `;
+    }
 
     let signalsList = '';
     if (STATE.is_loading_signals) {
@@ -897,8 +1026,9 @@ function renderLandingView() {
 
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 max-w-[500px] mx-auto relative">
+        <main class="pt-20 px-container-margin pb-24 max-w-[500px] mx-auto relative flex flex-col gap-2">
             ${headerHtml}
+            
             <div class="relative">
                 <!-- Sticky CTA Panel -->
                 <div class="sticky top-20 z-20 mb-6 pointer-events-none">
@@ -999,11 +1129,32 @@ function renderLandingView() {
                         </div>
                     </div>
                 </div>
+            </div>
 
+            <!-- Redesigned Promo Info -->
+            ${howItWorksHtml}
+            
+            <!-- Redesigned Active-Only Strategies Catalog -->
+            ${strategiesCatalogHtml}
+
+            <!-- Redesigned Live Signals Teaser -->
+            <div class="space-y-4 relative mt-2">
+                <h3 class="font-headline-sm text-on-surface flex items-center gap-2">📡 Live Active Signals</h3>
                 <div class="space-y-4 relative">
                     ${signalsList}
-                    <!-- Bottom gradient fade -->
-                    <div class="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none"></div>
+                    
+                    ${(STATE.signals && STATE.signals.length > 0) ? `
+                    <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0f131f] via-[#0f131f]/95 to-transparent flex flex-col justify-end items-center pb-2 z-20 pointer-events-none">
+                        <div class="text-center bg-surface-container-high/90 border border-primary/20 backdrop-blur-md px-4 py-3 rounded-xl max-w-[340px] shadow-lg pointer-events-auto">
+                            <p class="text-xs text-on-surface font-semibold flex items-center justify-center gap-1.5 mb-1">
+                                <span class="material-symbols-outlined text-primary text-base">lock</span> Trade Details Locked
+                            </p>
+                            <p class="text-[11px] text-on-surface-variant leading-normal">
+                                Create a free account to unlock real-time entry targets, stop losses, and dynamic charts.
+                            </p>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         </main>
