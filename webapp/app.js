@@ -3075,6 +3075,97 @@ function renderReferralView() {
 }
 
 function renderHelpView() {
+    const strategyIcons = {
+        "Mean Reversion Scalper": "📈",
+        "Valkyrie Elite Scalper": "🛡️",
+        "Sherpa Velocity Pullback": "🦙"
+    };
+
+    const guides = {
+        "Mean Reversion Scalper": {
+            philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
+            indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
+            pace: "Highly active. Averages ~0.84 trades/day.",
+            drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> (well below the 25% safety ceiling) while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
+            img: "/api/charts/mean_reversion_infographic.png"
+        },
+        "Valkyrie Elite Scalper": {
+            philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
+            indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
+            pace: "Patient and calculated. Averages ~0.68 trades/day.",
+            drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
+            img: "/api/charts/valkyrie_elite_infographic.png"
+        },
+        "Sherpa Velocity Pullback": {
+            philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
+            indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
+            pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
+            drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
+            img: "/api/charts/stock_strategy_infographic.png"
+        }
+    };
+
+    const activeStrategies = [];
+    const cryptoStrat = STATE.user ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : 'Mean Reversion Scalper';
+    const stockStrat = STATE.user ? (STATE.user.active_stock_strategy || 'None') : 'None';
+
+    if (cryptoStrat && cryptoStrat !== 'None') {
+        activeStrategies.push(cryptoStrat);
+    }
+    if (stockStrat && stockStrat !== 'None' && !activeStrategies.includes(stockStrat)) {
+        activeStrategies.push(stockStrat);
+    }
+
+    let strategiesHtml = activeStrategies.map(name => {
+        const icon = strategyIcons[name] || "📈";
+        const guide = guides[name] || guides["Mean Reversion Scalper"];
+        const guideId = `help-guide-${name.replace(/\\s+/g, '-')}`;
+        
+        return `
+            <div class="glass-card rounded-xl p-4 space-y-2 border border-white/5 transition-all duration-300">
+                <div class="flex justify-between items-center cursor-pointer group" onclick="document.getElementById('${guideId}').classList.toggle('hidden'); const chev = document.getElementById('help-chev-${guideId}'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
+                    <h3 class="font-headline-sm text-on-surface flex items-center gap-2 group-hover:text-primary transition-colors text-sm">
+                        <span>${icon}</span> ${name}
+                    </h3>
+                    <span id="help-chev-${guideId}" class="material-symbols-outlined text-on-surface-variant transition-transform duration-300">expand_more</span>
+                </div>
+                
+                <!-- Expandable Guide Section -->
+                <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in">
+                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.img}', '_blank')">
+                        <img src="${guide.img}" alt="${name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                            <span class="text-xs text-white font-bold uppercase tracking-wider">Expand</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2 bg-surface-container/30 rounded-xl p-3" style="font-size: 11px;">
+                        <div>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Philosophy</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
+                        </div>
+                        <div>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Indicators</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
+                        </div>
+                        <div>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Execution Pace</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
+                        </div>
+                        <div>
+                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Drawdown Profile</span>
+                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (activeStrategies.length === 0) {
+        strategiesHtml = `<p class="text-xs text-on-surface-variant mt-2 leading-relaxed font-normal">No active strategies configured.</p>`;
+    }
+
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
@@ -3114,13 +3205,11 @@ function renderHelpView() {
                 </div>
                 
                 <div class="glass-card rounded-xl p-card-padding">
-                    <h3 class="font-bold text-on-surface flex items-center gap-2">
-                        <span class="material-symbols-outlined text-primary">smart_toy</span> Algorithmic Strategies
+                    <h3 class="font-bold text-on-surface flex items-center gap-2 mb-4">
+                        <span class="material-symbols-outlined text-primary">smart_toy</span> Active Algorithmic Strategies
                     </h3>
-                    <div class="text-xs text-on-surface-variant mt-2 space-y-2 leading-relaxed font-normal">
-                        <p>💡 <strong>Mean Reversion Scalper</strong>: Scalps volatile assets under extreme RSI overbought/oversold boundaries, entering counter-trend setups with dynamic targets.</p>
-                        <p>⚔️ <strong>Valkyrie Elite Scalper</strong>: Premium high-frequency scalp model using custom order flow imbalance detectors.</p>
-                        <p>🦙 <strong>Sherpa Velocity Pullback</strong>: Captures high-volume momentum trends on stocks with trailing stop mechanics.</p>
+                    <div class="space-y-3">
+                        ${strategiesHtml}
                     </div>
                 </div>
             </div>
