@@ -2904,8 +2904,35 @@ function renderSignalsView() {
                     "Valkyrie Elite Scalper": "🛡️",
                     "Sherpa Velocity Pullback": "🦙"
                 };
+                const guides = {
+                    "Mean Reversion Scalper": {
+                        philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
+                        indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
+                        pace: "Highly active. Averages ~0.84 trades/day.",
+                        drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> (well below the 25% safety ceiling) while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
+                        img: "/api/charts/mean_reversion_infographic.png"
+                    },
+                    "Valkyrie Elite Scalper": {
+                        philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
+                        indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
+                        pace: "Patient and calculated. Averages ~0.68 trades/day.",
+                        drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
+                        img: "/api/charts/valkyrie_elite_infographic.png"
+                    },
+                    "Sherpa Velocity Pullback": {
+                        philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
+                        indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
+                        pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
+                        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
+                        img: "/api/charts/stock_strategy_infographic.png"
+                    }
+                };
+
                 const strategyRows = STATE.free_stats.strategies.map(s => {
                     const icon = strategyIcons[s.name] || "📈";
+                    const guide = guides[s.name] || guides["Mean Reversion Scalper"];
+                    const guideId = `sig-guide-${s.name.replace(/\\s+/g, '-')}`;
+                    
                     const realizedPct = s.realized_pct || 0;
                     const unrealizedPct = s.unrealized_pct || 0;
                     const netPct = realizedPct + unrealizedPct;
@@ -2917,9 +2944,10 @@ function renderSignalsView() {
                     return `
                         <div class="flex flex-col gap-1 p-2 bg-surface-container-low rounded-lg border border-white/5 hover:border-white/10 transition-colors">
                             <div class="flex justify-between items-center pb-1">
-                                <div class="flex items-center gap-1.5">
+                                <div class="flex items-center gap-1.5 cursor-pointer group" onclick="document.getElementById('${guideId}').classList.toggle('hidden'); const chev = document.getElementById('sig-chev-${guideId}'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
                                     <span class="text-sm">${icon}</span>
-                                    <span class="font-bold text-xs text-on-surface truncate max-w-[150px]" title="${s.name}">${s.name}</span>
+                                    <span class="font-bold text-xs text-on-surface truncate max-w-[150px] group-hover:text-primary transition-colors" title="${s.name}">${s.name}</span>
+                                    <span id="sig-chev-${guideId}" class="material-symbols-outlined text-[14px] text-on-surface-variant transition-transform duration-300">expand_more</span>
                                 </div>
                                 <div class="flex items-center gap-1">
                                     <span class="uppercase text-on-surface-variant font-bold tracking-wider" style="font-size: 9px;">Net:</span>
@@ -2943,6 +2971,35 @@ function renderSignalsView() {
                                 <div class="flex flex-col items-center">
                                     <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Unreal</span>
                                     <span class="font-numeric-data ${unrealizedClass} font-bold leading-tight mt-0.5" style="font-size: 10px;">${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Expandable Guide Section -->
+                            <div id="${guideId}" class="hidden pt-3 mt-1 border-t border-white/5 space-y-3 animate-fade-in">
+                                <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.img}', '_blank')">
+                                    <img src="${guide.img}" alt="${s.name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                                        <span class="text-xs text-white font-bold uppercase tracking-wider">Expand</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-1.5 bg-surface-container/30 rounded-lg p-2.5" style="font-size: 10px;">
+                                    <div>
+                                        <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 8px;">Philosophy</span>
+                                        <p class="text-on-surface leading-tight mt-0.5">${guide.philosophy}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 8px;">Indicators</span>
+                                        <p class="text-on-surface leading-tight mt-0.5">${guide.indicators}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 8px;">Execution Pace</span>
+                                        <p class="text-on-surface leading-tight mt-0.5">${guide.pace}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 8px;">Drawdown Profile</span>
+                                        <p class="text-on-surface leading-tight mt-0.5">${guide.drawdown}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
