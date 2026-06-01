@@ -2906,38 +2906,52 @@ function renderSignalsView() {
                 };
                 const strategyRows = STATE.free_stats.strategies.map(s => {
                     const icon = strategyIcons[s.name] || "📈";
-                    const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
-                    const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
+                    const realizedPct = s.realized_pct || 0;
+                    const unrealizedPct = s.unrealized_pct || 0;
+                    const netPct = realizedPct + unrealizedPct;
+                    
+                    const netClass = netPct >= 0 ? "text-tertiary" : "text-error";
+                    const realizedClass = realizedPct >= 0 ? "text-tertiary" : "text-error";
+                    const unrealizedClass = unrealizedPct >= 0 ? "text-tertiary" : "text-error";
+                    
                     return `
-                        <tr class="hover:bg-white/5 transition-colors">
-                            <td class="py-1.5 text-on-surface flex items-center gap-1 font-sans text-xs">
-                                <span>${icon}</span>
-                                <span class="truncate max-w-[130px]" title="${s.name}">${s.name}</span>
-                            </td>
-                            <td class="py-1.5 text-center text-on-surface-variant">${s.active_count}</td>
-                            <td class="py-1.5 text-center text-primary font-bold">${s.win_rate.toFixed(1)}%</td>
-                            <td class="py-1.5 text-right ${realizedClass} font-bold">${s.realized_pct >= 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</td>
-                            <td class="py-1.5 text-right ${unrealizedClass} font-bold">${(s.unrealized_pct || 0) >= 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</td>
-                        </tr>
+                        <div class="flex flex-col gap-2 p-3 bg-surface-container-low rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                            <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-base">${icon}</span>
+                                    <span class="font-bold text-sm text-on-surface truncate max-w-[160px]" title="${s.name}">${s.name}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[9px] uppercase text-on-surface-variant font-bold tracking-wider">Net PnL</span>
+                                    <div class="font-numeric-data text-numeric-data font-bold text-sm ${netClass}">${netPct >= 0 ? '+' : ''}${netPct.toFixed(2)}%</div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-4 gap-1 text-center pt-1">
+                                <div>
+                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Active</div>
+                                    <div class="font-numeric-data text-numeric-data text-xs text-on-surface font-bold">${s.active_count}</div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Win Rate</div>
+                                    <div class="font-numeric-data text-numeric-data text-xs text-primary font-bold">${s.win_rate.toFixed(1)}%</div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Realized</div>
+                                    <div class="font-numeric-data text-numeric-data text-xs ${realizedClass} font-bold">${realizedPct >= 0 ? '+' : ''}${realizedPct.toFixed(2)}%</div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Unrealized</div>
+                                    <div class="font-numeric-data text-numeric-data text-xs ${unrealizedClass} font-bold">${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%</div>
+                                </div>
+                            </div>
+                        </div>
                     `;
                 }).join('');
                 
                 statsContent = `
-                    <div class="pt-2 border-t border-white/10 animate-fade-in overflow-x-auto">
-                        <table class="w-full text-left text-[10px] font-mono whitespace-nowrap">
-                            <thead>
-                                <tr class="text-on-surface-variant border-b border-white/5">
-                                    <th class="pb-1.5 font-semibold uppercase tracking-wider text-[9px] font-sans">Strategy</th>
-                                    <th class="pb-1.5 text-center font-semibold uppercase tracking-wider text-[9px] font-sans">Active</th>
-                                    <th class="pb-1.5 text-center font-semibold uppercase tracking-wider text-[9px] font-sans">Win Rate</th>
-                                    <th class="pb-1.5 text-right font-semibold uppercase tracking-wider text-[9px] font-sans">Realized</th>
-                                    <th class="pb-1.5 text-right font-semibold uppercase tracking-wider text-[9px] font-sans">Unrealized</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-white/5">
-                                ${strategyRows}
-                            </tbody>
-                        </table>
+                    <div class="pt-3 border-t border-white/10 animate-fade-in flex flex-col gap-3">
+                        ${strategyRows}
                     </div>
                 `;
             } else {
