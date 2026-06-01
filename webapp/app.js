@@ -938,10 +938,10 @@ function renderLandingView() {
                 indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
                 pace: "Patient and calculated. Averages ~0.68 trades/day.",
                 drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
-                img: "/api/charts/valkyrie_elite_infographic.png",
+                img: "/api/charts/valkyrie_elite_infographic_ai.png",
                 backtest_stats: {
-                    win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-13.4%", net_pnl: "+$16,701.57", final_bal: "$26,701.57",
-                    img: "/api/charts/valkyrie_research_backtest.png"
+                    win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-19.5%", net_pnl: "+240.1%", final_bal: "$34,010.00",
+                    img: "/api/charts/valkyrie_stock_backtest.png"
                 }
             },
             "Sherpa Velocity Pullback": {
@@ -949,9 +949,9 @@ function renderLandingView() {
                 indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
                 pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
                 drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
-                img: "/api/charts/stock_strategy_infographic.png",
+                img: "/api/charts/sherpa_velocity_infographic_ai.png",
                 backtest_stats: {
-                    win_rate: "68.8%", trades: "555", sharpe: "2.99", max_dd: "-6%", net_pnl: "+$4,845.33", final_bal: "$14,845.33",
+                    win_rate: "66.9%", trades: "555", sharpe: "1.87", max_dd: "-14.2%", net_pnl: "+113.5%", final_bal: "$21,350.00",
                     img: "/api/charts/stock_master_audit.png"
                 }
             }
