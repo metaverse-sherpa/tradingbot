@@ -430,6 +430,31 @@ async def run_real_trader_execution(today_opens):
                             )
                             msg_close = close_text_before + placeholder
                             await send_telegram_message(chat_id, msg_close, entities=[close_entity])
+                            
+                            # Fetch user's email and email preferences from WebUsers
+                            conn_email = sqlite3.connect(USER_DB_PATH)
+                            c_email = conn_email.cursor()
+                            c_email.execute("SELECT email, email_notifications FROM WebUsers WHERE telegram_chat_id = ?", (chat_id,))
+                            web_user_row = c_email.fetchone()
+                            conn_email.close()
+                            
+                            if web_user_row and web_user_row[0] and web_user_row[1] == 1:
+                                user_email = web_user_row[0]
+                                from web_api.email_service import send_alert_email, get_signal_alert_html
+                                html_content = get_signal_alert_html(
+                                    symbol=sym,
+                                    side="LONG",
+                                    strategy="Sherpa Velocity Pullback (Dynamic Exit)",
+                                    entry=entry_price,
+                                    tp=entry_price * 1.05,
+                                    sl=entry_price * 0.95,
+                                    resolution="closed",
+                                    pnl_pct=pnl_pct,
+                                    is_premium_user=True
+                                )
+                                subject = f"🔒 POSITION EXITED: {sym} ({pnl_pct:+.2f}%)"
+                                send_alert_email(user_email, subject, html_content)
+                                logger.info(f"Dynamic Exit email dispatched to {user_email}")
                         except Exception as e:
                             logger.error(f"Failed to liquidate real user {chat_id} position {sym}: {e}")
                             await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} dynamically: {e}")
