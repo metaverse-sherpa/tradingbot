@@ -142,49 +142,53 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
 }
 
 // ----------------- Google Sign In Initialization -----------------
-async function initGoogleSignIn() {
-    // Fetch the client ID from the backend securely so it's not hardcoded in the frontend repository
-    const config = await apiRequest('/config', 'GET');
-    const clientId = config ? config.google_client_id : null;
+let cachedGoogleClientId = null;
+
+window.renderGoogleButtons = function() {
+    if (!window.google || !cachedGoogleClientId) return;
     
-    if (!clientId) {
+    window.google.accounts.id.initialize({
+        client_id: cachedGoogleClientId,
+        callback: handleGoogleCredentialResponse,
+        use_fedcm_for_prompt: false
+    });
+
+    // Render button on Login Page container if present
+    const btnLogin = document.getElementById('google-signin-btn-login');
+    if (btnLogin) {
+        window.google.accounts.id.renderButton(btnLogin, {
+            theme: 'outline',
+            size: 'large',
+            width: btnLogin.clientWidth || 368,
+            text: 'continue_with',
+            shape: 'pill'
+        });
+    }
+
+    // Render button on Landing Page container if present
+    const btnLanding = document.getElementById('google-signin-btn-landing');
+    if (btnLanding) {
+        window.google.accounts.id.renderButton(btnLanding, {
+            theme: 'outline',
+            size: 'large',
+            width: btnLanding.clientWidth || 340,
+            text: 'continue_with',
+            shape: 'pill'
+        });
+    }
+};
+
+async function initGoogleSignIn() {
+    if (!cachedGoogleClientId) {
+        // Fetch the client ID from the backend securely so it's not hardcoded in the frontend repository
+        const config = await apiRequest('/config', 'GET');
+        cachedGoogleClientId = config ? config.google_client_id : null;
+    }
+    
+    if (!cachedGoogleClientId) {
         console.error("Google Client ID not found from backend config.");
         return;
     }
-
-    const renderButtons = () => {
-        if (!window.google) return;
-        
-        window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleGoogleCredentialResponse,
-            use_fedcm_for_prompt: false
-        });
-
-        // Render button on Login Page container if present
-        const btnLogin = document.getElementById('google-signin-btn-login');
-        if (btnLogin) {
-            window.google.accounts.id.renderButton(btnLogin, {
-                theme: 'outline',
-                size: 'large',
-                width: btnLogin.clientWidth || 368,
-                text: 'continue_with',
-                shape: 'pill'
-            });
-        }
-
-        // Render button on Landing Page container if present
-        const btnLanding = document.getElementById('google-signin-btn-landing');
-        if (btnLanding) {
-            window.google.accounts.id.renderButton(btnLanding, {
-                theme: 'outline',
-                size: 'large',
-                width: btnLanding.clientWidth || 340,
-                text: 'continue_with',
-                shape: 'pill'
-            });
-        }
-    };
 
     // Inject official Google script dynamically
     if (!document.getElementById('google-gsi-script')) {
@@ -194,12 +198,12 @@ async function initGoogleSignIn() {
         script.async = true;
         script.defer = true;
         script.onload = () => {
-            renderButtons();
+            window.renderGoogleButtons();
         };
         document.head.appendChild(script);
     } else {
         // If script is already injected (e.g. view transitions), just render button
-        setTimeout(renderButtons, 50);
+        setTimeout(window.renderGoogleButtons, 50);
     }
 }
 
@@ -740,6 +744,11 @@ function renderView() {
     
     // Post-rendering bindings
     bindEvents();
+    
+    // Ensure Google Sign-In buttons are always rendered immediately after any DOM write
+    if (typeof window.renderGoogleButtons === 'function') {
+        window.renderGoogleButtons();
+    }
 }
 
 // ----------------- Screen Renderers -----------------
