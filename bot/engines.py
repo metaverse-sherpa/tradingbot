@@ -78,9 +78,9 @@ async def sync_engine(application):
                             "password": user['api_password'],
                             "options": {"defaultType": "swap"},
                         }) as user_ex:
-                            acc_type = database.get_exchange_account_type(ex_id)
-                            balance = await user_ex.fetch_balance(params={"type": acc_type})
-                            equity = float(balance.get("USDT", {}).get("total", 0))
+                            bal_params = database.get_exchange_balance_params(ex_id)
+                            balance = await user_ex.fetch_balance(params=bal_params)
+                            equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
                             await database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
                             
                     # 2. Sync Stocks
@@ -447,9 +447,9 @@ async def signal_engine(application):
                                     "options": {"defaultType": "swap"},
                                 }) as user_ex:
                                     
-                                    acc_type = database.get_exchange_account_type(ex_id)
-                                    balance = await user_ex.fetch_balance(params={"type": acc_type})
-                                    actual_equity = float(balance.get("USDT", {}).get("total", 0))
+                                    bal_params = database.get_exchange_balance_params(ex_id)
+                                    balance = await user_ex.fetch_balance(params=bal_params)
+                                    actual_equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
                                     
                                     # Custom Capital Allocation Override
                                     eq_type = user.get('custom_equity_type', 'all')

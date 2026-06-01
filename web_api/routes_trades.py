@@ -138,8 +138,8 @@ def get_balance():
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
-                acc_type = database.get_exchange_account_type(crypto_exchange_id)
-                bal = client.fetch_balance(params={"type": acc_type})
+                bal_params = database.get_exchange_balance_params(crypto_exchange_id)
+                bal = client.fetch_balance(params=bal_params)
                 free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
                 
                 # Calculate true equity (free + margin + unrealized pnl)

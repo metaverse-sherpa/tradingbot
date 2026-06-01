@@ -306,8 +306,8 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "options": {"defaultType": "swap"},
                 "timeout": 8000
             }) as user_ex:
-                acc_type = database.get_exchange_account_type(ex_id)
-                await user_ex.fetch_balance(params={"type": acc_type})
+                bal_params = database.get_exchange_balance_params(ex_id)
+                await user_ex.fetch_balance(params=bal_params)
                 report_lines[-1] = "• Live Connection Check: `✅ Connected Successfully`"
         except Exception as e:
             err_msg = str(e)

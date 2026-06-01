@@ -1210,8 +1210,8 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "password": user_data['api_password'],
                 "options": {"defaultType": "swap"},
             }) as user_ex:
-                acc_type = database.get_exchange_account_type(ex_id)
-                balance = await user_ex.fetch_balance(params={"type": acc_type})
+                bal_params = database.get_exchange_balance_params(ex_id)
+                balance = await user_ex.fetch_balance(params=bal_params)
                 free = float(balance.get("USDT", {}).get("free", 0))
                 
                 # True Equity Calculation
