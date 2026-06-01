@@ -14,8 +14,8 @@ def fix_history_cache():
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
-    # Also update the AlpacaActiveTrades
-    c.execute("SELECT id, symbol, entry_price, close_price, pnl_raw, pnl_pct FROM AlpacaActiveTrades WHERE status = 'closed' AND pnl_pct < -40.0")
+    # We need to delete ALL closed trades that were corrupted by the bug, not just those < -40%.
+    c.execute("SELECT id, symbol, entry_price, close_price, pnl_raw, pnl_pct FROM AlpacaActiveTrades WHERE status = 'closed'")
     bad_trades = c.fetchall()
     
     for row in bad_trades:
