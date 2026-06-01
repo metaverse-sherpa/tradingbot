@@ -2790,7 +2790,11 @@ function renderClosedSignalCard(sig) {
     
     const entry = sig.entry_price || 0;
     const isCrypto = sig.symbol && sig.symbol.includes('/');
-    const exitPrice = sig.status === 'tp' ? (sig.tp_price || 0) : (sig.sl_price || 0);
+    
+    // Dynamically calculate actual exit price using entry and pnl_raw, falling back to tp/sl
+    const isLong = !sig.side || sig.side.toUpperCase() === 'LONG' || sig.side.toUpperCase() === 'BUY' || sig.side.toUpperCase() === 'L';
+    const exitPrice = sig.pnl_raw ? (isLong ? (entry + sig.pnl_raw) : (entry - sig.pnl_raw)) : (sig.status === 'tp' ? (sig.tp_price || 0) : (sig.sl_price || 0));
+    
     const pnl_pct = sig.pnl_pct || 0;
     
     const leverage = isCrypto ? 20.0 : 1.0;
@@ -2964,7 +2968,7 @@ function renderSignalsView() {
                                 </div>
                                 <div class="flex flex-col items-center">
                                     <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Win %</span>
-                                    <span class="font-numeric-data text-primary font-bold leading-tight mt-0.5" style="font-size: 10px;">${s.win_rate.toFixed(1)}%</span>
+                                    <span class="font-numeric-data text-primary font-bold leading-tight mt-0.5" style="font-size: 9px; white-space: nowrap;">${s.win_rate.toFixed(1)}% <span class="text-on-surface-variant/70 font-medium">(${s.wins}W-${s.losses}L)</span></span>
                                 </div>
                                 <div class="flex flex-col items-center">
                                     <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Real</span>

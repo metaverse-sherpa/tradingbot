@@ -816,6 +816,104 @@ def debug_history_check():
     
     return jsonify(result), 200
 
+@trades_bp.route('/api/debug/repair-stale-alpaca-trades', methods=['GET'])
+def repair_stale_alpaca_trades():
+    result = {"status": "starting"}
+    try:
+        from web_api.db_web import get_web_user_by_id
+        web_user = get_web_user_by_id(1)
+        if not web_user:
+            return jsonify({"error": "Web user 1 not found"}), 404
+            
+        tg_user = _get_telegram_user(web_user)
+        merged_user = {}
+        if web_user:
+            merged_user.update(web_user)
+        if tg_user:
+            for k, v in tg_user.items():
+                if v is not None and v != "":
+                    merged_user[k] = v
+                    
+        trade_chat_id = web_user["telegram_chat_id"] or 1567788633
+        
+        # 1. Fetch current open positions from Alpaca to see what's actually open
+        positions = []
+        alpaca_key = merged_user.get("alpaca_api_key")
+        alpaca_secret = merged_user.get("alpaca_api_secret")
+        if alpaca_key and alpaca_secret:
+            try:
+                positions = database.make_alpaca_request(merged_user, "GET", "/v2/positions")
+            except Exception as e:
+                result["alpaca_api_error"] = str(e)
+                
+        actual_open_syms = set()
+        if isinstance(positions, list):
+            actual_open_syms = {p.get("symbol") for p in positions}
+            
+        result["actual_open_positions_on_exchange"] = list(actual_open_syms)
+        
+        # 2. Find open trades in local DB
+        open_db_trades = []
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT id, symbol, entry_price, qty FROM AlpacaActiveTrades WHERE status = 'open' AND telegram_chat_id = ?", (trade_chat_id,))
+            open_db_trades = [dict(row) for row in c.fetchall()]
+            
+        result["open_trades_in_db_before"] = open_db_trades
+        
+        # 3. Close trades that are NOT open on Alpaca
+        repaired = []
+        import time
+        now_ts = int(time.time())
+        
+        for t in open_db_trades:
+            sym = t["symbol"]
+            if sym not in actual_open_syms:
+                # Mark as closed in local DB
+                # Fallback exit price to entry price or lookup last close from stock daily cache
+                exit_price = t["entry_price"]
+                try:
+                    import sqlite3
+                    conn2 = sqlite3.connect("data/stock_daily_cache.db")
+                    c2 = conn2.cursor()
+                    c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                    row = c2.fetchone()
+                    conn2.close()
+                    if row:
+                        exit_price = float(row[0])
+                except:
+                    pass
+                
+                qty = float(t["qty"] or 0.0)
+                pnl_raw = (exit_price - t["entry_price"]) * qty
+                pnl_pct = ((exit_price - t["entry_price"]) / t["entry_price"]) * 100 if t["entry_price"] > 0 else 0.0
+                
+                database.close_alpaca_trade(
+                    trade_id=t["id"],
+                    close_time=now_ts * 1000,
+                    close_price=exit_price,
+                    pnl_raw=pnl_raw,
+                    pnl_pct=pnl_pct
+                )
+                repaired.append({
+                    "id": t["id"],
+                    "symbol": sym,
+                    "qty": qty,
+                    "entry": t["entry_price"],
+                    "exit": exit_price,
+                    "pnl_pct": pnl_pct
+                })
+                
+        result["repaired_trades"] = repaired
+        result["status"] = "success"
+        
+    except Exception as e:
+        result["error"] = str(e)
+        import traceback
+        result["traceback"] = traceback.format_exc()
+        
+    return jsonify(result), 200
+
 @trades_bp.route('/api/trades/close', methods=['POST'])
 @require_auth
 def close_trade():

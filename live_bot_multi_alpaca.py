@@ -379,17 +379,44 @@ async def run_real_trader_execution(today_opens):
                         try:
                             await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
                             
+                            # Get open trade from local DB to get entry price and calculate PnL
+                            import sqlite3
+                            conn_active = sqlite3.connect(USER_DB_PATH)
+                            c_active = conn_active.cursor()
+                            c_active.execute("SELECT id, entry_price FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (chat_id, sym))
+                            row_active = c_active.fetchone()
+                            conn_active.close()
+                            
+                            trade_db_id = row_active[0] if row_active else None
+                            entry_price = row_active[1] if row_active else float(pos['avg_entry_price'])
+                            
                             close_price = today_opens.get(sym, float(pos['avg_entry_price']))
+                            qty_val = float(pos['qty'])
+                            pnl_raw = (close_price - entry_price) * qty_val
+                            pnl_pct = ((close_price - entry_price) / entry_price) * 100
+                            
                             from telegram import MessageEntity
                             from datetime import datetime, timezone
+                            import time
                             now_ts = int(time.time())
+                            
+                            if trade_db_id:
+                                database.close_alpaca_trade(
+                                    trade_id=trade_db_id,
+                                    close_time=now_ts * 1000,
+                                    close_price=close_price,
+                                    pnl_raw=pnl_raw,
+                                    pnl_pct=pnl_pct
+                                )
+                                logger.info(f"Closed trade in local DB for {sym} (ID: {trade_db_id}). PnL: {pnl_pct:+.2f}%")
+                            
                             now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
                             close_text_before = (
                                 "🦙 *Alpaca Stock Strategy: Dynamic Exit Triggered* 🦙\n\n"
                                 f"Exited **{sym}** LONG position at today's open.\n"
                                 f"• Symbol: `{sym}`\n"
                                 f"• Qty: `{pos['qty']}` shares\n"
-                                f"• Entry Price: `${float(pos['avg_entry_price']):.2f}`\n"
+                                f"• Entry Price: `${entry_price:.2f}`\n"
                                 f"• Approximate Exit Price: `${close_price:.2f}`\n"
                                 "🚀 _Associated Stop-Loss and Take-Profit orders have been automatically cancelled._\n\n"
                                 "Closed at: "
