@@ -56,6 +56,22 @@ def normalize_symbol(symbol, exchange_id):
         return symbol.split(":")[0]
     return symbol
 
+def get_exchange_account_type(exchange_id):
+    """
+    Returns the unified CCXT account type for balance fetching
+    representing the correct futures/swap trading account.
+    """
+    if exchange_id == 'bingx':
+        return "future"   # Standard Futures (stdFutures)
+    elif exchange_id == 'bitget':
+        return "swap"     # USDT perpetual swaps (usdt_futures)
+    elif exchange_id == 'mexc':
+        return "swap"     # Perpetual Swap
+    elif exchange_id == 'binance':
+        return "future"   # USDⓈ-M Futures (UMFUTURE)
+    return "futures"      # Fallback (e.g. Blofin)
+
+
 def encrypt(data):
     return cipher_suite.encrypt(data.encode()).decode()
 

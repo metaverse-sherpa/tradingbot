@@ -820,7 +820,6 @@ def main():
         
         # Top Chart: Equity
         ax1.plot(best_h.index, best_h['equity'], color="#2ecc71", linewidth=2.5, label="Portfolio Equity")
-        ax1.plot(best_h.index, best_h['cash'], color="#e74c3c", linewidth=1.0, linestyle="--", label="Cash Balance", alpha=0.7)
         ax1.set_title(f"Sherpa Stock Portfolio Equity Curve (6 Years) | PnL: {best_metrics['total_pnl_pct']:.1f}% | Sharpe: {best_metrics['sharpe_ratio']:.2f}", color="#FFFFFF", fontsize=16, fontweight='bold', pad=15)
         ax1.set_facecolor("#141A24")
         ax1.tick_params(colors="#FFFFFF")

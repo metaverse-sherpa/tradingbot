@@ -138,7 +138,7 @@ def get_balance():
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
-                acc_type = "swap" if crypto_exchange_id in ['bitget', 'bingx'] else "futures"
+                acc_type = database.get_exchange_account_type(crypto_exchange_id)
                 bal = client.fetch_balance(params={"type": acc_type})
                 free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
                 
