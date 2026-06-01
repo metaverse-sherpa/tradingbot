@@ -940,7 +940,8 @@ function renderLandingView() {
                 drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
                 img: "/api/charts/valkyrie_elite_infographic.png",
                 backtest_stats: {
-                    win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-13.4%", net_pnl: "+$16,701.57", final_bal: "$26,701.57"
+                    win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-13.4%", net_pnl: "+$16,701.57", final_bal: "$26,701.57",
+                    img: "/api/charts/valkyrie_research_backtest.png"
                 }
             },
             "Sherpa Velocity Pullback": {
@@ -950,7 +951,8 @@ function renderLandingView() {
                 drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
                 img: "/api/charts/stock_strategy_infographic.png",
                 backtest_stats: {
-                    win_rate: "68.8%", trades: "555", sharpe: "2.99", max_dd: "-6%", net_pnl: "+$4,845.33", final_bal: "$14,845.33"
+                    win_rate: "68.8%", trades: "555", sharpe: "2.99", max_dd: "-6%", net_pnl: "+$4,845.33", final_bal: "$14,845.33",
+                    img: "/api/charts/stock_master_audit.png"
                 }
             }
         };
@@ -1018,6 +1020,15 @@ function renderLandingView() {
                                     ${guide.backtest_stats ? `
                                     <div class="mt-4 pt-3 border-t border-white/5">
                                         <h5 class="text-[10px] font-bold text-primary uppercase tracking-wider mb-2.5">3-Year Backtest ($10k Capital, 1% Risk)</h5>
+                                        ${guide.backtest_stats.img ? `
+                                        <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-3 flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.backtest_stats.img}', '_blank')">
+                                            <img src="${guide.backtest_stats.img}" alt="Backtest Equity Curve" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                                                <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
+                                            </div>
+                                        </div>
+                                        ` : ''}
                                         <div class="grid grid-cols-2 gap-2">
                                             <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
                                                 <div class="text-[9px] text-on-surface-variant uppercase">Win Rate</div>
