@@ -2915,34 +2915,34 @@ function renderSignalsView() {
                     const unrealizedClass = unrealizedPct >= 0 ? "text-tertiary" : "text-error";
                     
                     return `
-                        <div class="flex flex-col gap-1.5 p-2.5 bg-surface-container-low rounded-lg border border-white/5 hover:border-white/10 transition-colors">
-                            <div class="flex justify-between items-center border-b border-white/5 pb-1.5">
+                        <div class="flex flex-col gap-1 p-2 bg-surface-container-low rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                            <div class="flex justify-between items-center pb-1">
                                 <div class="flex items-center gap-1.5">
                                     <span class="text-sm">${icon}</span>
-                                    <span class="font-bold text-xs text-on-surface truncate max-w-[140px]" title="${s.name}">${s.name}</span>
+                                    <span class="font-bold text-xs text-on-surface truncate max-w-[150px]" title="${s.name}">${s.name}</span>
                                 </div>
                                 <div class="flex items-center gap-1">
-                                    <span class="text-[9px] uppercase text-on-surface-variant font-bold tracking-wider">Net:</span>
-                                    <span class="font-numeric-data text-numeric-data font-bold text-xs ${netClass}">${netPct >= 0 ? '+' : ''}${netPct.toFixed(2)}%</span>
+                                    <span class="uppercase text-on-surface-variant font-bold tracking-wider" style="font-size: 9px;">Net:</span>
+                                    <span class="font-numeric-data font-bold" style="font-size: 11px;" class="${netClass}">${netPct >= 0 ? '+' : ''}${netPct.toFixed(2)}%</span>
                                 </div>
                             </div>
                             
-                            <div class="flex justify-between items-center pt-0.5">
+                            <div class="flex justify-between items-center pt-1 border-t border-white/5">
                                 <div class="flex flex-col items-center">
-                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Active</span>
-                                    <span class="font-numeric-data text-numeric-data text-[11px] text-on-surface font-bold leading-tight">${s.active_count}</span>
+                                    <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Active</span>
+                                    <span class="font-numeric-data text-on-surface font-bold leading-tight mt-0.5" style="font-size: 10px;">${s.active_count}</span>
                                 </div>
                                 <div class="flex flex-col items-center">
-                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Win Rate</span>
-                                    <span class="font-numeric-data text-numeric-data text-[11px] text-primary font-bold leading-tight">${s.win_rate.toFixed(1)}%</span>
+                                    <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Win %</span>
+                                    <span class="font-numeric-data text-primary font-bold leading-tight mt-0.5" style="font-size: 10px;">${s.win_rate.toFixed(1)}%</span>
                                 </div>
                                 <div class="flex flex-col items-center">
-                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Realized</span>
-                                    <span class="font-numeric-data text-numeric-data text-[11px] ${realizedClass} font-bold leading-tight">${realizedPct >= 0 ? '+' : ''}${realizedPct.toFixed(2)}%</span>
+                                    <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Real</span>
+                                    <span class="font-numeric-data ${realizedClass} font-bold leading-tight mt-0.5" style="font-size: 10px;">${realizedPct >= 0 ? '+' : ''}${realizedPct.toFixed(2)}%</span>
                                 </div>
                                 <div class="flex flex-col items-center">
-                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Unrealized</span>
-                                    <span class="font-numeric-data text-numeric-data text-[11px] ${unrealizedClass} font-bold leading-tight">${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%</span>
+                                    <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Unreal</span>
+                                    <span class="font-numeric-data ${unrealizedClass} font-bold leading-tight mt-0.5" style="font-size: 10px;">${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%</span>
                                 </div>
                             </div>
                         </div>
@@ -2950,7 +2950,7 @@ function renderSignalsView() {
                 }).join('');
                 
                 statsContent = `
-                    <div class="pt-2.5 border-t border-white/10 animate-fade-in flex flex-col gap-2">
+                    <div class="pt-2 border-t border-white/10 animate-fade-in flex flex-col gap-1.5">
                         ${strategyRows}
                     </div>
                 `;
