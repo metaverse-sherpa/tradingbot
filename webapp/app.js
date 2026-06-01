@@ -3078,7 +3078,12 @@ function renderHelpView() {
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">❓ User Manual</h2>
+            <div class="flex justify-between items-center relative mb-6">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface">❓ User Manual</h2>
+                <button onclick="history.back()" class="absolute -right-2 p-2 text-on-surface-variant hover:text-on-surface hover:bg-white/5 rounded-full transition-colors flex items-center justify-center" title="Close">
+                    <span class="material-symbols-outlined text-[24px]">close</span>
+                </button>
+            </div>
             
             <div class="space-y-stack-gap">
                 <div class="glass-card rounded-xl p-card-padding">
@@ -3118,6 +3123,13 @@ function renderHelpView() {
                         <p>🦙 <strong>Sherpa Velocity Pullback</strong>: Captures high-volume momentum trends on stocks with trailing stop mechanics.</p>
                     </div>
                 </div>
+            </div>
+
+            <div class="mt-8 flex justify-center">
+                <button onclick="history.back()" class="h-12 px-8 bg-surface-container border border-white/10 rounded-full text-on-surface font-label-md hover:bg-white/5 transition-colors flex items-center gap-2 shadow-sm">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                    Close Manual
+                </button>
             </div>
         </main>
     `;
