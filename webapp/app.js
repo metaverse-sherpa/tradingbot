@@ -152,6 +152,40 @@ async function initGoogleSignIn() {
         return;
     }
 
+    const renderButtons = () => {
+        if (!window.google) return;
+        
+        window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            use_fedcm_for_prompt: false
+        });
+
+        // Render button on Login Page container if present
+        const btnLogin = document.getElementById('google-signin-btn-login');
+        if (btnLogin) {
+            window.google.accounts.id.renderButton(btnLogin, {
+                theme: 'outline',
+                size: 'large',
+                width: btnLogin.clientWidth || 368,
+                text: 'continue_with',
+                shape: 'pill'
+            });
+        }
+
+        // Render button on Landing Page container if present
+        const btnLanding = document.getElementById('google-signin-btn-landing');
+        if (btnLanding) {
+            window.google.accounts.id.renderButton(btnLanding, {
+                theme: 'outline',
+                size: 'large',
+                width: btnLanding.clientWidth || 340,
+                text: 'continue_with',
+                shape: 'pill'
+            });
+        }
+    };
+
     // Inject official Google script dynamically
     if (!document.getElementById('google-gsi-script')) {
         const script = document.createElement('script');
@@ -160,15 +194,12 @@ async function initGoogleSignIn() {
         script.async = true;
         script.defer = true;
         script.onload = () => {
-            if (window.google) {
-                window.google.accounts.id.initialize({
-                    client_id: clientId,
-                    callback: handleGoogleCredentialResponse,
-                    use_fedcm_for_prompt: false
-                });
-            }
+            renderButtons();
         };
         document.head.appendChild(script);
+    } else {
+        // If script is already injected (e.g. view transitions), just render button
+        setTimeout(renderButtons, 50);
     }
 }
 
@@ -730,16 +761,8 @@ function renderLoginView() {
             <div id="referral-banner-container" class="w-full"></div>
             
             <div class="glass-card w-full rounded-xl p-card-padding flex flex-col gap-stack-gap">
-                <!-- Google Authentication Hook -->
-                <button onclick="triggerGoogleLogin()" class="w-full h-12 bg-white text-surface-dim font-label-md text-label-md rounded-full flex items-center justify-center gap-3 hover:bg-white/90 transition-colors">
-                    <svg height="20" viewbox="0 0 24 24" width="20">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z" fill="#EA4335"></path>
-                    </svg>
-                    Continue with Google
-                </button>
+                <!-- Google Sign-In Container Hook -->
+                <div id="google-signin-btn-login" class="w-full flex justify-center h-[46px] rounded-lg overflow-hidden border border-white/10 bg-white"></div>
                 
                 <div class="flex items-center gap-4 py-1">
                     <div class="h-[1px] flex-1 bg-white/10"></div>
@@ -935,15 +958,8 @@ function renderLandingView() {
                                     <a class="text-primary font-bold cursor-pointer font-label-sm" onclick="setLandingAuthMode('login')">Cancel & Sign In</a>
                                 </div>
                             ` : `
-                                <button onclick="triggerGoogleLogin()" class="w-full h-11 bg-white text-surface-dim font-label-md text-label-md rounded-full flex items-center justify-center gap-3 hover:bg-white/90 transition-colors">
-                                    <svg height="20" viewbox="0 0 24 24" width="20">
-                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
-                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
-                                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
-                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z" fill="#EA4335"></path>
-                                    </svg>
-                                    Continue with Google
-                                </button>
+                                <!-- Google Sign-In Container Hook -->
+                                <div id="google-signin-btn-landing" class="w-full flex justify-center h-[42px] rounded-lg overflow-hidden border border-white/10 bg-white"></div>
                                 
                                 <div class="flex items-center gap-4">
                                     <div class="h-[1px] flex-1 bg-white/10"></div>
@@ -3314,13 +3330,11 @@ async function handleEmailRegister(e) {
 }
 
 async function triggerGoogleLogin() {
-    // Falls back to direct instructions if Google SDK is uninitialized/blocked
     if (window.google) {
-        // Clear the Google One Tap cooldown cookie so manual clicks always work
         document.cookie = "g_state=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT";
         window.google.accounts.id.prompt();
     } else {
-        showToast("Initializing Google Sign-in... Please try again in a moment.", "warning");
+        showToast("Google Sign-In is blocked or initializing. If using Brave, try clicking the native button or lowering Shields temporarily.", "warning");
         initGoogleSignIn();
     }
 }
