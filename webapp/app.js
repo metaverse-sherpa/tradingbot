@@ -1809,12 +1809,12 @@ function renderTradesView() {
                                 <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr}</p>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                <span ${inlineBlur}>${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}</span>
-                            </p>
-                            <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
+                        <div class="text-right flex flex-col items-end">
+                            <p class="font-numeric-data text-numeric-data font-bold text-lg ${roeColor}">
                                 ${roePct >= 0 ? '+' : ''}${roePct.toFixed(2)}%
+                            </p>
+                            <p class="font-numeric-data text-numeric-data text-xs ${pnlColor} mt-0.5">
+                                <span ${inlineBlur}>${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}</span>
                             </p>
                         </div>
                     </div>
@@ -3295,9 +3295,9 @@ function renderSignalsView() {
                 </div>
                 
                 <!-- Tabs -->
-                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 w-full">
-                    <button onclick="setSignalsTab('active')" class="flex-1 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${currentTab === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Active Signals</button>
-                    <button onclick="setSignalsTab('closed')" class="flex-1 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${currentTab === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Closed Signals</button>
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 w-full z-10">
+                    <button onclick="setSignalsTab('active')" class="flex-1 py-2 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${currentTab === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">Active Signals</button>
+                    <button onclick="setSignalsTab('closed')" class="flex-1 py-2 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${currentTab === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">Closed Signals</button>
                 </div>
             </div>
             
