@@ -1380,7 +1380,7 @@ function renderDashboardView() {
         </button>
         <a href="#/signals" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center col-span-2">
             <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">satellite_alt</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Alpha Signals</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold">Alpha Signals (${STATE.active_signals ? STATE.active_signals.length : 0})</span>
         </a>
     `;
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
