@@ -39,6 +39,8 @@ results/*
 !results/stock_strategy_infographic.png
 !results/valkyrie_elite_infographic_ai.png
 !results/sherpa_velocity_infographic_ai.png
+!results/valkyrie_equity.png
+!results/sherpa_equity.png
 bot_users.db
 
 # Scratch / Sandbox Files

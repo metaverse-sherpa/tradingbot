@@ -941,7 +941,7 @@ function renderLandingView() {
                 img: "/api/charts/valkyrie_elite_infographic_ai.png",
                 backtest_stats: {
                     win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-19.5%", net_pnl: "+240.1%", final_bal: "$34,010.00",
-                    img: "/api/charts/valkyrie_stock_backtest.png"
+                    img: "/api/charts/valkyrie_equity.png"
                 }
             },
             "Sherpa Velocity Pullback": {
@@ -952,7 +952,7 @@ function renderLandingView() {
                 img: "/api/charts/sherpa_velocity_infographic_ai.png",
                 backtest_stats: {
                     win_rate: "66.9%", trades: "555", sharpe: "1.87", max_dd: "-14.2%", net_pnl: "+113.5%", final_bal: "$21,350.00",
-                    img: "/api/charts/stock_master_audit.png"
+                    img: "/api/charts/sherpa_equity.png"
                 }
             }
         };
