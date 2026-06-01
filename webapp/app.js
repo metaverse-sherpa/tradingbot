@@ -2915,34 +2915,34 @@ function renderSignalsView() {
                     const unrealizedClass = unrealizedPct >= 0 ? "text-tertiary" : "text-error";
                     
                     return `
-                        <div class="flex flex-col gap-2 p-3 bg-surface-container-low rounded-lg border border-white/5 hover:border-white/10 transition-colors">
-                            <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-base">${icon}</span>
-                                    <span class="font-bold text-sm text-on-surface truncate max-w-[160px]" title="${s.name}">${s.name}</span>
+                        <div class="flex flex-col gap-1.5 p-2.5 bg-surface-container-low rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                            <div class="flex justify-between items-center border-b border-white/5 pb-1.5">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-sm">${icon}</span>
+                                    <span class="font-bold text-xs text-on-surface truncate max-w-[140px]" title="${s.name}">${s.name}</span>
                                 </div>
-                                <div class="text-right">
-                                    <span class="text-[9px] uppercase text-on-surface-variant font-bold tracking-wider">Net PnL</span>
-                                    <div class="font-numeric-data text-numeric-data font-bold text-sm ${netClass}">${netPct >= 0 ? '+' : ''}${netPct.toFixed(2)}%</div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[9px] uppercase text-on-surface-variant font-bold tracking-wider">Net:</span>
+                                    <span class="font-numeric-data text-numeric-data font-bold text-xs ${netClass}">${netPct >= 0 ? '+' : ''}${netPct.toFixed(2)}%</span>
                                 </div>
                             </div>
                             
-                            <div class="grid grid-cols-4 gap-1 text-center pt-1">
-                                <div>
-                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Active</div>
-                                    <div class="font-numeric-data text-numeric-data text-xs text-on-surface font-bold">${s.active_count}</div>
+                            <div class="flex justify-between items-center pt-0.5">
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Active</span>
+                                    <span class="font-numeric-data text-numeric-data text-[11px] text-on-surface font-bold leading-tight">${s.active_count}</span>
                                 </div>
-                                <div>
-                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Win Rate</div>
-                                    <div class="font-numeric-data text-numeric-data text-xs text-primary font-bold">${s.win_rate.toFixed(1)}%</div>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Win Rate</span>
+                                    <span class="font-numeric-data text-numeric-data text-[11px] text-primary font-bold leading-tight">${s.win_rate.toFixed(1)}%</span>
                                 </div>
-                                <div>
-                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Realized</div>
-                                    <div class="font-numeric-data text-numeric-data text-xs ${realizedClass} font-bold">${realizedPct >= 0 ? '+' : ''}${realizedPct.toFixed(2)}%</div>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Realized</span>
+                                    <span class="font-numeric-data text-numeric-data text-[11px] ${realizedClass} font-bold leading-tight">${realizedPct >= 0 ? '+' : ''}${realizedPct.toFixed(2)}%</span>
                                 </div>
-                                <div>
-                                    <div class="text-[9px] uppercase text-on-surface-variant font-semibold mb-0.5 tracking-wider">Unrealized</div>
-                                    <div class="font-numeric-data text-numeric-data text-xs ${unrealizedClass} font-bold">${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%</div>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-[8px] uppercase text-on-surface-variant font-semibold tracking-wider">Unrealized</span>
+                                    <span class="font-numeric-data text-numeric-data text-[11px] ${unrealizedClass} font-bold leading-tight">${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%</span>
                                 </div>
                             </div>
                         </div>
@@ -2950,7 +2950,7 @@ function renderSignalsView() {
                 }).join('');
                 
                 statsContent = `
-                    <div class="pt-3 border-t border-white/10 animate-fade-in flex flex-col gap-3">
+                    <div class="pt-2.5 border-t border-white/10 animate-fade-in flex flex-col gap-2">
                         ${strategyRows}
                     </div>
                 `;
