@@ -983,80 +983,97 @@ function renderLandingView() {
                                     </h4>
                                     <span id="chev-${guideId}" class="material-symbols-outlined text-on-surface-variant transition-transform duration-300">expand_more</span>
                                 </div>
-                                <div class="text-sm space-y-1">
-                                    <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
-                                    <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
-                                    ${s.active_count > 0 ? `<p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>` : ''}
-                                    <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
+                                <!-- 3-Year Backtest Results (Always Visible) -->
+                                ${guide.backtest_stats ? `
+                                <div class="mt-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="material-symbols-outlined text-primary text-sm">history</span>
+                                        <h5 class="text-xs font-bold text-primary uppercase tracking-wider">3-Year Historical Backtest</h5>
+                                    </div>
+                                    <p class="text-[10px] text-on-surface-variant mb-4 leading-relaxed">
+                                        These performance metrics and equity curves are based on <strong>3 years of rigorous historical data</strong>. (Simulated with $10k starting capital and a strict 1% risk management per trade).
+                                    </p>
+                                    
+                                    ${guide.backtest_stats.img ? `
+                                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-4 flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('${guide.backtest_stats.img}', '_blank')">
+                                        <img src="${guide.backtest_stats.img}" alt="Backtest Equity Curve" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                                            <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                    
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                            <div class="text-[9px] text-on-surface-variant uppercase">Win Rate</div>
+                                            <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.win_rate}</div>
+                                        </div>
+                                        <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                            <div class="text-[9px] text-on-surface-variant uppercase">Total Trades</div>
+                                            <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.trades}</div>
+                                        </div>
+                                        <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                            <div class="text-[9px] text-on-surface-variant uppercase">Sharpe Ratio</div>
+                                            <div class="text-[#ffdb3c] font-bold text-sm">${guide.backtest_stats.sharpe}</div>
+                                        </div>
+                                        <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                            <div class="text-[9px] text-on-surface-variant uppercase">Max Drawdown</div>
+                                            <div class="text-error font-bold text-sm">${guide.backtest_stats.max_dd}</div>
+                                        </div>
+                                        <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                            <div class="text-[9px] text-on-surface-variant uppercase">Net PnL</div>
+                                            <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.net_pnl}</div>
+                                        </div>
+                                        <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                            <div class="text-[9px] text-on-surface-variant uppercase">Final Balance</div>
+                                            <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.final_bal}</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                
+                                ` : ''}
+
                                 <!-- Expandable Guide Section -->
-                                <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in">
-                                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.img}', '_blank')">
+                                <div id="${guideId}" class="hidden pt-6 mt-6 border-t border-white/10 space-y-4 animate-fade-in">
+                                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('${guide.img}', '_blank')">
                                         <img src="${guide.img}" alt="${s.name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
                                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                             <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
                                             <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
                                         </div>
                                     </div>
-                                    <div class="space-y-2 bg-surface-container/30 rounded-xl p-3" style="font-size: 11px;">
+                                    <div class="space-y-2 bg-surface-container/30 rounded-xl p-4" style="font-size: 11px;">
                                         <div>
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Philosophy</span>
-                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Philosophy</span>
+                                            <p class="text-on-surface leading-relaxed">${guide.philosophy}</p>
                                         </div>
-                                        <div>
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Indicators</span>
-                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
+                                        <div class="pt-2">
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Indicators</span>
+                                            <p class="text-on-surface leading-relaxed">${guide.indicators}</p>
                                         </div>
-                                        <div>
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Execution Pace</span>
-                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
+                                        <div class="pt-2">
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Execution Pace</span>
+                                            <p class="text-on-surface leading-relaxed">${guide.pace}</p>
                                         </div>
-                                        <div>
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Drawdown Profile</span>
-                                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
+                                        <div class="pt-2">
+                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Drawdown Profile</span>
+                                            <p class="text-on-surface leading-relaxed">${guide.drawdown}</p>
                                         </div>
                                     </div>
-                                    ${guide.backtest_stats ? `
-                                    <div class="mt-4 pt-3 border-t border-white/5">
-                                        <h5 class="text-[10px] font-bold text-primary uppercase tracking-wider mb-2.5">3-Year Backtest ($10k Capital, 1% Risk)</h5>
-                                        ${guide.backtest_stats.img ? `
-                                        <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-3 flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.backtest_stats.img}', '_blank')">
-                                            <img src="${guide.backtest_stats.img}" alt="Backtest Equity Curve" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
-                                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
-                                                <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
-                                            </div>
+                                    
+                                    <!-- Live Stats Moved to Bottom -->
+                                    <div class="mt-4 pt-4 border-t border-white/5">
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <span class="material-symbols-outlined text-tertiary text-sm">sensors</span>
+                                            <h5 class="text-xs font-bold text-tertiary uppercase tracking-wider">Live Forward Test Stats</h5>
                                         </div>
-                                        ` : ''}
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
-                                                <div class="text-[9px] text-on-surface-variant uppercase">Win Rate</div>
-                                                <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.win_rate}</div>
-                                            </div>
-                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
-                                                <div class="text-[9px] text-on-surface-variant uppercase">Total Trades</div>
-                                                <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.trades}</div>
-                                            </div>
-                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
-                                                <div class="text-[9px] text-on-surface-variant uppercase">Sharpe Ratio</div>
-                                                <div class="text-[#ffdb3c] font-bold text-sm">${guide.backtest_stats.sharpe}</div>
-                                            </div>
-                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
-                                                <div class="text-[9px] text-on-surface-variant uppercase">Max Drawdown</div>
-                                                <div class="text-error font-bold text-sm">${guide.backtest_stats.max_dd}</div>
-                                            </div>
-                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
-                                                <div class="text-[9px] text-on-surface-variant uppercase">Net PnL</div>
-                                                <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.net_pnl}</div>
-                                            </div>
-                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
-                                                <div class="text-[9px] text-on-surface-variant uppercase">Final Balance</div>
-                                                <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.final_bal}</div>
-                                            </div>
+                                        <div class="text-sm space-y-2 bg-tertiary/10 border border-tertiary/20 rounded-xl p-4">
+                                            <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
+                                            <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
+                                            ${s.active_count > 0 ? `<p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>` : ''}
+                                            <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
                                         </div>
                                     </div>
-                                    ` : ''}
                                 </div>
                             </div>
                         `;
