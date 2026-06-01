@@ -318,6 +318,22 @@ def get_stats():
         stock_losses = 0
         
     stock_total_trades = stock_wins + stock_losses
+    
+    # If local trades are wiped, fallback to computing win rate from the latest history cache
+    if stock_total_trades == 0:
+        raw_cache = tg_user.get("history_cache") or user.get("history_cache")
+        if raw_cache:
+            try:
+                import json
+                cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
+                for tr in cached:
+                    if "symbol" in tr: # Check if it's a valid trade object
+                        pnl = float(tr.get("pnl_raw", 0) or tr.get("net_pnl", 0) or tr.get("pnl_pct", 0) or 0)
+                        if pnl > 0: stock_wins += 1
+                        else: stock_losses += 1
+                stock_total_trades = stock_wins + stock_losses
+            except: pass
+            
     stock_win_rate = round((stock_wins / stock_total_trades) * 100, 1) if stock_total_trades > 0 else 0.0
     
     response_data = {

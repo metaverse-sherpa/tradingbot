@@ -1266,7 +1266,10 @@ function renderDashboardView() {
                 </a>
                 <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
                     <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
-                    <p class="font-numeric-data text-numeric-data text-tertiary">${activeStats.win_rate || 0}%</p>
+                    <p class="font-numeric-data text-numeric-data text-tertiary flex items-baseline gap-2 justify-center">
+                        ${activeStats.win_rate || 0}% 
+                        <span class="text-xs text-on-surface-variant font-normal">(${activeStats.wins || 0}W / ${activeStats.losses || 0}L)</span>
+                    </p>
                 </div>
             </section>
             
