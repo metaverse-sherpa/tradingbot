@@ -970,7 +970,7 @@ function renderLandingView() {
                                 <div class="text-sm space-y-1">
                                     <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
                                     <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
-                                    <p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>
+                                    ${s.active_count > 0 ? `<p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>` : ''}
                                     <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
                                 </div>
                                 
@@ -2012,7 +2012,7 @@ function renderFreeStatsView(showPremiumBanner = false) {
                 <div class="text-sm space-y-1">
                     <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
                     <p class="text-on-surface-variant">• Realized PnL: <span class="${realizedClass} font-medium">${s.realized_pct > 0 ? '+' : ''}${s.realized_pct.toFixed(2)}%</span></p>
-                    <p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>
+                    ${s.active_count > 0 ? `<p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>` : ''}
                     <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
                 </div>
                 <div class="pt-2">
