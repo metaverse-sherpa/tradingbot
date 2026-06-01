@@ -930,27 +930,41 @@ function renderLandingView() {
                 indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
                 pace: "Highly active. Averages ~0.84 trades/day.",
                 drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
-                img: "/api/charts/mean_reversion_infographic.png"
+                img: "/api/charts/mean_reversion_infographic.png",
+                backtest_stats: null
             },
             "Valkyrie Elite Scalper": {
                 philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
                 indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
                 pace: "Patient and calculated. Averages ~0.68 trades/day.",
                 drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
-                img: "/api/charts/valkyrie_elite_infographic.png"
+                img: "/api/charts/valkyrie_elite_infographic.png",
+                backtest_stats: {
+                    win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-13.4%", net_pnl: "+$16,701.57", final_bal: "$26,701.57"
+                }
             },
             "Sherpa Velocity Pullback": {
                 philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
                 indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
                 pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
                 drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
-                img: "/api/charts/stock_strategy_infographic.png"
+                img: "/api/charts/stock_strategy_infographic.png",
+                backtest_stats: {
+                    win_rate: "68.8%", trades: "555", sharpe: "2.99", max_dd: "-6%", net_pnl: "+$4,845.33", final_bal: "$14,845.33"
+                }
             }
         };
 
         strategiesCatalogHtml = `
             <section class="space-y-4 mb-6">
-                <h3 class="font-headline-sm text-on-surface flex items-center gap-2">🧪 Active Strategies Catalog</h3>
+                <div class="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+                    <span class="material-symbols-outlined text-primary mb-1">robot_2</span>
+                    <h3 class="font-headline-sm text-primary font-bold">AI-Optimized & Backtested</h3>
+                    <p class="text-xs text-on-surface-variant mt-1 max-w-[320px] mx-auto leading-relaxed">
+                        These strategies were developed, refined, and heavily optimized by our AI over a comprehensive 3-year data set to ensure maximum edge.
+                    </p>
+                </div>
+                <h3 class="font-headline-sm text-on-surface flex items-center gap-2 mt-4">🧪 Active Strategies Catalog</h3>
                 <div class="space-y-4">
                     ${STATE.free_stats.strategies.map(s => {
                         const icon = strategyIcons[s.name] || "📈";
@@ -1001,6 +1015,37 @@ function renderLandingView() {
                                             <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
                                         </div>
                                     </div>
+                                    ${guide.backtest_stats ? `
+                                    <div class="mt-4 pt-3 border-t border-white/5">
+                                        <h5 class="text-[10px] font-bold text-primary uppercase tracking-wider mb-2.5">3-Year Backtest ($10k Capital, 1% Risk)</h5>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                                <div class="text-[9px] text-on-surface-variant uppercase">Win Rate</div>
+                                                <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.win_rate}</div>
+                                            </div>
+                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                                <div class="text-[9px] text-on-surface-variant uppercase">Total Trades</div>
+                                                <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.trades}</div>
+                                            </div>
+                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                                <div class="text-[9px] text-on-surface-variant uppercase">Sharpe Ratio</div>
+                                                <div class="text-[#ffdb3c] font-bold text-sm">${guide.backtest_stats.sharpe}</div>
+                                            </div>
+                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                                <div class="text-[9px] text-on-surface-variant uppercase">Max Drawdown</div>
+                                                <div class="text-error font-bold text-sm">${guide.backtest_stats.max_dd}</div>
+                                            </div>
+                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                                <div class="text-[9px] text-on-surface-variant uppercase">Net PnL</div>
+                                                <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.net_pnl}</div>
+                                            </div>
+                                            <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                                                <div class="text-[9px] text-on-surface-variant uppercase">Final Balance</div>
+                                                <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.final_bal}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         `;
