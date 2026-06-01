@@ -23,7 +23,7 @@ ALPACA_API_SECRET = utils_gcp.get_secret("ALPACA_API_SECRET")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STOCK_DB_PATH = os.path.join(BASE_DIR, "data", "stock_daily_cache.db")
 USER_DB_PATH = os.path.join(BASE_DIR, "data", "bot_users.db")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = utils_gcp.get_secret("TELEGRAM_BOT_TOKEN")
 
 async def send_telegram_message(chat_id, text, entities=None):
     if not TELEGRAM_TOKEN:
