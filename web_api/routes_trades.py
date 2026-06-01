@@ -1571,8 +1571,9 @@ def get_free_stats():
             "active_trades": []
         })
         
+    total_active = sum(s["active_count"] for s in stats_data)
     return jsonify({
-        "total_open": len(open_sim_trades),
+        "total_open": total_active,
         "strategies": stats_data
     }), 200
 
