@@ -388,12 +388,13 @@ async def run_real_trader_execution(today_opens):
                             conn_active.close()
                             
                             trade_db_id = row_active[0] if row_active else None
-                            entry_price = row_active[1] if row_active else float(pos['avg_entry_price'])
+                            entry_price = float(pos['avg_entry_price']) if pos.get('avg_entry_price') else 0.0
                             
-                            close_price = today_opens.get(sym, float(pos['avg_entry_price']))
+                            close_price = float(pos.get('current_price', today_opens.get(sym, entry_price)))
                             qty_val = float(pos['qty'])
-                            pnl_raw = (close_price - entry_price) * qty_val
-                            pnl_pct = ((close_price - entry_price) / entry_price) * 100
+                            
+                            pnl_raw = float(pos.get('unrealized_pl', (close_price - entry_price) * qty_val))
+                            pnl_pct = float(pos.get('unrealized_plpc', ((close_price - entry_price) / entry_price if entry_price > 0 else 0))) * 100
                             
                             from telegram import MessageEntity
                             from datetime import datetime, timezone
