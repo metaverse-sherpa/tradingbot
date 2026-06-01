@@ -232,6 +232,8 @@ function navigate(hash) {
 }
 
 async function handleRoute() {
+    window.scrollTo(0, 0);
+
     const refCode = getQueryParam('ref');
     if (refCode) {
         localStorage.setItem('referred_by', refCode);
@@ -3036,26 +3038,28 @@ function renderSignalsView() {
 
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto animate-fade-in">
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
-                <button onclick="window.refreshSignals(true)" class="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all text-on-surface-variant hover:text-primary active:scale-95 group" title="Refresh Signals">
-                    <span class="material-symbols-outlined text-[20px] ${STATE.is_loading_signals ? 'animate-spin text-primary' : 'group-hover:rotate-180 transition-transform duration-500'}">refresh</span>
-                </button>
-            </div>
-            
-            <!-- Tabs -->
-            <div class="flex justify-between items-center mb-6">
+        <main class="pt-[60px] pb-24 max-w-[500px] mx-auto animate-fade-in relative">
+            <div class="sticky top-[58px] z-40 bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-container-margin mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
+                    <button onclick="window.refreshSignals(true)" class="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all text-on-surface-variant hover:text-primary active:scale-95 group" title="Refresh Signals">
+                        <span class="material-symbols-outlined text-[20px] ${STATE.is_loading_signals ? 'animate-spin text-primary' : 'group-hover:rotate-180 transition-transform duration-500'}">refresh</span>
+                    </button>
+                </div>
+                
+                <!-- Tabs -->
                 <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 w-full">
                     <button onclick="setSignalsTab('active')" class="flex-1 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${currentTab === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Active Signals</button>
                     <button onclick="setSignalsTab('closed')" class="flex-1 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${currentTab === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Closed Signals</button>
                 </div>
             </div>
             
-            ${statsSection}
-            
-            <div class="space-y-stack-gap">
-                ${listHtml}
+            <div class="px-container-margin space-y-section-gap">
+                ${statsSection}
+                
+                <div class="space-y-stack-gap">
+                    ${listHtml}
+                </div>
             </div>
         </main>
     `;
