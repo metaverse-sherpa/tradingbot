@@ -977,11 +977,10 @@ function renderLandingView() {
 
                         return `
                             <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50 transition-all duration-300">
-                                <div class="flex justify-between items-center cursor-pointer group" onclick="document.getElementById('${guideId}').classList.toggle('hidden'); const chev = document.getElementById('chev-${guideId}'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
-                                    <h4 class="font-headline-sm text-on-surface flex items-center gap-2 group-hover:text-primary transition-colors">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="font-headline-sm text-on-surface flex items-center gap-2 transition-colors">
                                         <span>${icon}</span> ${s.name}
                                     </h4>
-                                    <span id="chev-${guideId}" class="material-symbols-outlined text-on-surface-variant transition-transform duration-300">expand_more</span>
                                 </div>
                                 <!-- 3-Year Backtest Results (Always Visible) -->
                                 ${guide.backtest_stats ? `
@@ -1033,8 +1032,16 @@ function renderLandingView() {
                                 </div>
                                 ` : ''}
 
+                                <!-- Expand Toggle Button -->
+                                <div class="mt-4 pt-2 flex justify-center">
+                                    <button class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors text-xs font-bold uppercase tracking-wider group cursor-pointer" onclick="document.getElementById('${guideId}').classList.toggle('hidden'); const chev = document.getElementById('chev-${guideId}'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
+                                        Strategy Guide & Live Stats
+                                        <span id="chev-${guideId}" class="material-symbols-outlined transition-transform duration-300 text-lg">expand_more</span>
+                                    </button>
+                                </div>
+
                                 <!-- Expandable Guide Section -->
-                                <div id="${guideId}" class="hidden pt-6 mt-6 border-t border-white/10 space-y-4 animate-fade-in">
+                                <div id="${guideId}" class="hidden pt-6 mt-4 border-t border-white/10 space-y-4 animate-fade-in">
                                     <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('${guide.img}', '_blank')">
                                         <img src="${guide.img}" alt="${s.name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
                                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
