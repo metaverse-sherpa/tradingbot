@@ -7,7 +7,7 @@ from datetime import datetime
 
 # 🏛️ Backtest Engine Configuration
 INITIAL_CASH = 10000.0
-PCT_PER_TRADE = 0.01   # Risk 1% of equity per trade
+PCT_PER_TRADE = 0.02   # Risk 2% of equity per trade
 FEE_RATE = 0.0005      # 0.05% fee per transaction (0.1% round-trip)
 DB_PATH = "data/stock_daily_cache.db"
 SYMBOLS = [
@@ -188,7 +188,7 @@ def check_signal(df, idx, strategy_name, params):
 GLOBAL_STOCK_INDICATORS_CACHE = {}
 
 # 🏆 Chronological Portfolio Backtester
-def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=10000.0, pct_per_trade=0.01):
+def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=INITIAL_CASH, pct_per_trade=PCT_PER_TRADE):
     """Simulates chronological trading across all symbols with strict cash constraints."""
     global GLOBAL_STOCK_INDICATORS_CACHE
     
@@ -794,7 +794,7 @@ def main():
         best_h, best_t, best_metrics = run_backtest(data_dict, "Velocity_Pullback", best_params, verbose=True)
         
         print("\n" + "═"*80)
-        print(f"🌍 PORTFOLIO SUMMARY (1% Risk / NO LEVERAGE)")
+        print(f"🌍 PORTFOLIO SUMMARY (2% Risk / NO LEVERAGE)")
         print("═"*80)
         print(f"Initial Balance   : ${INITIAL_CASH:,.2f}")
         print(f"Final Balance     : ${best_metrics['final_equity']:,.2f}")
@@ -809,19 +809,49 @@ def main():
         print(f"Avg Loss Amount   : ${best_metrics['avg_loss']:.2f}")
         print("═"*80)
         
-        # Save equity curve plot
+        # Save beautiful dual-chart equity curve plot
         os.makedirs("results", exist_ok=True)
-        plt.figure(figsize=(12, 6))
-        plt.plot(best_h.index, best_h['equity'], color='#2ecc71', linewidth=2.5, label='Portfolio Equity')
-        plt.plot(best_h.index, best_h['cash'], color='#e74c3c', linewidth=1.0, linestyle='--', label='Cash Balance', alpha=0.7)
-        plt.title(f"Sherpa Stock Portfolio Equity Curve (3 Years) | PnL: {best_metrics['total_pnl_pct']:.1f}% | Sharpe: {best_metrics['sharpe_ratio']:.2f}", fontsize=14, fontweight='bold', pad=15)
-        plt.xlabel("Date", fontsize=12)
-        plt.ylabel("Account Value ($)", fontsize=12)
-        plt.grid(True, linestyle=':', alpha=0.6)
-        plt.legend(loc='upper left', fontsize=10)
+        
+        # Calculate drawdown curve for the bottom chart
+        peak = best_h['equity'].cummax()
+        dd_curve = ((best_h['equity'] - peak) / peak) * 100  # Negative percentages
+        
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#0B0E14")
+        
+        # Top Chart: Equity
+        ax1.plot(best_h.index, best_h['equity'], color="#2ecc71", linewidth=2.5, label="Portfolio Equity")
+        ax1.plot(best_h.index, best_h['cash'], color="#e74c3c", linewidth=1.0, linestyle="--", label="Cash Balance", alpha=0.7)
+        ax1.set_title(f"Sherpa Stock Portfolio Equity Curve (6 Years) | PnL: {best_metrics['total_pnl_pct']:.1f}% | Sharpe: {best_metrics['sharpe_ratio']:.2f}", color="#FFFFFF", fontsize=16, fontweight='bold', pad=15)
+        ax1.set_facecolor("#141A24")
+        ax1.tick_params(colors="#FFFFFF")
+        ax1.grid(True, color="#3a4b5c", alpha=0.3)
+        ax1.set_ylabel("Portfolio Value ($)", color="#FFFFFF", fontsize=12)
+        ax1.legend(loc='upper left', fontsize=10, facecolor="#0B0E14", edgecolor="#3a4b5c", labelcolor="#FFFFFF")
+        
+        # Annotate stats on top chart
+        info_text = (
+            f"Initial Balance: ${INITIAL_CASH:,.2f}\n"
+            f"Final Balance: ${best_metrics['final_equity']:,.2f}\n"
+            f"Total Trades: {best_metrics['total_trades']}\n"
+            f"Win Rate: {best_metrics['win_rate']:.1f}%\n"
+            f"Max Drawdown: {best_metrics['max_dd_pct']:.1f}%\n"
+            f"Sharpe Ratio: {best_metrics['sharpe_ratio']:.2f}"
+        )
+        ax1.text(0.02, 0.95, info_text, transform=ax1.transAxes, color="#FFFFFF", fontsize=11,
+                 verticalalignment='top', bbox=dict(boxstyle='round,pad=0.8', facecolor='#0B0E14', alpha=0.8, edgecolor='#2ecc71'))
+        
+        # Bottom Chart: Drawdown
+        ax2.fill_between(best_h.index, dd_curve, 0, color="#FF1744", alpha=0.3)
+        ax2.plot(best_h.index, dd_curve, color="#FF1744", linewidth=1.2)
+        ax2.set_facecolor("#141A24")
+        ax2.tick_params(colors="#FFFFFF")
+        ax2.grid(True, color="#3a4b5c", alpha=0.3)
+        ax2.set_ylabel("Drawdown (%)", color="#FFFFFF", fontsize=12)
+        ax2.set_ylim(-30, 2)
+        
         plt.tight_layout()
-        plt.savefig('results/daily_equity_curve.png', dpi=300)
-        print("📈 Equity curve saved to results/daily_equity_curve.png")
+        plt.savefig('results/daily_equity_curve.png', dpi=300, facecolor=fig.get_facecolor())
+        print("📈 Beautiful dual-chart successfully saved to: results/daily_equity_curve.png")
         
         # Generate the markdown report
         generate_report(best_metrics, best_params, best_t)
@@ -854,7 +884,7 @@ def generate_report(metrics, params, t_df):
     
     report_content = f"""# 🏔️ Sherpa Daily Stock Trading Strategy Audit
 
-This document is a comprehensive audit report of our optimized swing trading algorithm developed on **daily (1d) candles** for our curated high-probability watchlist over the last 3 years (**May 19, 2023** to **May 19, 2026**).
+This document is a comprehensive audit report of our optimized swing trading algorithm developed on **daily (1d) candles** for our curated high-probability watchlist over the last 6 years (**May 19, 2020** to **May 19, 2026**).
 
 ---
 

@@ -7,7 +7,7 @@ import matplotlib.dates as mdates
 
 # Configuration
 INITIAL_CASH = 10000.0
-PCT_PER_TRADE = 0.02
+PCT_PER_TRADE = 0.01
 LEVERAGE = 5  # Typical stock swing-trading leverage
 FEE_RATE = 0.0006
 SLIPPAGE = 0.0005

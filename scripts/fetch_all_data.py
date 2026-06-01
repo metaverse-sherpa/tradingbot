@@ -9,7 +9,7 @@ from datetime import datetime
 # ---------------------------------------------------------------------------
 CSV_DIR = "csv"
 os.makedirs(CSV_DIR, exist_ok=True)
-DAYS_BACK = 3 * 365
+DAYS_BACK = 5 * 365
 
 # The 19 symbols from live_bot_multi.py
 SYMBOLS = {

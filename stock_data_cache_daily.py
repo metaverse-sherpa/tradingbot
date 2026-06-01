@@ -41,7 +41,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def fetch_daily_data(ticker, api_key, api_secret, start_date="2023-05-19", end_date="2026-05-19"):
+def fetch_daily_data(ticker, api_key, api_secret, start_date="2020-05-19", end_date="2026-05-19"):
     """Fetches daily historical prices from Alpaca daily endpoint using adjusted columns."""
     print(f"🛰️ Fetching daily data for {ticker} from {start_date} to {end_date}...")
     url = f"https://data.alpaca.markets/v2/stocks/bars"
