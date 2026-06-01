@@ -871,10 +871,19 @@ function renderLandingView() {
             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
             
             <div class="relative z-10 flex flex-col items-center">
-                <span class="text-[10px] text-primary/80 font-bold uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/25 mb-3">🏔️ Algorithmic Intelligence</span>
-                <h2 class="font-headline-md text-headline-md text-white font-bold leading-tight">Institutional-Grade Autopilot Trading</h2>
+                <span class="text-[10px] flex items-center gap-1.5 text-primary/80 font-bold uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/25 mb-4">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                    </span>
+                    Algorithmic Intelligence
+                </span>
+                <h2 class="font-headline-md text-headline-md text-center font-bold leading-tight">
+                    <span class="text-white">Institutional-Grade</span><br/>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary">Autopilot Trading</span>
+                </h2>
                 <p class="text-xs text-on-surface-variant/90 font-medium max-w-[360px] leading-relaxed mt-2.5">
-                    Summit the markets with real-time autonomous trading setups executed with institutional precision.
+                    Summit the markets with real-time autonomous trading setups and zero-latency execution.
                 </p>
             </div>
         </div>
