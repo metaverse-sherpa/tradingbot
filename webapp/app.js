@@ -81,7 +81,7 @@ function renderStrategyGuideContent(name, includeBacktest = true) {
     let html = '';
     
     if (includeBacktest && guide.backtest_stats) {
-        html += \`
+        html += `
         <div class="mb-4">
             <div class="flex items-center gap-2 mb-2">
                 <span class="material-symbols-outlined text-primary text-sm">history</span>
@@ -91,50 +91,50 @@ function renderStrategyGuideContent(name, includeBacktest = true) {
                 These performance metrics and equity curves are based on <strong>3 years of rigorous historical data</strong>. (Simulated with $10k starting capital and a strict 1% risk management per trade).
             </p>
             
-            \${guide.backtest_stats.img ? \`
-            <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-4 flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('\${guide.backtest_stats.img}', '_blank')">
-                <img src="\${guide.backtest_stats.img}" alt="Backtest Equity Curve" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+            ${guide.backtest_stats.img ? `
+            <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-4 flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('${guide.backtest_stats.img}', '_blank')">
+                <img src="${guide.backtest_stats.img}" alt="Backtest Equity Curve" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
                     <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
                 </div>
             </div>
-            \` : ''}
+            ` : ''}
             
             <div class="grid grid-cols-2 gap-2">
                 <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
                     <div class="text-[9px] text-on-surface-variant uppercase">Win Rate</div>
-                    <div class="text-tertiary font-bold text-sm">\${guide.backtest_stats.win_rate}</div>
+                    <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.win_rate}</div>
                 </div>
                 <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
                     <div class="text-[9px] text-on-surface-variant uppercase">Total Trades</div>
-                    <div class="text-on-surface font-bold text-sm">\${guide.backtest_stats.trades}</div>
+                    <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.trades}</div>
                 </div>
                 <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
                     <div class="text-[9px] text-on-surface-variant uppercase">Sharpe Ratio</div>
-                    <div class="text-[#ffdb3c] font-bold text-sm">\${guide.backtest_stats.sharpe}</div>
+                    <div class="text-[#ffdb3c] font-bold text-sm">${guide.backtest_stats.sharpe}</div>
                 </div>
                 <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
                     <div class="text-[9px] text-on-surface-variant uppercase">Max Drawdown</div>
-                    <div class="text-error font-bold text-sm">\${guide.backtest_stats.max_dd}</div>
+                    <div class="text-error font-bold text-sm">${guide.backtest_stats.max_dd}</div>
                 </div>
                 <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
                     <div class="text-[9px] text-on-surface-variant uppercase">Net PnL</div>
-                    <div class="text-tertiary font-bold text-sm">\${guide.backtest_stats.net_pnl}</div>
+                    <div class="text-tertiary font-bold text-sm">${guide.backtest_stats.net_pnl}</div>
                 </div>
                 <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
                     <div class="text-[9px] text-on-surface-variant uppercase">Final Balance</div>
-                    <div class="text-on-surface font-bold text-sm">\${guide.backtest_stats.final_bal}</div>
+                    <div class="text-on-surface font-bold text-sm">${guide.backtest_stats.final_bal}</div>
                 </div>
             </div>
         </div>
         <div class="my-4 border-t border-white/5 w-full"></div>
-        \`;
+        `;
     }
 
-    html += \`
-        <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('\${guide.img}', '_blank')">
-            <img src="\${guide.img}" alt="\${name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+    html += `
+        <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('${guide.img}', '_blank')">
+            <img src="${guide.img}" alt="${name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
                 <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
@@ -143,22 +143,22 @@ function renderStrategyGuideContent(name, includeBacktest = true) {
         <div class="space-y-2 bg-surface-container/30 rounded-xl p-4 mt-4 text-left" style="font-size: 11px;">
             <div>
                 <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Philosophy</span>
-                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.philosophy}</p>
+                <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
             </div>
             <div class="pt-2">
                 <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Indicators</span>
-                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.indicators}</p>
+                <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
             </div>
             <div class="pt-2">
                 <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Execution Pace</span>
-                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.pace}</p>
+                <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
             </div>
             <div class="pt-2">
                 <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Drawdown Profile</span>
-                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.drawdown}</p>
+                <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
             </div>
         </div>
-    \`;
+    `;
     
     return html;
 }
