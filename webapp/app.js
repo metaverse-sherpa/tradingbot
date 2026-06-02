@@ -2253,7 +2253,7 @@ function renderStatsView() {
                 
                 <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
                     <div>Open: <span class="text-on-surface font-bold">${crypto.open_positions} positions</span></div>
-                    <div>Net PnL: <span class="font-bold ${cryptoNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span>${cryptoNetPnlPct >= 0 ? '+' : ''}${cryptoNetPnlPct.toFixed(2)}%</span> <span class="font-normal text-on-surface-variant">(<span ${inlineBlur}>${cryptoNetPnl >= 0 ? '+' : ''}$${cryptoNetPnl.toFixed(2)}</span>)</span></span></div>
+                    ${crypto.open_positions > 0 ? `<div>Net PnL: <span class="font-bold ${cryptoNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span>${cryptoNetPnlPct >= 0 ? '+' : ''}${cryptoNetPnlPct.toFixed(2)}%</span> <span class="font-normal text-on-surface-variant">(<span ${inlineBlur}>${cryptoNetPnl >= 0 ? '+' : ''}$${cryptoNetPnl.toFixed(2)}</span>)</span></span></div>` : ''}
                 </div>
             </section>
             
@@ -2299,7 +2299,7 @@ function renderStatsView() {
                 
                 <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
                     <div>Open: <span class="text-on-surface font-bold">${stock.open_positions} positions</span></div>
-                    <div>Net PnL: <span class="font-bold ${stockNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span>${stockNetPnlPct >= 0 ? '+' : ''}${stockNetPnlPct.toFixed(2)}%</span> <span class="font-normal text-on-surface-variant">(<span ${inlineBlur}>${stockNetPnl >= 0 ? '+' : ''}$${stockNetPnl.toFixed(2)}</span>)</span></span></div>
+                    ${stock.open_positions > 0 ? `<div>Net PnL: <span class="font-bold ${stockNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span>${stockNetPnlPct >= 0 ? '+' : ''}${stockNetPnlPct.toFixed(2)}%</span> <span class="font-normal text-on-surface-variant">(<span ${inlineBlur}>${stockNetPnl >= 0 ? '+' : ''}$${stockNetPnl.toFixed(2)}</span>)</span></span></div>` : ''}
                 </div>
             </section>
         </main>
