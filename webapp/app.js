@@ -3266,9 +3266,10 @@ function renderSignalsView() {
                             </div>
                             
                             <div class="flex justify-between items-center pt-1 border-t border-white/5">
-                                <div class="flex flex-col items-center">
-                                    <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Active</span>
-                                    <span class="font-numeric-data text-on-surface font-bold leading-tight mt-0.5" style="font-size: 10px;">${s.active_count}</span>
+                                <div class="flex flex-col items-center justify-center">
+                                    <button onclick="event.stopPropagation(); window.shareStatsCard('free', '${s.name}')" class="p-1 text-on-surface-variant hover:text-primary rounded-full hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center" title="Share Strategy Stats">
+                                        <span class="material-symbols-outlined text-[16px]">share</span>
+                                    </button>
                                 </div>
                                 <div class="flex flex-col items-center">
                                     <span class="uppercase text-on-surface-variant font-semibold tracking-wider" style="font-size: 8px;">Win %</span>
