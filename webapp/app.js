@@ -1567,7 +1567,7 @@ function renderDashboardView() {
                     <p class="font-label-sm text-label-sm text-on-surface-variant mb-1 group-hover:text-primary transition-colors">Open Trades</p>
                     <p class="font-numeric-data text-numeric-data text-primary">${activeTradesCount}</p>
                 </a>
-                <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
+                        <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
                     <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
                     <p class="font-numeric-data text-numeric-data text-tertiary flex items-baseline gap-2 justify-center">
                         ${activeStats.win_rate || 0}% 
@@ -1576,7 +1576,9 @@ function renderDashboardView() {
                 </div>
             </section>
             
-
+            <button onclick="window.shareStatsCard('${isCrypto ? 'crypto' : 'stock'}')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]">photo_camera</span> Share & Earn
+            </button>
             
             <!-- Action Grid -->
             <section class="grid grid-cols-2 gap-stack-gap">
@@ -1799,6 +1801,9 @@ function renderTradesView() {
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
+                                <button onclick="event.stopPropagation(); window.shareTradeCard('${trade.type}', '${trade.symbol}', '${trade.side}', ${trade.roe}, ${trade.entry_price}, ${trade.mark_price}, ${trade.unrealized_pnl})" class="p-1.5 text-on-surface-variant hover:text-primary rounded-full hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center" title="Share Trade Card">
+                                    <span class="material-symbols-outlined text-[18px]">share</span>
+                                </button>
                                 <div class="text-right">
                                     <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
                                         <span ${inlineBlur}>${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
@@ -2141,6 +2146,9 @@ function getFreeStatsHtml() {
                 • Open Free Signals: <span class="text-primary font-medium text-base">${STATE.free_stats.total_open}</span>
             </p>
         </div>
+        <button onclick="window.shareStatsCard('free')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer mb-4">
+            <span class="material-symbols-outlined text-[18px]">photo_camera</span> Share bot performance summary
+        </button>
         <div class="space-y-4">
             ${strategiesHtml}
         </div>
@@ -3018,8 +3026,8 @@ function renderSignalCard(sig, isLanding = false) {
 
     return `
         <div ${isLanding ? '' : (isPremium ? `onclick="toggleSignalExpand('${sig.id}')"` : `onclick="showToast('Upgrade to Premium to view charts and details!', 'warning')" tabindex="0"`)} class="glass-card rounded-lg p-4 border border-white/5 flex flex-col gap-3 ${isLanding ? '' : 'cursor-pointer hover:border-white/20'} transition-all group" ${privacyHoverHandlers}>
-            <div class="flex justify-between items-center pointer-events-none">
-                <div>
+            <div class="flex justify-between items-center">
+                <div class="pointer-events-none">
                     <h4 class="font-bold text-on-surface flex items-center gap-1">
                         ${sig.symbol} 
                         <span class="material-symbols-outlined text-[16px] ${isLong ? 'text-primary' : 'text-error'}">${isLong ? 'trending_up' : 'trending_down'}</span>
@@ -3034,7 +3042,7 @@ function renderSignalCard(sig, isLanding = false) {
                     </p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <div class="text-right flex flex-col justify-center" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
+                    <div class="text-right flex flex-col justify-center pointer-events-none" ${isLanding ? 'style="filter: blur(8px); user-select: none;"' : ''}>
                         ${isCalculating ? `
                             <p class="font-numeric-data text-[10px] font-bold text-primary/80 animate-pulse flex items-center gap-1 justify-end uppercase tracking-wider">
                                 <span class="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
@@ -3047,8 +3055,13 @@ function renderSignalCard(sig, isLanding = false) {
                             ${tp > 0 ? `<p class="text-on-surface-variant/50 text-[10px] font-normal uppercase tracking-widest mt-0.5">Target: ${Math.abs(target_pnl_pct).toFixed(0)}%</p>` : ''}
                         `}
                     </div>
+                    ${!isLanding ? `
+                    <button onclick="event.stopPropagation(); window.shareTradeCard('${isCryptoSignal ? 'crypto' : 'stock'}', '${sig.symbol}', '${sideStr}', ${current_pnl_pct}, ${entry}, ${mark}, ${current_pnl_val})" class="p-1.5 text-on-surface-variant hover:text-primary rounded-full hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center" title="Share Signal Card">
+                        <span class="material-symbols-outlined text-[18px]">share</span>
+                    </button>
+                    ` : ''}
                     ${(!isLanding && isPremium) ? `
-                    <div class="text-on-surface-variant/40 group-hover:text-primary transition-colors flex items-center justify-center">
+                    <div class="text-on-surface-variant/40 group-hover:text-primary transition-colors flex items-center justify-center pointer-events-none">
                         <span class="material-symbols-outlined text-xl transition-transform duration-300 ${isExpanded ? 'rotate-180 text-primary' : ''}">expand_more</span>
                     </div>
                     ` : ''}
@@ -3100,6 +3113,9 @@ function renderClosedSignalCard(sig) {
                     <h4 class="font-bold text-on-surface flex items-center gap-1">
                         ${sig.symbol}
                         <span class="text-[10px] ${statusColor} font-bold px-2 py-0.5 rounded-full bg-white/5 ml-2">${statusText}</span>
+                        <button onclick="window.shareTradeCard('${isCrypto ? 'crypto' : 'stock'}', '${sig.symbol}', '${sig.side || 'LONG'}', ${display_pnl_pct}, ${sig.entry_price || 0}, ${exitPrice || 0}, ${sig.pnl_usdt || 0})" class="p-1 text-on-surface-variant hover:text-primary rounded-full hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center ml-1" title="Share Trade Card">
+                            <span class="material-symbols-outlined text-[16px]">share</span>
+                        </button>
                     </h4>
                     <p class="text-xs text-on-surface-variant mt-1">${sig.strategy}</p>
                 </div>
@@ -4395,5 +4411,118 @@ window.toggleBrowserNotifications = async function() {
         showToast(`Browser Notifications switched ${newVal ? 'ON 🔔' : 'OFF 🔕'}`);
         renderView();
     }
+};
+
+window.shareStatsCard = function(tab) {
+    const user = STATE.user || {};
+    const refId = user.telegram_chat_id || user.id || "8";
+    const refLink = `https://bot.metaversesherpa.io/#/register?ref=${refId}`;
+    
+    let title = "Your Crypto Performance Stats";
+    if (tab === 'stock') {
+        title = "Your Stocks Performance Stats";
+    } else if (tab === 'free') {
+        title = "Metaverse Sherpa Free Signals Performance";
+    }
+    
+    showShareCardModal(title, `/api/share/card?type=stats&tab=${tab}`, refLink);
+};
+
+window.shareTradeCard = function(type, symbol, side, roe, entry, mark, pnl) {
+    const user = STATE.user || {};
+    const refId = user.telegram_chat_id || user.id || "8";
+    const refLink = `https://bot.metaversesherpa.io/#/register?ref=${refId}`;
+    
+    const title = `Share PnL Card - ${symbol}`;
+    const url = `/api/share/card?type=trade&symbol=${encodeURIComponent(symbol)}&side=${encodeURIComponent(side)}&roe=${roe}&entry=${entry}&mark=${mark}&pnl_usdt=${pnl}`;
+    
+    showShareCardModal(title, url, refLink);
+};
+
+function showShareCardModal(title, cardApiUrl, refLink) {
+    const modalId = 'share-card-modal';
+    try {
+        const existing = document.getElementById(modalId);
+        if (existing) document.body.removeChild(existing);
+    } catch(e) {}
+    
+    const backdrop = document.createElement('div');
+    backdrop.id = modalId;
+    backdrop.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in';
+    
+    backdrop.innerHTML = `
+        <div class="glass-card rounded-2xl border border-white/10 w-full max-w-[420px] overflow-hidden flex flex-col gap-4 p-6 relative animate-scale-up">
+            <div class="flex justify-between items-center pb-2 border-b border-white/10">
+                <h3 class="font-bold text-on-surface text-base flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[20px]">photo_camera</span>
+                    ${title}
+                </h3>
+                <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {}" class="p-1.5 hover:bg-white/5 rounded-full text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            
+            <div id="share-card-content" class="flex flex-col items-center justify-center min-h-[250px] py-4">
+                <div class="relative w-16 h-16 mb-4">
+                    <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                    <div class="absolute inset-0 flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined text-2xl animate-pulse">image</span>
+                    </div>
+                </div>
+                <p class="text-xs text-on-surface-variant text-center animate-pulse">Generating your premium card...</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(backdrop);
+    
+    (async () => {
+        try {
+            const headers = {};
+            const token = localStorage.getItem('session_token');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const res = await fetch(cardApiUrl, { headers });
+            if (!res.ok) throw new Error("Failed to generate card");
+            
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            
+            const contentDiv = document.getElementById('share-card-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = `
+                    <div class="w-full aspect-square rounded-xl overflow-hidden border border-white/10 relative shadow-2xl mb-4 bg-black/20">
+                        <img src="${objectUrl}" class="w-full h-full object-contain" alt="PnL Card Preview" />
+                    </div>
+                    
+                    <div class="w-full space-y-3">
+                        <div class="flex gap-2">
+                            <a href="${objectUrl}" download="sherpa_pnl_card.jpg" class="flex-1 h-11 bg-primary text-background font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(168,232,255,0.4)]">
+                                <span class="material-symbols-outlined text-[16px]">download</span> Download Image
+                            </a>
+                            <button onclick="navigator.clipboard.writeText('${refLink}').then(() => showToast('Referral link copied!'))" class="flex-1 h-11 bg-surface-container border border-white/10 text-on-surface font-semibold rounded-lg hover:bg-white/5 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer">
+                                <span class="material-symbols-outlined text-[16px]">link</span> Copy Invite Link
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-on-surface-variant text-center leading-normal">
+                            Scan the QR code on the card or use your referral link to earn 30 days free Premium for every 3 members referred!
+                        </p>
+                    </div>
+                `;
+            }
+        } catch(err) {
+            const contentDiv = document.getElementById('share-card-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = `
+                    <span class="material-symbols-outlined text-error text-5xl mb-3">error</span>
+                    <p class="text-sm text-error font-semibold">Failed to load PnL card</p>
+                    <p class="text-xs text-on-surface-variant text-center mt-1">Please ensure your exchange is connected or try again later.</p>
+                `;
+            }
+        }
+    })();
 };
 

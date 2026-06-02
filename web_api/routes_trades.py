@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from flask import Blueprint, request, jsonify, make_response, g, send_file
 import database
 import utils_gcp
+import media_gen
 from bot.config import is_stock
 from web_api.auth import require_auth
 from web_api.cache import RESPONSE_CACHE, RESPONSE_CACHE_LOCK, CACHE_TTL_SECONDS
@@ -1642,6 +1643,200 @@ def get_free_stats():
         "total_open": 0,
         "strategies": stats_data
     }), 200
+
+@trades_bp.route('/api/share/card', methods=['GET'])
+@require_auth
+def share_card():
+    card_type = request.args.get("type", "stats") # stats, trade, signal
+    user = g.user
+    ref_id = user.get("telegram_chat_id") or user.get("id")
+    ref_link = user.get("invite_link") or f"https://bot.metaversesherpa.io/#/register?ref={ref_id}"
+    hide_dollars = user.get("hide_dollars", True)
+    
+    # Custom query parameters override for individual trade / signal sharing
+    symbol = request.args.get("symbol")
+    side = request.args.get("side", "LONG")
+    
+    try:
+        roe = float(request.args.get("roe", 0.0))
+        entry = float(request.args.get("entry", 0.0))
+        mark = float(request.args.get("mark", 0.0))
+        pnl_usdt = float(request.args.get("pnl_usdt", 0.0))
+    except ValueError:
+        return jsonify({"error": "Invalid numeric parameter"}), 400
+
+    if card_type == "stats":
+        tab = request.args.get("tab", "crypto") # crypto, stock, free
+        
+        if tab == "free":
+            # Bot theoretical/free signals stats
+            stats = database.get_theoretical_stats()
+            current_balance = stats.get("current_balance", 1000.0)
+            overall_pnl = ((current_balance - 1000.0) / 1000.0) * 100
+            
+            # Calculate daily pnl pct for theoretical signals
+            with database.db_session() as conn:
+                c = conn.cursor()
+                one_day_ago = int(time.time() - 86400)
+                c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE status != 'open' AND close_time >= ?", (one_day_ago,))
+                daily_pnl_usdt = c.fetchone()[0] or 0.0
+                daily_pnl = (daily_pnl_usdt / 1000.0) * 100
+                
+            win_rate = stats.get("win_rate", 0.0)
+            total_trades = stats.get("total_trades", 0)
+            
+            # Free signals performance card is public/educational, show $ values
+            card_path = media_gen.generate_stats_card(
+                overall_pnl, daily_pnl, win_rate, total_trades,
+                user_id=str(ref_id), ref_link=ref_link
+            )
+        else:
+            # Stats for user's connected accounts
+            tg_user = _get_telegram_user(user) or user
+            
+            if tab == "crypto":
+                crypto_wins = tg_user.get("wins", tg_user.get("total_wins", 0)) or 0
+                crypto_losses = tg_user.get("losses", tg_user.get("total_losses", 0)) or 0
+                crypto_total = crypto_wins + crypto_losses
+                crypto_win_rate = (crypto_wins / crypto_total) * 100 if crypto_total > 0 else 0.0
+                crypto_equity = tg_user.get("equity", 1000.0) or 1000.0
+                crypto_cum_pnl = tg_user.get("cum_pnl", tg_user.get("cumulative_pnl", 0.0)) or 0.0
+                
+                # Fetch live crypto balance / unrealized if API key exists
+                crypto_unrealized = 0.0
+                crypto_api_key = tg_user.get("api_key")
+                crypto_api_secret = tg_user.get("api_secret")
+                crypto_api_password = tg_user.get("api_password")
+                crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+                
+                realized_daily_pnl = 0.0
+                if crypto_api_key and crypto_api_secret:
+                    try:
+                        import ccxt
+                        config = {
+                            "apiKey": crypto_api_key,
+                            "secret": crypto_api_secret,
+                            "password": crypto_api_password or "",
+                            "options": {"defaultType": "swap"},
+                            "timeout": 5000
+                        }
+                        client = getattr(ccxt, crypto_exchange_id)(config)
+                        try:
+                            positions = client.fetch_positions()
+                            for p in positions:
+                                contracts = float(p.get("contracts", 0) or 0)
+                                if contracts != 0:
+                                    crypto_unrealized += float(p.get("unrealizedPnl", 0) or 0)
+                                    
+                            # Daily PnL realized (from last 24h)
+                            now_ms = int(time.time() * 1000)
+                            twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
+                            params = {'instType': 'SWAP'} if client.id == 'blofin' else {}
+                            for sym in ["BTC/USDT", "ETH/USDT", "SOL/USDT"]:
+                                try:
+                                    norm_sym = database.normalize_symbol(sym, client.id)
+                                    trades = client.fetch_my_trades(norm_sym, since=twenty_four_hours_ago, params=params)
+                                    for t in trades:
+                                        info = t.get("info", {})
+                                        gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
+                                        if gross_pnl != 0:
+                                            fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                                            realized_daily_pnl += (gross_pnl - fee * 2)
+                                except: pass
+                        finally:
+                            try: client.close()
+                            except: pass
+                    except Exception as ce:
+                        print(f"[SHARE] Crypto live error: {ce}")
+                        
+                overall_pnl = crypto_cum_pnl + crypto_unrealized
+                overall_pnl_pct = (overall_pnl / crypto_equity) * 100 if crypto_equity > 0 else 0.0
+                
+                daily_pnl = realized_daily_pnl + crypto_unrealized
+                daily_pnl_pct = (daily_pnl / crypto_equity) * 100 if crypto_equity > 0 else 0.0
+                
+                card_path = media_gen.generate_stats_card(
+                    overall_pnl_pct, daily_pnl_pct, crypto_win_rate, crypto_total,
+                    user_id=str(ref_id), ref_link=ref_link
+                )
+            else:
+                # Stock Stats
+                stock_equity = 10000.0
+                stock_start_equity = 10000.0
+                stock_last_equity = 10000.0
+                
+                stock_api_key = tg_user.get("alpaca_api_key")
+                stock_api_secret = tg_user.get("alpaca_api_secret")
+                
+                if stock_api_key and stock_api_secret:
+                    try:
+                        acc = database.make_alpaca_request(tg_user, "GET", "/v2/account")
+                        if acc:
+                            stock_equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
+                            stock_last_equity = float(acc.get("last_equity", 0) or stock_equity)
+                            
+                        transfers = database.make_alpaca_request(tg_user, "GET", "/v2/account/activities/TRANS", params={"direction": "asc"})
+                        if isinstance(transfers, list) and len(transfers) > 0:
+                            net_deposits = 0.0
+                            for t in transfers:
+                                if t.get("status") in ["COMPLETE", "complete", "EXECUTED", "executed"]:
+                                    net_deposits += float(t.get("net_amount", 0) or 0)
+                            if net_deposits > 0:
+                                stock_start_equity = net_deposits
+                            else:
+                                stock_start_equity = tg_user.get("alpaca_start_equity", 10000.0) or 10000.0
+                        else:
+                            stock_start_equity = tg_user.get("alpaca_start_equity", 10000.0) or 10000.0
+                    except Exception as se:
+                        print(f"[SHARE] Stock live error: {se}")
+                        
+                overall_stock_pnl = stock_equity - stock_start_equity
+                overall_stock_pnl_pct = (overall_stock_pnl / stock_start_equity) * 100 if stock_start_equity > 0 else 0.0
+                
+                stock_daily_pnl = stock_equity - stock_last_equity
+                stock_daily_pnl_pct = (stock_daily_pnl / stock_last_equity) * 100 if stock_last_equity > 0 else 0.0
+                
+                if tg_user.get("telegram_chat_id"):
+                    trade_chat_id = int(tg_user["telegram_chat_id"])
+                else:
+                    trade_chat_id = int(user["id"]) + 1000000000
+                
+                stock_wins = 0
+                stock_losses = 0
+                try:
+                    with database.db_session() as conn:
+                        c = conn.cursor()
+                        c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw > 0", (trade_chat_id,))
+                        stock_wins = c.fetchone()[0] or 0
+                        c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw <= 0", (trade_chat_id,))
+                        stock_losses = c.fetchone()[0] or 0
+                except: pass
+                
+                stock_total = stock_wins + stock_losses
+                stock_win_rate = (stock_wins / stock_total) * 100 if stock_total > 0 else 0.0
+                
+                card_path = media_gen.generate_stats_card(
+                    overall_stock_pnl_pct, stock_daily_pnl_pct, stock_win_rate, stock_total,
+                    user_id=str(ref_id), ref_link=ref_link
+                )
+    elif card_type in ["trade", "signal"]:
+        if not symbol:
+            return jsonify({"error": "Symbol is required"}), 400
+            
+        card_path = media_gen.generate_pnl_card(
+            symbol, side, roe, entry, mark,
+            hide_dollars=hide_dollars,
+            pnl_usdt=pnl_usdt,
+            user_id=str(ref_id),
+            ref_link=ref_link
+        )
+    else:
+        return jsonify({"error": "Invalid card type"}), 400
+
+    if card_path and os.path.exists(card_path):
+        return send_file(card_path, mimetype="image/jpeg", as_attachment=False)
+    else:
+        return jsonify({"error": "Failed to generate card image"}), 500
 
 @trades_bp.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():

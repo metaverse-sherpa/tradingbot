@@ -46,7 +46,7 @@ def add_qr_code(base_img, link, size=180):
         print(f"⚠️ Error generating QR code: {e}")
         return base_img
 
-def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id="", bot_username="metaversesherpa_trading_bot"):
+def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id="", bot_username="metaversesherpa_trading_bot", ref_link=None):
     """
     Generates a professional PnL card using the brand logo as the background.
     """
@@ -110,7 +110,8 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
         draw_text_shadow((margin_x, base_img.height - 80), pnl_text, font=font_sub, fill=color_white)
     
     # 5. Referral QR and Link
-    ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
+    if not ref_link:
+        ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
@@ -129,7 +130,7 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     
     return save_path
 
-def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id="", bot_username="metaversesherpa_trading_bot"):
+def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id="", bot_username="metaversesherpa_trading_bot", ref_link=None):
     """
     Generates a professional performance summary card.
     """
@@ -179,7 +180,8 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     draw_text_shadow((margin_x, base_img.height - 180), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
     draw_text_shadow((margin_x, base_img.height - 120), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
     
-    ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
+    if not ref_link:
+        ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
