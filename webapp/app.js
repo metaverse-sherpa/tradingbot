@@ -1549,7 +1549,7 @@ function renderDashboardView() {
                     <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
                     <div class="flex items-baseline gap-3">
                         <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(balance || 0).toFixed(2)}</h1>
-                        <div class="${pnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1" ${loadingBlur}>
+                        <div class="${pnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1">
                             <span class="font-headline-sm text-headline-sm">${pnlVal >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
                             <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${privacyClass}" ${privacyStyle}>${pnlVal >= 0 ? '+' : '-'}$${Math.abs(pnlVal).toFixed(2)}</span>)</span>
                         </div>
