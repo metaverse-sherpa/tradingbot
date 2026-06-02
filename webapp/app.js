@@ -2163,14 +2163,6 @@ function renderFreeStatsView(showPremiumBanner = false) {
             ${premiumBanner}
             ${getFreeStatsHtml()}
         </main>
-    `;          </p>
-            </div>
-            
-            <div class="space-y-4">
-                ${strategiesHtml}
-            </div>
-            
-        </main>
     `;
 }
 
