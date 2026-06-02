@@ -175,10 +175,9 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     margin_y = 50
     
     draw_text_shadow((margin_x, margin_y), title_text, font=font_main, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 380), f"Overall: {overall_pnl:+.2f}%", font=font_massive, fill=color_neon)
-    draw_text_shadow((margin_x, base_img.height - 240), f"Daily PnL: {daily_pnl:+.2f}%", font=font_sub, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 180), f"Win Rate: {win_rate:.1f}%", font=font_sub, fill=color_white)
-    draw_text_shadow((margin_x, base_img.height - 120), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 380), f"Win Rate: {win_rate:.1f}%", font=font_massive, fill=color_neon)
+    draw_text_shadow((margin_x, base_img.height - 200), f"Realized PnL: {overall_pnl:+.2f}%", font=font_sub, fill=color_white)
+    draw_text_shadow((margin_x, base_img.height - 140), f"Total Trades: {total_trades}", font=font_sub, fill=color_white)
     
     if not ref_link:
         ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}" if user_id else f"https://t.me/{bot_username}"
