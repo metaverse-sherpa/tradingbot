@@ -1670,25 +1670,41 @@ def share_card():
         
         if tab == "free":
             # Bot theoretical/free signals stats
-            stats = database.get_theoretical_stats()
-            current_balance = stats.get("current_balance", 1000.0)
-            overall_pnl = ((current_balance - 1000.0) / 1000.0) * 100
-            
-            # Calculate daily pnl pct for theoretical signals
-            with database.db_session() as conn:
-                c = conn.cursor()
-                one_day_ago = int(time.time() - 86400)
-                c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE status != 'open' AND close_time >= ?", (one_day_ago,))
-                daily_pnl_usdt = c.fetchone()[0] or 0.0
-                daily_pnl = (daily_pnl_usdt / 1000.0) * 100
+            strategy_name = request.args.get("strategy")
+            if strategy_name:
+                stats = database.get_theoretical_stats_by_strategy(strategy_name)
+                overall_pnl = (stats.get("cumulative_pnl", 0.0) / 1000.0) * 100
                 
-            win_rate = stats.get("win_rate", 0.0)
-            total_trades = stats.get("total_trades", 0)
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    one_day_ago = int(time.time() - 86400)
+                    c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open' AND close_time >= ?", (strategy_name, one_day_ago))
+                    daily_pnl_usdt = c.fetchone()[0] or 0.0
+                    daily_pnl = (daily_pnl_usdt / 1000.0) * 100
+                
+                win_rate = stats.get("win_rate", 0.0)
+                total_trades = stats.get("total_trades", 0)
+                title_str = strategy_name
+            else:
+                stats = database.get_theoretical_stats()
+                current_balance = stats.get("current_balance", 1000.0)
+                overall_pnl = ((current_balance - 1000.0) / 1000.0) * 100
+                
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    one_day_ago = int(time.time() - 86400)
+                    c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE status != 'open' AND close_time >= ?", (one_day_ago,))
+                    daily_pnl_usdt = c.fetchone()[0] or 0.0
+                    daily_pnl = (daily_pnl_usdt / 1000.0) * 100
+                    
+                win_rate = stats.get("win_rate", 0.0)
+                total_trades = stats.get("total_trades", 0)
+                title_str = "TRADING PERFORMANCE"
             
             # Free signals performance card is public/educational, show $ values
             card_path = media_gen.generate_stats_card(
                 overall_pnl, daily_pnl, win_rate, total_trades,
-                user_id=str(ref_id), ref_link=ref_link
+                user_id=str(ref_id), ref_link=ref_link, title_text=title_str
             )
         else:
             # Stats for user's connected accounts

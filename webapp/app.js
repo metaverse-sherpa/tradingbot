@@ -1408,8 +1408,7 @@ function renderDashboardView() {
                             }
                         });
                         return sorted.length === 0 ? `
-                            <div class="text-center py-12 flex flex-col items-center justify-center animate-fade-in">
-                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 max-w-[280px] leading-relaxed mb-6">Sherpa is waiting for a setup...</p>
+                            <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
                                 ${getFreeStatsHtml()}
                             </div>
                         ` : sorted.map(s => renderSignalCard(s)).join('');
@@ -1533,8 +1532,7 @@ function renderDashboardView() {
                             }
                         });
                         return sorted.length === 0 ? `
-                            <div class="text-center py-12 flex flex-col items-center justify-center animate-fade-in">
-                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 max-w-[280px] leading-relaxed mb-6">Sherpa is waiting for a setup...</p>
+                            <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
                                 ${getFreeStatsHtml()}
                             </div>
                         ` : sorted.map(s => renderSignalCard(s)).join('');
@@ -2128,7 +2126,11 @@ function getFreeStatsHtml() {
                     ${s.active_count > 0 ? `<p class="text-on-surface-variant">• Unrealized PnL: <span class="${unrealizedClass} font-medium">${(s.unrealized_pct || 0) > 0 ? '+' : ''}${(s.unrealized_pct || 0).toFixed(2)}%</span></p>` : ''}
                     <p class="text-on-surface-variant">• Active Signals: <span class="text-primary font-medium">${s.active_count}</span></p>
                 </div>
-                <div class="pt-2">
+                <div class="pt-2 space-y-2">
+                    <button onclick="window.shareStatsCard('free', '${s.name}')" class="w-full h-9 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[14px]">share</span>
+                        Share Performance
+                    </button>
                     <button onclick="resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${s.name}'); triggerBacktest(); }, 150);" class="w-full h-9 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                         <span class="material-symbols-outlined text-[14px]">science</span>
                         Backtest
@@ -2146,15 +2148,12 @@ function getFreeStatsHtml() {
         <div class="flex items-center gap-3 mt-4 text-left">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Free Forward Testing</h2>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border border-white/5 inline-block mb-4 text-left">
+        <div class="bg-surface-container rounded-lg p-3 border border-white/5 inline-block mb-4 text-left w-full">
             <p class="text-on-surface-variant text-sm">
                 • Open Free Signals: <span class="text-primary font-medium text-base">${STATE.free_stats.total_open}</span>
             </p>
         </div>
-        <button onclick="window.shareStatsCard('free')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer mb-4">
-            <span class="material-symbols-outlined text-[18px]">share</span> Share bot performance summary
-        </button>
-        <div class="space-y-4">
+        <div class="space-y-4 w-full">
             ${strategiesHtml}
         </div>
     `;
@@ -4418,7 +4417,7 @@ window.toggleBrowserNotifications = async function() {
     }
 };
 
-window.shareStatsCard = function(tab) {
+window.shareStatsCard = function(tab, strategy) {
     const user = STATE.user || {};
     const refId = user.telegram_chat_id || user.id || "8";
     const refLink = `https://bot.metaversesherpa.io/#/register?ref=${refId}`;
@@ -4427,10 +4426,15 @@ window.shareStatsCard = function(tab) {
     if (tab === 'stock') {
         title = "Your Stocks Performance Stats";
     } else if (tab === 'free') {
-        title = "Metaverse Sherpa Free Signals Performance";
+        title = strategy ? `${strategy} Performance` : "Metaverse Sherpa Free Signals Performance";
     }
     
-    showShareCardModal(title, `/api/share/card?type=stats&tab=${tab}`, refLink);
+    let url = `/api/share/card?type=stats&tab=${tab}`;
+    if (strategy) {
+        url += `&strategy=${encodeURIComponent(strategy)}`;
+    }
+    
+    showShareCardModal(title, url, refLink);
 };
 
 window.shareTradeCard = function(type, symbol, side, roe, entry, mark, pnl) {
