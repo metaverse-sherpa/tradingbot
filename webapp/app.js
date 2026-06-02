@@ -367,12 +367,16 @@ async function handleRoute() {
         
         // 2. Fetch ALL data (including live balance) in the background
         const statsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats') : Promise.resolve(null);
+        const hasLinkedKeys = STATE.user && (STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys);
+        const freeStatsPromise = (!STATE.user || !STATE.user.is_premium || !hasLinkedKeys) ? apiRequest('/stats/free') : Promise.resolve(null);
+
         Promise.all([
             apiRequest('/user/balance'),
             apiRequest('/signals/active'),
             apiRequest('/trades/open'),
-            statsPromise
-        ]).then(([bal, sigs, open, stats]) => {
+            statsPromise,
+            freeStatsPromise
+        ]).then(([bal, sigs, open, stats, freeStats]) => {
             STATE.is_loading_balance = false;
             STATE.is_loading_active_signals = false;
             let stateChanged = true; // Always re-render to remove the blur
@@ -393,8 +397,10 @@ async function handleRoute() {
             }
             if (open) STATE.open_trades = open;
             if (stats) {
-                if (STATE.user && STATE.user.is_premium) STATE.stats = stats;
-                else STATE.free_stats = stats;
+                STATE.stats = stats;
+            }
+            if (freeStats) {
+                STATE.free_stats = freeStats;
             }
             
             // 3. Silently re-render the dashboard to "hydrate" the widgets if the user is still on it
