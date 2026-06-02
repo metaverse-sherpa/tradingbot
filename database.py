@@ -542,7 +542,8 @@ async def rebuild_history_cache_from_engine(chat_id, exchange):
         async def fetch_sym_history(sym):
             try:
                 norm_sym = normalize_symbol(sym, exchange.id)
-                trades = await exchange.fetch_my_trades(norm_sym, limit=50)
+                since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
+                trades = await exchange.fetch_my_trades(norm_sym, since=since, limit=50)
                 
                 order_groups = {}
                 for t in trades:
@@ -605,11 +606,11 @@ async def rebuild_history_cache_from_engine(chat_id, exchange):
         await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
         
         all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
-        last_10 = all_closed[:10]
+        last_50 = all_closed[:50]
         
-        if last_10:
-            set_history_cache(chat_id, last_10)
-            logger.info(f"Rebuild cache success. Saved {len(last_10)} trades for chat_id {chat_id}.")
+        if last_50:
+            set_history_cache(chat_id, last_50)
+            logger.info(f"Rebuild cache success. Saved {len(last_50)} trades for chat_id {chat_id}.")
     except Exception as e:
         logger.error(f"Failed to rebuild history cache from engine: {e}")
 
@@ -623,7 +624,7 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
     
     last_ts = user['last_ts']
     if last_ts == 0:
-        last_ts = int((time.time() - 172800) * 1000) # 48h
+        last_ts = int((time.time() - 90 * 86400) * 1000) # 90 days ago
         
     wins = user['wins']
     losses = user['losses']

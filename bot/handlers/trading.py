@@ -652,7 +652,8 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 async def fetch_sym_history(sym):
                     try:
                         norm_sym = database.normalize_symbol(sym, user_ex.id)
-                        trades = await user_ex.fetch_my_trades(norm_sym, limit=50)
+                        since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
+                        trades = await user_ex.fetch_my_trades(norm_sym, since=since, limit=50)
                         
                         order_groups = {}
                         for t in trades:
@@ -772,19 +773,19 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error fetching Alpaca history: {e}")
 
     all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
-    last_10 = all_closed[:10]
+    last_50 = all_closed[:50]
     
-    if not last_10:
+    if not last_50:
         await status_msg.edit_text("No recently closed trades found in your account.")
         return
         
     # Lock into Sherpa Cache
-    database.set_history_cache(chat_id, last_10)
+    database.set_history_cache(chat_id, last_50)
     
     try:
         await status_msg.delete()
     except: pass
-    await render_history_dashboard(update, context, last_10, chat_id, user)
+    await render_history_dashboard(update, context, last_50, chat_id, user)
 
 async def fetch_alpaca_daily_bars_async(user, symbol, limit=60):
     from datetime import datetime, timedelta

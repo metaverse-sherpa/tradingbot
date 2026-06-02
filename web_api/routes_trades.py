@@ -639,7 +639,8 @@ def get_trades_history():
                         async def fetch_sym_history(sym):
                             try:
                                 norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
-                                trades = await client.fetch_my_trades(norm_sym, limit=20)
+                                since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
+                                trades = await client.fetch_my_trades(norm_sym, since=since, limit=50)
                                 results = []
                                 for t in trades:
                                     info = t.get("info", {})
@@ -674,8 +675,8 @@ def get_trades_history():
                     
                     if tg_user and ccxt_trades:
                         try:
-                            last_10 = sorted(ccxt_trades, key=lambda x: x.get('timestamp', 0), reverse=True)[:10]
-                            database.set_history_cache(trade_chat_id, last_10)
+                            last_50 = sorted(ccxt_trades, key=lambda x: x.get('timestamp', 0), reverse=True)[:50]
+                            database.set_history_cache(trade_chat_id, last_50)
                         except Exception as cache_err:
                             print(f"[HISTORY] Error saving history cache: {cache_err}")
                 finally:

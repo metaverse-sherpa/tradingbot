@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 async def render_history_dashboard(update, context, last_10, chat_id, user):
     """Renders the final history message from trade data."""
+    last_10 = last_10[:10]
     history_text = "📜 *Metaverse Sherpa History*\n\n"
     buttons = []
     
