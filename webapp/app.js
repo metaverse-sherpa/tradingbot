@@ -37,6 +37,133 @@ let STATE = {
     backtest: { running: false, result: null, period: '3 Years', capital: 1000, strategy: 'Mean Reversion Scalper' }
 };
 
+const STRATEGY_ICONS = {
+    "Mean Reversion Scalper": "📈",
+    "Valkyrie Elite Scalper": "🛡️",
+    "Sherpa Velocity Pullback": "🦙"
+};
+
+const STRATEGY_GUIDES = {
+    "Mean Reversion Scalper": {
+        philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
+        indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
+        pace: "Highly active. Averages ~0.84 trades/day.",
+        drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> (well below the 25% safety ceiling) while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
+        img: "/api/charts/mean_reversion_infographic.png",
+        backtest_stats: null
+    },
+    "Valkyrie Elite Scalper": {
+        philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
+        indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
+        pace: "Patient and calculated. Averages ~0.68 trades/day.",
+        drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
+        img: "/api/charts/valkyrie_elite_infographic_ai.png",
+        backtest_stats: {
+            win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-19.5%", net_pnl: "+240.1%", final_bal: "$34,010.00",
+            img: "/api/charts/valkyrie_equity.png"
+        }
+    },
+    "Sherpa Velocity Pullback": {
+        philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
+        indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
+        pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
+        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
+        img: "/api/charts/sherpa_velocity_infographic_ai.png",
+        backtest_stats: {
+            win_rate: "66.9%", trades: "555", sharpe: "1.87", max_dd: "-14.2%", net_pnl: "+113.5%", final_bal: "$21,350.00",
+            img: "/api/charts/sherpa_equity.png"
+        }
+    }
+};
+
+function renderStrategyGuideContent(name, includeBacktest = true) {
+    const guide = STRATEGY_GUIDES[name] || STRATEGY_GUIDES["Mean Reversion Scalper"];
+    let html = '';
+    
+    if (includeBacktest && guide.backtest_stats) {
+        html += \`
+        <div class="mb-4">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-primary text-sm">history</span>
+                <h5 class="text-xs font-bold text-primary uppercase tracking-wider">3-Year Historical Backtest</h5>
+            </div>
+            <p class="text-[10px] text-on-surface-variant mb-4 leading-relaxed">
+                These performance metrics and equity curves are based on <strong>3 years of rigorous historical data</strong>. (Simulated with $10k starting capital and a strict 1% risk management per trade).
+            </p>
+            
+            \${guide.backtest_stats.img ? \`
+            <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-4 flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('\${guide.backtest_stats.img}', '_blank')">
+                <img src="\${guide.backtest_stats.img}" alt="Backtest Equity Curve" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                    <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
+                </div>
+            </div>
+            \` : ''}
+            
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                    <div class="text-[9px] text-on-surface-variant uppercase">Win Rate</div>
+                    <div class="text-tertiary font-bold text-sm">\${guide.backtest_stats.win_rate}</div>
+                </div>
+                <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                    <div class="text-[9px] text-on-surface-variant uppercase">Total Trades</div>
+                    <div class="text-on-surface font-bold text-sm">\${guide.backtest_stats.trades}</div>
+                </div>
+                <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                    <div class="text-[9px] text-on-surface-variant uppercase">Sharpe Ratio</div>
+                    <div class="text-[#ffdb3c] font-bold text-sm">\${guide.backtest_stats.sharpe}</div>
+                </div>
+                <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                    <div class="text-[9px] text-on-surface-variant uppercase">Max Drawdown</div>
+                    <div class="text-error font-bold text-sm">\${guide.backtest_stats.max_dd}</div>
+                </div>
+                <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                    <div class="text-[9px] text-on-surface-variant uppercase">Net PnL</div>
+                    <div class="text-tertiary font-bold text-sm">\${guide.backtest_stats.net_pnl}</div>
+                </div>
+                <div class="bg-surface-container/40 rounded-lg p-2 text-center border border-white/5">
+                    <div class="text-[9px] text-on-surface-variant uppercase">Final Balance</div>
+                    <div class="text-on-surface font-bold text-sm">\${guide.backtest_stats.final_bal}</div>
+                </div>
+            </div>
+        </div>
+        <div class="my-4 border-t border-white/5 w-full"></div>
+        \`;
+    }
+
+    html += \`
+        <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('\${guide.img}', '_blank')">
+            <img src="\${guide.img}" alt="\${name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
+            </div>
+        </div>
+        <div class="space-y-2 bg-surface-container/30 rounded-xl p-4 mt-4 text-left" style="font-size: 11px;">
+            <div>
+                <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Philosophy</span>
+                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.philosophy}</p>
+            </div>
+            <div class="pt-2">
+                <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Indicators</span>
+                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.indicators}</p>
+            </div>
+            <div class="pt-2">
+                <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Execution Pace</span>
+                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.pace}</p>
+            </div>
+            <div class="pt-2">
+                <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Drawdown Profile</span>
+                <p class="text-on-surface leading-relaxed mt-0.5">\${guide.drawdown}</p>
+            </div>
+        </div>
+    \`;
+    
+    return html;
+}
+
+
 // ----------------- Toast Utility -----------------
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
@@ -925,43 +1052,7 @@ function renderLandingView() {
 
     let strategiesCatalogHtml = '';
     if (STATE.free_stats && STATE.free_stats.strategies) {
-        const strategyIcons = {
-            "Mean Reversion Scalper": "📈",
-            "Valkyrie Elite Scalper": "🛡️",
-            "Sherpa Velocity Pullback": "🦙"
-        };
-        const guides = {
-            "Mean Reversion Scalper": {
-                philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
-                indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
-                pace: "Highly active. Averages ~0.84 trades/day.",
-                drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
-                img: "/api/charts/mean_reversion_infographic.png",
-                backtest_stats: null
-            },
-            "Valkyrie Elite Scalper": {
-                philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
-                indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
-                pace: "Patient and calculated. Averages ~0.68 trades/day.",
-                drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
-                img: "/api/charts/valkyrie_elite_infographic_ai.png",
-                backtest_stats: {
-                    win_rate: "58%", trades: "747", sharpe: "3.86", max_dd: "-19.5%", net_pnl: "+240.1%", final_bal: "$34,010.00",
-                    img: "/api/charts/valkyrie_equity.png"
-                }
-            },
-            "Sherpa Velocity Pullback": {
-                philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
-                indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
-                pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
-                drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
-                img: "/api/charts/sherpa_velocity_infographic_ai.png",
-                backtest_stats: {
-                    win_rate: "66.9%", trades: "555", sharpe: "1.87", max_dd: "-14.2%", net_pnl: "+113.5%", final_bal: "$21,350.00",
-                    img: "/api/charts/sherpa_equity.png"
-                }
-            }
-        };
+
 
         strategiesCatalogHtml = `
             <section class="space-y-4 mb-6">
@@ -975,8 +1066,8 @@ function renderLandingView() {
                 <h3 class="font-headline-sm text-on-surface flex items-center gap-2 mt-4">🧪 Active Strategies Catalog</h3>
                 <div class="space-y-4">
                     ${STATE.free_stats.strategies.map(s => {
-                        const icon = strategyIcons[s.name] || "📈";
-                        const guide = guides[s.name] || guides["Mean Reversion Scalper"];
+                        const icon = STRATEGY_ICONS[s.name] || "📈";
+                        const guide = STRATEGY_GUIDES[s.name] || STRATEGY_GUIDES["Mean Reversion Scalper"];
                         const guideId = `landing-guide-${s.name.replace(/\s+/g, '-')}`;
                         const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
                         const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
@@ -1047,32 +1138,8 @@ function renderLandingView() {
                                 </div>
 
                                 <!-- Expandable Guide Section -->
-                                <div id="${guideId}" class="hidden pt-6 mt-4 border-t border-white/10 space-y-4 animate-fade-in">
-                                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('${guide.img}', '_blank')">
-                                        <img src="${guide.img}" alt="${s.name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
-                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
-                                            <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
-                                        </div>
-                                    </div>
-                                    <div class="space-y-2 bg-surface-container/30 rounded-xl p-4" style="font-size: 11px;">
-                                        <div>
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Philosophy</span>
-                                            <p class="text-on-surface leading-relaxed">${guide.philosophy}</p>
-                                        </div>
-                                        <div class="pt-2">
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Indicators</span>
-                                            <p class="text-on-surface leading-relaxed">${guide.indicators}</p>
-                                        </div>
-                                        <div class="pt-2">
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Execution Pace</span>
-                                            <p class="text-on-surface leading-relaxed">${guide.pace}</p>
-                                        </div>
-                                        <div class="pt-2">
-                                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block mb-1" style="font-size: 9px;">Drawdown Profile</span>
-                                            <p class="text-on-surface leading-relaxed">${guide.drawdown}</p>
-                                        </div>
-                                    </div>
+                                <div id="${guideId}" class="hidden pt-6 mt-4 border-t border-white/10 space-y-4 animate-fade-in text-left">
+                                    ${renderStrategyGuideContent(s.name, false)}
                                     
                                     <!-- Live Stats Moved to Bottom -->
                                     <div class="mt-4 pt-4 border-t border-white/5">
@@ -2027,39 +2094,8 @@ function getFreeStatsHtml() {
         return `<div class="text-center p-8 text-on-surface-variant">Loading stats...</div>`;
     }
 
-    const strategyIcons = {
-        "Mean Reversion Scalper": "📈",
-        "Valkyrie Elite Scalper": "🛡️",
-        "Sherpa Velocity Pullback": "🦙"
-    };
-
-    const guides = {
-        "Mean Reversion Scalper": {
-            philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
-            indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
-            pace: "Highly active. Averages ~0.84 trades/day.",
-            drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> (well below the 25% safety ceiling) while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
-            img: "/api/charts/mean_reversion_infographic.png"
-        },
-        "Valkyrie Elite Scalper": {
-            philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
-            indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
-            pace: "Patient and calculated. Averages ~0.68 trades/day.",
-            drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
-            img: "/api/charts/valkyrie_elite_infographic.png"
-        },
-        "Sherpa Velocity Pullback": {
-            philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
-            indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
-            pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
-            drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
-            img: "/api/charts/stock_strategy_infographic.png"
-        }
-    };
-
     let strategiesHtml = STATE.free_stats.strategies.map(s => {
-        const icon = strategyIcons[s.name] || "📈";
-        const guide = guides[s.name] || guides["Mean Reversion Scalper"];
+        const icon = STRATEGY_ICONS[s.name] || "📈";
         const guideId = `guide-${s.name.replace(/\s+/g, '-')}`;
         
         const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
@@ -2087,31 +2123,7 @@ function getFreeStatsHtml() {
                 </div>
                 
                 <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in">
-                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.img}', '_blank')">
-                        <img src="${guide.img}" alt="${s.name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
-                            <span class="text-xs text-white font-bold uppercase tracking-wider">Expand</span>
-                        </div>
-                    </div>
-                    <div class="space-y-2 bg-surface-container/30 rounded-xl p-3" style="font-size: 11px;">
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Philosophy</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Indicators</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Execution Pace</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Drawdown Profile</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
-                        </div>
-                    </div>
+                    ${renderStrategyGuideContent(s.name, false)}
                 </div>
             </div>
         `;
@@ -2541,6 +2553,17 @@ function renderSettingsView() {
                                 <span class="material-symbols-outlined text-xl">expand_more</span>
                             </div>
                         </div>
+                        ${(user.active_crypto_strategy && user.active_crypto_strategy !== 'None') || (!user.active_crypto_strategy) ? `
+                        <div class="pt-1">
+                            <div class="flex justify-between items-center cursor-pointer p-2 bg-surface-container/50 border border-white/5 hover:bg-white/5 rounded-lg transition-colors group" onclick="document.getElementById('crypto-guide').classList.toggle('hidden'); const chev = document.getElementById('crypto-chev'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant group-hover:text-primary transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-sm">info</span> View Strategy Details</span>
+                                <span id="crypto-chev" class="material-symbols-outlined text-on-surface-variant text-sm transition-transform duration-300">expand_more</span>
+                            </div>
+                            <div id="crypto-guide" class="hidden pt-3 animate-fade-in text-left">
+                                ${renderStrategyGuideContent(user.active_crypto_strategy || 'Mean Reversion Scalper', true)}
+                            </div>
+                        </div>
+                        ` : ''}
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Stock Strategy</label>
@@ -2555,6 +2578,17 @@ function renderSettingsView() {
                                 <span class="material-symbols-outlined text-xl">expand_more</span>
                             </div>
                         </div>
+                        ${(user.active_stock_strategy && user.active_stock_strategy !== 'None') || (!user.active_stock_strategy) ? `
+                        <div class="pt-1">
+                            <div class="flex justify-between items-center cursor-pointer p-2 bg-surface-container/50 border border-white/5 hover:bg-white/5 rounded-lg transition-colors group" onclick="document.getElementById('stock-guide').classList.toggle('hidden'); const chev = document.getElementById('stock-chev'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant group-hover:text-primary transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-sm">info</span> View Strategy Details</span>
+                                <span id="stock-chev" class="material-symbols-outlined text-on-surface-variant text-sm transition-transform duration-300">expand_more</span>
+                            </div>
+                            <div id="stock-guide" class="hidden pt-3 animate-fade-in text-left">
+                                ${renderStrategyGuideContent(user.active_stock_strategy || 'Sherpa Velocity Pullback', true)}
+                            </div>
+                        </div>
+                        ` : ''}
                     </div>
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
                     <div class="flex gap-3 pt-4">
@@ -3426,50 +3460,10 @@ function renderReferralView() {
 }
 
 function renderHelpView() {
-    const strategyIcons = {
-        "Mean Reversion Scalper": "📈",
-        "Valkyrie Elite Scalper": "🛡️",
-        "Sherpa Velocity Pullback": "🦙"
-    };
+    const allStrategies = Object.keys(STRATEGY_GUIDES);
 
-    const guides = {
-        "Mean Reversion Scalper": {
-            philosophy: "Mean Reversion. Assumes that prices that deviate excessively from the 20-period Bollinger Bands will snap back (revert) to the 200 EMA trend-line.",
-            indicators: "Bollinger Bands + EMA 200 + ADX trend strength + Wilder RSI.",
-            pace: "Highly active. Averages ~0.84 trades/day.",
-            drawdown: "Optimized for recommended <strong class='text-primary'>1.0% risk</strong>, maintaining a safe drawdown of <strong class='text-primary'>~21.9%</strong> (well below the 25% safety ceiling) while delivering <strong class='text-[#ffdb3c]'>+384.1%</strong> PnL.",
-            img: "/api/charts/mean_reversion_infographic.png"
-        },
-        "Valkyrie Elite Scalper": {
-            philosophy: "Wick Rejection. Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
-            indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
-            pace: "Patient and calculated. Averages ~0.68 trades/day.",
-            drawdown: "Highly protected; ultra-low peak drawdown ceiling (<strong class='text-primary'>~16.2% to 19.5%</strong> on expanded basket).",
-            img: "/api/charts/valkyrie_elite_infographic.png"
-        },
-        "Sherpa Velocity Pullback": {
-            philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
-            indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
-            pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
-            drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
-            img: "/api/charts/stock_strategy_infographic.png"
-        }
-    };
-
-    const activeStrategies = [];
-    const cryptoStrat = STATE.user ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : 'Mean Reversion Scalper';
-    const stockStrat = STATE.user ? (STATE.user.active_stock_strategy || 'None') : 'None';
-
-    if (cryptoStrat && cryptoStrat !== 'None') {
-        activeStrategies.push(cryptoStrat);
-    }
-    if (stockStrat && stockStrat !== 'None' && !activeStrategies.includes(stockStrat)) {
-        activeStrategies.push(stockStrat);
-    }
-
-    let strategiesHtml = activeStrategies.map(name => {
-        const icon = strategyIcons[name] || "📈";
-        const guide = guides[name] || guides["Mean Reversion Scalper"];
+    let strategiesHtml = allStrategies.map(name => {
+        const icon = STRATEGY_ICONS[name] || "📈";
         const guideId = `help-guide-${name.replace(/\\s+/g, '-')}`;
         
         return `
@@ -3481,33 +3475,8 @@ function renderHelpView() {
                     <span id="help-chev-${guideId}" class="material-symbols-outlined text-on-surface-variant transition-transform duration-300">expand_more</span>
                 </div>
                 
-                <!-- Expandable Guide Section -->
-                <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in">
-                    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.img}', '_blank')">
-                        <img src="${guide.img}" alt="${name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
-                            <span class="text-xs text-white font-bold uppercase tracking-wider">Expand</span>
-                        </div>
-                    </div>
-                    <div class="space-y-2 bg-surface-container/30 rounded-xl p-3" style="font-size: 11px;">
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Philosophy</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.philosophy}</p>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Indicators</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.indicators}</p>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Execution Pace</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.pace}</p>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant font-bold uppercase tracking-wider block" style="font-size: 9px;">Drawdown Profile</span>
-                            <p class="text-on-surface leading-relaxed mt-0.5">${guide.drawdown}</p>
-                        </div>
-                    </div>
+                <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in text-left">
+                    ${renderStrategyGuideContent(name, true)}
                 </div>
             </div>
         `;
