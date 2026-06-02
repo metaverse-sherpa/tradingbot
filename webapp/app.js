@@ -3323,8 +3323,8 @@ function renderSignalsView() {
 
     return `
         ${renderHeader()}
-        <main class="pt-[60px] pb-24 max-w-[500px] mx-auto animate-fade-in relative">
-            <div class="sticky top-[58px] z-40 bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-container-margin mb-4">
+        <main class="w-full pt-[60px] pb-24 max-w-[500px] mx-auto animate-fade-in relative">
+            <div class="sticky top-[58px] z-40 w-full bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-container-margin mb-4">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
                     <button onclick="window.refreshSignals(true)" class="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all text-on-surface-variant hover:text-primary active:scale-95 group" title="Refresh Signals">
