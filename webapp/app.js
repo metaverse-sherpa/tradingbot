@@ -1336,13 +1336,8 @@ function renderDashboardView() {
                         });
                         return sorted.length === 0 ? `
                             <div class="text-center py-12 flex flex-col items-center justify-center animate-fade-in">
-                                <div class="relative w-20 h-20 mb-4 flex items-center justify-center">
-                                    <div class="absolute inset-0 rounded-full bg-primary/5 animate-ping" style="animation-duration: 3s;"></div>
-                                    <div class="absolute w-14 h-14 rounded-full bg-primary/10 animate-pulse"></div>
-                                    <span class="material-symbols-outlined text-primary text-4xl relative z-10 animate-bounce" style="animation-duration: 4s;">satellite_alt</span>
-                                </div>
-                                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 mt-1.5 max-w-[280px] leading-relaxed">Sherpa is waiting for a setup...</p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 max-w-[280px] leading-relaxed mb-6">Sherpa is waiting for a setup...</p>
+                                ${getFreeStatsHtml()}
                             </div>
                         ` : sorted.map(s => renderSignalCard(s)).join('');
                     })()}
@@ -1466,13 +1461,8 @@ function renderDashboardView() {
                         });
                         return sorted.length === 0 ? `
                             <div class="text-center py-12 flex flex-col items-center justify-center animate-fade-in">
-                                <div class="relative w-20 h-20 mb-4 flex items-center justify-center">
-                                    <div class="absolute inset-0 rounded-full bg-primary/5 animate-ping" style="animation-duration: 3s;"></div>
-                                    <div class="absolute w-14 h-14 rounded-full bg-primary/10 animate-pulse"></div>
-                                    <span class="material-symbols-outlined text-primary text-4xl relative z-10 animate-bounce" style="animation-duration: 4s;">satellite_alt</span>
-                                </div>
-                                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 mt-1.5 max-w-[280px] leading-relaxed">Sherpa is waiting for a setup...</p>
+                                <p class="font-label-sm text-label-sm text-on-surface-variant/80 max-w-[280px] leading-relaxed mb-6">Sherpa is waiting for a setup...</p>
+                                ${getFreeStatsHtml()}
                             </div>
                         ` : sorted.map(s => renderSignalCard(s)).join('');
                     })()}
@@ -2030,16 +2020,10 @@ function renderHistoryView() {
                     
                     ${hasMoreHistory ? `
                         <button onclick="loadMoreHistory()" class="w-full py-3 mt-4 glass-card rounded-lg font-label-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors text-center border border-white/5">
-                            Load More
-                        </button>
-                    ` : ''}
-            </div>
-        </main>
-    `;
-}
-
-function renderFreeStatsView(showPremiumBanner = false) {
-    if (!STATE.free_stats) return `${renderHeader()}<main class="pt-20 px-container-margin"><div class="text-center p-8 text-on-surface-variant">Loading stats...</div></main>`;
+ function getFreeStatsHtml() {
+    if (!STATE.free_stats || !STATE.free_stats.strategies) {
+        return `<div class="text-center p-8 text-on-surface-variant">Loading stats...</div>`;
+    }
 
     const strategyIcons = {
         "Mean Reversion Scalper": "📈",
@@ -2074,15 +2058,13 @@ function renderFreeStatsView(showPremiumBanner = false) {
     let strategiesHtml = STATE.free_stats.strategies.map(s => {
         const icon = strategyIcons[s.name] || "📈";
         const guide = guides[s.name] || guides["Mean Reversion Scalper"];
-        const guideId = `guide-${s.name.replace(/\\s+/g, '-')}`;
+        const guideId = `guide-${s.name.replace(/\s+/g, '-')}`;
         
-        let activeTradesHtml = "";
-
         const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
         const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
 
         return `
-            <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50 transition-all duration-300">
+            <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50 transition-all duration-300 text-left">
                 <div class="flex justify-between items-center cursor-pointer group" onclick="document.getElementById('${guideId}').classList.toggle('hidden'); const chev = document.getElementById('chev-${guideId}'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
                     <h3 class="font-headline-sm text-on-surface flex items-center gap-2 group-hover:text-primary transition-colors">
                         <span>${icon}</span> ${s.name}
@@ -2102,7 +2084,6 @@ function renderFreeStatsView(showPremiumBanner = false) {
                     </button>
                 </div>
                 
-                <!-- Expandable Guide Section -->
                 <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in">
                     <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group" onclick="window.open('${guide.img}', '_blank')">
                         <img src="${guide.img}" alt="${s.name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
@@ -2134,6 +2115,24 @@ function renderFreeStatsView(showPremiumBanner = false) {
         `;
     }).join('');
 
+    return `
+        <div class="flex items-center gap-3 mt-4 text-left">
+            <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Free Forward Testing</h2>
+        </div>
+        <div class="bg-surface-container rounded-lg p-3 border border-white/5 inline-block mb-4 text-left">
+            <p class="text-on-surface-variant text-sm">
+                • Open Free Signals: <span class="text-primary font-medium text-base">${STATE.free_stats.total_open}</span>
+            </p>
+        </div>
+        <div class="space-y-4">
+            ${strategiesHtml}
+        </div>
+    `;
+}
+
+function renderFreeStatsView(showPremiumBanner = false) {
+    if (!STATE.free_stats) return `${renderHeader()}<main class="pt-20 px-container-margin"><div class="text-center p-8 text-on-surface-variant">Loading stats...</div></main>`;
+
     const premiumBanner = showPremiumBanner ? `
         <div class="glass-card rounded-xl p-card-padding border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
             <div class="space-y-1">
@@ -2154,13 +2153,9 @@ function renderFreeStatsView(showPremiumBanner = false) {
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             ${premiumBanner}
-            <div class="flex items-center gap-3">
-                <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Free Forward Testing</h2>
-            </div>
-            <div class="bg-surface-container rounded-lg p-3 border border-white/5 inline-block">
-                <p class="text-on-surface-variant text-sm">
-                    • Open Free Signals: <span class="text-primary font-medium text-base">${STATE.free_stats.total_open}</span>
-                </p>
+            ${getFreeStatsHtml()}
+        </main>
+    `;          </p>
             </div>
             
             <div class="space-y-4">
