@@ -23,7 +23,7 @@ let STATE = {
     landing_auth_mode: 'login',
     current_view: 'login',
     dashboard_tab: 'crypto',
-    trades_mode: 'active',
+    trades_mode: null,
     signals_tab: 'active',
     expanded_trade_id: null,
     expanded_signal_id: null,
