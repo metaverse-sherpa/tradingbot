@@ -3482,8 +3482,8 @@ function renderHelpView() {
         `;
     }).join('');
 
-    if (activeStrategies.length === 0) {
-        strategiesHtml = `<p class="text-xs text-on-surface-variant mt-2 leading-relaxed font-normal">No active strategies configured.</p>`;
+    if (allStrategies.length === 0) {
+        strategiesHtml = `<p class="text-xs text-on-surface-variant mt-2 leading-relaxed font-normal">No strategies available.</p>`;
     }
 
     return `
