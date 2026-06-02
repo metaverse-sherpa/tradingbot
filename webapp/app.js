@@ -1357,7 +1357,7 @@ function renderDashboardView() {
     if (!isPremium) {
         return `
             ${renderHeader()}
-            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
                 <div class="flex justify-between items-center">
                     ${tierBadge}
                 </div>
@@ -1587,7 +1587,7 @@ function renderDashboardView() {
 
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <!-- Tier Badge & Tabs -->
             <div class="flex justify-between items-center">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
@@ -1613,7 +1613,7 @@ function renderTradesView() {
     if (!isPremium) {
         return `
             ${renderHeader()}
-            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
                 <h2 class="font-headline-sm text-headline-sm text-on-surface">💎 Go Premium</h2>
                 
                 <div class="glass-card rounded-xl overflow-hidden border-t-2 border-secondary-container/40">
@@ -1674,7 +1674,7 @@ function renderTradesView() {
     if (isPremium && !isTabLinked) {
         return `
             ${renderHeader()}
-            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">📈 Live Trades</h2>
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
@@ -1879,7 +1879,7 @@ function renderTradesView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <div class="glass-card rounded-full flex border border-white/10 p-1 w-full relative overflow-hidden z-10">
                 <button onclick="setTradesMode('active')" class="flex-1 py-2 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${tradesMode === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
                     Active Positions (${STATE.open_trades ? STATE.open_trades.length : 0})
@@ -1967,7 +1967,7 @@ function renderFreeHistoryView() {
 
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2 mb-6">
                 📜 Metaverse Sherpa History
             </h2>
@@ -2012,7 +2012,7 @@ function renderHistoryView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <div class="flex items-center gap-6 justify-between">
                 <h2 class="font-headline-sm text-headline-sm text-on-surface whitespace-nowrap">📜 History</h2>
                 ${(STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys) ? `
@@ -2168,7 +2168,7 @@ function renderFreeStatsView(showPremiumBanner = false) {
 
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             ${premiumBanner}
             ${getFreeStatsHtml()}
         </main>
@@ -2211,7 +2211,7 @@ function renderStatsView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Institutional Performance</h2>
             
             <!-- Crypto Performance Section -->
@@ -2332,7 +2332,7 @@ function renderSettingsView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">⚙️ Settings</h2>
             
             <!-- Premium Status & Renew Option -->
@@ -2748,7 +2748,7 @@ function renderStrategyView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">⚖️ Strategy</h2>
             
             <div class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40">
@@ -2797,7 +2797,7 @@ function renderBacktestView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">🔬 Backtest Engine</h2>
             
             ${bt.running ? `
@@ -3359,7 +3359,7 @@ function renderPremiumView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">💎 Premium Upgrade</h2>
             
             <div class="glass-card rounded-xl p-6 border-t-2 border-secondary-container/40 relative overflow-hidden">
@@ -3420,7 +3420,7 @@ function renderReferralView() {
     
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">🤝 Refer & Earn</h2>
             
             <div class="glass-card rounded-xl p-6 border-t-2 border-tertiary/40">
@@ -3491,7 +3491,7 @@ function renderHelpView() {
 
     return `
         ${renderHeader()}
-        <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="font-headline-sm text-headline-sm text-on-surface">❓ User Manual</h2>
                 <button onclick="history.back()" class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-white/5 rounded-full transition-colors flex items-center justify-center cursor-pointer" title="Close">
