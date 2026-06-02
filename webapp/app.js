@@ -2515,37 +2515,31 @@ function renderSettingsView() {
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Crypto Strategy</label>
                         <div class="relative">
-                            <div tabindex="0" onblur="setTimeout(() => { const d = document.getElementById('crypto-strategy-dropdown'); if(d) d.classList.add('hidden'); }, 200)" onclick="document.getElementById('crypto-strategy-dropdown').classList.toggle('hidden')" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 flex items-center cursor-pointer relative cyan-glow-focus outline-none">
-                                <span id="crypto-strategy-display">${user.active_crypto_strategy || 'Mean Reversion Scalper'}</span>
-                                <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-xl">expand_more</span>
-                                </div>
-                            </div>
-                            <div id="crypto-strategy-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-surface-container border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                            <select onchange="handleStrategyChange('crypto', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all appearance-none cursor-pointer">
                                 ${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? `
-                                <div onclick="document.getElementById('crypto-strategy-display').innerText = 'Mean Reversion Scalper'; handleStrategyChange('crypto', 'Mean Reversion Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Mean Reversion Scalper</div>
+                                <option value="Mean Reversion Scalper" ${(user.active_crypto_strategy || 'Mean Reversion Scalper') === 'Mean Reversion Scalper' ? 'selected' : ''}>Mean Reversion Scalper</option>
                                 ` : ''}
                                 ${!(user.disabled_strategies || []).includes('Valkyrie Elite Scalper') ? `
-                                <div onclick="document.getElementById('crypto-strategy-display').innerText = 'Valkyrie Elite Scalper'; handleStrategyChange('crypto', 'Valkyrie Elite Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Valkyrie Elite Scalper</div>
+                                <option value="Valkyrie Elite Scalper" ${(user.active_crypto_strategy || 'Mean Reversion Scalper') === 'Valkyrie Elite Scalper' ? 'selected' : ''}>Valkyrie Elite Scalper</option>
                                 ` : ''}
-                                <div onclick="document.getElementById('crypto-strategy-display').innerText = 'None'; handleStrategyChange('crypto', 'None')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">None (Disabled)</div>
+                                <option value="None" ${(user.active_crypto_strategy || 'Mean Reversion Scalper') === 'None' ? 'selected' : ''}>None (Disabled)</option>
+                            </select>
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-xl">expand_more</span>
                             </div>
                         </div>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Stock Strategy</label>
                         <div class="relative">
-                            <div tabindex="0" onblur="setTimeout(() => { const d = document.getElementById('stock-strategy-dropdown'); if(d) d.classList.add('hidden'); }, 200)" onclick="document.getElementById('stock-strategy-dropdown').classList.toggle('hidden')" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 flex items-center cursor-pointer relative cyan-glow-focus outline-none">
-                                <span id="stock-strategy-display">${user.active_stock_strategy || 'Sherpa Velocity Pullback'}</span>
-                                <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-xl">expand_more</span>
-                                </div>
-                            </div>
-                            <div id="stock-strategy-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-surface-container border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                            <select onchange="handleStrategyChange('stock', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all appearance-none cursor-pointer">
                                 ${!(user.disabled_strategies || []).includes('Sherpa Velocity Pullback') ? `
-                                <div onclick="document.getElementById('stock-strategy-display').innerText = 'Sherpa Velocity Pullback'; handleStrategyChange('stock', 'Sherpa Velocity Pullback')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Sherpa Velocity Pullback</div>
+                                <option value="Sherpa Velocity Pullback" ${(user.active_stock_strategy || 'Sherpa Velocity Pullback') === 'Sherpa Velocity Pullback' ? 'selected' : ''}>Sherpa Velocity Pullback</option>
                                 ` : ''}
-                                <div onclick="document.getElementById('stock-strategy-display').innerText = 'None'; handleStrategyChange('stock', 'None')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">None (Disabled)</div>
+                                <option value="None" ${(user.active_stock_strategy || 'Sherpa Velocity Pullback') === 'None' ? 'selected' : ''}>None (Disabled)</option>
+                            </select>
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-xl">expand_more</span>
                             </div>
                         </div>
                     </div>
@@ -3753,6 +3747,14 @@ async function handleStrategyChange(type, strategyName) {
     const res = await apiRequest('/settings/strategy', 'POST', { type, strategy: strategyName });
     if (res) {
         showToast(res.message);
+        
+        if (STATE.user) {
+            if (type === 'crypto') {
+                STATE.user.active_crypto_strategy = strategyName;
+            } else if (type === 'stock') {
+                STATE.user.active_stock_strategy = strategyName;
+            }
+        }
         
         // Dynamically update UI risk sliders and state if strategy is turned on
         if (strategyName !== 'None') {
