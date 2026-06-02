@@ -2197,6 +2197,9 @@ function renderStatsView() {
         stock.unrealized_pnl_pct = stock.portfolio_value > 0 ? (stock.unrealized_pnl / stock.portfolio_value) * 100 : 0;
     }
     
+    const cryptoNetPnl = crypto.overall_pnl + crypto.unrealized_pnl;
+    const stockNetPnl = stock.overall_pnl + stock.unrealized_pnl;
+    
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
     const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
     
@@ -2227,13 +2230,14 @@ function renderStatsView() {
                 </div>
                 
                 <div class="grid grid-cols-2 gap-stack-gap text-center">
-                    <div class="bg-surface-container rounded-lg p-3">
+                    <div class="${crypto.open_positions === 0 ? 'col-span-2' : ''} bg-surface-container rounded-lg p-3">
                         <p class="text-xs text-on-surface-variant">Cumulative PnL</p>
                         <p class="text-lg font-bold ${crypto.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
                             <span>${crypto.overall_pnl_pct >= 0 ? '+' : ''}${crypto.overall_pnl_pct.toFixed(2)}%</span>
                             <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${crypto.overall_pnl >= 0 ? '+' : ''}$${crypto.overall_pnl.toFixed(2)}</span>)</span>
                         </p>
                     </div>
+                    ${crypto.open_positions > 0 ? `
                     <div class="bg-surface-container rounded-lg p-3">
                         <p class="text-xs text-on-surface-variant">Unrealized PnL</p>
                         <p class="text-lg font-bold ${crypto.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
@@ -2241,11 +2245,12 @@ function renderStatsView() {
                             <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${crypto.unrealized_pnl >= 0 ? '+' : ''}$${crypto.unrealized_pnl.toFixed(2)}</span>)</span>
                         </p>
                     </div>
+                    ` : ''}
                 </div>
                 
                 <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
                     <div>Open: <span class="text-on-surface font-bold">${crypto.open_positions} positions</span></div>
-                    <div>Record: <span class="text-on-surface font-bold">${crypto.wins}W / ${crypto.losses}L</span></div>
+                    <div>Net PnL: <span class="font-bold ${cryptoNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span ${inlineBlur}>${cryptoNetPnl >= 0 ? '+' : ''}$${cryptoNetPnl.toFixed(2)}</span></span></div>
                 </div>
             </section>
             
@@ -2271,13 +2276,14 @@ function renderStatsView() {
                 </div>
                 
                 <div class="grid grid-cols-2 gap-stack-gap text-center">
-                    <div class="bg-surface-container rounded-lg p-3">
+                    <div class="${stock.open_positions === 0 ? 'col-span-2' : ''} bg-surface-container rounded-lg p-3">
                         <p class="text-xs text-on-surface-variant">Cumulative PnL</p>
                         <p class="text-lg font-bold ${stock.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
                             <span>${stock.overall_pnl_pct >= 0 ? '+' : ''}${stock.overall_pnl_pct.toFixed(2)}%</span>
                             <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${stock.overall_pnl >= 0 ? '+' : ''}$${stock.overall_pnl.toFixed(2)}</span>)</span>
                         </p>
                     </div>
+                    ${stock.open_positions > 0 ? `
                     <div class="bg-surface-container rounded-lg p-3">
                         <p class="text-xs text-on-surface-variant">Unrealized PnL</p>
                         <p class="text-lg font-bold ${stock.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
@@ -2285,11 +2291,12 @@ function renderStatsView() {
                             <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${stock.unrealized_pnl >= 0 ? '+' : ''}$${stock.unrealized_pnl.toFixed(2)}</span>)</span>
                         </p>
                     </div>
+                    ` : ''}
                 </div>
                 
                 <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
                     <div>Open: <span class="text-on-surface font-bold">${stock.open_positions} positions</span></div>
-                    <div>Record: <span class="text-on-surface font-bold">${stock.wins}W / ${stock.losses}L</span></div>
+                    <div>Net PnL: <span class="font-bold ${stockNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span ${inlineBlur}>${stockNetPnl >= 0 ? '+' : ''}$${stockNetPnl.toFixed(2)}</span></span></div>
                 </div>
             </section>
         </main>
