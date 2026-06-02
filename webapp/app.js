@@ -2129,7 +2129,7 @@ function getFreeStatsHtml() {
                 <div class="pt-2 space-y-2">
                     <button onclick="window.shareStatsCard('free', '${s.name}')" class="w-full h-9 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                         <span class="material-symbols-outlined text-[14px]">share</span>
-                        Share Performance
+                        Share & Earn
                     </button>
                     <button onclick="resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${s.name}'); triggerBacktest(); }, 150);" class="w-full h-9 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                         <span class="material-symbols-outlined text-[14px]">science</span>
