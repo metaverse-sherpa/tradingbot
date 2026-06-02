@@ -2078,13 +2078,18 @@ function renderHistoryView() {
                                         <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr}${openDurationStr}</p>
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                        ${pnlPctStr}
-                                    </p>
-                                    <p class="font-label-sm text-label-sm text-on-surface-variant" ${inlineBlur}>
-                                        ${dollarStr}
-                                    </p>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="event.stopPropagation(); window.shareTradeCard('${t.type}', '${t.symbol}', '${t.side}', ${pnlVal}, ${t.entry_price || 0}, ${t.close_price || t.price || 0}, ${t.net_pnl || 0})" class="p-1.5 text-on-surface-variant hover:text-primary rounded-full hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center" title="Share Trade Card">
+                                        <span class="material-symbols-outlined text-[18px]">share</span>
+                                    </button>
+                                    <div class="text-right flex flex-col items-end">
+                                        <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
+                                            ${pnlPctStr}
+                                        </p>
+                                        <p class="font-label-sm text-label-sm text-on-surface-variant" ${inlineBlur}>
+                                            ${dollarStr}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         `;
@@ -2100,7 +2105,7 @@ function renderHistoryView() {
     `;
 }
 
-function getFreeStatsHtml() {
+function getFreeStatsHtml(showHeader = false) {
     if (!STATE.free_stats || !STATE.free_stats.strategies) {
         return `<div class="text-center p-8 text-on-surface-variant">Loading stats...</div>`;
     }
@@ -2145,14 +2150,11 @@ function getFreeStatsHtml() {
     }).join('');
 
     return `
-        <div class="flex items-center gap-3 mt-4 text-left">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Free Forward Testing</h2>
+        ${showHeader ? `
+        <div class="flex items-center gap-3 mt-4 mb-4 text-left">
+            <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Forward Testing Stats</h2>
         </div>
-        <div class="bg-surface-container rounded-lg p-3 border border-white/5 inline-block mb-4 text-left w-full">
-            <p class="text-on-surface-variant text-sm">
-                • Open Free Signals: <span class="text-primary font-medium text-base">${STATE.free_stats.total_open}</span>
-            </p>
-        </div>
+        ` : ''}
         <div class="space-y-4 w-full">
             ${strategiesHtml}
         </div>
@@ -2182,7 +2184,7 @@ function renderFreeStatsView(showPremiumBanner = false) {
         ${renderHeader()}
         <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             ${premiumBanner}
-            ${getFreeStatsHtml()}
+            ${getFreeStatsHtml(true)}
         </main>
     `;
 }
