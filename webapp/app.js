@@ -2810,23 +2810,19 @@ function renderBacktestView() {
                     <div class="space-y-2">
                         <label class="text-xs text-on-surface-variant font-semibold uppercase">Strategy</label>
                         <div class="relative">
-                            <input type="hidden" id="bt-strategy" value="${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? 'Mean Reversion Scalper' : 'Valkyrie Elite Scalper'}" />
-                            <div tabindex="0" onblur="setTimeout(() => { const d = document.getElementById('bt-strategy-dropdown'); if(d) d.classList.add('hidden'); }, 200)" onclick="document.getElementById('bt-strategy-dropdown').classList.toggle('hidden')" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 flex items-center cursor-pointer relative cyan-glow-focus outline-none">
-                                <span id="bt-strategy-display">${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? 'Mean Reversion Scalper' : 'Valkyrie Elite Scalper'}</span>
-                                <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-xl">expand_more</span>
-                                </div>
-                            </div>
-                            <div id="bt-strategy-dropdown" class="hidden absolute top-full left-0 w-full mt-2 bg-surface-container border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                            <select id="bt-strategy" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all appearance-none cursor-pointer" onchange="window.selectStrategy(this.value)">
                                 ${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? `
-                                <div onclick="window.selectStrategy('Mean Reversion Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Mean Reversion Scalper</div>
+                                <option value="Mean Reversion Scalper">Mean Reversion Scalper</option>
                                 ` : ''}
                                 ${!(user.disabled_strategies || []).includes('Valkyrie Elite Scalper') ? `
-                                <div onclick="window.selectStrategy('Valkyrie Elite Scalper')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Valkyrie Elite Scalper</div>
+                                <option value="Valkyrie Elite Scalper" ${((user.disabled_strategies || []).includes('Mean Reversion Scalper')) ? 'selected' : ''}>Valkyrie Elite Scalper</option>
                                 ` : ''}
                                 ${!(user.disabled_strategies || []).includes('Sherpa Velocity Pullback') ? `
-                                <div onclick="window.selectStrategy('Sherpa Velocity Pullback')" class="px-4 py-3 hover:bg-white/5 cursor-pointer text-sm text-on-surface">Sherpa Velocity Pullback</div>
+                                <option value="Sherpa Velocity Pullback">Sherpa Velocity Pullback</option>
                                 ` : ''}
+                            </select>
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-xl">expand_more</span>
                             </div>
                         </div>
                     </div>
@@ -3925,11 +3921,7 @@ window.adjustBacktestDefaults = function(strategyName) {
 
 window.selectStrategy = function(strategy) {
     const input = document.getElementById('bt-strategy');
-    const display = document.getElementById('bt-strategy-display');
-    const dropdown = document.getElementById('bt-strategy-dropdown');
     if (input) input.value = strategy;
-    if (display) display.innerText = strategy;
-    if (dropdown) dropdown.classList.add('hidden');
     window.adjustBacktestDefaults(strategy);
 };
 
