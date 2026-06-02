@@ -1577,7 +1577,7 @@ function renderDashboardView() {
             </section>
             
             <button onclick="window.shareStatsCard('${isCrypto ? 'crypto' : 'stock'}')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                <span class="material-symbols-outlined text-[18px]">photo_camera</span> Share & Earn
+                <span class="material-symbols-outlined text-[18px]">share</span> Share & Earn
             </button>
             
             <!-- Action Grid -->
@@ -2147,7 +2147,7 @@ function getFreeStatsHtml() {
             </p>
         </div>
         <button onclick="window.shareStatsCard('free')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer mb-4">
-            <span class="material-symbols-outlined text-[18px]">photo_camera</span> Share bot performance summary
+            <span class="material-symbols-outlined text-[18px]">share</span> Share bot performance summary
         </button>
         <div class="space-y-4">
             ${strategiesHtml}
@@ -4454,7 +4454,7 @@ function showShareCardModal(title, cardApiUrl, refLink) {
         <div class="glass-card rounded-2xl border border-white/10 w-full max-w-[420px] overflow-hidden flex flex-col gap-4 p-6 relative animate-scale-up">
             <div class="flex justify-between items-center pb-2 border-b border-white/10">
                 <h3 class="font-bold text-on-surface text-base flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-[20px]">photo_camera</span>
+                    <span class="material-symbols-outlined text-primary text-[20px]">share</span>
                     ${title}
                 </h3>
                 <button onclick="try { document.body.removeChild(document.getElementById('${modalId}')); } catch(e) {}" class="p-1.5 hover:bg-white/5 rounded-full text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer flex items-center justify-center">
@@ -4500,7 +4500,7 @@ function showShareCardModal(title, cardApiUrl, refLink) {
                     
                     <div class="w-full space-y-3">
                         <div class="flex gap-2">
-                            <a href="${objectUrl}" download="sherpa_pnl_card.jpg" class="flex-1 h-11 bg-primary text-background font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(168,232,255,0.4)]">
+                            <a href="${objectUrl}" download="sherpa_pnl_card.jpg" class="flex-1 h-11 bg-primary text-[#0f131f] font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(168,232,255,0.4)]">
                                 <span class="material-symbols-outlined text-[16px]">download</span> Download Image
                             </a>
                             <button onclick="navigator.clipboard.writeText('${refLink}').then(() => showToast('Referral link copied!'))" class="flex-1 h-11 bg-surface-container border border-white/10 text-on-surface font-semibold rounded-lg hover:bg-white/5 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer">
