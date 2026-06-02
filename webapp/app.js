@@ -2020,7 +2020,15 @@ function renderHistoryView() {
                     
                     ${hasMoreHistory ? `
                         <button onclick="loadMoreHistory()" class="w-full py-3 mt-4 glass-card rounded-lg font-label-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors text-center border border-white/5">
- function getFreeStatsHtml() {
+                            Load More
+                        </button>
+                    ` : ''}
+            </div>
+        </main>
+    `;
+}
+
+function getFreeStatsHtml() {
     if (!STATE.free_stats || !STATE.free_stats.strategies) {
         return `<div class="text-center p-8 text-on-surface-variant">Loading stats...</div>`;
     }
