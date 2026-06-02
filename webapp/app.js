@@ -2498,7 +2498,7 @@ function renderSettingsView() {
                         </div>
                     </div>
                 ` : `
-                    <p class="text-xs text-on-surface-variant leading-relaxed">Sync your web account with the Telegram bot to receive live signals and portfolio updates. Send /start to the bot to get your Chat ID.</p>
+                    <p class="text-xs text-on-surface-variant leading-relaxed">Sync your web account with the <a href="https://t.me/metaversesherpa_trading_bot" target="_blank" class="text-primary hover:underline">Telegram bot</a> to receive live signals and portfolio updates. Send /start to the bot to get your Chat ID.</p>
                     <form onsubmit="handleTelegramSetup(event)" class="space-y-3">
                         <input id="telegram-chat-id" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Telegram Chat ID (e.g. 123456789)" type="text" value="${user.telegram_chat_id || ''}" required/>
                         <button type="submit" class="w-full h-11 bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
