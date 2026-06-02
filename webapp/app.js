@@ -1866,7 +1866,6 @@ function renderTradesView() {
                         </div>
                         <div class="flex items-center gap-2">
                             <button onclick="event.stopPropagation(); window.shareTradeCard('${t.type}', '${t.symbol}', '${t.side}', ${roePct}, ${t.entry_price || 0}, ${t.close_price || t.price || 0}, ${t.net_pnl || 0})" class="px-2.5 h-8 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all cursor-pointer flex items-center justify-center gap-1.5 mr-2" title="Share Trade Card">
-                                <span class="material-symbols-outlined text-[14px]">share</span>
                                 Share & Earn
                             </button>
                             <div class="text-right flex flex-col items-end">
@@ -2079,7 +2078,6 @@ function renderHistoryView() {
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <button onclick="event.stopPropagation(); window.shareTradeCard('${t.type}', '${t.symbol}', '${t.side}', ${pnlVal}, ${t.entry_price || 0}, ${t.close_price || t.price || 0}, ${t.net_pnl || 0})" class="px-2.5 h-8 bg-surface-container border border-white/10 text-on-surface font-bold text-xs uppercase rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all cursor-pointer flex items-center justify-center gap-1.5 mr-2" title="Share Trade Card">
-                                        <span class="material-symbols-outlined text-[14px]">share</span>
                                         Share & Earn
                                     </button>
                                     <div class="text-right flex flex-col items-end">
