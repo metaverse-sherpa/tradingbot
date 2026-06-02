@@ -1868,13 +1868,18 @@ function renderTradesView() {
                                 <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr}</p>
                             </div>
                         </div>
-                        <div class="text-right flex flex-col items-end">
-                            <p class="font-numeric-data text-numeric-data font-bold text-lg ${roeColor}">
-                                ${roePct >= 0 ? '+' : ''}${roePct.toFixed(2)}%
-                            </p>
-                            <p class="font-numeric-data text-numeric-data text-xs ${pnlColor} mt-0.5">
-                                <span ${inlineBlur}>${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}</span>
-                            </p>
+                        <div class="flex items-center gap-2">
+                            <button onclick="event.stopPropagation(); window.shareTradeCard('${t.type}', '${t.symbol}', '${t.side}', ${roePct}, ${t.entry_price || 0}, ${t.close_price || t.price || 0}, ${t.net_pnl || 0})" class="p-1.5 text-on-surface-variant hover:text-primary rounded-full hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center" title="Share Trade Card">
+                                <span class="material-symbols-outlined text-[18px]">share</span>
+                            </button>
+                            <div class="text-right flex flex-col items-end">
+                                <p class="font-numeric-data text-numeric-data font-bold text-lg ${roeColor}">
+                                    ${roePct >= 0 ? '+' : ''}${roePct.toFixed(2)}%
+                                </p>
+                                <p class="font-numeric-data text-numeric-data text-xs ${pnlColor} mt-0.5">
+                                    <span ${inlineBlur}>${(t.net_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(t.net_pnl || 0).toFixed(2)}</span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -4470,12 +4475,34 @@ function showShareCardModal(title, cardApiUrl, refLink) {
                         <span class="material-symbols-outlined text-2xl animate-pulse">image</span>
                     </div>
                 </div>
-                <p class="text-xs text-on-surface-variant text-center animate-pulse">Generating your premium card...</p>
+                <p id="loading-spinner-text" class="text-xs text-on-surface-variant text-center transition-opacity duration-300">Generating your premium card...</p>
             </div>
         </div>
     `;
     
     document.body.appendChild(backdrop);
+    
+    const loadingText = document.getElementById('loading-spinner-text');
+    let messageIndex = 0;
+    const messages = [
+        "Generating your premium card...",
+        "Refer 3 people for 1 free month of Premium!",
+        "Share with friends and family!"
+    ];
+    const loadingInterval = setInterval(() => {
+        if (loadingText && document.body.contains(loadingText)) {
+            messageIndex = (messageIndex + 1) % messages.length;
+            loadingText.style.opacity = '0';
+            setTimeout(() => {
+                if (loadingText && document.body.contains(loadingText)) {
+                    loadingText.innerText = messages[messageIndex];
+                    loadingText.style.opacity = '1';
+                }
+            }, 300);
+        } else {
+            clearInterval(loadingInterval);
+        }
+    }, 2500);
     
     (async () => {
         try {
@@ -4491,6 +4518,7 @@ function showShareCardModal(title, cardApiUrl, refLink) {
             const blob = await res.blob();
             const objectUrl = URL.createObjectURL(blob);
             
+            clearInterval(loadingInterval);
             const contentDiv = document.getElementById('share-card-content');
             if (contentDiv) {
                 contentDiv.innerHTML = `
@@ -4500,8 +4528,8 @@ function showShareCardModal(title, cardApiUrl, refLink) {
                     
                     <div class="w-full space-y-3">
                         <div class="flex gap-2">
-                            <a href="${objectUrl}" download="sherpa_pnl_card.jpg" class="flex-1 h-11 bg-primary text-[#0f131f] font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(168,232,255,0.4)]">
-                                <span class="material-symbols-outlined text-[16px]">download</span> Download Image
+                            <a href="${objectUrl}" download="sherpa_pnl_card.jpg" class="flex-1 h-11 bg-surface-container border border-white/10 text-on-surface font-semibold rounded-lg hover:bg-white/5 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer">
+                                <span class="material-symbols-outlined text-[16px]">ios_share</span> Share Image
                             </a>
                             <button onclick="navigator.clipboard.writeText('${refLink}').then(() => showToast('Referral link copied!'))" class="flex-1 h-11 bg-surface-container border border-white/10 text-on-surface font-semibold rounded-lg hover:bg-white/5 active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer">
                                 <span class="material-symbols-outlined text-[16px]">link</span> Copy Invite Link
@@ -4514,6 +4542,7 @@ function showShareCardModal(title, cardApiUrl, refLink) {
                 `;
             }
         } catch(err) {
+            clearInterval(loadingInterval);
             const contentDiv = document.getElementById('share-card-content');
             if (contentDiv) {
                 contentDiv.innerHTML = `
