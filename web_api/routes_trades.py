@@ -25,6 +25,10 @@ trades_bp = Blueprint('trades', __name__)
 SIGNALS_ACTIVE_UPDATING = False
 SIGNALS_ACTIVE_UPDATING_LOCK = threading.Lock()
 
+# Module-level variable to prevent concurrent background updates for free stats
+STATS_FREE_UPDATING = False
+STATS_FREE_UPDATING_LOCK = threading.Lock()
+
 def _get_telegram_user(web_user):
     """If the web user has linked a Telegram chat ID, load the bot's User record."""
     tg_id = web_user.get("telegram_chat_id")
@@ -1456,124 +1460,186 @@ def get_closed_signals():
         ]
     return jsonify(signals), 200
 
+def _update_free_stats_cache():
+    global STATS_FREE_UPDATING
+    try:
+        disabled = database.get_disabled_strategies()
+        strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
+        open_sim_trades = database.get_open_theoretical_trades()
+        
+        strategy_open_trades = {s: [] for s in strategy_names}
+        for t in open_sim_trades:
+            strat = t.get('strategy', '')
+            if strat in strategy_open_trades:
+                strategy_open_trades[strat].append(t)
+                
+        open_symbols = list(set([t['symbol'] for t in open_sim_trades]))
+        stock_syms = [s for s in open_symbols if "/" not in s and ":" not in s]
+        crypto_syms = [s for s in open_symbols if s not in stock_syms]
+        
+        live_prices = {}
+        
+        if crypto_syms:
+            try:
+                r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
+                if r.status_code != 200:
+                    r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
+                if r.status_code == 200:
+                    binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
+                    for sym in crypto_syms:
+                        clean = sym.split(':')[0].replace('/', '')
+                        if clean in binance_prices:
+                            live_prices[sym] = binance_prices[clean]
+            except Exception as e:
+                print(f"Error fetching Binance tickers in get_free_stats: {e}")
+
+            remaining_crypto = [sym for sym in crypto_syms if sym not in live_prices]
+            if remaining_crypto:
+                try:
+                    resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
+                    if resp.status_code == 200:
+                        data = resp.json().get('data', [])
+                        price_map = {item['instId']: float(item['last']) for item in data}
+                        for sym in remaining_crypto:
+                            clean_sym = sym.split(':')[0].replace('/', '-')
+                            if clean_sym in price_map:
+                                live_prices[sym] = price_map[clean_sym]
+                except Exception as e:
+                    print(f"Error fetching Blofin prices: {e}")
+                
+        if stock_syms:
+            try:
+                alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY")
+                alpaca_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
+                if alpaca_key and alpaca_secret:
+                    headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
+                    sym_str = ",".join(stock_syms)
+                    resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
+                    if resp.status_code == 200:
+                        for sym, snapshot in resp.json().items():
+                            live_prices[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
+            except Exception as e:
+                print(f"Error fetching Alpaca prices: {e}")
+                    
+            for sym in stock_syms:
+                if sym not in live_prices:
+                    try:
+                        conn2 = sqlite3.connect("data/stock_daily_cache.db")
+                        c2 = conn2.cursor()
+                        c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                        row = c2.fetchone()
+                        conn2.close()
+                        if row:
+                            live_prices[sym] = float(row[0])
+                        else:
+                            live_prices[sym] = 0.0
+                    except Exception as db_err:
+                        print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
+                        live_prices[sym] = 0.0
+                
+        stats_data = []
+        starting_capital = 1000.0
+        
+        for name in strategy_names:
+            s_stats = database.get_theoretical_stats_by_strategy(name)
+            realized_pct = (s_stats['cumulative_pnl'] / starting_capital) * 100
+            open_trades = strategy_open_trades[name]
+            
+            unrealized_pnl = 0.0
+            for t in open_trades:
+                sym = t['symbol']
+                entry = t['entry_price']
+                pos_size = t['position_size']
+                side = str(t['side']).lower()
+                current = live_prices.get(sym, entry)
+                
+                is_long = side in ['buy', 'long', 'l']
+                pnl_raw = current - entry if is_long else entry - current
+                
+                if "/" in sym or ":" in sym:
+                    pnl_val = pos_size * pnl_raw
+                else:
+                    pnl_val = pos_size * (pnl_raw / entry)
+                    
+                unrealized_pnl += pnl_val
+                
+            unrealized_pct = (unrealized_pnl / starting_capital) * 100
+            
+            stats_data.append({
+                "name": name,
+                "win_rate": s_stats['win_rate'],
+                "wins": s_stats['wins'],
+                "losses": s_stats['losses'],
+                "realized_pct": realized_pct,
+                "unrealized_pct": unrealized_pct,
+                "active_count": len(open_trades),
+                "active_trades": []
+            })
+            
+        total_active = sum(s["active_count"] for s in stats_data)
+        response_data = {
+            "total_open": total_active,
+            "strategies": stats_data
+        }
+        
+        cache_key = "stats_free"
+        with RESPONSE_CACHE_LOCK:
+            RESPONSE_CACHE[cache_key] = (time.time() + 15, response_data)  # Cache for 15 seconds
+        return response_data
+    except Exception as e:
+        import traceback
+        print(f"[CACHE ERROR] Failed to update free stats cache: {e}")
+        traceback.print_exc()
+        return None
+    finally:
+        with STATS_FREE_UPDATING_LOCK:
+            STATS_FREE_UPDATING = False
+
 @trades_bp.route('/api/stats/free', methods=['GET'])
 def get_free_stats():
+    global STATS_FREE_UPDATING
+    cache_key = "stats_free"
+    now = time.time()
+    
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            if now < expiry:
+                return jsonify(cached_data), 200
+            else:
+                with STATS_FREE_UPDATING_LOCK:
+                    if not STATS_FREE_UPDATING:
+                        STATS_FREE_UPDATING = True
+                        threading.Thread(target=_update_free_stats_cache).start()
+                return jsonify(cached_data), 200
+                
+        with STATS_FREE_UPDATING_LOCK:
+            is_updating = STATS_FREE_UPDATING
+            if not is_updating:
+                STATS_FREE_UPDATING = True
+                
+    if not is_updating:
+        data = _update_free_stats_cache()
+        if data:
+            return jsonify(data), 200
+            
+    # Fallback placeholder if cache is empty and background task is still running
     disabled = database.get_disabled_strategies()
     strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
-    open_sim_trades = database.get_open_theoretical_trades()
-    
-    strategy_open_trades = {s: [] for s in strategy_names}
-    for t in open_sim_trades:
-        strat = t.get('strategy', '')
-        if strat in strategy_open_trades:
-            strategy_open_trades[strat].append(t)
-            
-    open_symbols = list(set([t['symbol'] for t in open_sim_trades]))
-    stock_syms = [s for s in open_symbols if "/" not in s and ":" not in s]
-    crypto_syms = [s for s in open_symbols if s not in stock_syms]
-    
-    live_prices = {}
-    
-    if crypto_syms:
-        try:
-            r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
-            if r.status_code != 200:
-                r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
-            if r.status_code == 200:
-                binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
-                for sym in crypto_syms:
-                    clean = sym.split(':')[0].replace('/', '')
-                    if clean in binance_prices:
-                        live_prices[sym] = binance_prices[clean]
-        except Exception as e:
-            print(f"Error fetching Binance tickers in get_free_stats: {e}")
-
-        remaining_crypto = [sym for sym in crypto_syms if sym not in live_prices]
-        if remaining_crypto:
-            try:
-                resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
-                if resp.status_code == 200:
-                    data = resp.json().get('data', [])
-                    price_map = {item['instId']: float(item['last']) for item in data}
-                    for sym in remaining_crypto:
-                        clean_sym = sym.split(':')[0].replace('/', '-')
-                        if clean_sym in price_map:
-                            live_prices[sym] = price_map[clean_sym]
-            except Exception as e:
-                print(f"Error fetching Blofin prices: {e}")
-            
-    if stock_syms:
-        try:
-            alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY")
-            alpaca_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
-            if alpaca_key and alpaca_secret:
-                headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
-                sym_str = ",".join(stock_syms)
-                resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
-                if resp.status_code == 200:
-                    for sym, snapshot in resp.json().items():
-                        live_prices[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
-        except Exception as e:
-            print(f"Error fetching Alpaca prices: {e}")
-                
-        for sym in stock_syms:
-            if sym not in live_prices:
-                try:
-                    conn2 = sqlite3.connect("data/stock_daily_cache.db")
-                    c2 = conn2.cursor()
-                    c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
-                    row = c2.fetchone()
-                    conn2.close()
-                    if row:
-                        live_prices[sym] = float(row[0])
-                    else:
-                        live_prices[sym] = 0.0
-                except Exception as db_err:
-                    print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
-                    live_prices[sym] = 0.0
-            
     stats_data = []
-    starting_capital = 1000.0
-    
     for name in strategy_names:
-        s_stats = database.get_theoretical_stats_by_strategy(name)
-        realized_pct = (s_stats['cumulative_pnl'] / starting_capital) * 100
-        open_trades = strategy_open_trades[name]
-        
-        unrealized_pnl = 0.0
-        for t in open_trades:
-            sym = t['symbol']
-            entry = t['entry_price']
-            pos_size = t['position_size']
-            side = str(t['side']).lower()
-            current = live_prices.get(sym, entry)
-            
-            is_long = side in ['buy', 'long', 'l']
-            pnl_raw = current - entry if is_long else entry - current
-            
-            if "/" in sym or ":" in sym:
-                pnl_val = pos_size * pnl_raw
-            else:
-                pnl_val = pos_size * (pnl_raw / entry)
-                
-            unrealized_pnl += pnl_val
-            
-        unrealized_pct = (unrealized_pnl / starting_capital) * 100
-        
         stats_data.append({
             "name": name,
-            "win_rate": s_stats['win_rate'],
-            "wins": s_stats['wins'],
-            "losses": s_stats['losses'],
-            "realized_pct": realized_pct,
-            "unrealized_pct": unrealized_pct,
-            "active_count": len(open_trades),
+            "win_rate": 0.0,
+            "wins": 0,
+            "losses": 0,
+            "realized_pct": 0.0,
+            "unrealized_pct": 0.0,
+            "active_count": 0,
             "active_trades": []
         })
-        
-    total_active = sum(s["active_count"] for s in stats_data)
     return jsonify({
-        "total_open": total_active,
+        "total_open": 0,
         "strategies": stats_data
     }), 200
 
