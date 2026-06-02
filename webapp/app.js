@@ -1509,19 +1509,7 @@ function renderDashboardView() {
                 </div>
             </section>
             
-            <!-- Strategy Banner -->
-            <section class="bg-surface-container-high rounded-xl p-4 flex items-center justify-between border border-white/5">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                        <span class="material-symbols-outlined">query_stats</span>
-                    </div>
-                    <div>
-                        <p class="font-label-sm text-label-sm text-on-surface-variant">Active Strategy</p>
-                        <p class="font-body-lg text-body-lg font-bold text-on-surface">${isCrypto ? '🪙' : '🦙'} ${activeStrategy}</p>
-                    </div>
-                </div>
-                <a class="font-label-md text-label-md text-primary hover:underline" href="#/settings">Change</a>
-            </section>
+
             
             <!-- Action Grid -->
             <section class="grid grid-cols-2 gap-stack-gap">
