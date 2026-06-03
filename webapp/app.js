@@ -2288,7 +2288,7 @@ function renderStatsView() {
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
-                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
+                        <p class="text-[10px] mt-0.5">&nbsp;</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
@@ -2306,8 +2306,10 @@ function renderStatsView() {
                 <div class="grid grid-cols-3 gap-2 text-center mt-2" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
-                        <p class="text-sm font-bold text-on-surface mt-1">${crypto.open_positions}</p>
-                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">
+                            <a href="#/trades" onclick="STATE.dashboard_tab='crypto'; STATE.trades_mode='active';" class="hover:text-primary transition-colors">${crypto.open_positions}</a>
+                        </p>
+                        <p class="text-[10px] mt-0.5">&nbsp;</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Unrealized PnL</p>
@@ -2321,8 +2323,19 @@ function renderStatsView() {
                     </div>
                 </div>
                 ` : `
-                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono mt-4">
-                    <div>Open: <span class="text-on-surface font-bold">0 positions</span></div>
+                <div class="grid grid-cols-2 gap-2 text-center mt-2" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Open Trades</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">
+                            <a href="#/trades" onclick="STATE.dashboard_tab='crypto'; STATE.trades_mode='active';" class="hover:text-primary transition-colors">0</a>
+                        </p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Closed Trades</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">
+                            <a href="#/trades" onclick="STATE.dashboard_tab='crypto'; STATE.trades_mode='closed';" class="hover:text-primary transition-colors">${crypto.wins + crypto.losses}</a>
+                        </p>
+                    </div>
                 </div>
                 `}
             </section>
@@ -2338,7 +2351,7 @@ function renderStatsView() {
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
-                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
+                        <p class="text-[10px] mt-0.5">&nbsp;</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
@@ -2356,8 +2369,10 @@ function renderStatsView() {
                 <div class="grid grid-cols-3 gap-2 text-center mt-2" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
-                        <p class="text-sm font-bold text-on-surface mt-1">${stock.open_positions}</p>
-                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">
+                            <a href="#/trades" onclick="STATE.dashboard_tab='stock'; STATE.trades_mode='active';" class="hover:text-primary transition-colors">${stock.open_positions}</a>
+                        </p>
+                        <p class="text-[10px] mt-0.5">&nbsp;</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Unrealized PnL</p>
@@ -2371,8 +2386,19 @@ function renderStatsView() {
                     </div>
                 </div>
                 ` : `
-                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono mt-4">
-                    <div>Open: <span class="text-on-surface font-bold">0 positions</span></div>
+                <div class="grid grid-cols-2 gap-2 text-center mt-2" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Open Trades</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">
+                            <a href="#/trades" onclick="STATE.dashboard_tab='stock'; STATE.trades_mode='active';" class="hover:text-primary transition-colors">0</a>
+                        </p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Closed Trades</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">
+                            <a href="#/trades" onclick="STATE.dashboard_tab='stock'; STATE.trades_mode='closed';" class="hover:text-primary transition-colors">${stock.wins + stock.losses}</a>
+                        </p>
+                    </div>
                 </div>
                 `}
             </section>
