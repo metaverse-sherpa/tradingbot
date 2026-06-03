@@ -146,15 +146,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{expired_alert}"
         f"{linked_status}"
         "🏔️ *Metaverse Sherpa Trading Bot*\n\n"
-        "The elite automated trading solution for institutional-grade professionals. We now support automated trading of both **Crypto** (via **Blofin**, **Binance**, and **MEXC**) and **Stocks** (via **Alpaca**).\n\n"
+        "The elite automated trading solution for professionals. We support automated trading of **Crypto** (Blofin, Binance, MEXC) and **Stocks** (Alpaca).\n\n"
         "🛡️ *Security & Control*\n"
-        "Your exchange API credentials are **fully encrypted** and isolated. Only the Sherpa engine can see them to execute trades. You maintain full control: trades include automatic Stop Loss and Take Profit.\n\n"
+        "API credentials are **fully encrypted** and isolated. Trades include automatic Stop Loss & Take Profit.\n\n"
         "📊 *Access Tiers*\n"
-        "• **Standard (Always Free)**: Receive real-time free signal signals directly in your Telegram chat as the Sherpa scans the markets.\n"
-        "• **/premium**: Full autopilot mode. The Sherpa connects directly to your exchange accounts to automatically execute and manage actual trades in real-time. **$20/mo**.\n\n"
-        "📖 Tap /strategyguide to view different trading strategies.\n\n"
-        f"🔗 **Web Sync**: [Tap here to Web Sync](https://bot.metaversesherpa.io/?tg_sync={chat_id}) your Telegram account with our Web App, or copy your Chat ID: `{chat_id}` into settings.\n\n"
-        "🏆 Tap /setup to link your account and start your climb."
+        "• **Standard (Free)**: Receive real-time signals.\n"
+        "• **/premium**: Full autopilot mode. Sherpa executes and manages trades in real-time. **$20/mo**.\n\n"
+        "📖 Tap /strategyguide to view strategies.\n\n"
+        f"🔗 **Web Sync**: [Tap to Sync](https://bot.metaversesherpa.io/?tg_sync={chat_id}) with Web App, or manually copy your ID: `{chat_id}`.\n\n"
+        "🏆 Tap /setup to link your account."
     )
     
     from bot.ui.keyboards import send_cached_photo
