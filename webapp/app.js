@@ -7,6 +7,19 @@ function getQueryParam(name) {
     return match ? match[1] : null;
 }
 
+function clearQueryParamFromUrl(paramName) {
+    const url = new URL(window.location);
+    if (url.searchParams.has(paramName)) {
+        url.searchParams.delete(paramName);
+        window.history.replaceState({}, '', url);
+    }
+    if (window.location.hash.includes(paramName + '=')) {
+        let hash = window.location.hash;
+        hash = hash.replace(new RegExp(`[?&]${paramName}=[^&]*`), '');
+        window.history.replaceState({}, '', window.location.pathname + window.location.search + hash);
+    }
+}
+
 let STATE = {
     user: null,
     crypto_balance: 0.0,
@@ -364,6 +377,7 @@ async function handleRoute() {
     const refCode = getQueryParam('ref');
     if (refCode) {
         localStorage.setItem('referred_by', refCode);
+        clearQueryParamFromUrl('ref');
         navigate('#/login');
         return;
     }
@@ -371,6 +385,7 @@ async function handleRoute() {
     const giftCode = getQueryParam('gift');
     if (giftCode) {
         localStorage.setItem('pending_gift_code', giftCode);
+        clearQueryParamFromUrl('gift');
         navigate('#/login');
         return;
     }
@@ -378,6 +393,7 @@ async function handleRoute() {
     const tgSync = getQueryParam('tg_sync');
     if (tgSync) {
         localStorage.setItem('pending_tg_sync', tgSync);
+        clearQueryParamFromUrl('tg_sync');
     }
 
     let hash = window.location.hash || '#/landing';
