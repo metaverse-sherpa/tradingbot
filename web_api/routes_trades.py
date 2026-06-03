@@ -1654,6 +1654,8 @@ def share_card():
     ref_link = user.get("invite_link") or f"https://bot.metaversesherpa.io/#/register?ref={ref_id}"
     hide_dollars = user.get("hide_dollars", True)
     
+    print(f"[CARD DEBUG] Requested share_card for user {user.get('id')} / {ref_id} with type={card_type}, arguments={dict(request.args)}")
+    
     # Custom query parameters override for individual trade / signal sharing
     symbol = request.args.get("symbol")
     side = request.args.get("side", "LONG")
@@ -1664,10 +1666,12 @@ def share_card():
         mark = float(request.args.get("mark", 0.0))
         pnl_usdt = float(request.args.get("pnl_usdt", 0.0))
     except ValueError:
+        print("[CARD DEBUG] Error parsing numeric parameters for individual trade card")
         return jsonify({"error": "Invalid numeric parameter"}), 400
 
     if card_type == "stats":
         tab = request.args.get("tab", "crypto") # crypto, stock, free
+        print(f"[CARD DEBUG] Entering stats card path. tab={tab}")
         
         if tab == "free":
             # Check for pre-computed query parameters first
@@ -1737,18 +1741,25 @@ def share_card():
                 param_win_rate = request.args.get("win_rate")
                 param_total = request.args.get("total_trades")
                 
+                print(f"[CARD DEBUG] Crypto parameters parsed: overall={param_overall}, daily={param_daily}, wr={param_win_rate}, total={param_total}")
+                
                 if all(v is not None for v in [param_overall, param_daily, param_win_rate, param_total]):
                     try:
+                        print("[CARD DEBUG] Parameters complete. Generating card immediately.")
                         card_path = media_gen.generate_stats_card(
                             float(param_overall), float(param_daily), float(param_win_rate), int(param_total),
                             user_id=str(ref_id), ref_link=ref_link
                         )
                         if card_path and os.path.exists(card_path):
+                            print(f"[CARD DEBUG] Card generated and saved to {card_path}. Sending file.")
                             return send_file(card_path, mimetype="image/jpeg", as_attachment=False)
+                        else:
+                            print("[CARD DEBUG] Failed to generate card path.")
                     except Exception as pe:
                         print(f"[SHARE] Error generating card with parameters: {pe}")
                 
                 # Fallback to live fetching
+                print("[CARD DEBUG] Fallback: Missing parameters or generation failed. Fetching database and exchange stats.")
                 crypto_wins = tg_user.get("wins", tg_user.get("total_wins", 0)) or 0
                 crypto_losses = tg_user.get("losses", tg_user.get("total_losses", 0)) or 0
                 crypto_total = crypto_wins + crypto_losses
@@ -1766,6 +1777,7 @@ def share_card():
                 realized_daily_pnl = 0.0
                 if crypto_api_key and crypto_api_secret:
                     try:
+                        print(f"[CARD DEBUG] Connecting to exchange {crypto_exchange_id}...")
                         import ccxt
                         config = {
                             "apiKey": crypto_api_key,
@@ -1776,7 +1788,9 @@ def share_card():
                         }
                         client = getattr(ccxt, crypto_exchange_id)(config)
                         try:
+                            print("[CARD DEBUG] Querying fetch_positions() from exchange...")
                             positions = client.fetch_positions()
+                            print(f"[CARD DEBUG] Positions fetched: {len(positions)} total objects.")
                             for p in positions:
                                 contracts = float(p.get("contracts", 0) or 0)
                                 if contracts != 0:
@@ -1793,6 +1807,7 @@ def share_card():
                 daily_pnl = realized_daily_pnl + crypto_unrealized
                 daily_pnl_pct = (daily_pnl / crypto_equity) * 100 if crypto_equity > 0 else 0.0
                 
+                print(f"[CARD DEBUG] Generating stats card for stats: overall_pct={overall_pnl_pct}, daily_pct={daily_pnl_pct}, wr={crypto_win_rate}, total={crypto_total}")
                 card_path = media_gen.generate_stats_card(
                     overall_pnl_pct, daily_pnl_pct, crypto_win_rate, crypto_total,
                     user_id=str(ref_id), ref_link=ref_link

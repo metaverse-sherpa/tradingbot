@@ -35,7 +35,7 @@ def verify_token(token: str) -> int:
         payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         return int(payload['sub'])
     except Exception as e:
-        print(f"[AUTH DEBUG] verify_token EXCEPTION: {type(e).__name__}: {e}")
+        # print(f"[AUTH DEBUG] verify_token EXCEPTION: {type(e).__name__}: {e}")
         return None
 
 def verify_google_token(token: str) -> dict:
@@ -54,23 +54,17 @@ def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = request.cookies.get('session_token')
-        print(f"[AUTH DEBUG] Cookie token: {token[:10] if token else None}")
         
         if not token:
             # Fallback to Authorization header
             auth_header = request.headers.get('Authorization')
-            print(f"[AUTH DEBUG] Auth header: {auth_header[:15] if auth_header else None}")
             if auth_header and auth_header.startswith('Bearer '):
                 token = auth_header.split(' ')[1]
         
-        print(f"[AUTH DEBUG] Final token to verify: {token[:10] if token else None}")
-        
         if not token:
-            print("[AUTH DEBUG] No token found, returning 401")
             return jsonify({"error": "Authentication required"}), 401
             
         user_id = verify_token(token)
-        print(f"[AUTH DEBUG] verify_token result: {user_id}")
         if not user_id:
             return jsonify({"error": "Invalid or expired session"}), 401
             
