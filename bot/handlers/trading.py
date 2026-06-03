@@ -1402,14 +1402,21 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Conditional Viral Payload (Only show referral links/buttons for profit)
         if is_profit:
+            webapp_ref_link = f"https://metaversesherpa.io/#/register?ref={chat_id}"
             viral_caption = (
                 f"{headline}\n\n"
-                "Join the elite circle of automated traders. Tap below to copy my invite link and start your 5-day trial:\n\n"
-                f"`{ref_link}`"
+                "Join the elite circle of automated traders. Start receiving free signals here:\n\n"
+                f"🤖 Telegram Bot: {ref_link}\n"
+                f"🌐 Web App: {webapp_ref_link}"
             )
             
             # Create a pre-filled Telegram share URL
-            share_text = f"{headline.replace('*', '')}\n\nJoin the elite circle of automated traders. Start your 5-day trial here:\n{ref_link}"
+            share_text = (
+                f"{headline.replace('*', '')}\n\n"
+                "Join the elite circle of automated traders. Start receiving free signals here:\n\n"
+                f"🤖 Telegram Bot: {ref_link}\n"
+                f"🌐 Web App: {webapp_ref_link}"
+            )
             import urllib.parse
             encoded_text = urllib.parse.quote(share_text)
             share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={encoded_text}"
