@@ -134,10 +134,16 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     """
     Generates a professional performance summary card.
     """
+    import time
+    t0 = time.time()
+    print(f"[PROFILE] generate_stats_card START", flush=True)
     if not os.path.exists(LOGO_PATH):
+        print(f"[PROFILE] Logo path not found", flush=True)
         return None
         
     base_img = Image.open(LOGO_PATH).convert("RGBA")
+    print(f"[PROFILE] Logo opened in {time.time() - t0:.4f}s", flush=True)
+    t_font = time.time()
     if base_img.width < 1000:
         base_img = base_img.resize((1024, 1024), Image.Resampling.LANCZOS)
     
@@ -153,7 +159,13 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
         ]
         def find_font(size):
             for path in font_paths:
-                try: return ImageFont.truetype(path, size)
+                try: 
+                    # Avoid bare font names like "Arial" which trigger slow system scans in Pillow
+                    if path == "Arial":
+                        continue
+                    f = ImageFont.truetype(path, size)
+                    print(f"[PROFILE] Loaded font {path} size {size}", flush=True)
+                    return f
                 except: continue
             return ImageFont.load_default()
 
@@ -161,9 +173,12 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
         font_sub = find_font(45)
         font_massive = find_font(100)
         font_handle = find_font(25)
-    except:
+    except Exception as fe:
+        print(f"[PROFILE] Font error: {fe}", flush=True)
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
+    print(f"[PROFILE] Fonts loaded in {time.time() - t_font:.4f}s", flush=True)
+    t_draw = time.time()
     color_neon = (0, 255, 150, 255) if overall_pnl >= 0 else (255, 50, 50, 255)
     color_white = (255, 255, 255, 255)
     
@@ -184,17 +199,23 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     
     os.makedirs("pnl_cards", exist_ok=True)
     combined = Image.alpha_composite(base_img, overlay)
-    combined = add_qr_code(combined, ref_link, size=160)
+    print(f"[PROFILE] Drawing and compositing done in {time.time() - t_draw:.4f}s", flush=True)
     
+    t_qr = time.time()
+    combined = add_qr_code(combined, ref_link, size=160)
+    print(f"[PROFILE] QR Code added in {time.time() - t_qr:.4f}s", flush=True)
+    
+    t_save = time.time()
     save_filename = f"stats_card_{user_id}.png"
     save_path = os.path.join("pnl_cards", save_filename)
     
     rgb_final = combined.convert("RGB")
     rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
+    print(f"[PROFILE] Image saved in {time.time() - t_save:.4f}s", flush=True)
     
     base_img.close(); overlay.close(); combined.close(); rgb_final.close()
     gc.collect()
-    
+    print(f"[PROFILE] generate_stats_card finished in {time.time() - t0:.4f}s", flush=True)
     return save_path
 
 def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day, period_text, bot_username="metaversesherpa_trading_bot"):
