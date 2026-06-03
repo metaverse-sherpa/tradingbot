@@ -1670,6 +1670,25 @@ def share_card():
         tab = request.args.get("tab", "crypto") # crypto, stock, free
         
         if tab == "free":
+            # Check for pre-computed query parameters first
+            param_overall = request.args.get("overall_pnl_pct")
+            param_daily = request.args.get("daily_pnl_pct")
+            param_win_rate = request.args.get("win_rate")
+            param_total = request.args.get("total_trades")
+            strategy_name = request.args.get("strategy")
+            title_str = strategy_name if strategy_name else "TRADING PERFORMANCE"
+            
+            if all(v is not None for v in [param_overall, param_daily, param_win_rate, param_total]):
+                try:
+                    card_path = media_gen.generate_stats_card(
+                        float(param_overall), float(param_daily), float(param_win_rate), int(param_total),
+                        user_id=str(ref_id), ref_link=ref_link, title_text=title_str
+                    )
+                    if card_path and os.path.exists(card_path):
+                        return send_file(card_path, mimetype="image/jpeg", as_attachment=False)
+                except Exception as pe:
+                    print(f"[SHARE] Error generating card with parameters: {pe}")
+            
             # Bot theoretical/free signals stats
             strategy_name = request.args.get("strategy")
             if strategy_name:
@@ -1712,6 +1731,24 @@ def share_card():
             tg_user = _get_telegram_user(user) or user
             
             if tab == "crypto":
+                # Check for pre-computed query parameters first
+                param_overall = request.args.get("overall_pnl_pct")
+                param_daily = request.args.get("daily_pnl_pct")
+                param_win_rate = request.args.get("win_rate")
+                param_total = request.args.get("total_trades")
+                
+                if all(v is not None for v in [param_overall, param_daily, param_win_rate, param_total]):
+                    try:
+                        card_path = media_gen.generate_stats_card(
+                            float(param_overall), float(param_daily), float(param_win_rate), int(param_total),
+                            user_id=str(ref_id), ref_link=ref_link
+                        )
+                        if card_path and os.path.exists(card_path):
+                            return send_file(card_path, mimetype="image/jpeg", as_attachment=False)
+                    except Exception as pe:
+                        print(f"[SHARE] Error generating card with parameters: {pe}")
+                
+                # Fallback to live fetching
                 crypto_wins = tg_user.get("wins", tg_user.get("total_wins", 0)) or 0
                 crypto_losses = tg_user.get("losses", tg_user.get("total_losses", 0)) or 0
                 crypto_total = crypto_wins + crypto_losses
@@ -1730,12 +1767,13 @@ def share_card():
                 if crypto_api_key and crypto_api_secret:
                     try:
                         import ccxt
+                        import concurrent.futures
                         config = {
                             "apiKey": crypto_api_key,
                             "secret": crypto_api_secret,
                             "password": crypto_api_password or "",
                             "options": {"defaultType": "swap"},
-                            "timeout": 5000
+                            "timeout": 3000
                         }
                         client = getattr(ccxt, crypto_exchange_id)(config)
                         try:
@@ -1745,21 +1783,34 @@ def share_card():
                                 if contracts != 0:
                                     crypto_unrealized += float(p.get("unrealizedPnl", 0) or 0)
                                     
-                            # Daily PnL realized (from last 24h)
+                            # Daily PnL realized (from last 24h) concurrent fetch
                             now_ms = int(time.time() * 1000)
                             twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
                             params = {'instType': 'SWAP'} if client.id == 'blofin' else {}
-                            for sym in ["BTC/USDT", "ETH/USDT", "SOL/USDT"]:
+                            
+                            def fetch_trades_for_sym(sym):
                                 try:
-                                    norm_sym = database.normalize_symbol(sym, client.id)
-                                    trades = client.fetch_my_trades(norm_sym, since=twenty_four_hours_ago, params=params)
-                                    for t in trades:
-                                        info = t.get("info", {})
-                                        gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
-                                        if gross_pnl != 0:
-                                            fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                                            realized_daily_pnl += (gross_pnl - fee * 2)
-                                except: pass
+                                    # Create a thread-local exchange client instance to be thread-safe
+                                    sub_client = getattr(ccxt, crypto_exchange_id)({**config, "timeout": 3000})
+                                    try:
+                                        norm_sym = database.normalize_symbol(sym, sub_client.id)
+                                        trades = sub_client.fetch_my_trades(norm_sym, since=twenty_four_hours_ago, params=params)
+                                        pnl = 0.0
+                                        for t in trades:
+                                            info = t.get("info", {})
+                                            gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
+                                            if gross_pnl != 0:
+                                                fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
+                                                pnl += (gross_pnl - fee * 2)
+                                        return pnl
+                                    finally:
+                                        sub_client.close()
+                                except:
+                                    return 0.0
+                                    
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                                results = list(executor.map(fetch_trades_for_sym, ["BTC/USDT", "ETH/USDT", "SOL/USDT"]))
+                                realized_daily_pnl = sum(results)
                         finally:
                             try: client.close()
                             except: pass
@@ -1777,6 +1828,23 @@ def share_card():
                     user_id=str(ref_id), ref_link=ref_link
                 )
             else:
+                # Check for pre-computed query parameters first
+                param_overall = request.args.get("overall_pnl_pct")
+                param_daily = request.args.get("daily_pnl_pct")
+                param_win_rate = request.args.get("win_rate")
+                param_total = request.args.get("total_trades")
+                
+                if all(v is not None for v in [param_overall, param_daily, param_win_rate, param_total]):
+                    try:
+                        card_path = media_gen.generate_stats_card(
+                            float(param_overall), float(param_daily), float(param_win_rate), int(param_total),
+                            user_id=str(ref_id), ref_link=ref_link
+                        )
+                        if card_path and os.path.exists(card_path):
+                            return send_file(card_path, mimetype="image/jpeg", as_attachment=False)
+                    except Exception as pe:
+                        print(f"[SHARE] Error generating card with parameters: {pe}")
+
                 # Stock Stats
                 stock_equity = 10000.0
                 stock_start_equity = 10000.0

@@ -4487,6 +4487,46 @@ window.shareStatsCard = function(tab, strategy) {
         url += `&strategy=${encodeURIComponent(strategy)}`;
     }
     
+    // Append pre-computed stats if available in STATE to bypass backend live fetches/DB calls
+    if (tab === 'crypto' && STATE.stats && STATE.stats.crypto) {
+        const stats = STATE.stats.crypto;
+        const wr = stats.win_rate || 0;
+        const total = stats.total_trades || 0;
+        const overall = stats.overall_pnl_pct || 0;
+        const daily = stats.overall_pnl_pct || 0; 
+        url += `&overall_pnl_pct=${overall}&daily_pnl_pct=${daily}&win_rate=${wr}&total_trades=${total}`;
+    } else if (tab === 'stock' && STATE.stats && STATE.stats.stock) {
+        const stats = STATE.stats.stock;
+        const wr = stats.win_rate || 0;
+        const total = stats.total_trades || 0;
+        const overall = stats.overall_pnl_pct || 0;
+        const daily = stats.overall_pnl_pct || 0;
+        url += `&overall_pnl_pct=${overall}&daily_pnl_pct=${daily}&win_rate=${wr}&total_trades=${total}`;
+    } else if (tab === 'free' && STATE.free_stats) {
+        if (strategy) {
+            const strat = STATE.free_stats.strategies.find(s => s.name === strategy);
+            if (strat) {
+                const wr = strat.win_rate || 0;
+                const total = (strat.wins || 0) + (strat.losses || 0);
+                const overall = strat.realized_pct || 0;
+                const daily = strat.realized_pct || 0;
+                url += `&overall_pnl_pct=${overall}&daily_pnl_pct=${daily}&win_rate=${wr}&total_trades=${total}`;
+            }
+        } else {
+            const strats = STATE.free_stats.strategies || [];
+            let totalWins = 0, totalLosses = 0, sumRealized = 0;
+            strats.forEach(s => {
+                totalWins += (s.wins || 0);
+                totalLosses += (s.losses || 0);
+                sumRealized += (s.realized_pct || 0);
+            });
+            const total = totalWins + totalLosses;
+            const wr = total > 0 ? (totalWins / total) * 100 : 0;
+            const overall = sumRealized / (strats.length || 1);
+            url += `&overall_pnl_pct=${overall}&daily_pnl_pct=${overall}&win_rate=${wr}&total_trades=${total}`;
+        }
+    }
+    
     showShareCardModal(title, url, refLink);
 };
 
@@ -4513,7 +4553,7 @@ function showShareCardModal(title, cardApiUrl, refLink) {
     backdrop.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in';
     
     backdrop.innerHTML = `
-        <div class="glass-card rounded-2xl border border-white/10 w-full max-w-[420px] overflow-hidden flex flex-col gap-4 p-6 relative animate-scale-up">
+        <div class="glass-card rounded-2xl border border-white/10 w-full overflow-hidden flex flex-col gap-4 p-6 relative animate-scale-up" style="max-width: 420px;">
             <div class="flex justify-between items-center pb-2 border-b border-white/10">
                 <h3 class="font-bold text-on-surface text-base flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary text-[20px]">share</span>
