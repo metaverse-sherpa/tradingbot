@@ -126,7 +126,7 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
     
     base_img.close(); overlay.close(); combined.close(); rgb_final.close()
-    gc.collect()
+    # gc.collect()
     
     return save_path
 
@@ -214,7 +214,7 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     print(f"[PROFILE] Image saved in {time.time() - t_save:.4f}s", flush=True)
     
     base_img.close(); overlay.close(); combined.close(); rgb_final.close()
-    gc.collect()
+    # gc.collect()
     print(f"[PROFILE] generate_stats_card finished in {time.time() - t0:.4f}s", flush=True)
     return save_path
 
@@ -281,7 +281,7 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
     
     base_img.close(); overlay.close(); combined.close(); rgb_final.close()
-    gc.collect()
+    # gc.collect()
     
     return save_path
 
@@ -535,6 +535,6 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
     rgb_final.save(save_path, "JPEG", quality=85, optimize=True)
     
     base_img.close(); overlay.close(); combined.close(); rgb_final.close()
-    gc.collect()
+    # gc.collect()
     
     return save_path
