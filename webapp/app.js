@@ -2935,16 +2935,13 @@ function renderBacktestView() {
                             <p class="text-xs text-on-surface-variant">Max Drawdown</p>
                             <p class="text-lg font-bold text-error">-${bt.result.max_drawdown}%</p>
                         </div>
-                        <div class="bg-surface-container rounded-lg p-3 text-center">
+                        <div class="col-span-2 bg-surface-container rounded-lg p-3 text-center flex flex-col justify-center items-center">
                             <p class="text-xs text-on-surface-variant">Net PnL</p>
-                            <p class="text-lg font-bold ${bt.result.net_pnl >= 0 ? 'text-tertiary' : 'text-error'}">
-                                ${bt.result.net_pnl >= 0 ? '+' : ''}$${bt.result.net_pnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                            </p>
-                        </div>
-                        <div class="bg-surface-container rounded-lg p-3 text-center">
-                            <p class="text-xs text-on-surface-variant">Final Balance</p>
                             <p class="text-lg font-bold text-on-surface">
                                 $${((bt.result.capital || 10000) + bt.result.net_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                <span class="${bt.result.net_pnl >= 0 ? 'text-tertiary' : 'text-error'} ml-1">
+                                    ${bt.result.net_pnl >= 0 ? '+' : ''}${((bt.result.net_pnl / (bt.result.capital || 10000)) * 100).toFixed(2)}% (${bt.result.net_pnl >= 0 ? '+' : ''}$${Math.abs(bt.result.net_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})})
+                                </span>
                             </p>
                         </div>
                     </div>
