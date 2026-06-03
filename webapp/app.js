@@ -2288,6 +2288,7 @@ function renderStatsView() {
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
+                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
@@ -2306,6 +2307,7 @@ function renderStatsView() {
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
                         <p class="text-sm font-bold text-on-surface mt-1">${crypto.open_positions}</p>
+                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Unrealized PnL</p>
@@ -2336,6 +2338,7 @@ function renderStatsView() {
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
+                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
@@ -2354,6 +2357,7 @@ function renderStatsView() {
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
                         <p class="text-sm font-bold text-on-surface mt-1">${stock.open_positions}</p>
+                        <p class="text-[10px] mt-0.5 invisible">Spacer</p>
                     </div>
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Unrealized PnL</p>
