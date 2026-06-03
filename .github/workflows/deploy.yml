@@ -27,8 +27,8 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             
-            echo "🔄 Restarting Sherpa Engine..."
-            sudo systemctl restart webapi
+            echo "🔄 Gracefully reloading Sherpa Web API..."
+            sudo systemctl reload webapi
             sudo systemctl restart tradingbot
             
             echo "✅ Deployment Successful."
