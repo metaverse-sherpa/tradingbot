@@ -147,7 +147,7 @@ def referral_info():
 @require_auth
 def referral_stats():
     user = g.user
-    invite_link = f"https://metaversesherpa.io/#/register?ref={user['id']}"
+    invite_link = f"https://bot.metaversesherpa.io/#/register?ref={user['id']}"
     tg_user = _get_telegram_user(user)
     ref_count = user.get("referral_count", 0)
     credits = user.get("referral_credits", 0.0)

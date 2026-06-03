@@ -25,7 +25,7 @@ CORS(
         r"/api/*": {
             "origins": [
                 FRONTEND_ORIGIN,
-                "https://metaversesherpa.io",
+                "https://bot.metaversesherpa.io",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173"
             ]

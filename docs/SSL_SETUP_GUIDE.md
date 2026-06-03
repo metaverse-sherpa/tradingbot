@@ -4,7 +4,7 @@ This guide covers how to point your Network Solutions domain to your VPS, config
 
 ## Step 1: Point Your Domain (Network Solutions)
 
-DNS changes tell the internet that your domain (`metaversesherpa.io`) lives at your VPS IP address (`35.208.90.255`).
+DNS changes tell the internet that your domain (`bot.metaversesherpa.io`) lives at your VPS IP address (`35.208.90.255`).
 
 1. **Log In:** Go to the Network Solutions Account Manager and log in.
 2. **Navigate to Domains:** Click on **Domains** in the left-hand menu, then select your specific domain name.

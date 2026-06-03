@@ -1402,7 +1402,7 @@ async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Conditional Viral Payload (Only show referral links/buttons for profit)
         if is_profit:
-            webapp_ref_link = f"https://metaversesherpa.io/#/register?ref={chat_id}"
+            webapp_ref_link = f"https://bot.metaversesherpa.io/#/register?ref={chat_id}"
             
             # Escape underscores in the display text to prevent Markdown parsing errors
             safe_ref_text = ref_link.replace('_', r'\_')
