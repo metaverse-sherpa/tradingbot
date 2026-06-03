@@ -2284,43 +2284,45 @@ function renderStatsView() {
                     <span class="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold capitalize">${(STATE.user && STATE.user.has_exchange_keys && STATE.user.exchange_id) ? STATE.user.exchange_id : 'Live API'}</span>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-stack-gap text-center">
-                    <div class="bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Portfolio Value</p>
-                        <p class="text-lg font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
+                        <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
                     </div>
-                    <div class="bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Win Rate</p>
-                        <p class="text-lg font-bold text-tertiary mt-1">
-                            <span>${crypto.win_rate.toFixed(1)}%</span>
-                            <span class="text-xs font-normal text-on-surface-variant"> (${crypto.wins}W / ${crypto.losses}L)</span>
-                        </p>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
+                        <p class="text-sm font-bold text-tertiary mt-1">${crypto.win_rate.toFixed(1)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${crypto.wins}W / ${crypto.losses}L)</p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
+                        <p class="text-sm font-bold ${crypto.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${crypto.overall_pnl_pct >= 0 ? '+' : ''}${crypto.overall_pnl_pct.toFixed(2)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${crypto.overall_pnl >= 0 ? '+' : ''}$${crypto.overall_pnl.toFixed(2)})</p>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-stack-gap text-center">
-                    <div class="${crypto.open_positions === 0 ? 'col-span-2' : ''} bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Cumulative PnL</p>
-                        <p class="text-lg font-bold ${crypto.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
-                            <span>${crypto.overall_pnl_pct >= 0 ? '+' : ''}${crypto.overall_pnl_pct.toFixed(2)}%</span>
-                            <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${crypto.overall_pnl >= 0 ? '+' : ''}$${crypto.overall_pnl.toFixed(2)}</span>)</span>
-                        </p>
+                ${crypto.open_positions > 0 ? `
+                <div class="grid grid-cols-3 gap-2 text-center mt-2">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">${crypto.open_positions}</p>
                     </div>
-                    ${crypto.open_positions > 0 ? `
-                    <div class="bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Unrealized PnL</p>
-                        <p class="text-lg font-bold ${crypto.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
-                            <span>${crypto.unrealized_pnl_pct >= 0 ? '+' : ''}${crypto.unrealized_pnl_pct.toFixed(2)}%</span>
-                            <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${crypto.unrealized_pnl >= 0 ? '+' : ''}$${crypto.unrealized_pnl.toFixed(2)}</span>)</span>
-                        </p>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Unrealized PnL</p>
+                        <p class="text-sm font-bold ${crypto.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${crypto.unrealized_pnl_pct >= 0 ? '+' : ''}${crypto.unrealized_pnl_pct.toFixed(2)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${crypto.unrealized_pnl >= 0 ? '+' : ''}$${crypto.unrealized_pnl.toFixed(2)})</p>
                     </div>
-                    ` : ''}
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Net PnL</p>
+                        <p class="text-sm font-bold ${cryptoNetPnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${cryptoNetPnlPct >= 0 ? '+' : ''}${cryptoNetPnlPct.toFixed(2)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${cryptoNetPnl >= 0 ? '+' : ''}$${cryptoNetPnl.toFixed(2)})</p>
+                    </div>
                 </div>
-                
-                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
-                    <div>Open: <span class="text-on-surface font-bold">${crypto.open_positions} positions</span></div>
-                    ${crypto.open_positions > 0 ? `<div>Net PnL: <span class="font-bold ${cryptoNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span>${cryptoNetPnlPct >= 0 ? '+' : ''}${cryptoNetPnlPct.toFixed(2)}%</span> <span class="font-normal text-on-surface-variant">(<span ${inlineBlur}>${cryptoNetPnl >= 0 ? '+' : ''}$${cryptoNetPnl.toFixed(2)}</span>)</span></span></div>` : ''}
+                ` : `
+                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono mt-4">
+                    <div>Open: <span class="text-on-surface font-bold">0 positions</span></div>
                 </div>
+                `}
             </section>
             
             <!-- Stocks Performance Section -->
@@ -2330,43 +2332,45 @@ function renderStatsView() {
                     <span class="text-xs px-2.5 py-1 rounded-full bg-secondary-container/10 text-secondary-container font-bold">Alpaca Live</span>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-stack-gap text-center">
-                    <div class="bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Portfolio Value</p>
-                        <p class="text-lg font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
+                        <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
                     </div>
-                    <div class="bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Win Rate</p>
-                        <p class="text-lg font-bold text-tertiary mt-1">
-                            <span>${stock.win_rate.toFixed(1)}%</span>
-                            <span class="text-xs font-normal text-on-surface-variant"> (${stock.wins}W / ${stock.losses}L)</span>
-                        </p>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
+                        <p class="text-sm font-bold text-tertiary mt-1">${stock.win_rate.toFixed(1)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${stock.wins}W / ${stock.losses}L)</p>
+                    </div>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
+                        <p class="text-sm font-bold ${stock.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${stock.overall_pnl_pct >= 0 ? '+' : ''}${stock.overall_pnl_pct.toFixed(2)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${stock.overall_pnl >= 0 ? '+' : ''}$${stock.overall_pnl.toFixed(2)})</p>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-stack-gap text-center">
-                    <div class="${stock.open_positions === 0 ? 'col-span-2' : ''} bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Cumulative PnL</p>
-                        <p class="text-lg font-bold ${stock.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
-                            <span>${stock.overall_pnl_pct >= 0 ? '+' : ''}${stock.overall_pnl_pct.toFixed(2)}%</span>
-                            <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${stock.overall_pnl >= 0 ? '+' : ''}$${stock.overall_pnl.toFixed(2)}</span>)</span>
-                        </p>
+                ${stock.open_positions > 0 ? `
+                <div class="grid grid-cols-3 gap-2 text-center mt-2">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
+                        <p class="text-sm font-bold text-on-surface mt-1">${stock.open_positions}</p>
                     </div>
-                    ${stock.open_positions > 0 ? `
-                    <div class="bg-surface-container rounded-lg p-3">
-                        <p class="text-xs text-on-surface-variant">Unrealized PnL</p>
-                        <p class="text-lg font-bold ${stock.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">
-                            <span>${stock.unrealized_pnl_pct >= 0 ? '+' : ''}${stock.unrealized_pnl_pct.toFixed(2)}%</span>
-                            <span class="text-xs font-normal text-on-surface-variant"> (<span ${inlineBlur}>${stock.unrealized_pnl >= 0 ? '+' : ''}$${stock.unrealized_pnl.toFixed(2)}</span>)</span>
-                        </p>
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Unrealized PnL</p>
+                        <p class="text-sm font-bold ${stock.unrealized_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${stock.unrealized_pnl_pct >= 0 ? '+' : ''}${stock.unrealized_pnl_pct.toFixed(2)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${stock.unrealized_pnl >= 0 ? '+' : ''}$${stock.unrealized_pnl.toFixed(2)})</p>
                     </div>
-                    ` : ''}
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Net PnL</p>
+                        <p class="text-sm font-bold ${stockNetPnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${stockNetPnlPct >= 0 ? '+' : ''}${stockNetPnlPct.toFixed(2)}%</p>
+                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${stockNetPnl >= 0 ? '+' : ''}$${stockNetPnl.toFixed(2)})</p>
+                    </div>
                 </div>
-                
-                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono">
-                    <div>Open: <span class="text-on-surface font-bold">${stock.open_positions} positions</span></div>
-                    ${stock.open_positions > 0 ? `<div>Net PnL: <span class="font-bold ${stockNetPnl >= 0 ? 'text-tertiary' : 'text-error'}"><span>${stockNetPnlPct >= 0 ? '+' : ''}${stockNetPnlPct.toFixed(2)}%</span> <span class="font-normal text-on-surface-variant">(<span ${inlineBlur}>${stockNetPnl >= 0 ? '+' : ''}$${stockNetPnl.toFixed(2)}</span>)</span></span></div>` : ''}
+                ` : `
+                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-white/5 font-mono mt-4">
+                    <div>Open: <span class="text-on-surface font-bold">0 positions</span></div>
                 </div>
+                `}
             </section>
         </main>
     `;
