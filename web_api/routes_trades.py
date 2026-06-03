@@ -1747,7 +1747,6 @@ def share_card():
                         )
                         if card_path and os.path.exists(card_path):
                             return send_file(card_path, mimetype="image/jpeg", as_attachment=False)
-                        else:
                     except Exception as pe:
                         print(f"[SHARE] Error generating card with parameters: {pe}", flush=True)
                 
