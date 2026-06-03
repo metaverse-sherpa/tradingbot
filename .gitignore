@@ -27,6 +27,7 @@ venv/
 !images/*.jpg
 !images/*.jpeg
 !webapp/favicon.png
+!webapp/hiker.png
 pnl_cards/
 results/*
 !results/master_audit.png

@@ -4573,12 +4573,8 @@ function showShareCardModal(title, cardApiUrl, refLink) {
             </div>
             
             <div id="share-card-content" class="flex flex-col items-center justify-center min-h-[250px] py-4">
-                <div class="relative w-16 h-16 mb-4">
-                    <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
-                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
-                    <div class="absolute inset-0 flex items-center justify-center text-primary">
-                        <span class="material-symbols-outlined text-2xl animate-pulse">image</span>
-                    </div>
+                <div class="relative w-24 h-24 mb-4 animate-bounce" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));">
+                    <img src="/hiker.png" alt="Loading..." class="w-full h-full object-contain" />
                 </div>
                 <p id="loading-spinner-text" class="text-xs text-on-surface-variant text-center transition-opacity duration-300">Generating your premium card...</p>
             </div>
