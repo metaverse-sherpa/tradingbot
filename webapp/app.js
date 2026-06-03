@@ -2284,7 +2284,7 @@ function renderStatsView() {
                     <span class="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold capitalize">${(STATE.user && STATE.user.has_exchange_keys && STATE.user.exchange_id) ? STATE.user.exchange_id : 'Live API'}</span>
                 </div>
                 
-                <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
@@ -2302,7 +2302,7 @@ function renderStatsView() {
                 </div>
                 
                 ${crypto.open_positions > 0 ? `
-                <div class="grid grid-cols-3 gap-2 text-center mt-2">
+                <div class="grid grid-cols-3 gap-2 text-center mt-2" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
                         <p class="text-sm font-bold text-on-surface mt-1">${crypto.open_positions}</p>
@@ -2332,7 +2332,7 @@ function renderStatsView() {
                     <span class="text-xs px-2.5 py-1 rounded-full bg-secondary-container/10 text-secondary-container font-bold">Alpaca Live</span>
                 </div>
                 
-                <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
@@ -2350,7 +2350,7 @@ function renderStatsView() {
                 </div>
                 
                 ${stock.open_positions > 0 ? `
-                <div class="grid grid-cols-3 gap-2 text-center mt-2">
+                <div class="grid grid-cols-3 gap-2 text-center mt-2" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
                         <p class="text-sm font-bold text-on-surface mt-1">${stock.open_positions}</p>
