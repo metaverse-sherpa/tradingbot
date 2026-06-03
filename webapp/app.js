@@ -4556,7 +4556,7 @@ function showShareCardModal(title, cardApiUrl, refLink) {
     
     const backdrop = document.createElement('div');
     backdrop.id = modalId;
-    backdrop.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in';
+    backdrop.className = 'fixed inset-y-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in w-full max-w-[500px] left-1/2 -translate-x-1/2';
     
     backdrop.innerHTML = `
         <div class="glass-card rounded-2xl border border-white/10 w-full overflow-hidden flex flex-col gap-4 p-6 relative animate-scale-up" style="max-width: 420px;">
