@@ -1747,6 +1747,19 @@ function renderTradesView() {
             `;
         } else {
             listHtml = filteredTrades.map(trade => {
+                const timeAgo = (ts) => {
+                    const diff = Math.floor(Date.now() / 1000) - ts;
+                    if (diff < 60) return "Just now";
+                    if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+                    if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+                    return Math.floor(diff / 86400) + "d ago";
+                };
+                const dateStr = trade.open_time ? timeAgo(trade.open_time) : 'Recent';
+                let displaySymbol = trade.symbol;
+                if (trade.type === 'crypto') {
+                    displaySymbol = displaySymbol.replace(/\/USDT.*$/, '');
+                }
+                
                 const pnlColor = (trade.unrealized_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
                 const roeColor = (trade.roe || 0) >= 0 ? 'text-tertiary' : 'text-error';
                 const icon = trade.side === 'LONG' ? 'trending_up' : 'trending_down';
@@ -1788,7 +1801,7 @@ function renderTradesView() {
                             
                             <button onclick="confirmClosePosition('${trade.id}', '${trade.type}', '${trade.symbol}')" class="w-full h-10 bg-error/15 hover:bg-error/25 border border-error/30 text-error font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 mt-2 cursor-pointer transition-all active:scale-[0.98]">
                                 <span class="material-symbols-outlined text-[16px]">close</span>
-                                Market Close ${trade.symbol}
+                                Market Close ${displaySymbol}
                             </button>
                         </div>
                     `;
@@ -1800,7 +1813,7 @@ function renderTradesView() {
                             </div>
                             <button onclick="confirmClosePosition('${trade.id}', '${trade.type}', '${trade.symbol}')" class="w-full h-10 bg-error/15 hover:bg-error/25 border border-error/30 text-error font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]">
                                 <span class="material-symbols-outlined text-[16px]">close</span>
-                                Market Close ${trade.symbol}
+                                Market Close ${displaySymbol}
                             </button>
                         </div>
                     `;
@@ -1814,9 +1827,10 @@ function renderTradesView() {
                                     ${assetIcon}
                                 </div>
                                 <div>
-                                    <p class="font-label-md text-label-md font-bold text-on-surface">${trade.symbol}</p>
+                                    <p class="font-label-md text-label-md font-bold text-on-surface truncate min-w-0">${displaySymbol}</p>
                                     <p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[16px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'}">${trade.side === 'LONG' ? 'trending_up' : 'trending_down'}</span>
+                                        <span class="material-symbols-outlined text-[16px] ${trade.side === 'LONG' ? 'text-primary' : 'text-error'} shrink-0">${trade.side === 'LONG' ? 'trending_up' : 'trending_down'}</span>
+                                        ${dateStr}
                                     </p>
                                 </div>
                             </div>
@@ -1863,8 +1877,21 @@ function renderTradesView() {
                 </div>
             `;
         } else {
+            const timeAgo = (ts) => {
+                const diff = Math.floor(Date.now() / 1000) - ts;
+                if (diff < 60) return "Just now";
+                if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+                if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+                return Math.floor(diff / 86400) + "d ago";
+            };
+            
             listHtml = filteredHistory.map(t => {
-                const dateStr = t.close_time ? new Date(t.close_time * 1000).toLocaleDateString() : 'Recent';
+                const dateStr = t.close_time ? timeAgo(t.close_time) : 'Recent';
+                let displaySymbol = t.symbol;
+                if (t.type === 'crypto') {
+                    displaySymbol = displaySymbol.replace(/\/USDT.*$/, '');
+                }
+                
                 const pnlColor = (t.net_pnl || 0) >= 0 ? 'text-tertiary' : 'text-error';
                 const roePct = t.pnl_pct !== undefined ? t.pnl_pct : (t.roe_val !== undefined ? t.roe_val : (t.roe !== undefined ? t.roe : 0));
                 const roeColor = roePct >= 0 ? 'text-tertiary' : 'text-error';
@@ -1877,13 +1904,13 @@ function renderTradesView() {
                 return `
                     <div class="glass-card p-4 rounded-lg flex justify-between items-center border border-white/5">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-lg">
+                            <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-lg shrink-0">
                                 ${assetIcon}
                             </div>
-                            <div>
-                                <p class="font-label-md text-label-md font-bold text-on-surface flex items-center gap-1">
-                                    ${t.symbol}
-                                    <span class="material-symbols-outlined text-[16px] ${isLong ? 'text-primary' : 'text-error'}">${isLong ? 'trending_up' : 'trending_down'}</span>
+                            <div class="min-w-0">
+                                <p class="font-label-md text-label-md font-bold text-on-surface flex items-center gap-1 truncate">
+                                    ${displaySymbol}
+                                    <span class="material-symbols-outlined text-[16px] ${isLong ? 'text-primary' : 'text-error'} shrink-0">${isLong ? 'trending_up' : 'trending_down'}</span>
                                 </p>
                                 <p class="font-label-sm text-label-sm text-on-surface-variant">${dateStr}</p>
                             </div>
