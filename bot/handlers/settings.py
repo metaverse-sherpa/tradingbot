@@ -117,6 +117,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
                 
+    if query.data == "reset_web_sync":
+        try:
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("UPDATE WebUsers SET telegram_chat_id = NULL WHERE telegram_chat_id = ?", (chat_id,))
+            await query.answer("🔄 Web sync link has been reset!", show_alert=True)
+            from bot.handlers.system import start
+            await start(update, context)
+            return
+        except Exception as e:
+            logger.error(f"Error handling reset_web_sync callback: {e}")
+            await query.answer("❌ Error resetting Web sync link.", show_alert=True)
+            return
+
     if query.data.startswith("set_risk_to_"):
         try:
             val = float(query.data.split("_")[-1])

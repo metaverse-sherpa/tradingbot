@@ -163,6 +163,10 @@ def update_web_user_wallet(user_id, source_wallet):
 def update_web_user_telegram(user_id, telegram_chat_id):
     with db_session() as conn:
         c = conn.cursor()
+        if telegram_chat_id:
+            # Prevent multiple web accounts from using the same telegram chat ID
+            c.execute('UPDATE WebUsers SET telegram_chat_id = NULL WHERE telegram_chat_id = ? AND id != ?', (telegram_chat_id, user_id))
+            
         c.execute('UPDATE WebUsers SET telegram_chat_id = ? WHERE id = ?', (telegram_chat_id, user_id))
         
         if telegram_chat_id:

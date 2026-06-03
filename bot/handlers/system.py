@@ -126,8 +126,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user and user.get('had_premium_before') and not database.is_premium(user):
         expired_alert = "⚠️ *Your Premium Access Has Expired*\nYour autopilot is currently paused. Please renew to resume live trading.\n\n"
 
+    # Check if this Telegram Chat ID is already linked to a Web account
+    linked_email = None
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT email FROM WebUsers WHERE telegram_chat_id = ?", (chat_id,))
+            row = c.fetchone()
+            if row:
+                linked_email = row[0]
+    except Exception as db_err:
+        logger.error(f"Error checking WebUsers sync status: {db_err}")
+
+    linked_status = ""
+    if linked_email:
+        linked_status = f"🔗 *Web Account Sync*: Sync active with `{linked_email}`\n\n"
+
     welcome_msg = (
         f"{expired_alert}"
+        f"{linked_status}"
         "🏔️ *Metaverse Sherpa Trading Bot*\n\n"
         "The elite automated trading solution for institutional-grade professionals. We now support automated trading of both **Crypto** (via **Blofin**, **Binance**, and **MEXC**) and **Stocks** (via **Alpaca**).\n\n"
         "🛡️ *Security & Control*\n"
@@ -143,12 +160,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from bot.ui.keyboards import send_cached_photo
     premium_photo_path = os.path.join(BASE_DIR, "images", "welcome_infographic.png")
     
+    markup = get_main_inline_menu(chat_id)
+    if linked_email:
+        keyboard = list(markup.inline_keyboard)
+        keyboard.insert(0, [InlineKeyboardButton("⚠️ Reset Web Sync Link", callback_data="reset_web_sync")])
+        markup = InlineKeyboardMarkup(keyboard)
+
     await send_cached_photo(
         update,
         context,
         premium_photo_path,
         caption=welcome_msg,
-        reply_markup=get_main_inline_menu(chat_id)
+        reply_markup=markup
     )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
