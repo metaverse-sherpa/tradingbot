@@ -2907,16 +2907,19 @@ function renderBacktestView() {
                 <div class="glass-card rounded-xl p-card-padding space-y-4">
                     <div class="flex flex-col gap-1 border-b border-white/5 pb-3">
                         <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Backtest Complete!</h3>
+                    </div>
+                    
+                    ${bt.result.chart_url ? `
+                        <div class="relative w-full aspect-[16/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center mb-2">
+                            <img src="${bt.result.chart_url}" class="w-full h-full object-cover" alt="Equity Curve" />
+                        </div>
+                    ` : ''}
+                    
+                    <div class="text-center mb-4">
                         <p class="text-[10px] text-primary font-bold uppercase tracking-wider">
                             Strategy: <span class="text-white">${bt.result.strategy}</span> | Capital: <span class="text-white">$${(bt.result.capital || 10000).toLocaleString()}</span> | Risk: <span class="text-white">${bt.result.risk_pct || 1.5}%</span>
                         </p>
                     </div>
-                    
-                    ${bt.result.chart_url ? `
-                        <div class="relative w-full aspect-[16/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center mb-4">
-                            <img src="${bt.result.chart_url}" class="w-full h-full object-cover" alt="Equity Curve" />
-                        </div>
-                    ` : ''}
                     
                     <div class="grid grid-cols-2 gap-stack-gap">
                         <div class="bg-surface-container rounded-lg p-3 text-center">
