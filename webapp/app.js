@@ -375,6 +375,11 @@ async function handleRoute() {
         return;
     }
 
+    const tgSync = getQueryParam('tg_sync');
+    if (tgSync) {
+        localStorage.setItem('pending_tg_sync', tgSync);
+    }
+
     let hash = window.location.hash || '#/landing';
     // Clean query parameters for routing logic
     if (hash.includes('?')) {
@@ -474,6 +479,9 @@ async function handleRoute() {
     
     // Check and redeem pending gift code if any
     await checkAndRedeemPendingGift();
+    
+    // Check and sync pending telegram chat ID if any
+    await checkAndSyncPendingTelegram();
     
     // Check for deployment success message if admin
     if (STATE.user) {
@@ -4239,6 +4247,34 @@ async function checkAndRedeemPendingGift() {
         }
     } catch(err) {
         showToast("Error redeeming gift code.", "error");
+    }
+}
+
+async function checkAndSyncPendingTelegram() {
+    const tgSync = localStorage.getItem('pending_tg_sync');
+    if (!tgSync || !STATE.user) return;
+    
+    // Clear the pending sync key to prevent repeating or looping
+    localStorage.removeItem('pending_tg_sync');
+    
+    const parsedId = parseInt(tgSync);
+    if (isNaN(parsedId)) return;
+    
+    if (STATE.user.telegram_chat_id === parsedId) {
+        return;
+    }
+    
+    try {
+        const res = await apiRequest('/settings/telegram', 'POST', { telegram_chat_id: parsedId });
+        if (res && !res.error) {
+            STATE.user.telegram_chat_id = parsedId;
+            showToast("Telegram account synced successfully!");
+            renderView();
+        } else {
+            showToast(res.error || "Failed to sync Telegram account.", "error");
+        }
+    } catch (err) {
+        showToast(err.message || "Failed to sync Telegram account.", "error");
     }
 }
 
