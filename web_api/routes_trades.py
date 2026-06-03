@@ -1767,7 +1767,6 @@ def share_card():
                 if crypto_api_key and crypto_api_secret:
                     try:
                         import ccxt
-                        import concurrent.futures
                         config = {
                             "apiKey": crypto_api_key,
                             "secret": crypto_api_secret,
@@ -1782,35 +1781,6 @@ def share_card():
                                 contracts = float(p.get("contracts", 0) or 0)
                                 if contracts != 0:
                                     crypto_unrealized += float(p.get("unrealizedPnl", 0) or 0)
-                                    
-                            # Daily PnL realized (from last 24h) concurrent fetch
-                            now_ms = int(time.time() * 1000)
-                            twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
-                            params = {'instType': 'SWAP'} if client.id == 'blofin' else {}
-                            
-                            def fetch_trades_for_sym(sym):
-                                try:
-                                    # Create a thread-local exchange client instance to be thread-safe
-                                    sub_client = getattr(ccxt, crypto_exchange_id)({**config, "timeout": 3000})
-                                    try:
-                                        norm_sym = database.normalize_symbol(sym, sub_client.id)
-                                        trades = sub_client.fetch_my_trades(norm_sym, since=twenty_four_hours_ago, params=params)
-                                        pnl = 0.0
-                                        for t in trades:
-                                            info = t.get("info", {})
-                                            gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
-                                            if gross_pnl != 0:
-                                                fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                                                pnl += (gross_pnl - fee * 2)
-                                        return pnl
-                                    finally:
-                                        sub_client.close()
-                                except:
-                                    return 0.0
-                                    
-                            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                                results = list(executor.map(fetch_trades_for_sym, ["BTC/USDT", "ETH/USDT", "SOL/USDT"]))
-                                realized_daily_pnl = sum(results)
                         finally:
                             try: client.close()
                             except: pass

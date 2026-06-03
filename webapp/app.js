@@ -4482,6 +4482,12 @@ window.shareStatsCard = function(tab, strategy) {
         title = strategy ? `${strategy} Performance` : "Metaverse Sherpa Free Signals Performance";
     }
     
+    // Prevent sharing card if personal stats are still loading
+    if ((tab === 'crypto' || tab === 'stock') && (!STATE.stats || !STATE.stats[tab])) {
+        showToast("Stats are still loading from the exchange, please wait a moment... 🏔️");
+        return;
+    }
+    
     let url = `/api/share/card?type=stats&tab=${tab}`;
     if (strategy) {
         url += `&strategy=${encodeURIComponent(strategy)}`;
