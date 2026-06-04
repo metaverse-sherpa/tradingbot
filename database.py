@@ -142,7 +142,7 @@ def init_db():
                       last_fetch_timestamp INTEGER DEFAULT 0,
                       strategy TEXT DEFAULT 'Mean Reversion Scalper',
                       source_wallet TEXT,
-                      stock_risk_pct REAL DEFAULT 1.0,
+                      stock_risk_pct REAL DEFAULT 2.0,
                       alpaca_start_equity REAL)'''
         )
         
@@ -174,7 +174,7 @@ def init_db():
             ("alpaca_endpoint", "TEXT"),
             ("active_crypto_strategy", "TEXT DEFAULT 'Mean Reversion Scalper'"),
             ("active_stock_strategy", "TEXT DEFAULT 'None'"),
-            ("stock_risk_pct", "REAL DEFAULT 1.0"),
+            ("stock_risk_pct", "REAL DEFAULT 2.0"),
             ("alpaca_start_equity", "REAL"),
             ("premium_referrals", "INTEGER DEFAULT 0"),
             ("premium_expired_notified", "BOOLEAN DEFAULT 0"),
@@ -300,7 +300,7 @@ def init_db():
             alpaca_endpoint TEXT,
             is_active BOOLEAN DEFAULT 0,
             risk_pct REAL DEFAULT 1.0,
-            stock_risk_pct REAL DEFAULT 1.0,
+            stock_risk_pct REAL DEFAULT 2.0,
             enabled_symbols TEXT,
             hide_dollars BOOLEAN DEFAULT 0,
             custom_equity_type TEXT DEFAULT 'all',
@@ -427,7 +427,7 @@ def get_user(chat_id):
             "alpaca_endpoint": row[30] if len(row) > 30 else None,
             "active_crypto_strategy": row[31] if len(row) > 31 and row[31] else 'Mean Reversion Scalper',
             "active_stock_strategy": row[32] if len(row) > 32 and row[32] else 'None',
-            "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 1.0,
+            "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 2.0,
             "premium_referrals": row[34] if len(row) > 34 else 0,
             "premium_expired_notified": bool(row[35]) if len(row) > 35 else False,
             "had_premium_before": bool(row[36]) if len(row) > 36 else False,

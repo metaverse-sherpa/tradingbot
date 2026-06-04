@@ -1103,9 +1103,9 @@ def run_backtest():
                     for active_idx, active_pos in active_positions.items():
                         active_t = strategy_trades[active_idx]
                         if active_t["side"] == "LONG":
-                            eq += active_pos["shares"] * t["entry_price"]
+                            eq += active_pos["shares"] * active_pos["entry_price"]
                         else:
-                            eq -= active_pos["shares"] * t["entry_price"]
+                            eq -= active_pos["shares"] * active_pos["entry_price"]
                     return eq
                 
                 if ev["type"] == "entry":
@@ -1162,9 +1162,9 @@ def run_backtest():
                             for active_idx, active_pos in active_positions.items():
                                 active_t = strategy_trades[active_idx]
                                 if active_t["side"] == "LONG":
-                                    eq += active_pos["shares"] * t["exit_price"]
+                                    eq += active_pos["shares"] * active_pos["entry_price"]
                                 else:
-                                    eq -= active_pos["shares"] * t["exit_price"]
+                                    eq -= active_pos["shares"] * active_pos["entry_price"]
                             return eq
                             
                         portfolio_equity = get_stock_portfolio_equity_current()

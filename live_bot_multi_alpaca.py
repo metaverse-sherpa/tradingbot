@@ -505,7 +505,7 @@ async def run_real_trader_execution(today_opens):
                         account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
                         equity = float(account.get("equity", 0) or account.get("portfolio_value", 0))
                         
-                        user_risk = float(user.get('stock_risk_pct', 1.0)) / 100.0
+                        user_risk = float(user.get('stock_risk_pct', 2.0)) / 100.0
                         risk_amt = equity * user_risk
                         
                         qty = risk_amt / (3.0 * atr)
@@ -550,7 +550,7 @@ async def run_real_trader_execution(today_opens):
                             f"• Entry Price: `${o_price:.2f}`\n"
                             f"• Take Profit: `${tp_price:.2f}`\n"
                             f"• Stop Loss: `${sl_price:.2f}`\n"
-                            f"• Risk Allocated: `${risk_amt:.2f}` ({user.get('stock_risk_pct', 1.0)}% of equity)\n\n"
+                            f"• Risk Allocated: `${risk_amt:.2f}` ({user.get('stock_risk_pct', 2.0)}% of equity)\n\n"
                             "Signal time: "
                         )
                         placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
