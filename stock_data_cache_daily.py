@@ -51,7 +51,8 @@ def fetch_daily_data(ticker, api_key, api_secret, start_date="2020-05-19", end_d
         "timeframe": "1Day",
         "start": start_date,
         "end": end_date,
-        "adjustment": "all" # Splits and dividends
+        "adjustment": "all", # Splits and dividends
+        "limit": 10000
     }
     headers = {
         "APCA-API-KEY-ID": api_key,
