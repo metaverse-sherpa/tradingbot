@@ -648,29 +648,29 @@ def run_stock_visual_audit(risk_val_pct=2.0, user_id="admin", start_balance=1000
     max_dd_val = drawdown.max()
     
     # Setup subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#121212")
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#0B0E14")
     
     # 🏔️ Equity Chart (Neon Theme)
-    ax1.plot(h_df.index, equity_series, color="#39FF14", linewidth=2.5, label="Velocity Pullback Stock Portfolio")
-    ax1.set_title(f"Sherpa Stock Audit (Daily Swing): {user_id}", color="white", fontsize=16, pad=15)
+    ax1.plot(h_df.index, equity_series, color="#00E5FF", linewidth=2.5, label="Velocity Pullback Stock Portfolio")
+    ax1.set_title(f"Sherpa 5-Year Audit: {user_id}", color="white", fontsize=16, fontweight="bold", pad=15)
     ax1.tick_params(colors="white")
-    ax1.grid(alpha=0.1)
-    ax1.set_facecolor("#121212")
+    ax1.grid(True, color="#3a4b5c", alpha=0.3, linestyle=":")
+    ax1.set_facecolor("#0B0E14")
     
     # Annotations
-    ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color='#39FF14', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
-    ax1.text(0.02, 0.05, f"Start: ${start_balance:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
-    ax1.text(0.98, 0.9, f"Final: ${metrics['final_equity']:,.2f}", transform=ax1.transAxes, color='#39FF14', fontweight='bold', ha='right', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+    ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color='#00E5FF', fontweight='bold', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='#00E5FF'))
+    ax1.text(0.02, 0.05, f"Start: ${start_balance:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='white'))
+    ax1.text(0.98, 0.9, f"Final: ${metrics['final_equity']:,.2f}", transform=ax1.transAxes, color='#39FF14', fontweight='bold', ha='right', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='#39FF14'))
     
     # 🌊 Drawdown Chart
-    ax2.fill_between(drawdown.index, -drawdown, 0, color="red", alpha=0.2)
+    ax2.fill_between(drawdown.index, -drawdown, 0, color="red", alpha=0.15)
     ax2.plot(drawdown.index, -drawdown, color="red", linewidth=0.8)
     ax2.tick_params(colors="white")
-    ax2.set_facecolor("#121212")
+    ax2.set_facecolor("#0B0E14")
     ax2.set_title("Drawdown (%)", color="white", fontsize=10)
     ax2.set_ylabel("Drawdown (%)", color="white")
     ax2.set_ylim(-100, 5) # 0-100% Scale for visual compression
-    ax2.grid(True, alpha=0.1); ax2.tick_params(colors="white")
+    ax2.grid(True, color="#3a4b5c", alpha=0.3, linestyle=":")
     
     # 📌 Annotate Max Drawdown Peak
     if not drawdown.empty:
@@ -683,17 +683,17 @@ def run_stock_visual_audit(risk_val_pct=2.0, user_id="admin", start_balance=1000
                      ha='center', 
                      color="white", 
                      fontweight='bold',
-                     bbox=dict(facecolor='#1A1A1A', alpha=0.8, edgecolor='red'),
+                     bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='red'),
                      arrowprops=dict(arrowstyle='->', color='red'))
                      
-    fig.patch.set_facecolor("#121212")
+    fig.patch.set_facecolor("#0B0E14")
     plt.tight_layout()
     
     base_dir = os.path.dirname(os.path.abspath(__file__))
     results_dir = os.path.join(base_dir, "results")
     os.makedirs(results_dir, exist_ok=True)
     
-    is_master = (risk_val_pct == 1.0 and start_balance == 10000.0) # Standard defaults for master
+    is_master = (risk_val_pct == 2.0 and start_balance == 10000.0) # Standard defaults for master
     
     if is_master and user_id == "admin":
         chart_path = os.path.join(results_dir, "stock_master_audit.png")
