@@ -1044,6 +1044,9 @@ def run_backtest():
         FEE_RATE = 0.001
         LEVERAGE = 20.0
         
+        # Set default R:R
+        rr_ratio = data.get("rr_ratio", 1.5)
+        
         active_positions = {}
         equity_history = []
         drawdown_history = []
@@ -1098,7 +1101,11 @@ def run_backtest():
                 def get_stock_portfolio_equity():
                     eq = cash
                     for active_idx, active_pos in active_positions.items():
-                        eq += active_pos["shares"] * active_pos["entry_price"]
+                        active_t = strategy_trades[active_idx]
+                        if active_t["side"] == "LONG":
+                            eq += active_pos["shares"] * t["entry_price"]
+                        else:
+                            eq -= active_pos["shares"] * t["entry_price"]
                     return eq
                 
                 if ev["type"] == "entry":
@@ -1107,13 +1114,23 @@ def run_backtest():
                     shares = risk_amt / t["sl_dist"]
                     position_notional = shares * t["entry_price"]
                     
-                    if position_notional > cash:
-                        shares = cash / t["entry_price"]
+                    # Sizing with 2x leverage capability (fractional sizing supported)
+                    leverage = 2.0
+                    buying_power = portfolio_equity * leverage
+                    in_use = sum(p["shares"] * p["entry_price"] for p in active_positions.values())
+                    available_power = max(0.0, buying_power - in_use)
+                    
+                    if position_notional > available_power:
+                        shares = available_power / t["entry_price"]
                         position_notional = shares * t["entry_price"]
                         
                     entry_fee = position_notional * FEE_RATE
-                    if cash >= (position_notional + entry_fee) and shares > 0.01:
-                        cash -= (position_notional + entry_fee)
+                    if shares > 0.01 and available_power >= (position_notional + entry_fee if t["side"] == "LONG" else entry_fee):
+                        if t["side"] == "LONG":
+                            cash -= (position_notional + entry_fee)
+                        else:
+                            cash += (position_notional - entry_fee)
+                            
                         active_positions[t_idx] = {
                             "shares": shares,
                             "entry_price": t["entry_price"],
@@ -1130,12 +1147,27 @@ def run_backtest():
                     pos = active_positions.pop(t_idx, None)
                     if pos and pos["shares"] > 0:
                         shares = pos["shares"]
-                        gross_pnl = (t["exit_price"] - pos["entry_price"]) * shares if t["side"] == "LONG" else (pos["entry_price"] - t["exit_price"]) * shares
                         exit_value = t["exit_price"] * shares
                         exit_fee = exit_value * t["fee_rate"]
                         
-                        cash += exit_value - exit_fee
-                        portfolio_equity = get_stock_portfolio_equity()
+                        # Correct exit cash adjustment matching the daily backtester:
+                        if t["side"] == "LONG":
+                            cash += exit_value - exit_fee
+                        else:
+                            cash -= (exit_value + exit_fee)
+                            
+                        # Update portfolio equity calc function to value current asset state
+                        def get_stock_portfolio_equity_current():
+                            eq = cash
+                            for active_idx, active_pos in active_positions.items():
+                                active_t = strategy_trades[active_idx]
+                                if active_t["side"] == "LONG":
+                                    eq += active_pos["shares"] * t["exit_price"]
+                                else:
+                                    eq -= active_pos["shares"] * t["exit_price"]
+                            return eq
+                            
+                        portfolio_equity = get_stock_portfolio_equity_current()
                         
                         equity_history.append((ev["date"], portfolio_equity))
                         max_equity = max(max_equity, portfolio_equity)
@@ -1169,7 +1201,8 @@ def run_backtest():
         
         theme_color = "#39FF14" if strategy == "Sherpa Velocity Pullback" else "cyan"
         ax1.plot(df_eq.index, df_eq["equity"], color=theme_color, linewidth=2)
-        ax1.set_title(f"Sherpa 3-Year Audit: {user_id}", color="white", fontsize=16)
+        title_years = "5-Year" if strategy == "Sherpa Velocity Pullback" else "3-Year"
+        ax1.set_title(f"Sherpa {title_years} Audit: {user_id}", color="white", fontsize=16)
         ax1.tick_params(colors="white")
         ax1.grid(alpha=0.1)
         ax1.set_facecolor("#121212")
@@ -1898,13 +1931,17 @@ def share_card():
 @trades_bp.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
     symbol = request.args.get("symbol")
-    entry = float(request.args.get("entry", 0.0))
-    tp = float(request.args.get("tp", 0.0))
-    sl = float(request.args.get("sl", 0.0))
+    try:
+        entry = float(request.args.get("entry", 0.0))
+        tp = float(request.args.get("tp", 0.0))
+        sl = float(request.args.get("sl", 0.0))
+        open_ts = int(request.args.get("open_ts", 0))
+        current_price = float(request.args.get("current_price", 0.0))
+    except ValueError:
+        return "Invalid numeric parameters", 400
+        
     side = request.args.get("side", "LONG").upper()
-    open_ts = int(request.args.get("open_ts", 0))
     trade_type = request.args.get("type", "crypto")
-    current_price = float(request.args.get("current_price", 0.0))
 
     if not symbol:
         return "Symbol required", 400
