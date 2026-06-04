@@ -1093,109 +1093,63 @@ def run_backtest():
                         else:
                             losses += 1
         else:
-            cash = capital
-            for ev in events:
-                t_idx = ev["trade_idx"]
-                t = strategy_trades[t_idx]
-                
-                def get_stock_portfolio_equity():
-                    eq = cash
-                    for active_idx, active_pos in active_positions.items():
-                        active_t = strategy_trades[active_idx]
-                        if active_t["side"] == "LONG":
-                            eq += active_pos["shares"] * active_pos["entry_price"]
-                        else:
-                            eq -= active_pos["shares"] * active_pos["entry_price"]
-                    return eq
-                
-                if ev["type"] == "entry":
-                    portfolio_equity = get_stock_portfolio_equity()
-                    risk_amt = portfolio_equity * risk_decimal
-                    shares = risk_amt / t["sl_dist"]
-                    position_notional = shares * t["entry_price"]
-                    
-                    # Sizing with leverage capability (fractional sizing supported)
-                    leverage = LEVERAGE
-                    buying_power = portfolio_equity * leverage
-                    in_use = sum(p["shares"] * p["entry_price"] for p in active_positions.values())
-                    available_power = max(0.0, buying_power - in_use)
-                    
-                    if position_notional > available_power:
-                        shares = available_power / t["entry_price"]
-                        position_notional = shares * t["entry_price"]
-                        
-                    entry_fee = position_notional * FEE_RATE
-                    if shares > 0.01 and available_power >= (position_notional + entry_fee if t["side"] == "LONG" else entry_fee):
-                        if t["side"] == "LONG":
-                            cash -= (position_notional + entry_fee)
-                        else:
-                            cash += (position_notional - entry_fee)
-                            
-                        active_positions[t_idx] = {
-                            "shares": shares,
-                            "entry_price": t["entry_price"],
-                            "entry_fee": entry_fee
-                        }
-                    else:
-                        active_positions[t_idx] = {
-                            "shares": 0.0,
-                            "entry_price": t["entry_price"],
-                            "entry_fee": 0.0
-                        }
-                        
-                elif ev["type"] == "exit":
-                    pos = active_positions.pop(t_idx, None)
-                    if pos and pos["shares"] > 0:
-                        shares = pos["shares"]
-                        exit_value = t["exit_price"] * shares
-                        exit_fee = exit_value * t["fee_rate"]
-                        
-                        # Correct exit cash adjustment matching the daily backtester:
-                        if t["side"] == "LONG":
-                            cash += exit_value - exit_fee
-                        else:
-                            cash -= (exit_value + exit_fee)
-                            
-                        # Update portfolio equity calc function to value current asset state
-                        def get_stock_portfolio_equity_current():
-                            eq = cash
-                            for active_idx, active_pos in active_positions.items():
-                                active_t = strategy_trades[active_idx]
-                                if active_t["side"] == "LONG":
-                                    eq += active_pos["shares"] * active_pos["entry_price"]
-                                else:
-                                    eq -= active_pos["shares"] * active_pos["entry_price"]
-                            return eq
-                            
-                        portfolio_equity = get_stock_portfolio_equity_current()
-                        
-                        equity_history.append((ev["date"], portfolio_equity))
-                        max_equity = max(max_equity, portfolio_equity)
-                        dd = (max_equity - portfolio_equity) / max_equity * 100
-                        max_dd = max(max_dd, dd)
-                        drawdown_history.append((ev["date"], -dd))
-                        
-                        if t["win"]:
-                            wins += 1
-                        else:
-                            losses += 1
-                            
-        if not equity_history:
-            return jsonify({"error": "Backtest engine failed to execute trades. Starting balance or risk is too low."}), 400
+            # Run the actual backtest directly from the database to get 100% exact results!
+            from stock_backtester_daily import run_backtest, load_data_from_db
+            data_dict = load_data_from_db()
+            best_params = {
+                "rsi_period": 4,
+                "rsi_entry": 26,
+                "rsi_exit": 75,
+                "atr_sl_mult": 3.0,
+                "trend_ema": "ema_200",
+                "long_only": True,
+                "mode": "LONG",
+                "leverage": 1.6,
+                "rr_ratio": 1.6
+            }
+            h_df, t_df, metrics = run_backtest(
+                data_dict,
+                "SuperTrend_Pullback",
+                best_params,
+                verbose=False,
+                initial_cash=capital,
+                pct_per_trade=risk_decimal,
+                start_date="2021-05-19",
+                end_date="2026-05-19"
+            )
             
-        df_eq = pd.DataFrame(equity_history, columns=["date", "equity"]).set_index("date")
-        df_dd = pd.DataFrame(drawdown_history, columns=["date", "drawdown"]).set_index("date")
-        
-        final_equity = df_eq["equity"].iloc[-1]
-        pnl_pct = (final_equity - capital) / capital * 100
-        total_trades = wins + losses
-        win_rate = (wins / total_trades * 100) if total_trades > 0 else 0.0
-        
-        daily_returns = df_eq["equity"].resample('D').last().pct_change(fill_method=None).dropna()
-        if len(daily_returns) > 1:
-            sharpe = (daily_returns.mean() / (daily_returns.std() + 1e-10)) * np.sqrt(365 if is_crypto else 252)
-        else:
-            sharpe = 0.0
+            final_equity = metrics["final_equity"]
+            pnl_pct = metrics["total_pnl_pct"]
+            total_trades = metrics["total_trades"]
+            win_rate = metrics["win_rate"]
+            sharpe = metrics["sharpe_ratio"]
+            max_dd = metrics["max_dd_pct"]
+            
+            df_eq = h_df[["equity"]]
+            
+            # Calculate drawdown curve for plot
+            peak = h_df['equity'].cummax()
+            df_dd = pd.DataFrame(-((peak - h_df['equity']) / peak * 100))
+            df_dd.columns = ["drawdown"]
+            
+        if is_crypto:
+            if not equity_history:
+                return jsonify({"error": "Backtest engine failed to execute trades. Starting balance or risk is too low."}), 400
+                
+            df_eq = pd.DataFrame(equity_history, columns=["date", "equity"]).set_index("date")
+            df_dd = pd.DataFrame(drawdown_history, columns=["date", "drawdown"]).set_index("date")
+            
+            final_equity = df_eq["equity"].iloc[-1]
+            pnl_pct = (final_equity - capital) / capital * 100
+            total_trades = wins + losses
+            win_rate = (wins / total_trades * 100) if total_trades > 0 else 0.0
+            
+            daily_returns = df_eq["equity"].resample('D').last().pct_change(fill_method=None).dropna()
+            if len(daily_returns) > 1:
+                sharpe = (daily_returns.mean() / (daily_returns.std() + 1e-10)) * np.sqrt(365 if is_crypto else 252)
+            else:
+                sharpe = 0.0
+            max_dd = round(abs(df_dd["drawdown"].min()), 1) if not df_dd.empty else 0.0
             
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#0B0E14")
         
