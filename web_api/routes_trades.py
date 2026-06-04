@@ -1040,9 +1040,10 @@ def run_backtest():
         events.sort(key=lambda x: (x["date"], 0 if x["type"] == "exit" else 1))
         
         risk_decimal = risk_pct / 100.0
+        is_crypto = strategy_trades[0]["type"] == "crypto"
         TAKER_FEE = 0.0006
-        FEE_RATE = 0.001
-        LEVERAGE = 20.0
+        FEE_RATE = 0.0005 if not is_crypto else 0.001
+        LEVERAGE = 20.0 if is_crypto else 1.6
         
         # Set default R:R
         rr_ratio = data.get("rr_ratio", 1.5)
@@ -1054,7 +1055,6 @@ def run_backtest():
         losses = 0
         max_equity = capital
         max_dd = 0.0
-        is_crypto = strategy_trades[0]["type"] == "crypto"
         
         if is_crypto:
             equity = capital
@@ -1114,8 +1114,8 @@ def run_backtest():
                     shares = risk_amt / t["sl_dist"]
                     position_notional = shares * t["entry_price"]
                     
-                    # Sizing with 2x leverage capability (fractional sizing supported)
-                    leverage = 2.0
+                    # Sizing with leverage capability (fractional sizing supported)
+                    leverage = LEVERAGE
                     buying_power = portfolio_equity * leverage
                     in_use = sum(p["shares"] * p["entry_price"] for p in active_positions.values())
                     available_power = max(0.0, buying_power - in_use)
@@ -1197,49 +1197,49 @@ def run_backtest():
         else:
             sharpe = 0.0
             
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#121212")
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#0B0E14")
         
-        theme_color = "#39FF14" if strategy == "Sherpa Velocity Pullback" else "cyan"
+        theme_color = "#00E5FF" if strategy == "Sherpa Velocity Pullback" else "cyan"
         ax1.plot(df_eq.index, df_eq["equity"], color=theme_color, linewidth=2)
         title_years = "5-Year" if strategy == "Sherpa Velocity Pullback" else "3-Year"
-        ax1.set_title(f"Sherpa {title_years} Audit: {user_id}", color="white", fontsize=16)
+        ax1.set_title(f"Sherpa {title_years} Audit: {user_id}", color="white", fontsize=16, fontweight="bold", pad=15)
         ax1.tick_params(colors="white")
-        ax1.grid(alpha=0.1)
-        ax1.set_facecolor("#121212")
+        ax1.grid(True, color="#3a4b5c", alpha=0.3, linestyle=":")
+        ax1.set_facecolor("#0B0E14")
         
-        ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color=theme_color, fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
-        ax1.text(0.02, 0.05, f"Start: ${capital:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
-        ax1.text(0.98, 0.9, f"Final: ${final_equity:,.2f}", transform=ax1.transAxes, color='#39FF14' if final_equity >= capital else 'red', fontweight='bold', ha='right', bbox=dict(facecolor='#1A1A1A', alpha=0.8))
+        ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color=theme_color, fontweight='bold', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor=theme_color))
+        ax1.text(0.02, 0.05, f"Start: ${capital:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='white'))
+        ax1.text(0.98, 0.9, f"Final: ${final_equity:,.2f}", transform=ax1.transAxes, color='#39FF14' if final_equity >= capital else 'red', fontweight='bold', ha='right', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='#39FF14' if final_equity >= capital else 'red'))
         
-        ax2.fill_between(df_dd.index, df_dd["drawdown"], 0, color="red", alpha=0.2)
+        ax2.fill_between(df_dd.index, df_dd["drawdown"], 0, color="red", alpha=0.15)
         ax2.plot(df_dd.index, df_dd["drawdown"], color="red", linewidth=0.8)
         ax2.tick_params(colors="white")
-        ax2.set_facecolor("#121212")
+        ax2.set_facecolor("#0B0E14")
         ax2.set_title("Drawdown (%)", color="white", fontsize=10)
         ax2.set_ylabel("Drawdown (%)", color="white")
         ax2.set_ylim(-100, 5)
-        ax2.grid(True, alpha=0.1); ax2.tick_params(colors="white")
+        ax2.grid(True, color="#3a4b5c", alpha=0.3, linestyle=":")
         
         if not df_dd.empty:
             max_dd_date = df_dd["drawdown"].idxmin()
             min_dd_val = df_dd["drawdown"].min()
             ax2.annotate(f"Peak DD: {abs(min_dd_val):.1f}%", 
-                         xy=(max_dd_date, min_dd_val), 
-                         xytext=(0, -25), 
-                         textcoords="offset points", 
-                         ha='center', 
-                         color="white", 
-                         fontweight='bold',
-                         bbox=dict(facecolor='#1A1A1A', alpha=0.8, edgecolor='red'),
-                         arrowprops=dict(arrowstyle='->', color='red'))
-                         
-        fig.patch.set_facecolor("#121212")
+                          xy=(max_dd_date, min_dd_val), 
+                          xytext=(0, -25), 
+                          textcoords="offset points", 
+                          ha='center', 
+                          color="white", 
+                          fontweight='bold',
+                          bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='red'),
+                          arrowprops=dict(arrowstyle='->', color='red'))
+                          
+        fig.patch.set_facecolor("#0B0E14")
         plt.tight_layout()
         
         os.makedirs("results", exist_ok=True)
         chart_name = f"audit_{user_id}_{int(time.time())}.png"
         chart_path = os.path.join("results", chart_name)
-        plt.savefig(chart_path, dpi=150, facecolor="#121212")
+        plt.savefig(chart_path, dpi=150, facecolor="#0B0E14")
         plt.close()
         
         max_dd = round(abs(df_dd["drawdown"].min()), 1) if not df_dd.empty else 0.0
