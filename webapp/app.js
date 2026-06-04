@@ -80,10 +80,10 @@ const STRATEGY_GUIDES = {
         philosophy: "Momentum Pullback. Targets short-term oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified uptrends using SuperTrend filtering.",
         indicators: "Daily Close > EMA(200), SuperTrend(10, 3) is UP, 4-period RSI (< 26).",
         pace: "Daily swing. Scans daily at market open (9:31 AM EST). Averages ~0.42 trades/day.",
-        drawdown: "Highly optimized equity curve, maintaining a tight <strong class='text-primary'>22.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+102.3%</strong> return and high <strong class='text-tertiary'>70.2%</strong> win rate over a 5-year period.",
+        drawdown: "Highly optimized equity curve, maintaining a tight <strong class='text-primary'>22.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+252.5%</strong> return and high <strong class='text-tertiary'>68.4%</strong> win rate over a 5-year period.",
         img: "/api/charts/stock_strategy_infographic.png",
         backtest_stats: {
-            win_rate: "70.2%", trades: "148", sharpe: "0.84", max_dd: "-22.7%", net_pnl: "+102.3%", final_bal: "$20,225.00",
+            win_rate: "68.4%", trades: "785", sharpe: "1.22", max_dd: "-22.7%", net_pnl: "+252.5%", final_bal: "$35,253.71",
             img: "/api/charts/stock_master_audit.png"
         }
     }
@@ -91,6 +91,7 @@ const STRATEGY_GUIDES = {
 
 function renderStrategyGuideContent(name, includeBacktest = true) {
     const guide = STRATEGY_GUIDES[name] || STRATEGY_GUIDES["Mean Reversion Scalper"];
+    const isStock = (name === 'Sherpa Velocity Pullback');
     let html = '';
     
     if (includeBacktest && guide.backtest_stats) {
@@ -98,10 +99,10 @@ function renderStrategyGuideContent(name, includeBacktest = true) {
         <div class="mb-4">
             <div class="flex items-center gap-2 mb-2">
                 <span class="material-symbols-outlined text-primary text-sm">history</span>
-                <h5 class="text-xs font-bold text-primary uppercase tracking-wider">3-Year Historical Backtest</h5>
+                <h5 class="text-xs font-bold text-primary uppercase tracking-wider">${isStock ? '5-Year' : '3-Year'} Historical Backtest</h5>
             </div>
             <p class="text-[10px] text-on-surface-variant mb-4 leading-relaxed">
-                These performance metrics and equity curves are based on <strong>3 years of rigorous historical data</strong>. (Simulated with $10k starting capital and a strict 1% risk management per trade).
+                These performance metrics and equity curves are based on <strong>${isStock ? '5' : '3'} years of rigorous historical data</strong>. (Simulated with $10k starting capital and a strict 2% risk management per trade for stocks, 1.5% for crypto).
             </p>
             
             ${guide.backtest_stats.img ? `
@@ -1103,15 +1104,15 @@ function renderLandingView() {
                                         <span>${icon}</span> ${s.name}
                                     </h4>
                                 </div>
-                                <!-- 3-Year Backtest Results (Always Visible) -->
+                                <!-- Backtest Results (Always Visible) -->
                                 ${guide.backtest_stats ? `
                                 <div class="mt-4">
                                     <div class="flex items-center gap-2 mb-2">
                                         <span class="material-symbols-outlined text-primary text-sm">history</span>
-                                        <h5 class="text-xs font-bold text-primary uppercase tracking-wider">3-Year Historical Backtest</h5>
+                                        <h5 class="text-xs font-bold text-primary uppercase tracking-wider">${s.name === 'Sherpa Velocity Pullback' ? '5-Year' : '3-Year'} Historical Backtest</h5>
                                     </div>
                                     <p class="text-[10px] text-on-surface-variant mb-4 leading-relaxed">
-                                        These performance metrics and equity curves are based on <strong>3 years of rigorous historical data</strong>. (Simulated with $10k starting capital and a strict 1% risk management per trade).
+                                        These performance metrics and equity curves are based on <strong>${s.name === 'Sherpa Velocity Pullback' ? '5' : '3'} years of rigorous historical data</strong>. (Simulated with $10k starting capital and a strict 2% risk management per trade for stocks, 1.5% for crypto).
                                     </p>
                                     
                                     ${guide.backtest_stats.img ? `
