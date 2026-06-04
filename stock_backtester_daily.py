@@ -121,20 +121,21 @@ def check_signal(df, idx, strategy_name, params):
     if idx < 200: # Need enough warm-up bars
         return None
     
-    row = df.iloc[idx]
-    prev_row = df.iloc[idx-1]
+    close_vals = df['close'].values
+    rsi_vals = df['rsi'].values
     
     if strategy_name == "RSI_Pullback":
         # 🏔️ Larry Connors style RSI Pullback (cross-under)
         trend_ema = params.get("trend_ema", "ema_200")
         rsi_entry = params.get("rsi_entry", 15)
         long_only = params.get("long_only", True)
+        ema_vals = df[trend_ema].values
         
         # Long Signal: Uptrend + Pullback (RSI)
-        if row['close'] > row[trend_ema] and row['rsi'] < rsi_entry and prev_row['rsi'] >= rsi_entry:
+        if close_vals[idx] > ema_vals[idx] and rsi_vals[idx] < rsi_entry and rsi_vals[idx-1] >= rsi_entry:
             return "LONG"
         # Short Signal: Downtrend + Bounce (RSI)
-        elif not long_only and row['close'] < row[trend_ema] and row['rsi'] > (100 - rsi_entry) and prev_row['rsi'] <= (100 - rsi_entry):
+        elif not long_only and close_vals[idx] < ema_vals[idx] and rsi_vals[idx] > (100 - rsi_entry) and rsi_vals[idx-1] <= (100 - rsi_entry):
             return "SHORT"
             
     elif strategy_name == "RSI_State":
@@ -142,34 +143,42 @@ def check_signal(df, idx, strategy_name, params):
         trend_ema = params.get("trend_ema", "ema_150")
         rsi_entry = params.get("rsi_entry", 20)
         long_only = params.get("long_only", True)
+        ema_vals = df[trend_ema].values
         
-        if row['close'] > row[trend_ema] and row['rsi'] < rsi_entry:
+        if close_vals[idx] > ema_vals[idx] and rsi_vals[idx] < rsi_entry:
             return "LONG"
-        elif not long_only and row['close'] < row[trend_ema] and row['rsi'] > (100 - rsi_entry):
+        elif not long_only and close_vals[idx] < ema_vals[idx] and rsi_vals[idx] > (100 - rsi_entry):
             return "SHORT"
             
     elif strategy_name == "BB_Mean_Reversion":
         # Bollinger Band Dip/Peak
         trend_ema = params.get("trend_ema", "ema_150")
         long_only = params.get("long_only", True)
+        ema_vals = df[trend_ema].values
+        low_vals = df['low'].values
+        high_vals = df['high'].values
+        bb_lower_vals = df['bb_lower'].values
+        bb_upper_vals = df['bb_upper'].values
         
         # Long Signal: Uptrend + Low pierces Lower Band
-        if row['close'] > row[trend_ema] and row['low'] < row['bb_lower']:
+        if close_vals[idx] > ema_vals[idx] and low_vals[idx] < bb_lower_vals[idx]:
             return "LONG"
         # Short Signal: Downtrend + High pierces Upper Band
-        elif not long_only and row['close'] < row[trend_ema] and row['high'] > row['bb_upper']:
+        elif not long_only and close_vals[idx] < ema_vals[idx] and high_vals[idx] > bb_upper_vals[idx]:
             return "SHORT"
             
     elif strategy_name == "SuperTrend_Pullback":
         # SuperTrend Trend Filter + Short term RSI pullback
         long_only = params.get("long_only", True)
         rsi_entry = params.get("rsi_entry", 25)
+        st_vals = df['supertrend'].values
+        ema_vals = df['ema_200'].values
         
         # Long Signal: SuperTrend is Bullish + Short-term RSI is oversold
-        if row['supertrend'] == True and row['close'] > row['ema_200'] and row['rsi'] < rsi_entry:
+        if st_vals[idx] == True and close_vals[idx] > ema_vals[idx] and rsi_vals[idx] < rsi_entry:
             return "LONG"
         # Short Signal: SuperTrend is Bearish + Short-term RSI is overbought
-        elif not long_only and row['supertrend'] == False and row['close'] < row['ema_200'] and row['rsi'] > (100 - rsi_entry):
+        elif not long_only and st_vals[idx] == False and close_vals[idx] < ema_vals[idx] and rsi_vals[idx] > (100 - rsi_entry):
             return "SHORT"
             
     elif strategy_name == "Velocity_Pullback":
@@ -177,10 +186,12 @@ def check_signal(df, idx, strategy_name, params):
         # Long entry: Strong active uptrend (EMA_50 > EMA_200 and Close > EMA_50) + extremely oversold short-term dip (RSI(2) < rsi_entry)
         rsi_entry = params.get("rsi_entry", 15)
         long_only = params.get("long_only", True)
+        ema50_vals = df['ema_50'].values
+        ema200_vals = df['ema_200'].values
         
-        if row['close'] > row['ema_50'] and row['ema_50'] > row['ema_200'] and row['rsi'] < rsi_entry:
+        if close_vals[idx] > ema50_vals[idx] and ema50_vals[idx] > ema200_vals[idx] and rsi_vals[idx] < rsi_entry:
             return "LONG"
-        elif not long_only and row['close'] < row['ema_50'] and row['ema_50'] < row['ema_200'] and row['rsi'] > (100 - rsi_entry):
+        elif not long_only and close_vals[idx] < ema50_vals[idx] and ema50_vals[idx] < ema200_vals[idx] and rsi_vals[idx] > (100 - rsi_entry):
             return "SHORT"
             
     return None
@@ -188,7 +199,7 @@ def check_signal(df, idx, strategy_name, params):
 GLOBAL_STOCK_INDICATORS_CACHE = {}
 
 # 🏆 Chronological Portfolio Backtester
-def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=INITIAL_CASH, pct_per_trade=PCT_PER_TRADE):
+def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=INITIAL_CASH, pct_per_trade=PCT_PER_TRADE, start_date=None, end_date=None):
     """Simulates chronological trading across all symbols with strict cash constraints."""
     global GLOBAL_STOCK_INDICATORS_CACHE
     
@@ -208,6 +219,13 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
     # Get all unique trading dates sorted
     all_dates = sorted(list(set().union(*(df.index for df in processed_data.values()))))
     
+    if start_date:
+        start_dt = pd.to_datetime(start_date)
+        all_dates = [d for d in all_dates if d >= start_dt]
+    if end_date:
+        end_dt = pd.to_datetime(end_date)
+        all_dates = [d for d in all_dates if d <= end_dt]
+    
     # Initialize portfolio state
     cash = initial_cash
     active_trades = {}  # symbol -> trade_dict
@@ -216,7 +234,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
     
     # Parameters
     atr_sl_mult = params.get("atr_sl_mult", 2.0)
-    rr_ratio = 1.5 # Fixed 1:1.5 Risk/Reward
+    rr_ratio = params.get("rr_ratio", 1.5)
     
     # Helper to map date to its row index in each symbol's DataFrame
     sym_indices = {sym: {date: i for i, date in enumerate(df.index)} for sym, df in processed_data.items()}
@@ -227,12 +245,14 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
         # --- PHASE A: UPDATE ACTIVE TRADES (INTRADAY CHECKING) ---
         symbols_to_close = []
         for sym, t in active_trades.items():
-            df = processed_data[sym]
-            if date not in df.index:
+            curr_idx = sym_indices[sym].get(date)
+            if curr_idx is None:
                 continue
-            
-            bar = df.loc[date]
-            o, h, l, c = bar['open'], bar['high'], bar['low'], bar['close']
+                
+            o = df['open'].values[curr_idx]
+            h = df['high'].values[curr_idx]
+            l = df['low'].values[curr_idx]
+            c = df['close'].values[curr_idx]
             
             sl = t['sl']
             tp = t['tp']
@@ -248,16 +268,14 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
             if t_type == "LONG":
                 # Check for dynamic exit (RSI(2) > 70 or close > 5-day SMA)
                 if strategy_name == "Velocity_Pullback":
-                    idx_list = df.index.tolist()
-                    if date in idx_list:
-                        curr_idx = idx_list.index(date)
-                        if curr_idx > 0:
-                            prev_date_in_df = idx_list[curr_idx - 1]
-                            prev_bar = df.loc[prev_date_in_df]
-                            if prev_bar['close'] > prev_bar['sma_5'] or prev_bar['rsi'] > params.get("rsi_exit", 70):
-                                exited = True
-                                exit_price = o
-                                exit_reason = "DYNAMIC_EXIT"
+                    if curr_idx > 0:
+                        prev_c = df['close'].values[curr_idx - 1]
+                        prev_sma5 = df['sma_5'].values[curr_idx - 1]
+                        prev_rsi = df['rsi'].values[curr_idx - 1]
+                        if prev_c > prev_sma5 or prev_rsi > params.get("rsi_exit", 70):
+                            exited = True
+                            exit_price = o
+                            exit_reason = "DYNAMIC_EXIT"
                 
                 if not exited:
                     # Check for gap open down below stop
@@ -290,16 +308,14 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
             elif t_type == "SHORT":
                 # Check for dynamic exit (RSI(2) < 30 or close < 5-day SMA)
                 if strategy_name == "Velocity_Pullback":
-                    idx_list = df.index.tolist()
-                    if date in idx_list:
-                        curr_idx = idx_list.index(date)
-                        if curr_idx > 0:
-                            prev_date_in_df = idx_list[curr_idx - 1]
-                            prev_bar = df.loc[prev_date_in_df]
-                            if prev_bar['close'] < prev_bar['sma_5'] or prev_bar['rsi'] < (100 - params.get("rsi_exit", 70)):
-                                exited = True
-                                exit_price = o
-                                exit_reason = "DYNAMIC_EXIT"
+                    if curr_idx > 0:
+                        prev_c = df['close'].values[curr_idx - 1]
+                        prev_sma5 = df['sma_5'].values[curr_idx - 1]
+                        prev_rsi = df['rsi'].values[curr_idx - 1]
+                        if prev_c < prev_sma5 or prev_rsi < (100 - params.get("rsi_exit", 70)):
+                            exited = True
+                            exit_price = o
+                            exit_reason = "DYNAMIC_EXIT"
                                 
                 if not exited:
                     # Check for gap open up above stop
@@ -322,11 +338,11 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
                         exited = True
                         exit_price = sl
                         exit_reason = "STOP_LOSS"
-                # Check normal take profit
-                elif l <= tp:
-                    exited = True
-                    exit_price = tp
-                    exit_reason = "TAKE_PROFIT"
+                    # Check normal take profit
+                    elif l <= tp:
+                        exited = True
+                        exit_price = tp
+                        exit_reason = "TAKE_PROFIT"
             
             if exited:
                 # Calculate gross and net PnL
@@ -335,13 +351,16 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
                     exit_value = exit_price * shares
                 else:
                     gross_pnl = (entry_price - exit_price) * shares
-                    exit_value = entry_price * shares + gross_pnl
+                    exit_value = exit_price * shares # Notional cost to buy back
                     
                 fee = exit_value * FEE_RATE
                 net_pnl = gross_pnl - fee - t['entry_fee']
                 
-                # Reclaim cash
-                cash += exit_value - fee
+                # Reclaim / Deduct cash
+                if t_type == "LONG":
+                    cash += exit_value - fee
+                else:
+                    cash -= (exit_value + fee)
                 
                 trade_history.append({
                     "symbol": sym,
@@ -353,7 +372,8 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
                     "shares": shares,
                     "net_pnl": net_pnl,
                     "pnl_pct": (net_pnl / t['notional']) * 100,
-                    "reason": exit_reason
+                    "reason": exit_reason,
+                    "sl_dist": t.get("sl_dist", entry_price * 0.05)
                 })
                 symbols_to_close.append(sym)
                 
@@ -369,8 +389,9 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
         active_notional = 0.0
         for sym, t in active_trades.items():
             df = processed_data[sym]
-            if date in df.index:
-                close_price = df.loc[date, 'close']
+            curr_idx = sym_indices[sym].get(date)
+            if curr_idx is not None:
+                close_price = df['close'].values[curr_idx]
                 if t['type'] == "LONG":
                     active_pnl += (close_price - t['entry_price']) * t['shares']
                     active_notional += close_price * t['shares']
@@ -386,7 +407,8 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
         calc_equity = cash
         for sym, t in active_trades.items():
             df = processed_data[sym]
-            c_p = df.loc[date, 'close'] if date in df.index else t['entry_price']
+            curr_idx = sym_indices[sym].get(date)
+            c_p = df['close'].values[curr_idx] if curr_idx is not None else t['entry_price']
             if t['type'] == "LONG":
                 calc_equity += t['shares'] * c_p
             else:
@@ -421,12 +443,17 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
         # We will process alphabetically
         signals.sort(key=lambda x: x[0])
         
+        mode = params.get("mode", "BOTH")
         for sym, sig_type in signals:
+            if mode == "LONG" and sig_type != "LONG":
+                continue
+            if mode == "SHORT" and sig_type != "SHORT":
+                continue
             df = processed_data[sym]
-            bar = df.loc[date]
-            entry_price = bar['open']  # NEXT-DAY OPEN execution!
-            prev_bar = df.loc[prev_date]
-            atr = prev_bar['atr']
+            curr_idx = sym_indices[sym].get(date)
+            entry_price = df['open'].values[curr_idx]  # NEXT-DAY OPEN execution!
+            prev_idx = sym_indices[sym].get(prev_date)
+            atr = df['atr'].values[prev_idx] if prev_idx is not None else np.nan
             
             if np.isnan(atr) or atr <= 0:
                 continue
@@ -448,18 +475,23 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
             # Notional required
             position_notional = shares * entry_price
             
-            # 🛡️ NO LEVERAGE GATE (Cash Constraint)
-            # If position exceeds available cash, scale it down to exactly available cash
-            # (which reduces actual risk to <1%, but avoids going into leverage/margin)
-            if position_notional > cash:
-                shares = cash / entry_price
+            # 🛡️ LEVERAGE & CASH SIZING GATE (Fractional Sizing Supported)
+            leverage = params.get("leverage", 1.0)
+            buying_power = calc_equity * leverage
+            
+            # How much buying power is currently in use?
+            in_use_power = sum(t['shares'] * t['entry_price'] for t in active_trades.values())
+            available_power = max(0.0, buying_power - in_use_power)
+            
+            if position_notional > available_power:
+                shares = available_power / entry_price
                 position_notional = shares * entry_price
                 
             # Transaction cost
             entry_fee = position_notional * FEE_RATE
             
             # Min shares threshold to avoid micro-trades
-            if shares > 0.01 and position_notional > 10.0 and cash >= (position_notional + entry_fee if sig_type == "LONG" else entry_fee):
+            if shares > 0.01 and position_notional > 10.0 and available_power >= (position_notional + entry_fee if sig_type == "LONG" else entry_fee):
                 # Execute Trade
                 if sig_type == "LONG":
                     cash -= (position_notional + entry_fee)
@@ -474,7 +506,8 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
                     "tp": tp,
                     "shares": shares,
                     "notional": position_notional,
-                    "entry_fee": entry_fee
+                    "entry_fee": entry_fee,
+                    "sl_dist": D
                 }
                 
                 if verbose:
@@ -554,7 +587,8 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
         "rsi_exit": 65,
         "atr_sl_mult": 3.0,
         "trend_ema": "ema_200",
-        "long_only": True
+        "long_only": False,
+        "mode": "BOTH"
     }
     
     # 3. Run backtest with custom starting balance and risk level
@@ -565,7 +599,9 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
         best_params, 
         verbose=False,
         initial_cash=start_balance,
-        pct_per_trade=pct_per_trade
+        pct_per_trade=pct_per_trade,
+        start_date="2021-05-19",
+        end_date="2026-05-19"
     )
     
     if not metrics:

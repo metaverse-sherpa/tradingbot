@@ -100,8 +100,8 @@ def calculate_symbol_indicators_and_signal(symbol):
     tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     df['atr'] = tr.rolling(window=14).mean()
     
-    # RSI(3)
-    rsi_period = 3
+    # RSI(2)
+    rsi_period = 2
     delta = df['close'].diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
@@ -114,7 +114,7 @@ def calculate_symbol_indicators_and_signal(symbol):
     yesterday = df.iloc[-1]
     
     # Trend Filter
-    is_uptrend = yesterday['close'] > yesterday['ema_50'] and yesterday['ema_50'] > yesterday['ema_200']
+    is_uptrend = yesterday['close'] > yesterday['ema_200']
     # RSI Pullback
     is_pullback = yesterday['rsi'] < 10
     
@@ -235,8 +235,8 @@ def run_theoretical_tally_engine(today_opens):
             
             indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
             if indicator_dict:
-                # Dynamic exit: yesterday's close > SMA(5) or yesterday's RSI(3) > 65
-                is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 65
+                # Dynamic exit: yesterday's close > SMA(5) or yesterday's RSI(2) > 70
+                is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70
                 
                 if is_dynamic_exit:
                     # Close trade at today's open!
@@ -371,8 +371,8 @@ async def run_real_trader_execution(today_opens):
             for sym, pos in active_positions.items():
                 indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
                 if indicator_dict:
-                    # Dynamic exit: yesterday's close > SMA(5) or yesterday's RSI(3) > 65
-                    is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 65
+                    # Dynamic exit: yesterday's close > SMA(5) or yesterday's RSI(2) > 70
+                    is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70
                     
                     if is_dynamic_exit:
                         logger.info(f"Dynamic Exit triggered for real user {chat_id} symbol {sym}. Liquidating...")

@@ -94,7 +94,7 @@ def create_infographic():
     
     # Trigger Rule
     draw.text((110, setup_y + 175), "2. Velocity Pullback Trigger:", font=font_body_bold, fill=(255, 255, 255, 255))
-    draw.text((430, setup_y + 175), "Wilder RSI (3-Period) < 10", font=font_body, fill=(200, 200, 200, 255))
+    draw.text((430, setup_y + 175), "Wilder RSI (2-Period) < 10", font=font_body, fill=(200, 200, 200, 255))
     draw.text((110, setup_y + 210), "• Purpose:", font=font_body_bold, fill=(150, 150, 150, 255))
     draw.text((215, setup_y + 210), "Identifies highly localized, temporary exhaustion pullbacks ripe for immediate snapbacks.", font=font_body, fill=(180, 180, 180, 255))
     
@@ -105,7 +105,7 @@ def create_infographic():
     # 7. Risk Management & Exits (Block 3)
     risk_y = 850
     draw.rounded_rectangle([80, risk_y, width - 80, risk_y + 330], radius=15, fill=(28, 28, 28, 200), outline=(255, 255, 255, 20), width=2)
-    draw.text((110, risk_y + 30), "RISK CONTROLS & DYNAMIC BRACKET EXITS", font=font_brand, fill=(255, 255, 255, 255))
+    draw.text((110, risk_y + 30), "RISK CONTROLS & DYNAMIC BRACKET EXITS (2.0x MARGIN ACCOUNT)", font=font_brand, fill=(255, 255, 255, 255))
     
     # Sizing
     draw.text((110, risk_y + 85), "• Capital Sizing:", font=font_body_bold, fill=(0, 229, 255, 255))
@@ -122,7 +122,7 @@ def create_infographic():
     # Dynamic Exits
     draw.text((110, risk_y + 235), "• Dynamic Time Exits:", font=font_body_bold, fill=(255, 235, 59, 255))
     draw.text((345, risk_y + 235), "Exits immediately at market open if yesterday's closed candle either:", font=font_body, fill=(200, 200, 200, 255))
-    draw.text((130, risk_y + 275), "- Crossed above daily SMA(5)  OR  - Crossed above daily Wilder RSI(3) > 65.", font=font_body_bold, fill=(220, 220, 220, 255))
+    draw.text((130, risk_y + 275), "- Crossed above daily SMA(5)  OR  - Crossed above daily Wilder RSI(2) > 70.", font=font_body_bold, fill=(220, 220, 220, 255))
     
     # 8. Audited Performance Metrics (Block 4)
     perf_y = 1210
@@ -142,13 +142,13 @@ def create_infographic():
         if idx < 3:
             draw.line([(80 + (idx+1)*box_w, perf_y + 40), (80 + (idx+1)*box_w, perf_y + 190)], fill=(60, 60, 60, 100), width=1)
             
-    draw_stat(0, "+113.5%", "TOTAL RETURN", (57, 255, 20, 255))
-    draw_stat(1, "66.9%", "WIN RATE", (255, 255, 255, 255))
-    draw_stat(2, "14.2%", "MAX DRAWDOWN", (255, 100, 100, 255))
-    draw_stat(3, "1.87", "SHARPE RATIO", (0, 229, 255, 255))
+    draw_stat(0, "+45.9%", "TOTAL RETURN", (57, 255, 20, 255))
+    draw_stat(1, "63.6%", "WIN RATE", (255, 255, 255, 255))
+    draw_stat(2, "24.7%", "MAX DRAWDOWN", (255, 100, 100, 255))
+    draw_stat(3, "0.80", "SHARPE RATIO", (0, 229, 255, 255))
     
     # Performance Header Text
-    draw.text((width // 2, perf_y + 35), "VERIFIED 3-YEAR HISTORICAL BACKTEST METRICS (2023-2026)", font=font_brand, fill=(200, 200, 200, 255), anchor="mm")
+    draw.text((width // 2, perf_y + 35), "VERIFIED 5-YEAR HISTORICAL BACKTEST METRICS (2021-2026)", font=font_brand, fill=(200, 200, 200, 255), anchor="mm")
     
     # 9. Bottom Footer
     footer_text = "METAVERSE SHERPA © 2026 | SECURED DUAL-ASSET ALGORITHMIC EXECUTION ENGINE"

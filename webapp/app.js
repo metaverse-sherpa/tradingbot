@@ -78,13 +78,13 @@ const STRATEGY_GUIDES = {
     },
     "Sherpa Velocity Pullback": {
         philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
-        indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
+        indicators: "Daily Close > EMA(200), 2-period RSI (< 10).",
         pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
-        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
-        img: "/api/charts/sherpa_velocity_infographic_ai.png",
+        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>24.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+45.9%</strong> return and high <strong class='text-tertiary'>63.6%</strong> win rate over a 5-year period.",
+        img: "/api/charts/stock_strategy_infographic.png",
         backtest_stats: {
-            win_rate: "66.9%", trades: "555", sharpe: "1.87", max_dd: "-14.2%", net_pnl: "+113.5%", final_bal: "$21,350.00",
-            img: "/api/charts/sherpa_equity.png"
+            win_rate: "63.6%", trades: "1500", sharpe: "0.80", max_dd: "-24.7%", net_pnl: "+45.9%", final_bal: "$14,589.49",
+            img: "/api/charts/stock_master_audit.png"
         }
     }
 };
@@ -3323,9 +3323,9 @@ function renderSignalsView() {
                     },
                     "Sherpa Velocity Pullback": {
                         philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
-                        indicators: "Daily Close > EMA(50) AND EMA(50) > EMA(200), 3-period Wilder RSI (< 10).",
+                        indicators: "Daily Close > EMA(200), 2-period RSI (< 10).",
                         pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
-                        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>14.2%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+113.5%</strong> return and high <strong class='text-tertiary'>66.9%</strong> win rate over a 3-year period.",
+                        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>24.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+45.9%</strong> return and high <strong class='text-tertiary'>63.6%</strong> win rate over a 5-year period.",
                         img: "/api/charts/stock_strategy_infographic.png"
                     }
                 };

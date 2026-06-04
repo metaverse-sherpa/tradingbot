@@ -192,179 +192,51 @@ def precalculate_crypto_trades(strategy_name="Mean Reversion Scalper"):
     return trades_list
 
 def precalculate_stock_trades():
-    print("⌛ Running 3-Year baseline for stock strategy: Sherpa Velocity Pullback...")
+    print("⌛ Running 5-Year baseline for stock strategy: Sherpa Velocity Pullback...")
     data_dict = load_data_from_db()
     
     best_params = {
-        "rsi_period": 3,
+        "rsi_period": 2,
         "rsi_entry": 10,
-        "rsi_exit": 65,
+        "rsi_exit": 70,
         "atr_sl_mult": 3.0,
         "trend_ema": "ema_200",
-        "long_only": True
+        "long_only": True,
+        "mode": "LONG",
+        "leverage": 2.0
     }
     
-    processed_data = {}
-    for sym, df in data_dict.items():
-        # calculate indicators just like stock_backtester_daily.py does
-        from stock_backtester_daily import calculate_indicators
-        processed_data[sym] = calculate_indicators(df, "Velocity_Pullback", best_params)
-        
-    all_dates = sorted(list(set().union(*(df.index for df in processed_data.values()))))
+    from stock_backtester_daily import run_backtest
+    h_df, t_df, metrics = run_backtest(
+        data_dict,
+        "Velocity_Pullback",
+        best_params,
+        verbose=False,
+        initial_cash=10000.0,
+        pct_per_trade=0.01,
+        start_date="2021-05-19",
+        end_date="2026-05-19"
+    )
     
-    cash = 10000.0
-    active_trades = {}
     trades_list = []
-    equity = 10000.0
-    pct_per_trade = 0.01 # 1.0% baseline
-    
-    atr_sl_mult = best_params["atr_sl_mult"]
-    rr_ratio = 1.5
-    sym_indices = {sym: {date: i for i, date in enumerate(df.index)} for sym, df in processed_data.items()}
-    
-    for t_idx, date in enumerate(all_dates):
-        # exits
-        symbols_to_close = []
-        for sym, t in active_trades.items():
-            df = processed_data[sym]
-            if date not in df.index:
-                continue
+    if not t_df.empty:
+        for _, row in t_df.iterrows():
+            trades_list.append({
+                "strategy": "Sherpa Velocity Pullback",
+                "symbol": row["symbol"],
+                "type": "stock",
+                "entry_date": str(row["entry_date"]),
+                "exit_date": str(row["exit_date"]),
+                "side": row["type"],
+                "entry_price": float(row["entry_price"]),
+                "exit_price": float(row["exit_price"]),
+                "sl_dist": float(row["sl_dist"]),
+                "win": bool(row["net_pnl"] > 0),
+                "rr_ratio": 1.5,
+                "fee_rate": 0.0005,
+                "exit_reason": row["reason"]
+            })
             
-            bar = df.loc[date]
-            o, h, l, c = bar['open'], bar['high'], bar['low'], bar['close']
-            sl, tp, shares, entry_price = t['sl'], t['tp'], t['shares'], t['entry_price']
-            
-            exited = False
-            exit_price = None
-            exit_reason = None
-            
-            if t['type'] == "LONG":
-                idx_list = df.index.tolist()
-                if date in idx_list:
-                    curr_idx = idx_list.index(date)
-                    if curr_idx > 0:
-                        prev_date_in_df = idx_list[curr_idx - 1]
-                        prev_bar = df.loc[prev_date_in_df]
-                        if prev_bar['close'] > prev_bar['sma_5'] or prev_bar['rsi'] > best_params["rsi_exit"]:
-                            exited = True
-                            exit_price = o
-                            exit_reason = "DYNAMIC_EXIT"
-                            
-                if not exited:
-                    if o <= sl:
-                        exited = True
-                        exit_price = o
-                        exit_reason = "STOP_LOSS (GAP)"
-                    elif o >= tp:
-                        exited = True
-                        exit_price = o
-                        exit_reason = "TAKE_PROFIT (GAP)"
-                    elif l <= sl and h >= tp:
-                        exited = True
-                        exit_price = sl
-                        exit_reason = "STOP_LOSS (CONSERVATIVE)"
-                    elif l <= sl:
-                        exited = True
-                        exit_price = sl
-                        exit_reason = "STOP_LOSS"
-                    elif h >= tp:
-                        exited = True
-                        exit_price = tp
-                        exit_reason = "TAKE_PROFIT"
-                        
-            if exited:
-                gross_pnl = (exit_price - entry_price) * shares
-                exit_value = exit_price * shares
-                fee = exit_value * FEE_RATE
-                net_pnl = gross_pnl - fee - t['entry_fee']
-                cash += exit_value - fee
-                
-                trades_list.append({
-                    "strategy": "Sherpa Velocity Pullback",
-                    "symbol": sym,
-                    "type": "stock",
-                    "entry_date": str(t['entry_date']),
-                    "exit_date": str(date),
-                    "side": "LONG",
-                    "entry_price": float(entry_price),
-                    "exit_price": float(exit_price),
-                    "sl_dist": float(t['sl_dist']),
-                    "win": bool("TAKE_PROFIT" in exit_reason or (gross_pnl > 0 and "DYNAMIC_EXIT" in exit_reason)),
-                    "rr_ratio": float(rr_ratio),
-                    "fee_rate": float(FEE_RATE),
-                    "exit_reason": exit_reason
-                })
-                symbols_to_close.append(sym)
-                
-        for sym in symbols_to_close:
-            active_trades.pop(sym)
-            
-        # equity calculation
-        calc_equity = cash
-        for sym, t in active_trades.items():
-            df = processed_data[sym]
-            c_p = df.loc[date, 'close'] if date in df.index else t['entry_price']
-            calc_equity += t['shares'] * c_p
-            
-        # entry
-        if t_idx == 0:
-            continue
-            
-        prev_date = all_dates[t_idx - 1]
-        signals = []
-        for sym in processed_data.keys():
-            if sym in active_trades:
-                continue
-            df = processed_data[sym]
-            if prev_date not in df.index or date not in df.index:
-                continue
-            prev_idx = sym_indices[sym][prev_date]
-            sig = check_signal(df, prev_idx, "Velocity_Pullback", best_params)
-            if sig:
-                signals.append((sym, sig))
-                
-        signals.sort(key=lambda x: x[0])
-        
-        for sym, sig_type in signals:
-            df = processed_data[sym]
-            bar = df.loc[date]
-            entry_price = bar['open']
-            prev_bar = df.loc[prev_date]
-            atr = prev_bar['atr']
-            if np.isnan(atr) or atr <= 0:
-                continue
-                
-            D = atr_sl_mult * atr
-            if D < entry_price * 0.005:
-                D = entry_price * 0.005
-                
-            sl = entry_price - D
-            tp = entry_price + (rr_ratio * D)
-            
-            risk_dollars = calc_equity * pct_per_trade
-            shares = risk_dollars / D
-            position_notional = shares * entry_price
-            
-            if position_notional > cash:
-                shares = cash / entry_price
-                position_notional = shares * entry_price
-                
-            entry_fee = position_notional * FEE_RATE
-            
-            if shares > 0.01 and position_notional > 10.0 and cash >= (position_notional + entry_fee):
-                cash -= (position_notional + entry_fee)
-                active_trades[sym] = {
-                    "type": "LONG",
-                    "entry_date": date,
-                    "entry_price": entry_price,
-                    "sl": sl,
-                    "tp": tp,
-                    "shares": shares,
-                    "notional": position_notional,
-                    "entry_fee": entry_fee,
-                    "sl_dist": D
-                }
-                
     print(f"✅ Generated {len(trades_list)} trades for Sherpa Velocity Pullback")
     return trades_list
 

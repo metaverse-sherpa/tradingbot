@@ -113,7 +113,7 @@ def main():
         return
 
     init_db()
-    print("🏔️ Starting Daily Stock Data Caching (Last 3 Years)...")
+    print("🏔️ Starting Daily Stock Data Caching (Last 6 Years for 5-Year Audit)...")
     print(f"Target Symbols: {', '.join(SYMBOLS)}")
     
     for i, ticker in enumerate(SYMBOLS):
