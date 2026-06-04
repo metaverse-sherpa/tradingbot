@@ -2891,6 +2891,8 @@ function renderStrategyView() {
 function renderBacktestView() {
     const bt = STATE.backtest;
     const user = STATE.user || {};
+    const selectedStrategy = bt.strategy || 'Mean Reversion Scalper';
+    const isStock = (selectedStrategy === 'Sherpa Velocity Pullback');
     
     return `
         ${renderHeader()}
@@ -2901,7 +2903,7 @@ function renderBacktestView() {
                 <div class="glass-card rounded-xl p-8 text-center space-y-4">
                     <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-2"></div>
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Sherpa Engine is Crunching Alpha...</h3>
-                    <p class="text-xs text-on-surface-variant">Scanning 3 years of historical market candles...</p>
+                    <p class="text-xs text-on-surface-variant">Scanning ${isStock ? '5' : '3'} years of historical market candles...</p>
                 </div>
             ` : bt.result ? `
                 <div class="glass-card rounded-xl p-card-padding space-y-4">
@@ -2994,8 +2996,8 @@ function renderBacktestView() {
                         <input id="bt-risk" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || 1.0}" oninput="document.getElementById('bt-risk-val').innerText = this.value + '%'"/>
                     </div>
                     
-                    <button onclick="triggerBacktest()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all cursor-pointer">
-                        ▶ Run 3-Year Backtest
+                    <button id="bt-submit-btn" onclick="triggerBacktest()" class="w-full h-11 bg-primary-container text-on-primary-container font-bold rounded-lg hover:brightness-110 transition-all cursor-pointer">
+                        ▶ Run ${isStock ? '5-Year' : '3-Year'} Backtest
                     </button>
                 </div>
             `}
@@ -3991,9 +3993,11 @@ function resetBacktester() {
 }
 
 window.adjustBacktestDefaults = function(strategyName) {
+    STATE.backtest.strategy = strategyName;
     const slider = document.getElementById('bt-risk');
     const label = document.getElementById('bt-risk-val');
     const capitalInput = document.getElementById('bt-capital');
+    const submitBtn = document.getElementById('bt-submit-btn');
     const user = STATE.user || {};
     
     if (strategyName === 'Sherpa Velocity Pullback') {
@@ -4005,6 +4009,9 @@ window.adjustBacktestDefaults = function(strategyName) {
         if (capitalInput) {
             capitalInput.value = STATE.stock_balance ? Number(STATE.stock_balance).toFixed(2) : 10000;
         }
+        if (submitBtn) {
+            submitBtn.innerText = '▶ Run 5-Year Backtest';
+        }
     } else {
         if (slider && label) {
             const risk = user.risk_pct || 1.0;
@@ -4013,6 +4020,9 @@ window.adjustBacktestDefaults = function(strategyName) {
         }
         if (capitalInput) {
             capitalInput.value = STATE.crypto_balance ? Number(STATE.crypto_balance).toFixed(2) : 10000;
+        }
+        if (submitBtn) {
+            submitBtn.innerText = '▶ Run 3-Year Backtest';
         }
     }
 };

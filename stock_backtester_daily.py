@@ -294,6 +294,13 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
                             exited = True
                             exit_price = o
                             exit_reason = "DYNAMIC_EXIT"
+                elif strategy_name == "SuperTrend_Pullback":
+                    if curr_idx > 0:
+                        prev_rsi = df['rsi'].values[curr_idx - 1]
+                        if prev_rsi > params.get("rsi_exit", 75):
+                            exited = True
+                            exit_price = o
+                            exit_reason = "DYNAMIC_EXIT"
                 
                 if not exited:
                     # Check for gap open down below stop
