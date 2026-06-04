@@ -2718,7 +2718,7 @@ function renderSettingsView() {
                             <span class="text-on-surface-variant">Crypto Risk per Trade</span>
                             <span id="risk-val" class="text-primary font-bold">${user.risk_pct || '1.5'}%</span>
                         </div>
-                        <input id="risk-slider" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || '1.5'}" oninput="document.getElementById('risk-val').innerText = this.value + '%'"/>
+                        <input id="risk-slider" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || '1.5'}" oninput="document.getElementById('risk-val').innerText = this.value + '%'; if(window.STATE && STATE.user) STATE.user.risk_pct = parseFloat(this.value);"/>
                     </div>
                     
                     <div class="space-y-2">
@@ -2726,7 +2726,7 @@ function renderSettingsView() {
                             <span class="text-on-surface-variant">Stock Risk per Trade</span>
                             <span id="stock-risk-val" class="text-secondary-container font-bold">${user.stock_risk_pct || '1.0'}%</span>
                         </div>
-                        <input id="stock-risk-slider" class="w-full accent-secondary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.stock_risk_pct || '1.0'}" oninput="document.getElementById('stock-risk-val').innerText = this.value + '%'"/>
+                        <input id="stock-risk-slider" class="w-full accent-secondary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.stock_risk_pct || '1.0'}" oninput="document.getElementById('stock-risk-val').innerText = this.value + '%'; if(window.STATE && STATE.user) STATE.user.stock_risk_pct = parseFloat(this.value);"/>
                     </div>
                 </div>
                 <button onclick="savePreferences()" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 transition-all mt-2 cursor-pointer">
