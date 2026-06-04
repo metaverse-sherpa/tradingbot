@@ -88,13 +88,13 @@ def create_infographic():
     
     # Trend Rule
     draw.text((110, setup_y + 85), "1. Robust Trend Gating:", font=font_body_bold, fill=(255, 255, 255, 255))
-    draw.text((360, setup_y + 85), "Daily Close > EMA(50)  AND  EMA(50) > EMA(200)", font=font_body, fill=(200, 200, 200, 255))
+    draw.text((360, setup_y + 85), "Daily Close > EMA(200)  AND  SuperTrend(10, 3) is UP", font=font_body, fill=(200, 200, 200, 255))
     draw.text((110, setup_y + 120), "• Purpose:", font=font_body_bold, fill=(150, 150, 150, 255))
     draw.text((215, setup_y + 120), "Restricts execution strictly to strong, long-term institutional market uptrends.", font=font_body, fill=(180, 180, 180, 255))
     
     # Trigger Rule
     draw.text((110, setup_y + 175), "2. Velocity Pullback Trigger:", font=font_body_bold, fill=(255, 255, 255, 255))
-    draw.text((430, setup_y + 175), "Wilder RSI (2-Period) < 10", font=font_body, fill=(200, 200, 200, 255))
+    draw.text((430, setup_y + 175), "Wilder RSI (4-Period) < 26", font=font_body, fill=(200, 200, 200, 255))
     draw.text((110, setup_y + 210), "• Purpose:", font=font_body_bold, fill=(150, 150, 150, 255))
     draw.text((215, setup_y + 210), "Identifies highly localized, temporary exhaustion pullbacks ripe for immediate snapbacks.", font=font_body, fill=(180, 180, 180, 255))
     
@@ -105,15 +105,15 @@ def create_infographic():
     # 7. Risk Management & Exits (Block 3)
     risk_y = 850
     draw.rounded_rectangle([80, risk_y, width - 80, risk_y + 330], radius=15, fill=(28, 28, 28, 200), outline=(255, 255, 255, 20), width=2)
-    draw.text((110, risk_y + 30), "RISK CONTROLS & DYNAMIC BRACKET EXITS (2.0x MARGIN ACCOUNT)", font=font_brand, fill=(255, 255, 255, 255))
+    draw.text((110, risk_y + 30), "RISK CONTROLS & DYNAMIC BRACKET EXITS (1.6x MARGIN ACCOUNT)", font=font_brand, fill=(255, 255, 255, 255))
     
     # Sizing
     draw.text((110, risk_y + 85), "• Capital Sizing:", font=font_body_bold, fill=(0, 229, 255, 255))
-    draw.text((285, risk_y + 85), "1.0% Risk of total equity per trade (strictly calculated using daily ATR).", font=font_body, fill=(200, 200, 200, 255))
+    draw.text((285, risk_y + 85), "2.0% Risk of total equity per trade (strictly calculated using daily ATR).", font=font_body, fill=(200, 200, 200, 255))
     
     # Take Profit
     draw.text((110, risk_y + 135), "• Take Profit (TP):", font=font_body_bold, fill=(57, 255, 20, 255))
-    draw.text((300, risk_y + 135), "Bracket order set automatically at entry price + (4.5 * ATR).", font=font_body, fill=(200, 200, 200, 255))
+    draw.text((300, risk_y + 135), "Bracket order set automatically at entry price + (4.8 * ATR) [1.6 R:R].", font=font_body, fill=(200, 200, 200, 255))
     
     # Stop Loss
     draw.text((110, risk_y + 185), "• Stop Loss (SL):", font=font_body_bold, fill=(255, 50, 50, 255))
@@ -121,8 +121,8 @@ def create_infographic():
     
     # Dynamic Exits
     draw.text((110, risk_y + 235), "• Dynamic Time Exits:", font=font_body_bold, fill=(255, 235, 59, 255))
-    draw.text((345, risk_y + 235), "Exits immediately at market open if yesterday's closed candle either:", font=font_body, fill=(200, 200, 200, 255))
-    draw.text((130, risk_y + 275), "- Crossed above daily SMA(5)  OR  - Crossed above daily Wilder RSI(2) > 70.", font=font_body_bold, fill=(220, 220, 220, 255))
+    draw.text((345, risk_y + 235), "Exits immediately at market open if yesterday's closed candle has:", font=font_body, fill=(200, 200, 200, 255))
+    draw.text((130, risk_y + 275), "- Crossed above daily Wilder RSI(4) > 75 (dynamic profit-taking exit).", font=font_body_bold, fill=(220, 220, 220, 255))
     
     # 8. Audited Performance Metrics (Block 4)
     perf_y = 1210
@@ -142,10 +142,10 @@ def create_infographic():
         if idx < 3:
             draw.line([(80 + (idx+1)*box_w, perf_y + 40), (80 + (idx+1)*box_w, perf_y + 190)], fill=(60, 60, 60, 100), width=1)
             
-    draw_stat(0, "+45.9%", "TOTAL RETURN", (57, 255, 20, 255))
-    draw_stat(1, "63.6%", "WIN RATE", (255, 255, 255, 255))
-    draw_stat(2, "24.7%", "MAX DRAWDOWN", (255, 100, 100, 255))
-    draw_stat(3, "0.80", "SHARPE RATIO", (0, 229, 255, 255))
+    draw_stat(0, "+102.3%", "TOTAL RETURN", (57, 255, 20, 255))
+    draw_stat(1, "70.2%", "WIN RATE", (255, 255, 255, 255))
+    draw_stat(2, "22.7%", "MAX DRAWDOWN", (255, 100, 100, 255))
+    draw_stat(3, "0.42", "TRADES / DAY", (0, 229, 255, 255))
     
     # Performance Header Text
     draw.text((width // 2, perf_y + 35), "VERIFIED 5-YEAR HISTORICAL BACKTEST METRICS (2021-2026)", font=font_brand, fill=(200, 200, 200, 255), anchor="mm")

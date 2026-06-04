@@ -2,28 +2,37 @@ import sys
 import os
 import pandas as pd
 import numpy as np
+import pickle
 from multiprocessing import Pool, cpu_count
 
 # Ensure root import path is correct
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from stock_backtester_daily import load_data_from_db, run_backtest
+from stock_backtester_daily import load_data_from_db, run_backtest, calculate_indicators
 
-# Global cache inside each worker process
-data_dict = None
+# Global dictionary to hold precalculated indicators per strategy in each worker
+PRECALCULATED_DATA = None
 
 def init_worker():
-    global data_dict
+    global PRECALCULATED_DATA
     try:
-        data_dict = load_data_from_db()
+        # Load from disk cache once per worker process
+        with open("scratch/precalculated_indicators.pkl", "rb") as f:
+            PRECALCULATED_DATA = pickle.load(f)
     except Exception as e:
-        print(f"Worker init error loading data: {e}")
+        print(f"Worker failed to load cache: {e}")
 
 def evaluate_config(args):
-    global data_dict
-    if data_dict is None:
+    global PRECALCULATED_DATA
+    if PRECALCULATED_DATA is None:
         return None
         
     strat, lev, risk, rr, rsi_entry, rsi_exit, atr = args
+    
+    # Retrieve the precalculated indicators for this strategy
+    processed_data = PRECALCULATED_DATA.get(strat)
+    if not processed_data:
+        return None
+        
     params = {
         "rsi_period": 2 if strat == "Velocity_Pullback" else 4,
         "rsi_entry": rsi_entry,
@@ -35,9 +44,17 @@ def evaluate_config(args):
         "leverage": lev,
         "rr_ratio": rr
     }
+    
     try:
+        from stock_backtester_daily import GLOBAL_STOCK_INDICATORS_CACHE
+        
+        # Inject our precalculated indicators directly into the cache key for this config
+        params_key = frozenset((k, v if not isinstance(v, list) else tuple(v)) for k, v in params.items())
+        cache_key = (strat, params_key)
+        GLOBAL_STOCK_INDICATORS_CACHE[cache_key] = processed_data
+        
         h_df, t_df, metrics = run_backtest(
-            data_dict,
+            processed_data, # Pass processed_data directly
             strat,
             params,
             verbose=False,
@@ -69,14 +86,37 @@ def evaluate_config(args):
                 "trades_per_day": tpd,
                 "total_trades": metrics.get('total_trades', 0)
             }
-    except Exception:
+    except Exception as e:
         pass
     return None
 
 def main():
-    print("🏔️ Starting optimization process...")
+    print("🏔️ Loading Daily Historical Stock Data...")
+    try:
+        data_dict = load_data_from_db()
+    except Exception as e:
+        print(f"❌ Error loading database: {e}")
+        return
+        
+    print(f"✅ Loaded data for {len(data_dict)} stocks.")
     
     strategies = ['Velocity_Pullback', 'RSI_Pullback', 'RSI_State', 'BB_Mean_Reversion', 'SuperTrend_Pullback']
+    
+    print("⚡ Precalculating technical indicators for all strategies...")
+    parent_cache = {}
+    for strat in strategies:
+        params = {"rsi_period": 2 if strat == "Velocity_Pullback" else 4}
+        processed_data = {}
+        for sym, df in data_dict.items():
+            processed_data[sym] = calculate_indicators(df, strat, params)
+        parent_cache[strat] = processed_data
+    
+    # Save cache to disk for child processes to load
+    os.makedirs("scratch", exist_ok=True)
+    with open("scratch/precalculated_indicators.pkl", "wb") as f:
+        pickle.dump(parent_cache, f, protocol=pickle.HIGHEST_PROTOCOL)
+    print("✅ Precalculation cached to scratch/precalculated_indicators.pkl.")
+    
     leverages = [1.0, 1.5, 2.0]
     risks = [0.01, 0.015, 0.02, 0.03]
     rr_ratios = [1.5, 2.0, 2.5]
@@ -92,7 +132,6 @@ def main():
                         for atr in atr_sl_mults:
                             exits = [70] if strat != "Velocity_Pullback" else [65, 70, 75]
                             for rsi_exit in exits:
-                                # We DO NOT pass data_dict in the task arguments to avoid pickling overhead!
                                 tasks.append((strat, lev, risk, rr, rsi_entry, rsi_exit, atr))
                                 
     num_tasks = len(tasks)
@@ -100,12 +139,22 @@ def main():
     print(f"🔍 Starting parallel sweep of {num_tasks} configurations using {num_cpus} CPU cores...")
     
     matches = []
-    # Initialize workers by loading the database once
+    completed_count = 0
     with Pool(num_cpus, initializer=init_worker) as pool:
-        for result in pool.imap_unordered(evaluate_config, tasks, chunksize=50):
+        for result in pool.imap_unordered(evaluate_config, tasks, chunksize=100):
+            completed_count += 1
+            if completed_count % 100 == 0 or completed_count == num_tasks:
+                print(f"📊 Progress: {completed_count}/{num_tasks} configurations evaluated ({completed_count/num_tasks*100:.1f}%)", flush=True)
             if result:
                 matches.append(result)
                 print(f"🔥 MATCH: {result['strategy']} | Lev: {result['leverage']} | Risk: {result['risk_pct']}% | RR: {result['rr_ratio']} | RSI Entry: {result['rsi_entry']} | RSI Exit: {result['rsi_exit']} | ATR Mult: {result['atr_sl_mult']} | PnL: {result['pnl']:.2f}% | WR: {result['win_rate']:.2f}% | DD: {result['max_dd']:.2f}% | TPD: {result['trades_per_day']:.2f}", flush=True)
+
+    # Clean up temporary pickle file
+    if os.path.exists("scratch/precalculated_indicators.pkl"):
+        try:
+            os.remove("scratch/precalculated_indicators.pkl")
+        except Exception:
+            pass
 
     print("\n" + "="*80)
     print(f"Sweep Completed! Found {len(matches)} matching configurations.")

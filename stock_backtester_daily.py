@@ -107,10 +107,20 @@ def calculate_indicators(df, strategy_name, params):
         f_low = lower_band.copy()
         st = [True] * len(df)
         
+        c_vals = df['close'].values
+        lb_vals = lower_band.values
+        ub_vals = upper_band.values
+        
+        flow_arr = np.zeros(len(df))
+        fup_arr = np.zeros(len(df))
+        
+        flow_arr[0] = lb_vals[0]
+        fup_arr[0] = ub_vals[0]
+        
         for i in range(1, len(df)):
-            f_low.iloc[i] = max(lower_band.iloc[i], f_low.iloc[i-1]) if df['close'].iloc[i-1] > f_low.iloc[i-1] else lower_band.iloc[i]
-            f_up.iloc[i] = min(upper_band.iloc[i], f_up.iloc[i-1]) if df['close'].iloc[i-1] < f_up.iloc[i-1] else upper_band.iloc[i]
-            st[i] = True if df['close'].iloc[i] > f_up.iloc[i] else (False if df['close'].iloc[i] < f_low.iloc[i] else st[i-1])
+            flow_arr[i] = max(lb_vals[i], flow_arr[i-1]) if c_vals[i-1] > flow_arr[i-1] else lb_vals[i]
+            fup_arr[i] = min(ub_vals[i], fup_arr[i-1]) if c_vals[i-1] < fup_arr[i-1] else ub_vals[i]
+            st[i] = True if c_vals[i] > fup_arr[i] else (False if c_vals[i] < flow_arr[i] else st[i-1])
             
         df['supertrend'] = st
     return df
@@ -197,6 +207,7 @@ def check_signal(df, idx, strategy_name, params):
     return None
 
 GLOBAL_STOCK_INDICATORS_CACHE = {}
+GLOBAL_SYM_INDICES_CACHE = {}
 
 # 🏆 Chronological Portfolio Backtester
 def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=INITIAL_CASH, pct_per_trade=PCT_PER_TRADE, start_date=None, end_date=None):
@@ -236,8 +247,14 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
     atr_sl_mult = params.get("atr_sl_mult", 2.0)
     rr_ratio = params.get("rr_ratio", 1.5)
     
-    # Helper to map date to its row index in each symbol's DataFrame
-    sym_indices = {sym: {date: i for i, date in enumerate(df.index)} for sym, df in processed_data.items()}
+    # Helper to map date to its row index in each symbol's DataFrame (cached globally)
+    global GLOBAL_SYM_INDICES_CACHE
+    processed_data_id = id(processed_data)
+    if processed_data_id in GLOBAL_SYM_INDICES_CACHE:
+        sym_indices = GLOBAL_SYM_INDICES_CACHE[processed_data_id]
+    else:
+        sym_indices = {sym: {date: i for i, date in enumerate(df.index)} for sym, df in processed_data.items()}
+        GLOBAL_SYM_INDICES_CACHE[processed_data_id] = sym_indices
     
     # 2. Chronological Loop
     for t_idx, date in enumerate(all_dates):
@@ -245,6 +262,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
         # --- PHASE A: UPDATE ACTIVE TRADES (INTRADAY CHECKING) ---
         symbols_to_close = []
         for sym, t in active_trades.items():
+            df = processed_data[sym]
             curr_idx = sym_indices[sym].get(date)
             if curr_idx is None:
                 continue
@@ -429,11 +447,12 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
             if sym in active_trades:
                 continue
             
-            df = processed_data[sym]
-            if prev_date not in df.index or date not in df.index:
+            prev_idx = sym_indices[sym].get(prev_date)
+            curr_idx = sym_indices[sym].get(date)
+            if prev_idx is None or curr_idx is None:
                 continue
                 
-            prev_idx = sym_indices[sym][prev_date]
+            df = processed_data[sym]
             sig = check_signal(df, prev_idx, strategy_name, params)
             
             if sig:
@@ -561,7 +580,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
     
     return h_df, t_df, metrics
 
-def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=10000.0):
+def run_stock_visual_audit(risk_val_pct=2.0, user_id="admin", start_balance=10000.0):
     """
     Performs a personalized daily stock backtest and generates a premium chart.
     Returns (stats, chart_path, df_eq)
@@ -580,22 +599,24 @@ def run_stock_visual_audit(risk_val_pct=1.0, user_id="admin", start_balance=1000
     if not data_dict:
         raise Exception("Failed to load data from DB: data_dict is empty after querying StockDailyData.")
         
-    # 2. Set best params for Velocity_Pullback
+    # 2. Set best params for SuperTrend_Pullback (Option A)
     best_params = {
-        "rsi_period": 3,
-        "rsi_entry": 10,
-        "rsi_exit": 65,
+        "rsi_period": 4,
+        "rsi_entry": 26,
+        "rsi_exit": 75,
         "atr_sl_mult": 3.0,
         "trend_ema": "ema_200",
-        "long_only": False,
-        "mode": "BOTH"
+        "long_only": True,
+        "mode": "LONG",
+        "leverage": 1.6,
+        "rr_ratio": 1.6
     }
     
     # 3. Run backtest with custom starting balance and risk level
     pct_per_trade = risk_val_pct / 100.0
     h_df, t_df, metrics = run_backtest(
         data_dict, 
-        "Velocity_Pullback", 
+        "SuperTrend_Pullback", 
         best_params, 
         verbose=False,
         initial_cash=start_balance,

@@ -196,24 +196,25 @@ def precalculate_stock_trades():
     data_dict = load_data_from_db()
     
     best_params = {
-        "rsi_period": 2,
-        "rsi_entry": 10,
-        "rsi_exit": 70,
+        "rsi_period": 4,
+        "rsi_entry": 26,
+        "rsi_exit": 75,
         "atr_sl_mult": 3.0,
         "trend_ema": "ema_200",
         "long_only": True,
         "mode": "LONG",
-        "leverage": 2.0
+        "leverage": 1.6,
+        "rr_ratio": 1.6
     }
     
     from stock_backtester_daily import run_backtest
     h_df, t_df, metrics = run_backtest(
         data_dict,
-        "Velocity_Pullback",
+        "SuperTrend_Pullback",
         best_params,
         verbose=False,
         initial_cash=10000.0,
-        pct_per_trade=0.01,
+        pct_per_trade=0.02,
         start_date="2021-05-19",
         end_date="2026-05-19"
     )
@@ -232,7 +233,7 @@ def precalculate_stock_trades():
                 "exit_price": float(row["exit_price"]),
                 "sl_dist": float(row["sl_dist"]),
                 "win": bool(row["net_pnl"] > 0),
-                "rr_ratio": 1.5,
+                "rr_ratio": 1.6,
                 "fee_rate": 0.0005,
                 "exit_reason": row["reason"]
             })

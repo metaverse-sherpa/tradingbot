@@ -77,13 +77,13 @@ const STRATEGY_GUIDES = {
         }
     },
     "Sherpa Velocity Pullback": {
-        philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
-        indicators: "Daily Close > EMA(200), 2-period RSI (< 10).",
-        pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
-        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>24.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+45.9%</strong> return and high <strong class='text-tertiary'>63.6%</strong> win rate over a 5-year period.",
+        philosophy: "Momentum Pullback. Targets short-term oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified uptrends using SuperTrend filtering.",
+        indicators: "Daily Close > EMA(200), SuperTrend(10, 3) is UP, 4-period RSI (< 26).",
+        pace: "Daily swing. Scans daily at market open (9:31 AM EST). Averages ~0.42 trades/day.",
+        drawdown: "Highly optimized equity curve, maintaining a tight <strong class='text-primary'>22.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+102.3%</strong> return and high <strong class='text-tertiary'>70.2%</strong> win rate over a 5-year period.",
         img: "/api/charts/stock_strategy_infographic.png",
         backtest_stats: {
-            win_rate: "63.6%", trades: "1500", sharpe: "0.80", max_dd: "-24.7%", net_pnl: "+45.9%", final_bal: "$14,589.49",
+            win_rate: "70.2%", trades: "148", sharpe: "0.84", max_dd: "-22.7%", net_pnl: "+102.3%", final_bal: "$20,225.00",
             img: "/api/charts/stock_master_audit.png"
         }
     }
@@ -3322,10 +3322,10 @@ function renderSignalsView() {
                         img: "/api/charts/valkyrie_elite_infographic.png"
                     },
                     "Sherpa Velocity Pullback": {
-                        philosophy: "Momentum Pullback. Targets short-term, institutional-grade oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified long-term uptrends.",
-                        indicators: "Daily Close > EMA(200), 2-period RSI (< 10).",
-                        pace: "Daily swing. Executes scans daily at market open (9:31 AM EST).",
-                        drawdown: "Ultra-safe equity curve, maintaining a tight <strong class='text-primary'>24.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+45.9%</strong> return and high <strong class='text-tertiary'>63.6%</strong> win rate over a 5-year period.",
+                        philosophy: "Momentum Pullback. Targets short-term oversold pullback cycles on megacap US equities (NASDAQ/NYSE top 40) during robust, verified uptrends using SuperTrend filtering.",
+                        indicators: "Daily Close > EMA(200), SuperTrend(10, 3) is UP, 4-period RSI (< 26).",
+                        pace: "Daily swing. Scans daily at market open (9:31 AM EST). Averages ~0.42 trades/day.",
+                        drawdown: "Highly optimized equity curve, maintaining a tight <strong class='text-primary'>22.7%</strong> maximum drawdown with a verified <strong class='text-[#ffdb3c]'>+102.3%</strong> return and high <strong class='text-tertiary'>70.2%</strong> win rate over a 5-year period.",
                         img: "/api/charts/stock_strategy_infographic.png"
                     }
                 };

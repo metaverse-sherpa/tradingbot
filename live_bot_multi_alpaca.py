@@ -88,20 +88,41 @@ def calculate_symbol_indicators_and_signal(symbol):
     df.set_index('date', inplace=True)
     df.sort_index(inplace=True)
     
-    # Calculate EMA 50 & 200
-    df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
+    # Calculate indicators
     df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
-    df['sma_5'] = df['close'].rolling(window=5).mean()
     
-    # ATR(14)
+    # Calculate SuperTrend (10, 3)
+    hl2 = (df['high'] + df['low']) / 2
     high_low = df['high'] - df['low']
     high_close = (df['high'] - df['close'].shift()).abs()
     low_close = (df['low'] - df['close'].shift()).abs()
+    tr_st = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    atr_st = tr_st.rolling(window=10).mean()
+    
+    upper_band = hl2 + (3.0 * atr_st)
+    lower_band = hl2 - (3.0 * atr_st)
+    st = [True] * len(df)
+    c_vals = df['close'].values
+    lb_vals = lower_band.values
+    ub_vals = upper_band.values
+    flow_arr = np.zeros(len(df))
+    fup_arr = np.zeros(len(df))
+    
+    flow_arr[0] = lb_vals[0]
+    fup_arr[0] = ub_vals[0]
+    
+    for i in range(1, len(df)):
+        flow_arr[i] = max(lb_vals[i], flow_arr[i-1]) if c_vals[i-1] > flow_arr[i-1] else lb_vals[i]
+        fup_arr[i] = min(ub_vals[i], fup_arr[i-1]) if c_vals[i-1] < fup_arr[i-1] else ub_vals[i]
+        st[i] = True if c_vals[i] > fup_arr[i] else (False if c_vals[i] < flow_arr[i] else st[i-1])
+    df['supertrend'] = st
+    
+    # ATR(14)
     tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     df['atr'] = tr.rolling(window=14).mean()
     
-    # RSI(2)
-    rsi_period = 2
+    # RSI(4)
+    rsi_period = 4
     delta = df['close'].diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
@@ -114,9 +135,9 @@ def calculate_symbol_indicators_and_signal(symbol):
     yesterday = df.iloc[-1]
     
     # Trend Filter
-    is_uptrend = yesterday['close'] > yesterday['ema_200']
+    is_uptrend = yesterday['supertrend'] == True and yesterday['close'] > yesterday['ema_200']
     # RSI Pullback
-    is_pullback = yesterday['rsi'] < 10
+    is_pullback = yesterday['rsi'] < 26
     
     signal = None
     if is_uptrend and is_pullback:
@@ -235,8 +256,8 @@ def run_theoretical_tally_engine(today_opens):
             
             indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
             if indicator_dict:
-                # Dynamic exit: yesterday's close > SMA(5) or yesterday's RSI(2) > 70
-                is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70
+                # Dynamic exit: yesterday's RSI(4) > 75
+                is_dynamic_exit = indicator_dict['rsi'] > 75
                 
                 if is_dynamic_exit:
                     # Close trade at today's open!
@@ -311,14 +332,14 @@ def run_theoretical_tally_engine(today_opens):
                     continue
                     
                 atr = indicator_dict['atr']
-                tp_price = o_price + 4.5 * atr
+                tp_price = o_price + 4.8 * atr
                 sl_price = o_price - 3.0 * atr
                 
                 c.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
                 bal_row = c.fetchone()
                 bal = float(bal_row[0]) if bal_row else 1000.0
                 
-                risk_amt = bal * 0.01
+                risk_amt = bal * 0.02
                 shares = risk_amt / (3.0 * atr)
                 position_size_usd = shares * o_price
                 
@@ -371,8 +392,8 @@ async def run_real_trader_execution(today_opens):
             for sym, pos in active_positions.items():
                 indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
                 if indicator_dict:
-                    # Dynamic exit: yesterday's close > SMA(5) or yesterday's RSI(2) > 70
-                    is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70
+                    # Dynamic exit: yesterday's RSI(4) > 75
+                    is_dynamic_exit = indicator_dict['rsi'] > 75
                     
                     if is_dynamic_exit:
                         logger.info(f"Dynamic Exit triggered for real user {chat_id} symbol {sym}. Liquidating...")
@@ -477,7 +498,7 @@ async def run_real_trader_execution(today_opens):
                         continue
                         
                     atr = indicator_dict['atr']
-                    tp_price = o_price + 4.5 * atr
+                    tp_price = o_price + 4.8 * atr
                     sl_price = o_price - 3.0 * atr
                     
                     try:
