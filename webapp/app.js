@@ -966,7 +966,7 @@ function renderHeader(title) {
                         ${STATE.user.avatar_url ? '<img src="' + STATE.user.avatar_url + '" alt="Profile" class="w-full h-full object-cover">' : STATE.user.email[0].toUpperCase()}
                     </button>
                     ${STATE.profile_menu_open ? `
-                        <div class="absolute right-0 mt-2 w-48 glass-card rounded-lg border border-white/10 shadow-xl overflow-hidden z-[100] animate-fade-in" onclick="event.stopPropagation()">
+                        <div class="absolute right-0 mt-2 w-48 bg-surface-container-highest rounded-lg border border-white/10 shadow-xl overflow-hidden z-[100] animate-fade-in" onclick="event.stopPropagation()">
                             <a href="#/referral" onclick="STATE.profile_menu_open = false; renderView();" class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-white/5 transition-colors flex items-center gap-2 font-semibold border-b border-white/10">
                                 <span class="material-symbols-outlined text-[18px] text-tertiary">diversity_3</span>
                                 Refer & Earn
