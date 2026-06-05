@@ -173,7 +173,7 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
     t_draw = time.time()
-    color_neon = (0, 255, 150, 255) if overall_pnl >= 0 else (255, 50, 50, 255)
+    color_neon = (0, 255, 150, 255) if win_rate >= 50 else (255, 50, 50, 255)
     color_white = (255, 255, 255, 255)
     
     def draw_text_shadow(pos, text, font, fill, shadow_fill=(0, 0, 0, 200), offset=(3, 3)):
