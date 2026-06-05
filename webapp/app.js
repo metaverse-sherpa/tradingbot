@@ -2478,7 +2478,7 @@ function renderFreeStatsView(showPremiumBanner = false) {
 
     return `
         ${renderHeader()}
-        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] lg:max-w-full mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto">
             ${premiumBanner}
             ${getFreeStatsHtml(true)}
         </main>
@@ -2521,11 +2521,12 @@ function renderStatsView() {
     
     return `
         ${renderHeader()}
-        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] lg:max-w-full mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Institutional Performance</h2>
             
-            <!-- Crypto Performance Section -->
-            <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Crypto Performance Section -->
+                <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 space-y-4">
                 <div class="flex justify-between items-center">
                     <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Performance</h3>
                     <span class="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold capitalize">${(STATE.user && STATE.user.has_exchange_keys && STATE.user.exchange_id) ? STATE.user.exchange_id : 'Live API'}</span>
@@ -2649,6 +2650,7 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
+            </div>
         </main>
     `;
 }
