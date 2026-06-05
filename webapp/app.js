@@ -2895,6 +2895,32 @@ function renderSettingsView() {
                         </div>
                         ` : ''}
                     </div>
+                    
+                    <!-- Risk Sizing Settings (Moved into Strategies) -->
+                    <div class="space-y-4 pt-4 mt-2 border-t border-white/10">
+                        <h4 class="font-bold text-sm text-on-surface">⚖️ Risk & Sizing</h4>
+                        <div class="space-y-4">
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-on-surface-variant">Crypto Risk per Trade</span>
+                                    <span id="risk-val" class="text-primary font-bold">${user.risk_pct || '1.5'}%</span>
+                                </div>
+                                <input id="risk-slider" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || '1.5'}" oninput="document.getElementById('risk-val').innerText = this.value + '%'; if(window.STATE && STATE.user) STATE.user.risk_pct = parseFloat(this.value);"/>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-on-surface-variant">Stock Risk per Trade</span>
+                                    <span id="stock-risk-val" class="text-secondary-container font-bold">${user.stock_risk_pct || '1.0'}%</span>
+                                </div>
+                                <input id="stock-risk-slider" class="w-full accent-secondary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.stock_risk_pct || '1.0'}" oninput="document.getElementById('stock-risk-val').innerText = this.value + '%'; if(window.STATE && STATE.user) STATE.user.stock_risk_pct = parseFloat(this.value);"/>
+                            </div>
+                        </div>
+                        <button onclick="savePreferences()" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 transition-all mt-2 cursor-pointer">
+                            Apply Sizing
+                        </button>
+                    </div>
+
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
                     <div class="flex gap-3 pt-4">
                         ${hasLinkedCrypto ? `
@@ -2914,30 +2940,7 @@ function renderSettingsView() {
                 </div>
             </section>
 
-                    <!-- Risk Sizing Slider -->
-            <section class="glass-card rounded-xl p-card-padding space-y-4">
-                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">⚖️ Risk & Sizing</h3>
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-on-surface-variant">Crypto Risk per Trade</span>
-                            <span id="risk-val" class="text-primary font-bold">${user.risk_pct || '1.5'}%</span>
-                        </div>
-                        <input id="risk-slider" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.risk_pct || '1.5'}" oninput="document.getElementById('risk-val').innerText = this.value + '%'; if(window.STATE && STATE.user) STATE.user.risk_pct = parseFloat(this.value);"/>
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-on-surface-variant">Stock Risk per Trade</span>
-                            <span id="stock-risk-val" class="text-secondary-container font-bold">${user.stock_risk_pct || '1.0'}%</span>
-                        </div>
-                        <input id="stock-risk-slider" class="w-full accent-secondary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="0.5" max="5" step="0.1" value="${user.stock_risk_pct || '1.0'}" oninput="document.getElementById('stock-risk-val').innerText = this.value + '%'; if(window.STATE && STATE.user) STATE.user.stock_risk_pct = parseFloat(this.value);"/>
-                    </div>
-                </div>
-                <button onclick="savePreferences()" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 transition-all mt-2 cursor-pointer">
-                    Apply Sizing
-                </button>
-            </section>
+
 
                     <!-- Privacy Mode Setting -->
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-primary/40">
