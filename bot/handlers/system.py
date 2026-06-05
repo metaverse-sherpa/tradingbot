@@ -382,11 +382,25 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
     tb_string = "".join(tb_list)
     
+    # Safely truncate update representation and traceback to stay under Telegram's 4096-char limit
+    update_str = str(update)
+    if len(update_str) > 400:
+        update_str = update_str[:400] + "... [TRUNCATED]"
+        
+    # We want total length of err_msg to be around 4000 max.
+    # Base text is ~150 chars.
+    max_tb_chars = 4000 - len(update_str) - 200
+    if max_tb_chars < 500:
+        max_tb_chars = 500
+    tb_truncated = tb_string[:max_tb_chars]
+    if len(tb_string) > max_tb_chars:
+        tb_truncated += "\n... [TRUNCATED]"
+
     err_msg = (
         f"🚨 *HANDLER CRASH*\n\n"
-        f"Update: `{update}`\n\n"
+        f"Update: `{update_str}`\n\n"
         f"*Error:* `{context.error}`\n\n"
-        f"*Traceback:*\n```\n{tb_string[:3500]}\n```"
+        f"*Traceback:*\n```\n{tb_truncated}\n```"
     )
     try:
         await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=err_msg, parse_mode="Markdown")
@@ -394,9 +408,9 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         try:
             plain_err_msg = (
                 f"🚨 HANDLER CRASH (Plain Text Fallback)\n\n"
-                f"Update: {update}\n\n"
+                f"Update: {update_str}\n\n"
                 f"Error: {context.error}\n\n"
-                f"Traceback:\n{tb_string[:3500]}"
+                f"Traceback:\n{tb_truncated}"
             )
             await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=plain_err_msg)
         except Exception as fallback_err:

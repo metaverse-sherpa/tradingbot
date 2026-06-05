@@ -156,6 +156,7 @@ def fetch_today_open_prices():
     url = "https://data.alpaca.markets/v2/stocks/bars/latest"
     params = {
         "symbols": tickers_str,
+        "feed": "iex",
     }
     headers = {
         "APCA-API-KEY-ID": ALPACA_API_KEY,
@@ -401,7 +402,6 @@ async def run_real_trader_execution(today_opens):
                             await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
                             
                             # Get open trade from local DB to get entry price and calculate PnL
-                            import sqlite3
                             conn_active = sqlite3.connect(USER_DB_PATH)
                             c_active = conn_active.cursor()
                             c_active.execute("SELECT id, entry_price FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (chat_id, sym))
