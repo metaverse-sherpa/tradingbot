@@ -1583,7 +1583,7 @@ function renderDashboardView() {
         // Neither connected
         dashboardContent = `
             <!-- No Exchange Linked / Active Signals -->
-            <div class="space-y-6 mt-6 animate-fade-in max-w-[500px] mx-auto">
+            <div class="space-y-6 mt-6 animate-fade-in max-w-[500px] lg:max-w-5xl mx-auto">
                 <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="space-y-1">
                         <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
@@ -2218,6 +2218,8 @@ function getFreeStatsHtml(showHeader = false) {
         return `<div class="text-center p-8 text-on-surface-variant">Loading stats...</div>`;
     }
 
+    const isDesktop = window.innerWidth >= 1024; // lg breakpoint
+
     let strategiesHtml = STATE.free_stats.strategies.map(s => {
         const icon = STRATEGY_ICONS[s.name] || "📈";
         const guideId = `guide-${s.name.replace(/\s+/g, '-')}`;
@@ -2225,13 +2227,16 @@ function getFreeStatsHtml(showHeader = false) {
         const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
         const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
 
+        const hiddenClass = isDesktop ? '' : 'hidden';
+        const initialRotation = isDesktop ? 'rotate(180deg)' : 'rotate(0deg)';
+
         return `
-            <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50 transition-all duration-300 text-left">
+            <div class="glass-card rounded-xl p-4 space-y-2 border-l-4 border-primary/50 transition-all duration-300 text-left h-full flex flex-col">
                 <div class="flex justify-between items-center cursor-pointer group" onclick="document.getElementById('${guideId}').classList.toggle('hidden'); const chev = document.getElementById('chev-${guideId}'); chev.style.transform = chev.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';">
                     <h3 class="font-headline-sm text-on-surface flex items-center gap-2 group-hover:text-primary transition-colors">
                         <span>${icon}</span> ${s.name}
                     </h3>
-                    <span id="chev-${guideId}" class="material-symbols-outlined text-on-surface-variant transition-transform duration-300">expand_more</span>
+                    <span id="chev-${guideId}" class="material-symbols-outlined text-on-surface-variant transition-transform duration-300" style="transform: ${initialRotation}">expand_more</span>
                 </div>
                 <div class="text-sm space-y-1">
                     <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>
@@ -2250,7 +2255,7 @@ function getFreeStatsHtml(showHeader = false) {
                     </button>
                 </div>
                 
-                <div id="${guideId}" class="hidden pt-4 mt-2 border-t border-white/5 space-y-4 animate-fade-in">
+                <div id="${guideId}" class="${hiddenClass} pt-4 mt-auto border-t border-white/5 space-y-4 animate-fade-in flex-grow">
                     ${renderStrategyGuideContent(s.name, false)}
                 </div>
             </div>
@@ -2263,7 +2268,7 @@ function getFreeStatsHtml(showHeader = false) {
             <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Forward Testing Stats</h2>
         </div>
         ` : ''}
-        <div class="space-y-4 w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 w-full">
             ${strategiesHtml}
         </div>
     `;
