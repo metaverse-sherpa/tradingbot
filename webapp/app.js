@@ -951,7 +951,7 @@ function renderBottomNav() {
 // ----------------- Header Component -----------------
 function renderHeader(title) {
     return `
-        <header class="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-[0_2px_10px_rgba(0,212,255,0.1)] flex justify-between items-center px-container-margin py-3">
+        <header class="fixed top-0 left-0 w-full z-[9999] bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-[0_2px_10px_rgba(0,212,255,0.1)] flex justify-between items-center px-container-margin py-3">
             <a href="#/" class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
                 <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">terrain</span>
                 Metaverse Sherpa

@@ -944,6 +944,10 @@ input:where([type='file']):focus {
   z-index: 100;
 }
 
+.z-\[9999\] {
+  z-index: 9999;
+}
+
 .col-span-2 {
   grid-column: span 2 / span 2;
 }
@@ -1835,6 +1839,11 @@ input:where([type='file']):focus {
 
 .bg-surface-container-high\/90 {
   background-color: rgb(38 42 55 / 0.9);
+}
+
+.bg-surface-container-highest {
+  --tw-bg-opacity: 1;
+  background-color: rgb(49 52 66 / var(--tw-bg-opacity, 1));
 }
 
 .bg-surface-container-low {
@@ -2733,6 +2742,11 @@ input:where([type='file']):focus {
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 
+.drop-shadow {
+  --tw-drop-shadow: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.06));
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
 .drop-shadow-\[0_0_12px_rgba\(168\2c 232\2c 255\2c 0\.15\)\] {
   --tw-drop-shadow: drop-shadow(0 0 12px rgba(168,232,255,0.15));
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
@@ -2812,6 +2826,10 @@ input:where([type='file']):focus {
 
 .duration-500 {
   transition-duration: 500ms;
+}
+
+.ease-in-out {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .placeholder\:text-on-surface-variant\/40::-moz-placeholder {
