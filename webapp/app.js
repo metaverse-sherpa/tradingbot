@@ -1717,7 +1717,7 @@ function renderDashboardView() {
                         <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
                             <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
                         </h3>
-                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[400px]">
+                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[800px]">
                             To view your live portfolio equity, open trades, and stats, connect your Crypto Exchange or Alpaca Stocks API credentials.
                         </p>
                     </div>
