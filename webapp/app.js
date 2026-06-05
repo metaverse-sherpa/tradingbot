@@ -1476,34 +1476,114 @@ function renderDashboardView() {
         </a>
     `;
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-    const loadingBlur = STATE.is_loading_balance ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : '';
     const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
     
     const privacyStyle = shouldBlurDollars ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
     const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
     const privacyHoverHandlers = shouldBlurDollars ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(5px)')"` : '';
-    
-    const pnlVal = activeStats.overall_pnl !== undefined ? activeStats.overall_pnl : (activeStats.cumulative_pnl || 0);
-    const startingCapital = balance - pnlVal;
-    const pnlPct = activeStats.overall_pnl_pct !== undefined ? activeStats.overall_pnl_pct : (startingCapital > 0 ? (pnlVal / startingCapital) * 100 : 0);
-    
-    const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
-    const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
+
+    function renderDashboardColumn(type) {
+        const isCryptoType = type === 'crypto';
+        const typeStats = (STATE.stats && (isCryptoType ? STATE.stats.crypto : STATE.stats.stock)) || { cumulative_pnl: 0, win_rate: 0, overall_pnl: 0, overall_pnl_pct: 0 };
+        const typeStrategy = STATE.user ? (isCryptoType ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCryptoType ? 'Mean Reversion Scalper' : 'None');
+        const typeBalance = isCryptoType ? STATE.crypto_balance : STATE.stock_balance;
+        const typeActiveTradesCount = STATE.open_trades.filter(t => t.type === type).length;
+        
+        const typeBacktestOnclick = isCryptoType 
+            ? `STATE.dashboard_tab = 'crypto'; resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${typeStrategy === 'None' ? 'Mean Reversion Scalper' : typeStrategy}'); triggerBacktest(); }, 150);`
+            : `STATE.dashboard_tab = 'stock'; resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('Sherpa Velocity Pullback'); triggerBacktest(); }, 150);`;
+
+        const typeActionCards = `
+            <a href="#/trades" onclick="STATE.dashboard_tab = '${type}';" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+                <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">data_exploration</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Live Trades</span>
+            </a>
+            <a href="#/history" onclick="STATE.dashboard_tab = '${type}';" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+                <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">history</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Trade History</span>
+            </a>
+            <a href="#/stats" onclick="STATE.dashboard_tab = '${type}';" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+                <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">insights</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">My Stats</span>
+            </a>
+            <button onclick="${typeBacktestOnclick}" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group cursor-pointer w-full">
+                <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">science</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Backtest</span>
+            </button>
+            <a href="#/signals" onclick="STATE.dashboard_tab = '${type}';" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group col-span-2">
+                <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">satellite_alt</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Alpha Signals (${STATE.active_signals ? STATE.active_signals.length : 0})</span>
+            </a>
+        `;
+
+        const typePnlVal = typeStats.overall_pnl !== undefined ? typeStats.overall_pnl : (typeStats.cumulative_pnl || 0);
+        const typeStartingCapital = typeBalance - typePnlVal;
+        const typePnlPct = typeStats.overall_pnl_pct !== undefined ? typeStats.overall_pnl_pct : (typeStartingCapital > 0 ? (typePnlVal / typeStartingCapital) * 100 : 0);
+
+        return `
+            <div class="space-y-4">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+                    <span>${isCryptoType ? '🪙' : '📈'}</span> ${isCryptoType ? 'Crypto Portfolio' : 'Stock Portfolio'}
+                </h2>
+                
+                <!-- Balance Card -->
+                <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${privacyHoverHandlers}>
+                    <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
+                    <div class="relative z-10 pointer-events-none">
+                        <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCryptoType ? 'Crypto Equity' : 'Stock Equity'}</p>
+                        <div class="flex items-baseline gap-3">
+                            <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(typeBalance || 0).toFixed(2)}</h1>
+                            <div class="${typePnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1">
+                                <span class="font-headline-sm text-headline-sm">${typePnlVal >= 0 ? '+' : ''}${typePnlPct.toFixed(2)}%</span>
+                                <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${privacyClass}" ${privacyStyle}>${typePnlVal >= 0 ? '+' : '-'}$${Math.abs(typePnlVal).toFixed(2)}</span>)</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Quick Stats -->
+                <section class="grid grid-cols-2 gap-stack-gap">
+                    <a href="#/trades" onclick="STATE.dashboard_tab = '${type}';" class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40 hover:bg-white/5 transition-colors group block">
+                        <p class="font-label-sm text-label-sm text-on-surface-variant mb-1 group-hover:text-primary transition-colors">Open Trades</p>
+                        <p class="font-numeric-data text-numeric-data text-primary">${typeActiveTradesCount}</p>
+                    </a>
+                    <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
+                        <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
+                        <p class="font-numeric-data text-numeric-data text-tertiary flex items-baseline gap-2 justify-center">
+                            ${typeStats.win_rate || 0}% 
+                            <span class="text-xs text-on-surface-variant font-normal">(${typeStats.wins || 0}W / ${typeStats.losses || 0}L)</span>
+                        </p>
+                    </div>
+                </section>
+                
+                <button onclick="window.shareStatsCard('${type}')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <span class="material-symbols-outlined text-[18px]">share</span> Share & Earn
+                </button>
+                
+                <!-- Action Grid -->
+                <section class="grid grid-cols-2 gap-stack-gap">
+                    ${typeActionCards}
+                </section>
+            </div>
+        `;
+    }
+
     const isTabLinked = isCrypto ? hasLinkedCrypto : hasLinkedStock;
     
     let dashboardContent = '';
     
-    if (!isTabLinked) {
+    if (!hasLinkedKeys) {
+        // Neither connected
         dashboardContent = `
             <!-- No Exchange Linked / Active Signals -->
-            <div class="space-y-6 mt-6 animate-fade-in">
+            <div class="space-y-6 mt-6 animate-fade-in max-w-[500px] mx-auto">
                 <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="space-y-1">
                         <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
                             <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
                         </h3>
                         <p class="text-xs text-on-surface-variant leading-relaxed max-w-[400px]">
-                            To view your live portfolio equity, open trades, and stats, connect your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} API credentials.
+                            To view your live portfolio equity, open trades, and stats, connect your Crypto Exchange or Alpaca Stocks API credentials.
                         </p>
                     </div>
                     <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
@@ -1535,18 +1615,6 @@ function renderDashboardView() {
                                 </div>
                                 <div class="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)] -translate-x-full animate-shimmer" style="animation: shimmer 1.5s infinite;"></div>
                             </div>
-                            <!-- Shimmer Card 2 -->
-                            <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20 opacity-60">
-                                <div class="flex justify-between items-center mb-3">
-                                    <div class="h-6 w-28 bg-white/10 rounded-full animate-pulse"></div>
-                                    <div class="h-6 w-24 bg-primary/20 rounded-full animate-pulse"></div>
-                                </div>
-                                <div class="h-4 w-48 bg-white/5 rounded-full mb-6 animate-pulse"></div>
-                                <div class="flex justify-between items-center pt-4 border-t border-white/5">
-                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
-                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
-                                </div>
-                            </div>
                         </div>
                     ` : (() => {
                         const sorted = [...STATE.active_signals].sort((a, b) => {
@@ -1565,69 +1633,43 @@ function renderDashboardView() {
                 </div>
             </div>
         `;
-    } else {
+    } else if (hasLinkedCrypto && hasLinkedStock) {
+        // Both connected: responsive layout
         dashboardContent = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Left Column: Equity & Stats -->
-                <div class="space-y-4">
-                    <!-- Balance Card -->
-                    <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${privacyHoverHandlers}>
-                        <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
-                        <div class="relative z-10 pointer-events-none">
-                            <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
-                            <div class="flex items-baseline gap-3">
-                                <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(balance || 0).toFixed(2)}</h1>
-                                <div class="${pnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1">
-                                    <span class="font-headline-sm text-headline-sm">${pnlVal >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
-                                    <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${privacyClass}" ${privacyStyle}>${pnlVal >= 0 ? '+' : '-'}$${Math.abs(pnlVal).toFixed(2)}</span>)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                    
-                    <!-- Quick Stats -->
-                    <section class="grid grid-cols-2 gap-stack-gap">
-                        <a href="#/trades" class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40 hover:bg-white/5 transition-colors group block">
-                            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1 group-hover:text-primary transition-colors">Open Trades</p>
-                            <p class="font-numeric-data text-numeric-data text-primary">${activeTradesCount}</p>
-                        </a>
-                        <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
-                            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
-                            <p class="font-numeric-data text-numeric-data text-tertiary flex items-baseline gap-2 justify-center">
-                                ${activeStats.win_rate || 0}% 
-                                <span class="text-xs text-on-surface-variant font-normal">(${activeStats.wins || 0}W / ${activeStats.losses || 0}L)</span>
-                            </p>
-                        </div>
-                    </section>
-                    
-                    <button onclick="window.shareStatsCard('${isCrypto ? 'crypto' : 'stock'}')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                        <span class="material-symbols-outlined text-[18px]">share</span> Share & Earn
-                    </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
+                <!-- Crypto Column (Visible on Crypto tab or on Desktop) -->
+                <div class="${isCrypto ? 'block' : 'hidden md:block'}">
+                    ${renderDashboardColumn('crypto')}
                 </div>
-                
-                <!-- Right Column: Actions -->
-                <div class="space-y-4">
-                    <h3 class="font-label-sm text-label-sm text-on-surface-variant tracking-wider uppercase hidden md:block">Quick Navigation</h3>
-                    <!-- Action Grid -->
-                    <section class="grid grid-cols-2 gap-stack-gap">
-                        ${actionCards}
-                    </section>
+                <!-- Stock Column (Visible on Stock tab or on Desktop) -->
+                <div class="${!isCrypto ? 'block' : 'hidden md:block'}">
+                    ${renderDashboardColumn('stock')}
                 </div>
+            </div>
+        `;
+    } else {
+        // Only one connected
+        const activeType = hasLinkedCrypto ? 'crypto' : 'stock';
+        dashboardContent = `
+            <div class="max-w-[500px] mx-auto animate-fade-in">
+                ${renderDashboardColumn(activeType)}
             </div>
         `;
     }
 
+    const mainMaxWidthClass = (hasLinkedCrypto && hasLinkedStock) ? 'max-w-[500px] md:max-w-[1000px]' : 'max-w-[500px]';
+
     return `
         ${renderHeader()}
-        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-[850px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap ${mainMaxWidthClass} mx-auto">
             <!-- Tier Badge & Tabs -->
             <div class="flex justify-between items-center">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
                     <span class="text-[10px]">${isPremium ? '💎' : '🥈'}</span>
                     <span class="font-label-sm text-label-sm ${isPremium ? 'text-secondary-container' : 'text-primary'}">${isPremium ? 'Premium' : 'Standard'}</span>
                 </div>
-                ${hasLinkedKeys ? `
-                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
+                ${(hasLinkedCrypto && hasLinkedStock) ? `
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 md:hidden">
                     <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
                     <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
                 </div>

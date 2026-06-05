@@ -1481,6 +1481,10 @@ input:where([type='file']):focus {
   gap: 1.5rem;
 }
 
+.gap-8 {
+  gap: 2rem;
+}
+
 .gap-stack-gap {
   gap: 12px;
 }
@@ -3019,8 +3023,12 @@ input:where([type='file']):focus {
     display: block;
   }
 
-  .md\:max-w-\[850px\] {
-    max-width: 850px;
+  .md\:hidden {
+    display: none;
+  }
+
+  .md\:max-w-\[1000px\] {
+    max-width: 1000px;
   }
 
   .md\:grid-cols-2 {
