@@ -47,6 +47,7 @@ let STATE = {
     history_expanded_id: null,
     free_history_expanded_id: null,
     profile_menu_open: false,
+    google_verifying: false,
     backtest: { running: false, result: null, period: '3 Years', capital: 1000, strategy: 'Mean Reversion Scalper' }
 };
 
@@ -282,6 +283,62 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     }
 }
 
+// ----------------- Google Sign In Loading & Helpers -----------------
+let googleAuthOverlayTimer = null;
+let googleAuthActive = false;
+
+window.showGoogleLoading = function(title = "Connecting to Google", subtitle = "Please select your Google account in the popup window.") {
+    const overlay = document.getElementById('loading-overlay');
+    const titleEl = document.getElementById('loading-title');
+    const subtitleEl = document.getElementById('loading-subtitle');
+    if (overlay) {
+        if (titleEl) titleEl.innerText = title;
+        if (subtitleEl) subtitleEl.innerText = subtitle;
+        overlay.classList.add('active');
+        googleAuthActive = true;
+    }
+};
+
+window.hideGoogleLoading = function() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        googleAuthActive = false;
+        if (googleAuthOverlayTimer) {
+            clearTimeout(googleAuthOverlayTimer);
+            googleAuthOverlayTimer = null;
+        }
+    }
+};
+
+// Detect when user clicks Google Sign-In (losing window focus to the iframe)
+window.addEventListener('blur', () => {
+    // Small delay to ensure document.activeElement is updated
+    setTimeout(() => {
+        const activeEl = document.activeElement;
+        if (activeEl && (
+            activeEl.id === 'google-signin-btn-login' || 
+            activeEl.id === 'google-signin-btn-landing' || 
+            (activeEl.tagName === 'IFRAME' && activeEl.src && activeEl.src.includes('accounts.google.com'))
+        )) {
+            window.showGoogleLoading("Connecting to Google", "Please select your Google account in the popup window.");
+        }
+    }, 100);
+});
+
+// Detect when user closes the popup or returns to window
+window.addEventListener('focus', () => {
+    if (googleAuthActive) {
+        if (googleAuthOverlayTimer) clearTimeout(googleAuthOverlayTimer);
+        googleAuthOverlayTimer = setTimeout(() => {
+            // Only hide if we aren't currently verifying/authenticating the token
+            if (googleAuthActive && !STATE.google_verifying) {
+                window.hideGoogleLoading();
+            }
+        }, 1500); // 1.5s window to allow handleGoogleCredentialResponse to trigger
+    }
+});
+
 // ----------------- Google Sign In Initialization -----------------
 let cachedGoogleClientId = null;
 
@@ -349,6 +406,9 @@ async function initGoogleSignIn() {
 }
 
 async function handleGoogleCredentialResponse(response) {
+    STATE.google_verifying = true;
+    window.showGoogleLoading("Verifying Account", "Loading your premium dashboard...");
+    
     const credential = response.credential;
     const referrer = localStorage.getItem('referred_by');
     const payload = { credential };
@@ -356,6 +416,8 @@ async function handleGoogleCredentialResponse(response) {
         payload.referred_by = parseInt(referrer);
     }
     const res = await apiRequest('/auth/google', 'POST', payload);
+    STATE.google_verifying = false;
+    
     if (res) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
@@ -365,6 +427,7 @@ async function handleGoogleCredentialResponse(response) {
         }
         navigate('#/dashboard');
     }
+    window.hideGoogleLoading();
 }
 
 // ----------------- Routing & View Management -----------------
@@ -3903,6 +3966,7 @@ async function handleEmailRegister(e) {
 async function triggerGoogleLogin() {
     if (window.google) {
         document.cookie = "g_state=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT";
+        window.showGoogleLoading("Connecting to Google", "Please select your Google account in the popup window.");
         window.google.accounts.id.prompt();
     } else {
         showToast("Google Sign-In is blocked or initializing. If using Brave, try clicking the native button or lowering Shields temporarily.", "warning");
