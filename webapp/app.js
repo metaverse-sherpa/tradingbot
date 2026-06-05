@@ -1929,7 +1929,7 @@ function renderTradesView() {
         let listHtml = '';
         
         if (tradesMode === 'active') {
-            const filteredTrades = STATE.open_trades.filter(t => t.type === type);
+            const filteredTrades = (STATE.open_trades || []).filter(t => t.type === type);
             if (filteredTrades.length === 0) {
                 listHtml = `
                     <div class="text-center py-12">
@@ -2057,7 +2057,7 @@ function renderTradesView() {
                 }).join('');
             }
         } else {
-            const filteredHistory = STATE.history.filter(t => t.type === type);
+            const filteredHistory = (STATE.history || []).filter(t => t.type === type);
             if (filteredHistory.length === 0) {
                 listHtml = `
                     <div class="text-center py-12">
@@ -2128,8 +2128,8 @@ function renderTradesView() {
     const cryptoHtml = generateTradeHtml('crypto');
     const stockHtml = generateTradeHtml('stock');
     
-    const cryptoCount = tradesMode === 'active' ? STATE.open_trades.filter(t => t.type === 'crypto').length : STATE.history.filter(t => t.type === 'crypto').length;
-    const stockCount = tradesMode === 'active' ? STATE.open_trades.filter(t => t.type === 'stock').length : STATE.history.filter(t => t.type === 'stock').length;
+    const cryptoCount = tradesMode === 'active' ? (STATE.open_trades || []).filter(t => t.type === 'crypto').length : (STATE.history || []).filter(t => t.type === 'crypto').length;
+    const stockCount = tradesMode === 'active' ? (STATE.open_trades || []).filter(t => t.type === 'stock').length : (STATE.history || []).filter(t => t.type === 'stock').length;
 
     return `
         ${renderHeader()}
