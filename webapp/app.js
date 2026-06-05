@@ -1950,13 +1950,6 @@ function renderTradesView() {
                 `;
             } else {
                 listHtml = filteredTrades.map(trade => {
-                    const timeAgo = (ts) => {
-                        const diff = Math.floor(Date.now() / 1000) - ts;
-                        if (diff < 60) return "Just now";
-                        if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-                        if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-                        return Math.floor(diff / 86400) + "d ago";
-                    };
                     const dateStr = trade.open_time ? timeAgo(trade.open_time) : 'Recent';
                     let displaySymbol = trade.symbol;
                     if (trade.type === 'crypto') {
@@ -2084,14 +2077,6 @@ function renderTradesView() {
                 const startIndex = (safePage - 1) * itemsPerPage;
                 const pagedHistory = filteredHistory.slice(startIndex, startIndex + itemsPerPage);
             
-                const timeAgo = (ts) => {
-                    const diff = Math.floor(Date.now() / 1000) - ts;
-                    if (diff < 60) return "Just now";
-                    if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-                    if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-                    return Math.floor(diff / 86400) + "d ago";
-                };
-                
                 const itemsHtml = pagedHistory.map(t => {
                     const dateStr = t.timestamp ? timeAgo(t.timestamp) : 'Recent';
                     let displaySymbol = t.symbol;
