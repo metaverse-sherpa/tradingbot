@@ -1454,25 +1454,25 @@ function renderDashboardView() {
 
     // Gated actions for premium
     const actionCards = `
-        <a href="#/trades" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">data_exploration</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Live Trades</span>
+        <a href="#/trades" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+            <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">data_exploration</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Live Trades</span>
         </a>
-        <a href="#/history" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">history</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Trade History</span>
+        <a href="#/history" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+            <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">history</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Trade History</span>
         </a>
-        <a href="#/stats" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center">
-            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">insights</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">My Stats</span>
+        <a href="#/stats" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group">
+            <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">insights</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">My Stats</span>
         </a>
-        <button onclick="${backtestOnclick}" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center cursor-pointer w-full">
-            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">science</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Backtest</span>
+        <button onclick="${backtestOnclick}" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group cursor-pointer w-full">
+            <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">science</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Backtest</span>
         </button>
-        <a href="#/signals" class="glass-card rounded-xl p-5 flex flex-col items-center gap-3 hover:bg-white/5 transition-colors group text-center col-span-2">
-            <span class="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">satellite_alt</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold">Alpha Signals (${STATE.active_signals ? STATE.active_signals.length : 0})</span>
+        <a href="#/signals" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group col-span-2">
+            <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">satellite_alt</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Alpha Signals (${STATE.active_signals ? STATE.active_signals.length : 0})</span>
         </a>
     `;
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
