@@ -1567,50 +1567,59 @@ function renderDashboardView() {
         `;
     } else {
         dashboardContent = `
-            <!-- Balance Card -->
-            <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${privacyHoverHandlers}>
-                <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
-                <div class="relative z-10 pointer-events-none">
-                    <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
-                    <div class="flex items-baseline gap-3">
-                        <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(balance || 0).toFixed(2)}</h1>
-                        <div class="${pnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1">
-                            <span class="font-headline-sm text-headline-sm">${pnlVal >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
-                            <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${privacyClass}" ${privacyStyle}>${pnlVal >= 0 ? '+' : '-'}$${Math.abs(pnlVal).toFixed(2)}</span>)</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left Column: Equity & Stats -->
+                <div class="space-y-4">
+                    <!-- Balance Card -->
+                    <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${privacyHoverHandlers}>
+                        <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
+                        <div class="relative z-10 pointer-events-none">
+                            <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCrypto ? 'Crypto Equity' : 'Stock Equity'}</p>
+                            <div class="flex items-baseline gap-3">
+                                <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(balance || 0).toFixed(2)}</h1>
+                                <div class="${pnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1">
+                                    <span class="font-headline-sm text-headline-sm">${pnlVal >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
+                                    <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${privacyClass}" ${privacyStyle}>${pnlVal >= 0 ? '+' : '-'}$${Math.abs(pnlVal).toFixed(2)}</span>)</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Quick Stats -->
-            <section class="grid grid-cols-2 gap-stack-gap">
-                <a href="#/trades" class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40 hover:bg-white/5 transition-colors group block">
-                    <p class="font-label-sm text-label-sm text-on-surface-variant mb-1 group-hover:text-primary transition-colors">Open Trades</p>
-                    <p class="font-numeric-data text-numeric-data text-primary">${activeTradesCount}</p>
-                </a>
+                    </section>
+                    
+                    <!-- Quick Stats -->
+                    <section class="grid grid-cols-2 gap-stack-gap">
+                        <a href="#/trades" class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40 hover:bg-white/5 transition-colors group block">
+                            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1 group-hover:text-primary transition-colors">Open Trades</p>
+                            <p class="font-numeric-data text-numeric-data text-primary">${activeTradesCount}</p>
+                        </a>
                         <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
-                    <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
-                    <p class="font-numeric-data text-numeric-data text-tertiary flex items-baseline gap-2 justify-center">
-                        ${activeStats.win_rate || 0}% 
-                        <span class="text-xs text-on-surface-variant font-normal">(${activeStats.wins || 0}W / ${activeStats.losses || 0}L)</span>
-                    </p>
+                            <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
+                            <p class="font-numeric-data text-numeric-data text-tertiary flex items-baseline gap-2 justify-center">
+                                ${activeStats.win_rate || 0}% 
+                                <span class="text-xs text-on-surface-variant font-normal">(${activeStats.wins || 0}W / ${activeStats.losses || 0}L)</span>
+                            </p>
+                        </div>
+                    </section>
+                    
+                    <button onclick="window.shareStatsCard('${isCrypto ? 'crypto' : 'stock'}')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined text-[18px]">share</span> Share & Earn
+                    </button>
                 </div>
-            </section>
-            
-            <button onclick="window.shareStatsCard('${isCrypto ? 'crypto' : 'stock'}')" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 hover:border-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                <span class="material-symbols-outlined text-[18px]">share</span> Share & Earn
-            </button>
-            
-            <!-- Action Grid -->
-            <section class="grid grid-cols-2 gap-stack-gap">
-                ${actionCards}
-            </section>
+                
+                <!-- Right Column: Actions -->
+                <div class="space-y-4">
+                    <h3 class="font-label-sm text-label-sm text-on-surface-variant tracking-wider uppercase hidden md:block">Quick Navigation</h3>
+                    <!-- Action Grid -->
+                    <section class="grid grid-cols-2 gap-stack-gap">
+                        ${actionCards}
+                    </section>
+                </div>
+            </div>
         `;
     }
 
     return `
         ${renderHeader()}
-        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-[850px] mx-auto">
             <!-- Tier Badge & Tabs -->
             <div class="flex justify-between items-center">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
