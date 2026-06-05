@@ -1715,11 +1715,8 @@ function renderDashboardView() {
             <!-- No Exchange Linked / Active Signals -->
             <div class="space-y-6 mt-6 animate-fade-in w-full max-w-[500px] lg:max-w-full mx-auto">
                 ${!STATE.hide_exchange_warning ? `
-                <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
-                    <button onclick="STATE.hide_exchange_warning = true; renderView();" class="absolute top-3 right-3 text-on-surface-variant hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10" title="Hide">
-                        <span class="material-symbols-outlined text-[20px]">close</span>
-                    </button>
-                    <div class="space-y-1 sm:pr-8">
+                <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
                         <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
                             <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
                         </h3>      
@@ -1727,9 +1724,14 @@ function renderDashboardView() {
                             Until you connect your crypto and/or stock exchange, you'll only see the free Alpha Signals.
                         </p>
                     </div>
-                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors sm:mr-12">
-                         + CONNECT EXCHANGE + 
-                    </a>
+                    <div class="flex items-center gap-2">
+                        <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
+                            CONNECT EXCHANGE
+                        </a>
+                        <button onclick="STATE.hide_exchange_warning = true; renderView();" class="text-on-surface-variant hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 shrink-0" title="Hide">
+                            <span class="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                    </div>
                 </div>
                 ` : ''}
                 
@@ -2470,11 +2472,8 @@ function renderFreeStatsView(showPremiumBanner = false) {
     if (!STATE.free_stats) return `${renderHeader()}<main class="pt-20 px-container-margin"><div class="text-center p-8 text-on-surface-variant">Loading stats...</div></main>`;
 
     const premiumBanner = (showPremiumBanner && !STATE.hide_stats_warning) ? `
-        <div class="glass-card rounded-xl p-card-padding border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 relative">
-            <button onclick="STATE.hide_stats_warning = true; renderView();" class="absolute top-3 right-3 text-primary/70 hover:text-primary transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/10" title="Hide">
-                <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-            <div class="space-y-1 sm:pr-8">
+        <div class="glass-card rounded-xl p-card-padding border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+            <div class="space-y-1">
                 <h3 class="font-body-lg text-body-lg font-bold text-primary flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary">info</span> Live Stats Pending
                 </h3>
@@ -2482,9 +2481,14 @@ function renderFreeStatsView(showPremiumBanner = false) {
                     Your live portfolio performance will appear here once you connect your exchange API keys. Until then, you can view the forward-tested strategy performance below.
                 </p>
             </div>
-            <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-primary/20 border border-primary/50 text-primary font-bold text-xs tracking-wider rounded-lg hover:bg-primary hover:text-on-primary transition-colors sm:mr-12">
-                CONNECT
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-primary/20 border border-primary/50 text-primary font-bold text-xs tracking-wider rounded-lg hover:bg-primary hover:text-on-primary transition-colors">
+                    CONNECT
+                </a>
+                <button onclick="STATE.hide_stats_warning = true; renderView();" class="text-primary/70 hover:text-primary transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/10 shrink-0" title="Hide">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
         </div>
     ` : '';
 
