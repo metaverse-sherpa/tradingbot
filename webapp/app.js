@@ -2592,7 +2592,7 @@ function renderSettingsView() {
                     <!-- Connected Exchanges Summary -->
             ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
             <section class="glass-card rounded-xl p-card-padding border border-white/10 animate-fade-in">
-                <details class="group">
+                <details class="group" ${window.innerWidth >= 1024 ? 'open' : ''}>
                     <summary class="font-body-lg text-body-lg font-bold text-on-surface flex justify-between items-center cursor-pointer list-none [&::-webkit-details-marker]:hidden select-none">
                         <div class="flex items-center gap-2">
                             🔌 Connected Exchanges
@@ -2773,6 +2773,52 @@ function renderSettingsView() {
                 </a>
             </section>
 
+                    <!-- Email Notifications Setting -->
+            <section class="glass-card rounded-xl p-card-padding space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface">📧 Email Alerts</h3>
+                        <p class="text-xs text-on-surface-variant mt-1">Receive signals & trade alerts via email</p>
+                    </div>
+                    <button onclick="toggleEmailNotifications()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                        (user.email_notifications !== 0) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
+                    }">
+                        ${(user.email_notifications !== 0) ? 'Enabled 🔔' : 'Disabled 🔕'}
+                    </button>
+                </div>
+                
+                ${(user.email_notifications !== 0) ? `
+                <div class="space-y-2 pt-2 border-t border-white/5 animate-fade-in">
+                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Email Alert Frequency</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setEmailFrequency('realtime')" class="h-10 rounded-lg text-xs font-bold transition-all border ${
+                            (user.email_frequency !== 'daily') ? 'bg-primary/20 text-primary border-primary/55' : 'bg-surface-container-low text-on-surface-variant border-white/10 hover:bg-white/5'
+                        }">
+                            Real-time
+                        </button>
+                        <button onclick="setEmailFrequency('daily')" class="h-10 rounded-lg text-xs font-bold transition-all border ${
+                            (user.email_frequency === 'daily') ? 'bg-primary/20 text-primary border-primary/55' : 'bg-surface-container-low text-on-surface-variant border-white/10 hover:bg-white/5'
+                        }">
+                            Daily Summary
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
+            </section>
+
+                    <!-- Browser Notifications Setting -->
+            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-secondary-container/40">
+                <div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🖥️ Browser Notifications</h3>
+                    <p class="text-xs text-on-surface-variant mt-1">Receive native desktop popups for signal alerts</p>
+                </div>
+                <button onclick="toggleBrowserNotifications()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                    (user.browser_notifications !== 0) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
+                }">
+                    ${(user.browser_notifications !== 0) ? 'Notifications On 🔔' : 'Notifications Off 🔕'}
+                </button>
+            </section>
+
                 </div>
 
 
@@ -2890,52 +2936,6 @@ function renderSettingsView() {
                 </div>
                 <button onclick="savePreferences()" class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md border border-white/10 rounded-lg hover:bg-white/5 transition-all mt-2 cursor-pointer">
                     Apply Sizing
-                </button>
-            </section>
-
-                    <!-- Email Notifications Setting -->
-            <section class="glass-card rounded-xl p-card-padding space-y-4">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface">📧 Email Alerts</h3>
-                        <p class="text-xs text-on-surface-variant mt-1">Receive signals & trade alerts via email</p>
-                    </div>
-                    <button onclick="toggleEmailNotifications()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                        (user.email_notifications !== 0) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
-                    }">
-                        ${(user.email_notifications !== 0) ? 'Enabled 🔔' : 'Disabled 🔕'}
-                    </button>
-                </div>
-                
-                ${(user.email_notifications !== 0) ? `
-                <div class="space-y-2 pt-2 border-t border-white/5 animate-fade-in">
-                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Email Alert Frequency</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="setEmailFrequency('realtime')" class="h-10 rounded-lg text-xs font-bold transition-all border ${
-                            (user.email_frequency !== 'daily') ? 'bg-primary/20 text-primary border-primary/55' : 'bg-surface-container-low text-on-surface-variant border-white/10 hover:bg-white/5'
-                        }">
-                            Real-time
-                        </button>
-                        <button onclick="setEmailFrequency('daily')" class="h-10 rounded-lg text-xs font-bold transition-all border ${
-                            (user.email_frequency === 'daily') ? 'bg-primary/20 text-primary border-primary/55' : 'bg-surface-container-low text-on-surface-variant border-white/10 hover:bg-white/5'
-                        }">
-                            Daily Summary
-                        </button>
-                    </div>
-                </div>
-                ` : ''}
-            </section>
-
-                    <!-- Browser Notifications Setting -->
-            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-secondary-container/40">
-                <div>
-                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🖥️ Browser Notifications</h3>
-                    <p class="text-xs text-on-surface-variant mt-1">Receive native desktop popups for signal alerts</p>
-                </div>
-                <button onclick="toggleBrowserNotifications()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                    (user.browser_notifications !== 0) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
-                }">
-                    ${(user.browser_notifications !== 0) ? 'Notifications On 🔔' : 'Notifications Off 🔕'}
                 </button>
             </section>
 

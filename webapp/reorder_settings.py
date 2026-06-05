@@ -30,6 +30,9 @@ privacy_mode = extract_section(r'<!-- Privacy Mode Setting -->', r'</section>\n'
 premium_plan = extract_section(r'<!-- Premium Plan & Referral Buttons -->', r'</section>\n')
 admin_gifting = extract_section(r'<!-- Admin Gifting Center -->', r'</section>\n\s*` : \'\'}')
 
+# Fix the Connected Exchanges chevron
+connected_exchanges = connected_exchanges.replace('<details class="group">', '<details class="group" ${window.innerWidth >= 1024 ? \'open\' : \'\'}>')
+
 left_col = f"""
                 <!-- LEFT COLUMN -->
                 <div class="space-y-section-gap flex flex-col">
@@ -38,6 +41,8 @@ left_col = f"""
                     {connect_wizard}
                     {telegram_sync}
                     {premium_plan}
+                    {email_notif}
+                    {browser_notif}
                 </div>
 """
 
@@ -47,8 +52,6 @@ right_col = f"""
                     {bot_status}
                     {algo_strategies}
                     {risk_sizing}
-                    {email_notif}
-                    {browser_notif}
                     {privacy_mode}
                     {admin_gifting}
                 </div>
@@ -64,12 +67,8 @@ end_tag = r'<!-- Logout Link -->'
 old_grid_content = re.search(start_tag + r'.*?' + end_tag, func_content, re.DOTALL)
 
 if old_grid_content:
-    new_func = func_content.replace(old_grid_content.group(0), new_grid_content + '\n\n            ' + end_tag.replace('\\', ''))
+    new_func = func_content.replace(old_grid_content.group(0), new_grid_content + '\n\n            ' + end_tag)
     
-    # Also need to remove the extra </div> that was left behind above the logout button, since new_grid_content has its own closing </div>
-    # Let's just do a string replace on the specific part:
-    new_func = new_func.replace('<!-- Logout Link -->\n            </div>\n            <button onclick="handleLogout()"', '<!-- Logout Link -->\n            <button onclick="handleLogout()"')
-
     new_app = content.replace(func_content, new_func)
     with open('app.js', 'w') as f:
         f.write(new_app)
