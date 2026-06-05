@@ -223,7 +223,7 @@ def check_is_market_open():
         today = datetime.today()
         return today.weekday() >= 0 and today.weekday() <= 4
 
-def run_theoretical_tally_engine(today_opens):
+async def run_theoretical_tally_engine(today_opens):
     logger.info("Running Theoretical Tally Engine...")
     
     # 1. Update/check open trades using yesterday's high/low
@@ -280,6 +280,41 @@ def run_theoretical_tally_engine(today_opens):
                     c.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
                     conn.commit()
                     logger.info(f"Theoretical Trade CLOSED (Dynamic Exit) for {sym}: PnL = {pnl_usdt:+.2f} USDT. New Balance: {new_bal:.2f}")
+                    
+                    # Broadcast dynamic exit to all targets
+                    try:
+                        from telegram import MessageEntity
+                        from datetime import timezone
+                        import database
+                        all_targets = database.get_all_broadcast_targets()
+                        now_ts = int(time.time())
+                        close_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+                        
+                        exit_text_before = (
+                            "📊 *FREE TRADE CLOSED* (Forward Test) 📊\n"
+                            "───────────────────────────────\n"
+                            f"Symbol:        `{sym}`\n"
+                            "Strategy:      Sherpa Velocity Pullback\n"
+                            "Direction:     LONG 📈\n"
+                            "Exit Trigger:  DYNAMIC EXIT (RSI > 75)\n\n"
+                            f"Entry Price:   ${entry_price:.2f}\n"
+                            f"Exit Price:    ${today_open:.2f}\n"
+                            f"Trade PnL:     {pnl_pct:+.2f}%\n"
+                            "───────────────────────────────\n\n"
+                            "Closed at: "
+                        )
+                        placeholder = close_dt.strftime("%Y-%m-%d %H:%M UTC")
+                        exit_entity = MessageEntity(
+                            type=MessageEntity.DATE_TIME,
+                            offset=len(exit_text_before),
+                            length=len(placeholder),
+                            unix_time=close_dt,
+                        )
+                        exit_msg = exit_text_before + placeholder
+                        for target_id in all_targets:
+                            await send_telegram_message(target_id, exit_msg, entities=[exit_entity])
+                    except Exception as b_err:
+                        logger.warning(f"Failed to send free exit broadcast to targets: {b_err}")
                     continue
             
             hit_sl = y_low <= sl_price
@@ -314,6 +349,40 @@ def run_theoretical_tally_engine(today_opens):
                 c.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
                 conn.commit()
                 logger.info(f"Theoretical Trade CLOSED ({status.upper()}) for {sym}: PnL = {pnl_usdt:+.2f} USDT. New Balance: {new_bal:.2f}")
+                
+                # Broadcast SL/TP exit to all targets
+                try:
+                    from telegram import MessageEntity
+                    from datetime import timezone
+                    import database
+                    all_targets = database.get_all_broadcast_targets()
+                    close_dt = datetime.fromtimestamp(close_time_ts, tz=timezone.utc)
+                    
+                    exit_text_before = (
+                        "📊 *FREE TRADE CLOSED* (Forward Test) 📊\n"
+                        "───────────────────────────────\n"
+                        f"Symbol:        `{sym}`\n"
+                        "Strategy:      Sherpa Velocity Pullback\n"
+                        "Direction:     LONG 📈\n"
+                        f"Exit Trigger:  {status.upper()}\n\n"
+                        f"Entry Price:   ${entry_price:.2f}\n"
+                        f"Exit Price:    ${close_price:.2f}\n"
+                        f"Trade PnL:     {pnl_pct:+.2f}%\n"
+                        "───────────────────────────────\n\n"
+                        "Closed at: "
+                    )
+                    placeholder = close_dt.strftime("%Y-%m-%d %H:%M UTC")
+                    exit_entity = MessageEntity(
+                        type=MessageEntity.DATE_TIME,
+                        offset=len(exit_text_before),
+                        length=len(placeholder),
+                        unix_time=close_dt,
+                    )
+                    exit_msg = exit_text_before + placeholder
+                    for target_id in all_targets:
+                        await send_telegram_message(target_id, exit_msg, entities=[exit_entity])
+                except Exception as b_err:
+                    logger.warning(f"Failed to send free exit broadcast to targets: {b_err}")
                 
         except Exception as e:
             logger.error(f"Error checking exit for theoretical trade {sym}: {e}")
@@ -350,6 +419,68 @@ def run_theoretical_tally_engine(today_opens):
                 """, (sym, o_price, tp_price, sl_price, int(datetime.now().timestamp()), position_size_usd))
                 conn.commit()
                 logger.info(f"🆕 Theoretical Trade OPENED: {sym} LONG at ${o_price:.2f} (SL: ${sl_price:.2f}, TP: ${tp_price:.2f}, Size: ${position_size_usd:.2f})")
+                
+                # Broadcast entry alert to all Telegram targets
+                try:
+                    from telegram import MessageEntity
+                    from datetime import timezone
+                    import database
+                    all_targets = database.get_all_broadcast_targets()
+                    
+                    now_ts = int(time.time())
+                    now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+                    
+                    entry_text_before = (
+                        "🏔️ *NEW FREE SIGNAL* (Forward Test) 🏔️\n"
+                        "───────────────────────────────\n"
+                        f"Symbol:        `{sym}`\n"
+                        "Strategy:      Sherpa Velocity Pullback\n"
+                        "Direction:     LONG 📈\n"
+                        "Risk Setting:  2.0%\n\n"
+                        f"Free Entry: ${o_price:.2f}\n"
+                        f"Take Profit (TP): ${tp_price:.2f}\n"
+                        f"Stop Loss (SL):   ${sl_price:.2f}\n\n"
+                        f"Free Position Size: {shares:.4f} shares (~${position_size_usd:.2f} USD)\n"
+                        "───────────────────────────────\n"
+                        f"Current Free Balance: ${bal:,.2f} USD\n\n"
+                        "Signal time: "
+                    )
+                    placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
+                    entry_entity = MessageEntity(
+                        type=MessageEntity.DATE_TIME,
+                        offset=len(entry_text_before),
+                        length=len(placeholder),
+                        unix_time=now_dt,
+                    )
+                    entry_msg = entry_text_before + placeholder
+                    
+                    for target_id in all_targets:
+                        await send_telegram_message(target_id, entry_msg, entities=[entry_entity])
+                        
+                    # Dispatch Email alerts
+                    try:
+                        from web_api.db_web import get_users_for_email_alerts
+                        from web_api.email_service import send_alert_email, get_signal_alert_html
+                        rt_users = get_users_for_email_alerts("realtime")
+                        if rt_users:
+                            subject = f"🛰️ New Alpha Signal: {sym} (LONG)"
+                            for ru in rt_users:
+                                if ru.get("email"):
+                                    html_content = get_signal_alert_html(
+                                        symbol=sym,
+                                        side="LONG",
+                                        strategy="Sherpa Velocity Pullback",
+                                        entry=o_price,
+                                        tp=tp_price,
+                                        sl=sl_price,
+                                        is_premium_user=ru.get("is_premium_user", False)
+                                    )
+                                    send_alert_email(ru["email"], subject, html_content)
+                    except Exception as email_err:
+                        logger.error(f"Failed to dispatch entry email alerts: {email_err}")
+                except Exception as b_err:
+                    logger.warning(f"Failed to send free signal entry broadcast to targets: {b_err}")
+                    
             except Exception as e:
                 logger.error(f"Failed to open theoretical trade for {sym}: {e}")
                 
@@ -589,7 +720,7 @@ async def main():
     
     # 4. Run theoretical tally engine
     try:
-        run_theoretical_tally_engine(today_opens)
+        await run_theoretical_tally_engine(today_opens)
     except Exception as e:
         logger.error(f"Error running theoretical engine: {e}")
         
