@@ -1928,7 +1928,7 @@ function renderTradesView() {
                             <span class="material-symbols-outlined text-on-surface-variant">smart_toy</span> Automate Trades
                         </h3>
                         <p class="text-xs text-on-surface-variant leading-relaxed max-w-[420px]">
-                            To view live active positions and enable autonomous copy-trading setups, link your ${isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks'} credentials.
+                            Stop trading manually and let our AI do the heavy lifting! Connect your ${(!hasLinkedCrypto && !hasLinkedStock) ? 'Crypto Exchange or Alpaca Stocks' : (isCrypto ? 'Crypto Exchange' : 'Alpaca Stocks')} API credentials securely to unlock full autonomous copy-trading and monitor your live portfolio performance in real-time.
                         </p>
                     </div>
                     <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
