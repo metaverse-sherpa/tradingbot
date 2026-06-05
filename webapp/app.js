@@ -1609,7 +1609,7 @@ function renderDashboardView() {
         </button>
         <a href="#/signals" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group col-span-2">
             <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">satellite_alt</span>
-            <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Alpha Signals (${STATE.active_signals ? STATE.active_signals.length : 0})</span>
+            <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Alpha Signals (${(STATE.active_signals || []).filter(s => isCrypto ? s.symbol.includes('/') : !s.symbol.includes('/')).length})</span>
         </a>
     `;
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
@@ -1649,7 +1649,7 @@ function renderDashboardView() {
             </button>
             <a href="#/signals" onclick="STATE.dashboard_tab = '${type}';" class="glass-card rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group col-span-2">
                 <span class="material-symbols-outlined text-primary text-xl group-hover:scale-110 transition-transform">satellite_alt</span>
-                <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Alpha Signals (${STATE.active_signals ? STATE.active_signals.length : 0})</span>
+                <span class="font-label-md text-label-md text-on-surface font-semibold whitespace-nowrap">Alpha Signals (${(STATE.active_signals || []).filter(s => isCryptoType ? s.symbol.includes('/') : !s.symbol.includes('/')).length})</span>
             </a>
         `;
 
