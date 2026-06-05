@@ -29,48 +29,60 @@ else:
     SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 
-def _send_email_thread(to_email, subject, html_content):
+import queue
+import time
+import requests
+
+# Create a thread-safe task queue
+_email_queue = queue.Queue()
+
+def _send_email_direct(to_email, subject, html_content):
     """
-    Sends email in a background thread using SMTP or Resend API.
-    Does not block main execution loop.
+    Directly sends email using SMTP or Resend API (with 429 retry support).
     """
     if not to_email:
         logger.warning("No recipient email provided. Skipping dispatch.")
-        return
+        return False
 
     # Replace unsubscribe placeholder dynamically
     unsub_url = f"https://bot.metaversesherpa.io/unsubscribe?email={to_email}"
     html_content = html_content.replace("{UNSUBSCRIBE_LINK}", unsub_url)
 
-
     # Try Resend API first if key exists
     if RESEND_API_KEY:
-        try:
-            import requests
-            url = "https://api.resend.com/emails"
-            headers = {
-                "Authorization": f"Bearer {RESEND_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "from": "Metaverse Sherpa Bot Alerts <" + (SMTP_SENDER_EMAIL or "alerts@metaversesherpa.io") + ">",
-                "to": [to_email],
-                "subject": subject,
-                "html": html_content
-            }
-            resp = requests.post(url, json=payload, headers=headers, timeout=10)
-            if resp.status_code in [200, 201]:
-                logger.info(f"✅ Email successfully sent via Resend API to {to_email}")
-                return
-            else:
-                logger.error(f"❌ Resend API failed: {resp.status_code} - {resp.text}")
-        except Exception as res_err:
-            logger.error(f"❌ Failed sending email via Resend API: {res_err}")
+        for attempt in range(3):
+            try:
+                url = "https://api.resend.com/emails"
+                headers = {
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "from": "Metaverse Sherpa Bot Alerts <" + (SMTP_SENDER_EMAIL or "alerts@metaversesherpa.io") + ">",
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html_content
+                }
+                resp = requests.post(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in [200, 201]:
+                    logger.info(f"✅ Email successfully sent via Resend API to {to_email}")
+                    return True
+                elif resp.status_code == 429:
+                    # Rate limit hit, backoff and retry
+                    retry_after = 2.0 ** (attempt + 1)
+                    logger.warning(f"⚠️ Resend 429 Rate Limit hit. Retrying in {retry_after}s...")
+                    time.sleep(retry_after)
+                else:
+                    logger.error(f"❌ Resend API failed: {resp.status_code} - {resp.text}")
+                    break
+            except Exception as res_err:
+                logger.error(f"❌ Failed sending email via Resend API: {res_err}")
+                break
 
     # Fallback to SMTP
     if not SMTP_USERNAME or not SMTP_PASSWORD:
         logger.warning("SMTP credentials not fully configured. Email was not sent.")
-        return
+        return False
 
     try:
         sender = SMTP_SENDER_EMAIL or SMTP_USERNAME
@@ -90,16 +102,46 @@ def _send_email_thread(to_email, subject, html_content):
         server.sendmail(sender, to_email, msg.as_string())
         server.quit()
         logger.info(f"✅ Email successfully sent via SMTP to {to_email}")
+        return True
     except Exception as e:
         logger.error(f"❌ Background SMTP delivery failed: {e}")
+        return False
+
+def _email_worker():
+    """
+    Background worker that processes the email queue sequentially.
+    Enforces a rate limit for Resend API to stay under 5 req/sec.
+    """
+    while True:
+        try:
+            task = _email_queue.get()
+            to_email, subject, html_content = task
+            
+            start_time = time.time()
+            _send_email_direct(to_email, subject, html_content)
+            elapsed = time.time() - start_time
+            
+            # Sleep if needed to ensure at least 0.22 seconds spacing between Resend calls (approx 4.5 req/sec max)
+            if RESEND_API_KEY:
+                delay = max(0.0, 0.22 - elapsed)
+                if delay > 0:
+                    time.sleep(delay)
+                    
+            _email_queue.task_done()
+        except Exception as err:
+            logger.error(f"Email worker error: {err}")
+            time.sleep(1)
+
+# Start background daemon worker thread
+_worker_thread = threading.Thread(target=_email_worker, daemon=True)
+_worker_thread.start()
 
 def send_alert_email(to_email, subject, html_content):
     """
     Public asynchronous entry point to dispatch emails without VPS blockage.
+    Enqueues the email to the rate-limited background worker.
     """
-    thread = threading.Thread(target=_send_email_thread, args=(to_email, subject, html_content))
-    thread.daemon = True
-    thread.start()
+    _email_queue.put((to_email, subject, html_content))
 
 def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None, pnl_pct=None, is_premium_user=True):
     """
