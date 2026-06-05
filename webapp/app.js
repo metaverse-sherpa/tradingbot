@@ -3971,16 +3971,16 @@ async function triggerBacktest() {
 
     const isStock = (strategy === 'Sherpa Velocity Pullback');
     const frames = isStock ? [
-        "🦙 Sherpa is packing the stock daily swing indicators...",
-        "📊 Connecting to the historical daily database cache...",
-        "📈 Running Velocity Pullback scanners on megacaps...",
-        "📉 Simulating stock pullback opportunities...",
-        "🏛️ Surviving tech volatility and rate spikes...",
-        "🌊 Calculating dynamic SMA(5) and RSI exits...",
-        "🛡️ Applying institutional risk-sizing rules...",
-        "⚖️ Measuring Sharpe ratio and maximum drawdown bounds...",
-        "📊 Plotting daily stock equity curves...",
-        "🏔️ Stock strategy projection successfully mapped!"
+        "🦙 Sherpa is saddling up the Alpaca team...",
+        "🧗‍♂️ Climbing the steep cliffs of Wall Street...",
+        "🌲 Navigating the dense forest of Megacap Tech...",
+        "🏔 Mapping the 5-year velocity trails...",
+        "❄️ Surviving the freezing rate hikes and bear freezes...",
+        "🎯 Anchoring the safety ropes on pullback support zones...",
+        "💎 Polishing the golden stock multipliers...",
+        "📊 Drawing the peak-to-valley equity charts...",
+        "🗺️ Finalizing the high-altitude stock audit...",
+        "🏔️ Planting the Sherpa flag on the S&P summit!"
     ] : [
         "🥾 Sherpa is packing the quantitative gear...",
         "🧗‍♂️ Securing the ropes on the Bollinger bands...",
