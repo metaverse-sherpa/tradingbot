@@ -2365,7 +2365,7 @@ function renderFreeStatsView(showPremiumBanner = false) {
 
     return `
         ${renderHeader()}
-        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] lg:max-w-full mx-auto">
             ${premiumBanner}
             ${getFreeStatsHtml(true)}
         </main>
@@ -2408,7 +2408,7 @@ function renderStatsView() {
     
     return `
         ${renderHeader()}
-        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] lg:max-w-full mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Institutional Performance</h2>
             
             <!-- Crypto Performance Section -->
