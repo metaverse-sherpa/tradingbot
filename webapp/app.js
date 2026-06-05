@@ -1369,8 +1369,15 @@ function renderDashboardView() {
     }
 
     const isPremium = STATE.user && STATE.user.is_premium;
-    const isCrypto = STATE.dashboard_tab === 'crypto';
-    const hasLinkedKeys = STATE.user && (STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys);
+    const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
+    const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
+    const hasLinkedKeys = hasLinkedCrypto || hasLinkedStock;
+    let isCrypto = STATE.dashboard_tab === 'crypto';
+    if (hasLinkedCrypto && !hasLinkedStock) {
+        isCrypto = true;
+    } else if (!hasLinkedCrypto && hasLinkedStock) {
+        isCrypto = false;
+    }
     
     const tierBadge = `
         <div class="inline-flex items-center gap-1.5 px-3 py-1 glass-card ${isPremium ? 'gold-glow' : 'cyan-glow'} rounded-full">
