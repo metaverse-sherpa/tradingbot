@@ -1034,6 +1034,10 @@ input:where([type='file']):focus {
   margin-top: auto;
 }
 
+.mt-section-gap {
+  margin-top: 24px;
+}
+
 .block {
   display: block;
 }
@@ -1495,6 +1499,10 @@ input:where([type='file']):focus {
 
 .gap-8 {
   gap: 2rem;
+}
+
+.gap-section-gap {
+  gap: 24px;
 }
 
 .gap-stack-gap {
@@ -3053,6 +3061,10 @@ input:where([type='file']):focus {
 }
 
 @media (min-width: 1024px) {
+  .lg\:max-w-5xl {
+    max-width: 64rem;
+  }
+
   .lg\:max-w-full {
     max-width: 100%;
   }

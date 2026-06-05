@@ -2563,8 +2563,10 @@ function renderSettingsView() {
     
     return `
         ${renderHeader()}
-        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">⚙️ Settings</h2>
+        <main class="w-full pt-20 px-container-margin pb-24 max-w-[500px] lg:max-w-5xl mx-auto">
+            <h2 class="font-headline-sm text-headline-sm text-on-surface mb-6">⚙️ Settings</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-section-gap items-start">
             
             <!-- Premium Status & Renew Option -->
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border border-white/10">
@@ -2966,7 +2968,8 @@ function renderSettingsView() {
             ` : ''}
 
             <!-- Logout Link -->
-            <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center cursor-pointer">
+            </div>
+            <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center cursor-pointer mt-section-gap">
                 Logout Session
             </button>
         </main>
