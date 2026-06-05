@@ -127,25 +127,33 @@ except sqlite3.OperationalError as e:
 def init_db():
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS Users
-                     (telegram_chat_id INTEGER PRIMARY KEY,
-                      blofin_api_key TEXT,
-                      blofin_api_secret TEXT,
-                      blofin_api_password TEXT,
-                      exchange_id TEXT DEFAULT 'blofin',
-                      starting_equity REAL,
-                      is_active BOOLEAN,
-                      total_wins INTEGER DEFAULT 0,
-                      total_losses INTEGER DEFAULT 0,
-                      total_trades_opened INTEGER DEFAULT 0,
-                      cumulative_pnl REAL DEFAULT 0.0,
-                      last_fetch_timestamp INTEGER DEFAULT 0,
-                      strategy TEXT DEFAULT 'Mean Reversion Scalper',
-                      source_wallet TEXT,
-                      stock_risk_pct REAL DEFAULT 2.0,
-                      alpaca_start_equity REAL)'''
-        )
         
+        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        existing_tables = {row[0] for row in c.fetchall()}
+
+        if "Users" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS Users
+                         (telegram_chat_id INTEGER PRIMARY KEY,
+                          blofin_api_key TEXT,
+                          blofin_api_secret TEXT,
+                          blofin_api_password TEXT,
+                          exchange_id TEXT DEFAULT 'blofin',
+                          starting_equity REAL,
+                          is_active BOOLEAN,
+                          total_wins INTEGER DEFAULT 0,
+                          total_losses INTEGER DEFAULT 0,
+                          total_trades_opened INTEGER DEFAULT 0,
+                          cumulative_pnl REAL DEFAULT 0.0,
+                          last_fetch_timestamp INTEGER DEFAULT 0,
+                          strategy TEXT DEFAULT 'Mean Reversion Scalper',
+                          source_wallet TEXT,
+                          stock_risk_pct REAL DEFAULT 2.0,
+                          alpaca_start_equity REAL)'''
+            )
+        
+        c.execute("PRAGMA table_info(Users)")
+        existing_cols = {row['name'] for row in c.fetchall()}
+
         # Ensure columns exist for older databases
         cols = [
             ("exchange_id", "TEXT DEFAULT 'blofin'"),
@@ -182,166 +190,198 @@ def init_db():
             ("referral_reward_triggered", "BOOLEAN DEFAULT 0")
         ]
         for col_name, col_def in cols:
-            try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
-            except: pass
+            if col_name not in existing_cols:
+                try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
+                except: pass
             
         # Backward-compatible data migration
         try:
             # 1. Migrate stock strategy users
-            c.execute("""
-                UPDATE Users 
-                SET active_stock_strategy = 'Sherpa Velocity Pullback', active_crypto_strategy = 'None'
-                WHERE (active_stock_strategy IS NULL OR active_stock_strategy = 'None') AND strategy = 'Sherpa Velocity Pullback'
-            """)
+            c.execute("SELECT 1 FROM Users WHERE (active_stock_strategy IS NULL OR active_stock_strategy = 'None') AND strategy = 'Sherpa Velocity Pullback' LIMIT 1")
+            if c.fetchone():
+                c.execute("""
+                    UPDATE Users 
+                    SET active_stock_strategy = 'Sherpa Velocity Pullback', active_crypto_strategy = 'None'
+                    WHERE (active_stock_strategy IS NULL OR active_stock_strategy = 'None') AND strategy = 'Sherpa Velocity Pullback'
+                """)
             # 2. Migrate crypto strategy users
-            c.execute("""
-                UPDATE Users 
-                SET active_crypto_strategy = COALESCE(strategy, 'Mean Reversion Scalper'), active_stock_strategy = 'None'
-                WHERE active_crypto_strategy IS NULL OR active_crypto_strategy = ''
-            """)
+            c.execute("SELECT 1 FROM Users WHERE active_crypto_strategy IS NULL OR active_crypto_strategy = '' LIMIT 1")
+            if c.fetchone():
+                c.execute("""
+                    UPDATE Users 
+                    SET active_crypto_strategy = COALESCE(strategy, 'Mean Reversion Scalper'), active_stock_strategy = 'None'
+                    WHERE active_crypto_strategy IS NULL OR active_crypto_strategy = ''
+                """)
             # 3. Ensure no NULL values exist for the new fields
-            c.execute("UPDATE Users SET active_crypto_strategy = 'Mean Reversion Scalper' WHERE active_crypto_strategy IS NULL")
-            c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE active_stock_strategy IS NULL")
+            c.execute("SELECT 1 FROM Users WHERE active_crypto_strategy IS NULL LIMIT 1")
+            if c.fetchone():
+                c.execute("UPDATE Users SET active_crypto_strategy = 'Mean Reversion Scalper' WHERE active_crypto_strategy IS NULL")
+            c.execute("SELECT 1 FROM Users WHERE active_stock_strategy IS NULL LIMIT 1")
+            if c.fetchone():
+                c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE active_stock_strategy IS NULL")
             # 4. Repair exchange_id for users who had it set to 'alpaca' but have crypto keys
-            c.execute("""
-                UPDATE Users
-                SET exchange_id = 'blofin'
-                WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != ''
-            """)
+            c.execute("SELECT 1 FROM Users WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != '' LIMIT 1")
+            if c.fetchone():
+                c.execute("""
+                    UPDATE Users
+                    SET exchange_id = 'blofin'
+                    WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != ''
+                """)
             conn.commit()
         except Exception as migration_err:
             pass
         
         # 💎 Institutional Config Table
-        c.execute('''CREATE TABLE IF NOT EXISTS Config
-                     (key TEXT PRIMARY KEY, value TEXT)''')
+        if "Config" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS Config
+                         (key TEXT PRIMARY KEY, value TEXT)''')
         
         # 🎁 Gift Codes Table
-        c.execute('''CREATE TABLE IF NOT EXISTS GiftCodes
-                     (code TEXT PRIMARY KEY, 
-                      target_chat_id INTEGER, 
-                      target_username TEXT,
-                      expiry_days INTEGER DEFAULT 30, 
-                      is_used BOOLEAN DEFAULT 0,
-                      created_at INTEGER)''')
+        if "GiftCodes" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS GiftCodes
+                         (code TEXT PRIMARY KEY, 
+                          target_chat_id INTEGER, 
+                          target_username TEXT,
+                          expiry_days INTEGER DEFAULT 30, 
+                          is_used BOOLEAN DEFAULT 0,
+                          created_at INTEGER)''')
         
         # 🩹 Migration: Ensure target_username column exists
-        try: c.execute("ALTER TABLE GiftCodes ADD COLUMN target_username TEXT")
-        except: pass
+        c.execute("PRAGMA table_info(GiftCodes)")
+        existing_gift_cols = {row['name'] for row in c.fetchall()}
+        if "target_username" not in existing_gift_cols:
+            try: c.execute("ALTER TABLE GiftCodes ADD COLUMN target_username TEXT")
+            except: pass
         
         # Set default master wallet if not exists
-        c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('master_usdt_wallet', 'YOUR_MASTER_TRON_ADDRESS_HERE')")
+        c.execute("SELECT 1 FROM Config WHERE key = 'master_usdt_wallet'")
+        if not c.fetchone():
+            c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('master_usdt_wallet', 'YOUR_MASTER_TRON_ADDRESS_HERE')")
         
         # 🧪 Theoretical Trades Table
-        c.execute('''CREATE TABLE IF NOT EXISTS TheoreticalTrades
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      symbol TEXT,
-                      strategy TEXT,
-                      side TEXT,
-                      entry_price REAL,
-                      tp_price REAL,
-                      sl_price REAL,
-                      open_time INTEGER,
-                      close_time INTEGER,
-                      status TEXT DEFAULT 'open',
-                      position_size REAL DEFAULT 0.0,
-                      pnl_raw REAL DEFAULT 0.0,
-                      pnl_pct REAL DEFAULT 0.0,
-                      pnl_usdt REAL DEFAULT 0.0)''')
-                      
+        if "TheoreticalTrades" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS TheoreticalTrades
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          symbol TEXT,
+                          strategy TEXT,
+                          side TEXT,
+                          entry_price REAL,
+                          tp_price REAL,
+                          sl_price REAL,
+                          open_time INTEGER,
+                          close_time INTEGER,
+                          status TEXT DEFAULT 'open',
+                          position_size REAL DEFAULT 0.0,
+                          pnl_raw REAL DEFAULT 0.0,
+                          pnl_pct REAL DEFAULT 0.0,
+                          pnl_usdt REAL DEFAULT 0.0)''')
+                          
         # 🦙 Real Alpaca Fractional Trades Table
-        c.execute('''CREATE TABLE IF NOT EXISTS AlpacaActiveTrades
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      telegram_chat_id INTEGER,
-                      symbol TEXT,
-                      qty REAL,
-                      entry_price REAL,
-                      tp_price REAL,
-                      sl_price REAL,
-                      open_time INTEGER,
-                      close_time INTEGER,
-                      close_price REAL,
-                      pnl_raw REAL,
-                      pnl_pct REAL,
-                      status TEXT DEFAULT 'open')''')
+        if "AlpacaActiveTrades" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS AlpacaActiveTrades
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          telegram_chat_id INTEGER,
+                          symbol TEXT,
+                          qty REAL,
+                          entry_price REAL,
+                          tp_price REAL,
+                          sl_price REAL,
+                          open_time INTEGER,
+                          close_time INTEGER,
+                          close_price REAL,
+                          pnl_raw REAL,
+                          pnl_pct REAL,
+                          status TEXT DEFAULT 'open')''')
                       
         # 🩹 Migration: Ensure new AlpacaActiveTrades columns exist
-        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN close_time INTEGER")
-        except: pass
-        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN close_price REAL")
-        except: pass
-        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN pnl_raw REAL")
-        except: pass
-        try: c.execute("ALTER TABLE AlpacaActiveTrades ADD COLUMN pnl_pct REAL")
-        except: pass
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN reset_token TEXT")
-        except: pass
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN reset_token_expiry INTEGER")
-        except: pass
+        c.execute("PRAGMA table_info(AlpacaActiveTrades)")
+        existing_alpaca_cols = {row['name'] for row in c.fetchall()}
+        
+        alpaca_cols = {
+            "close_time": "INTEGER",
+            "close_price": "REAL",
+            "pnl_raw": "REAL",
+            "pnl_pct": "REAL"
+        }
+        for col_name, col_def in alpaca_cols.items():
+            if col_name not in existing_alpaca_cols:
+                try: c.execute(f"ALTER TABLE AlpacaActiveTrades ADD COLUMN {col_name} {col_def}")
+                except: pass
+                
+        c.execute("PRAGMA table_info(WebUsers)")
+        existing_webusers_cols = {row['name'] for row in c.fetchall()}
+        webusers_cols = {
+            "reset_token": "TEXT",
+            "reset_token_expiry": "INTEGER"
+        }
+        for col_name, col_def in webusers_cols.items():
+            if col_name not in existing_webusers_cols:
+                try: c.execute(f"ALTER TABLE WebUsers ADD COLUMN {col_name} {col_def}")
+                except: pass
 
                       
         # Set default theoretical balance
-        c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('theoretical_balance', '1000.0')")
+        c.execute("SELECT 1 FROM Config WHERE key = 'theoretical_balance'")
+        if not c.fetchone():
+            c.execute("INSERT OR IGNORE INTO Config (key, value) VALUES ('theoretical_balance', '1000.0')")
 
         # 🌐 Web Application Users Table
-        c.execute('''CREATE TABLE IF NOT EXISTS WebUsers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            google_id TEXT UNIQUE,
-            password_hash TEXT,
-            full_name TEXT,
-            telegram_chat_id INTEGER,
-            exchange_id TEXT DEFAULT 'blofin',
-            api_key TEXT,
-            api_secret TEXT,
-            api_password TEXT,
-            alpaca_api_key TEXT,
-            alpaca_api_secret TEXT,
-            alpaca_endpoint TEXT,
-            is_active BOOLEAN DEFAULT 0,
-            risk_pct REAL DEFAULT 1.0,
-            stock_risk_pct REAL DEFAULT 2.0,
-            enabled_symbols TEXT,
-            hide_dollars BOOLEAN DEFAULT 0,
-            custom_equity_type TEXT DEFAULT 'all',
-            custom_equity_value REAL,
-            active_crypto_strategy TEXT DEFAULT 'Mean Reversion Scalper',
-            active_stock_strategy TEXT DEFAULT 'None',
-            source_wallet TEXT,
-            premium_expiry INTEGER DEFAULT 0,
-            referral_credits REAL DEFAULT 0.0,
-            referred_by INTEGER,
-            referral_count INTEGER DEFAULT 0,
-            total_wins INTEGER DEFAULT 0,
-            total_losses INTEGER DEFAULT 0,
-            cumulative_pnl REAL DEFAULT 0.0,
-            has_open_positions BOOLEAN DEFAULT 0,
-            history_cache TEXT,
-            last_audit_stats TEXT,
-            avatar_url TEXT,
-            created_at INTEGER,
-            referral_reward_triggered BOOLEAN DEFAULT 0
-        )''')
+        if "WebUsers" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS WebUsers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                google_id TEXT UNIQUE,
+                password_hash TEXT,
+                full_name TEXT,
+                telegram_chat_id INTEGER,
+                exchange_id TEXT DEFAULT 'blofin',
+                api_key TEXT,
+                api_secret TEXT,
+                api_password TEXT,
+                alpaca_api_key TEXT,
+                alpaca_api_secret TEXT,
+                alpaca_endpoint TEXT,
+                is_active BOOLEAN DEFAULT 0,
+                risk_pct REAL DEFAULT 1.0,
+                stock_risk_pct REAL DEFAULT 2.0,
+                enabled_symbols TEXT,
+                hide_dollars BOOLEAN DEFAULT 0,
+                custom_equity_type TEXT DEFAULT 'all',
+                custom_equity_value REAL,
+                active_crypto_strategy TEXT DEFAULT 'Mean Reversion Scalper',
+                active_stock_strategy TEXT DEFAULT 'None',
+                source_wallet TEXT,
+                premium_expiry INTEGER DEFAULT 0,
+                referral_credits REAL DEFAULT 0.0,
+                referred_by INTEGER,
+                referral_count INTEGER DEFAULT 0,
+                total_wins INTEGER DEFAULT 0,
+                total_losses INTEGER DEFAULT 0,
+                cumulative_pnl REAL DEFAULT 0.0,
+                has_open_positions BOOLEAN DEFAULT 0,
+                history_cache TEXT,
+                last_audit_stats TEXT,
+                avatar_url TEXT,
+                created_at INTEGER,
+                referral_reward_triggered BOOLEAN DEFAULT 0
+            )''')
 
-        # Migration: Ensure WebUsers has avatar_url
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN avatar_url TEXT")
-        except: pass
+        # Migration: Ensure WebUsers has additional columns
+        c.execute("PRAGMA table_info(WebUsers)")
+        existing_web_cols_2 = {row['name'] for row in c.fetchall()}
         
-        # Migration: Ensure WebUsers has premium_referrals
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN premium_referrals INTEGER DEFAULT 0")
-        except: pass
-
-        # Migration: Ensure WebUsers has referral_reward_triggered
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN referral_reward_triggered BOOLEAN DEFAULT 0")
-        except: pass
-
-        # Migration: Ensure WebUsers has email_notifications, email_frequency, browser_notifications
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN email_notifications INTEGER DEFAULT 1")
-        except: pass
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN email_frequency TEXT DEFAULT 'realtime'")
-        except: pass
-        try: c.execute("ALTER TABLE WebUsers ADD COLUMN browser_notifications INTEGER DEFAULT 1")
-        except: pass
+        web_cols_additional = {
+            "avatar_url": "TEXT",
+            "premium_referrals": "INTEGER DEFAULT 0",
+            "referral_reward_triggered": "BOOLEAN DEFAULT 0",
+            "email_notifications": "INTEGER DEFAULT 1",
+            "email_frequency": "TEXT DEFAULT 'realtime'",
+            "browser_notifications": "INTEGER DEFAULT 1"
+        }
+        for col_name, col_def in web_cols_additional.items():
+            if col_name not in existing_web_cols_2:
+                try: c.execute(f"ALTER TABLE WebUsers ADD COLUMN {col_name} {col_def}")
+                except: pass
 
 
 
