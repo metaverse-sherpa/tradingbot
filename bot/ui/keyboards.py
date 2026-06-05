@@ -280,7 +280,7 @@ def get_settings_ui(user):
     privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
     bot_status = "🟢 ACTIVE" if user['is_active'] else "🔴 PAUSED"
     risk_val = user.get('risk_pct', 1.5)
-    stock_risk_val = user.get('stock_risk_pct', 1.0)
+    stock_risk_val = user.get('stock_risk_pct', 2.0)
     syms = user.get('enabled_symbols', [])
     wallet_val = user.get('source_wallet')
     wallet_line = f"Source Wallet: `{wallet_val[:6]}...{wallet_val[-4:]}`\n" if wallet_val else "Source Wallet: Not Set (Use button below)\n"

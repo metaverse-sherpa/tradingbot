@@ -1208,7 +1208,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "strategy_menu":
         await query.answer()
         risk_val = user.get('risk_pct', 1.5)
-        stock_risk_val = user.get('stock_risk_pct', 1.0)
+        stock_risk_val = user.get('stock_risk_pct', 2.0)
         active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
         active_stock = user.get('active_stock_strategy', 'None')
         
@@ -1295,8 +1295,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit_text(
             update, context,
             "🦙 *Set Stock Risk Percentage*\n\n"
-            "Please type your preferred risk-per-trade for stocks as a number (e.g., `1.0` or `1.5`).\n\n"
-            "_Current: " + f"{user.get('stock_risk_pct', 1.0):.2f}%_",
+            "Please type your preferred risk-per-trade for stocks as a number (e.g., `2.0` or `1.5`).\n\n"
+            "_Current: " + f"{user.get('stock_risk_pct', 2.0):.2f}%_",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return

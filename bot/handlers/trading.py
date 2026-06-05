@@ -93,10 +93,10 @@ async def send_master_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await context.bot.send_message(chat_id=chat_id, text=audit_msg, parse_mode="Markdown")
 
 async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAULT_TYPE, user, start_balance=10000.0, force_asset=None):
-    """Runs a 3-year backtest for a specific user's risk and symbols with animation, supporting stock daily backtests."""
+    """Runs a backtest for a specific user's risk and symbols with animation, supporting stock daily backtests."""
     chat_id = user['telegram_chat_id']
     crypto_risk = user.get('risk_pct', 1.5)
-    stock_risk = user.get('stock_risk_pct', 1.0)
+    stock_risk = user.get('stock_risk_pct', 2.0)
     syms = user.get('enabled_symbols', [])
     
     active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
@@ -117,7 +117,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             msg = (
                 "🔬 *Choose Strategy to Backtest*\n\n"
                 "You currently have both **Crypto** and **Stock** strategies active.\n"
-                "Please select which 3-year performance audit you would like to run:"
+                "Please select which performance audit you would like to run (3-Year for Crypto, 5-Year for Stock):"
             )
             if update.callback_query:
                 await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
@@ -143,7 +143,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             except:
                 pass
                 
-        is_default = (target_risk == 1.0 and start_balance == 10000.0)
+        is_default = (target_risk == 2.0 and start_balance == 10000.0)
     else:
         target_risk = crypto_risk
         is_default = (target_risk == 1.5 and len(syms) >= 18 and start_balance == 10000.0)
@@ -187,7 +187,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         if is_default and os.path.exists(master_path):
             audit_msg = (
                 "🦙 *Metaverse Sherpa: Stock Institutional 5-Year Audit*\n"
-                "Strategy: `Sherpa Velocity Pullback` | Settings: `1.0% Risk` | `2x Leverage`\n\n"
+                "Strategy: `Sherpa Velocity Pullback` | Settings: `2.0% Risk` | `1.6x Leverage`\n\n"
                 "Final Equity: *$14,589.49*\n"
                 "Total PnL: *+45.9%*\n"
                 "Sharpe Ratio: *0.80*\n"
@@ -237,7 +237,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             "📉 *Simulating the 2023 pullback opportunities...*",
             "🏛️ *Surviving the 2024 tech volatility and rate spikes...*",
             "🌊 *Calculating dynamic SMA(5) and RSI exits...*",
-            "🛡️ *Applying 1.0% institutional risk-sizing rules...*",
+            "🛡️ *Applying 2.0% institutional risk-sizing rules...*",
             "⚖️ *Measuring Sharpe ratio and maximum drawdown bounds...*",
             "📊 *Plotting your daily stock equity curves...*",
             "🏔️ *Stock strategy projection successfully mapped!*"
@@ -352,16 +352,24 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
         else:
             dd_line = f"Max Drawdown: *{stats['max_dd']:.1f}%*{dd_delta}"
 
-        asset_title = "Stock" if force_asset == 'stock' else "Crypto"
+        if force_asset == 'stock':
+            asset_title = "Stock"
+            audit_years = 5
+            leverage_info = " | Leverage: `1.6x`"
+        else:
+            asset_title = "Crypto"
+            audit_years = 3
+            leverage_info = ""
+
         audit_msg = (
-            f"🏔️ *Your Personalized 3-Year {asset_title} Audit*\n"
-            f"Start Balance: `${start_balance:,.0f}` | Risk: `{target_risk:.2f}%`\n\n"
+            f"🏔️ *Your Personalized {audit_years}-Year {asset_title} Audit*\n"
+            f"Start Balance: `${start_balance:,.0f}` | Risk: `{target_risk:.2f}%`{leverage_info}\n\n"
             f"Final Equity: *${stats['final_equity']:,.2f}* ({stats['pnl_pct']:+.1f}%)\n"
             f"Sharpe Ratio: *{stats['sharpe']:.2f}*{sharpe_delta}\n"
             f"Win Rate: *{stats['win_rate']:.1f}%*{win_delta}\n"
             f"{dd_line}"
             f"{advice_note}\n\n"
-            f"📈 _This simulation represents your settings applied over the last 3 years of {asset_title.lower()} trading._"
+            f"📈 _This simulation represents your settings applied over the last {audit_years} years of {asset_title.lower()} trading._"
         )
         
         # 💎 Institutional Memory: Update Last Audit Cache
@@ -1778,7 +1786,7 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
         if not equity:
             equity = user.get('equity', 1000)
             
-        user_risk = float(user.get('stock_risk_pct', 1.0)) / 100.0
+        user_risk = float(user.get('stock_risk_pct', 2.0)) / 100.0
         risk_amt = equity * user_risk
         qty = round(risk_amt / sl_dist, 4)
         
