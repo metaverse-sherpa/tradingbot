@@ -1480,7 +1480,7 @@ function renderDashboardView() {
     if (STATE.is_loading_dashboard) {
         return `
             ${renderHeader()}
-            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+            <main class="pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
                 <div class="relative w-24 h-24 mb-6">
                     <div class="absolute inset-0 border-4 border-white/10 rounded-full"></div>
                     <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
@@ -1517,7 +1517,7 @@ function renderDashboardView() {
     if (!isPremium) {
         return `
             ${renderHeader()}
-            <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
+            <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto">
                 <div class="flex justify-between items-center">
                     ${tierBadge}
                 </div>
