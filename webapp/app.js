@@ -2901,10 +2901,10 @@ function renderBacktestView() {
             <h2 class="font-headline-sm text-headline-sm text-on-surface">🔬 Backtest Engine</h2>
             
             ${bt.running ? `
-                <div class="glass-card rounded-xl p-8 text-center space-y-4">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-2"></div>
-                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Sherpa Engine is Crunching Alpha...</h3>
-                    <p class="text-xs text-on-surface-variant">Scanning ${isStock ? '5' : '3'} years of historical market candles...</p>
+                <div class="glass-card rounded-xl p-8 text-center space-y-4 min-h-[160px] flex flex-col justify-center items-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-4"></div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface transition-all duration-300">${bt.statusMessage || 'Sherpa Engine is Crunching Alpha...'}</h3>
+                    <p class="text-[10px] text-on-surface-variant uppercase tracking-wider animate-pulse">Scanning ${isStock ? '5' : '3'} years of historical market data</p>
                 </div>
             ` : bt.result ? `
                 <div class="glass-card rounded-xl p-card-padding space-y-4">
@@ -3969,23 +3969,66 @@ async function triggerBacktest() {
     const capital = capitalEl ? parseFloat(capitalEl.value) : 10000.0;
     const risk = riskEl ? parseFloat(riskEl.value) : 1.0;
 
+    const isStock = (strategy === 'Sherpa Velocity Pullback');
+    const frames = isStock ? [
+        "🦙 Sherpa is packing the stock daily swing indicators...",
+        "📊 Connecting to the historical daily database cache...",
+        "📈 Running Velocity Pullback scanners on megacaps...",
+        "📉 Simulating stock pullback opportunities...",
+        "🏛️ Surviving tech volatility and rate spikes...",
+        "🌊 Calculating dynamic SMA(5) and RSI exits...",
+        "🛡️ Applying institutional risk-sizing rules...",
+        "⚖️ Measuring Sharpe ratio and maximum drawdown bounds...",
+        "📊 Plotting daily stock equity curves...",
+        "🏔️ Stock strategy projection successfully mapped!"
+    ] : [
+        "🥾 Sherpa is packing the quantitative gear...",
+        "🧗‍♂️ Securing the ropes on the Bollinger bands...",
+        "🏔️ Climbing the historical peaks and valleys...",
+        "📉 Surviving the bear traps and liquidation zones...",
+        "📈 Riding the parabolic momentum curves...",
+        "🛰️ Calibrating high-frequency antennas...",
+        "💎 Polishing the institutional risk multipliers...",
+        "📊 Plotting the private equity curves...",
+        "🗺️ Mapping out the final risk audits...",
+        "🏔️ Planting the Sherpa flag at the peak..."
+    ];
+
     STATE.backtest.running = true;
+    STATE.backtest.statusMessage = frames[0];
     renderView();
-    
-    const res = await apiRequest('/backtest/run', 'POST', {
-        strategy: strategy,
-        capital: capital,
-        risk_pct: risk
-    });
-    
-    STATE.backtest.running = false;
-    if (res && res.result) {
-        STATE.backtest.result = res.result;
-        if (res.result.max_drawdown > 25.0) {
-            showToast("Warning: Max drawdown is >25%. Consider adjusting your Risk per Trade.", "warning");
+
+    let frameIdx = 1;
+    const intervalId = setInterval(() => {
+        if (STATE.backtest.running && frameIdx < frames.length) {
+            STATE.backtest.statusMessage = frames[frameIdx];
+            frameIdx++;
+            renderView();
+        } else {
+            clearInterval(intervalId);
         }
+    }, 1200);
+    
+    try {
+        const res = await apiRequest('/backtest/run', 'POST', {
+            strategy: strategy,
+            capital: capital,
+            risk_pct: risk
+        });
+        
+        if (res && res.result) {
+            STATE.backtest.result = res.result;
+            if (res.result.max_drawdown > 25.0) {
+                showToast("Warning: Max drawdown is >25%. Consider adjusting your Risk per Trade.", "warning");
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    } finally {
+        STATE.backtest.running = false;
+        clearInterval(intervalId);
+        renderView();
     }
-    renderView();
 }
 
 function resetBacktester() {
