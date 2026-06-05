@@ -2162,7 +2162,7 @@ function renderTradesView() {
             <div class="hidden md:grid md:grid-cols-2 md:gap-6">
                 <!-- Crypto Column -->
                 <div>
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center gap-2">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
                         <span>🪙</span> Crypto (${cryptoCount})
                     </h3>
                     <div class="space-y-stack-gap">
@@ -2171,7 +2171,7 @@ function renderTradesView() {
                 </div>
                 <!-- Stocks Column -->
                 <div>
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center gap-2">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
                         <span>🦙</span> Stocks (${stockCount})
                     </h3>
                     <div class="space-y-stack-gap">
