@@ -908,7 +908,8 @@ function renderHeader(title) {
                                 <span class="material-symbols-outlined text-[18px] text-tertiary">diversity_3</span>
                                 Refer & Earn
                             </a>
-                            <button onclick="logoutUser()" class="w-full text-left px-4 py-2.5 text-sm text-error hover:bg-error/10 transition-colors flex items-center gap-2 font-semibold">
+                            <button onclick="logoutUser()" class="w-full text-left px-4 py-3 text-sm text-error hover:bg-error/10 transition-colors flex items-center gap-2 font-semibold">
+                                <span class="material-symbols-outlined text-[18px]">power_settings_new</span>
                                 Logout
                             </button>
                         </div>
