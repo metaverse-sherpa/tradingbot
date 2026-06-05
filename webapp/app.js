@@ -2469,9 +2469,12 @@ function getFreeStatsHtml(showHeader = false) {
 function renderFreeStatsView(showPremiumBanner = false) {
     if (!STATE.free_stats) return `${renderHeader()}<main class="pt-20 px-container-margin"><div class="text-center p-8 text-on-surface-variant">Loading stats...</div></main>`;
 
-    const premiumBanner = showPremiumBanner ? `
-        <div class="glass-card rounded-xl p-card-padding border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-            <div class="space-y-1">
+    const premiumBanner = (showPremiumBanner && !STATE.hide_stats_warning) ? `
+        <div class="glass-card rounded-xl p-card-padding border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 relative">
+            <button onclick="STATE.hide_stats_warning = true; renderView();" class="absolute top-3 right-3 text-primary/70 hover:text-primary transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/10" title="Hide">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+            <div class="space-y-1 sm:pr-8">
                 <h3 class="font-body-lg text-body-lg font-bold text-primary flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary">info</span> Live Stats Pending
                 </h3>
