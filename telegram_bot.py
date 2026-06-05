@@ -140,7 +140,7 @@ def main():
         register_handlers(app)
         
         logger.info("Starting Telegram Bot Polling...")
-        app.run_polling()
+        app.run_polling(bootstrap_retries=-1)
     except Exception as e:
         import traceback
         import requests
