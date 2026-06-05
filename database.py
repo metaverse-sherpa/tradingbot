@@ -1028,6 +1028,16 @@ def get_detailed_user_report():
             item = dict(r)
             item['is_premium'] = r['premium_expiry'] > now
             
+            # Check if linked to the Web App and get their email
+            c.execute("SELECT email FROM WebUsers WHERE telegram_chat_id = ?", (r['telegram_chat_id'],))
+            web_user = c.fetchone()
+            if web_user:
+                item['web_email'] = web_user['email']
+                item['is_web_linked'] = True
+            else:
+                item['web_email'] = None
+                item['is_web_linked'] = False
+            
             # 🤝 Map Recruits (Fetch their names/IDs)
             c.execute("SELECT full_name, username, telegram_chat_id FROM Users WHERE referred_by = ?", (r['telegram_chat_id'],))
             recruits = c.fetchall()

@@ -265,6 +265,12 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"│  {status_icon} {status_label}  ·  {tier_icon} {tier_label}\n"
             )
 
+            if u.get('is_web_linked'):
+                esc_email = escape_md_v2(u['web_email'])
+                card += f"│  🌐 *Web Linked:* Yes \\({esc_email}\\)\n"
+            else:
+                card += f"│  🌐 *Web Linked:* No\n"
+
             if u.get('referred_by'):
                 referrer = user_lookup.get(u['referred_by'])
                 if referrer:
