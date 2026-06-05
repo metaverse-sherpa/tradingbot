@@ -4737,11 +4737,9 @@ function showShareCardModal(title, cardApiUrl, refLink) {
     const backdrop = document.createElement('div');
     backdrop.id = modalId;
     backdrop.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in';
-    backdrop.style.maxWidth = '500px';
-    backdrop.style.margin = '0 auto';
     
     backdrop.innerHTML = `
-        <div class="glass-card rounded-2xl border border-white/10 w-full overflow-hidden flex flex-col gap-4 p-6 relative animate-scale-up" style="max-width: 420px;">
+        <div class="glass-card rounded-2xl border border-white/10 w-full overflow-hidden flex flex-col gap-3 p-4 sm:p-5 relative animate-scale-up" style="max-width: 360px;">
             <div class="flex justify-between items-center pb-2 border-b border-white/10">
                 <h3 class="font-bold text-on-surface text-base flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary text-[20px]">share</span>
@@ -4807,8 +4805,8 @@ function showShareCardModal(title, cardApiUrl, refLink) {
             const contentDiv = document.getElementById('share-card-content');
             if (contentDiv) {
                 contentDiv.innerHTML = `
-                    <div class="w-full aspect-square rounded-xl overflow-hidden border border-white/10 relative shadow-2xl mb-4 bg-black/20">
-                        <img src="${objectUrl}" class="w-full h-full object-contain" alt="PnL Card Preview" />
+                    <div class="w-full rounded-xl overflow-hidden border border-white/10 relative shadow-2xl mb-3 bg-black/20 flex justify-center items-center">
+                        <img src="${objectUrl}" class="w-full h-auto max-h-[60vh] object-contain rounded-xl" alt="PnL Card Preview" />
                     </div>
                     
                     <div class="w-full space-y-3">

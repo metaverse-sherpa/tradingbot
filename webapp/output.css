@@ -1058,10 +1058,6 @@ input:where([type='file']):focus {
   aspect-ratio: 16/10;
 }
 
-.aspect-square {
-  aspect-ratio: 1 / 1;
-}
-
 .aspect-video {
   aspect-ratio: 16 / 9;
 }
@@ -1142,8 +1138,16 @@ input:where([type='file']):focus {
   height: 4px;
 }
 
+.h-auto {
+  height: auto;
+}
+
 .h-full {
   height: 100%;
+}
+
+.max-h-\[60vh\] {
+  max-height: 60vh;
 }
 
 .min-h-\[160px\] {
@@ -3010,6 +3014,10 @@ input:where([type='file']):focus {
 
   .sm\:items-center {
     align-items: center;
+  }
+
+  .sm\:p-5 {
+    padding: 1.25rem;
   }
 
   .sm\:text-sm {
