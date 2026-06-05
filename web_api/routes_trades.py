@@ -689,10 +689,20 @@ def get_trades_history():
     try:
         alpaca_history = database.get_closed_alpaca_trades_by_user(trade_chat_id, limit)
         print(f"[HISTORY] Local Alpaca trades: {len(alpaca_history)}")
-        if not alpaca_history and tg_user:
+        
+        # Merge credentials from WebUsers and Telegram Users to ensure we have correct keys & endpoint
+        merged_user = {}
+        if user:
+            merged_user.update(user)
+        if tg_user:
+            for k, v in tg_user.items():
+                if v is not None and v != "":
+                    merged_user[k] = v
+                    
+        if not alpaca_history and (merged_user.get("alpaca_api_key") and merged_user.get("alpaca_api_secret")):
             print("[HISTORY] No local Alpaca trades, trying API fallback...")
             try:
-                orders = database.make_alpaca_request(tg_user, "GET", "/v2/orders", params={"status": "closed", "limit": 40})
+                orders = database.make_alpaca_request(merged_user, "GET", "/v2/orders", params={"status": "closed", "limit": 40})
                 if isinstance(orders, list):
                     for o in orders:
                         qty = float(o.get("filled_qty", 0) or 0)
