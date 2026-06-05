@@ -1727,7 +1727,7 @@ function renderDashboardView() {
                             Until you connect your crypto and/or stock exchange, you'll only see the free Alpha Signals.
                         </p>
                     </div>
-                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
+                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors sm:mr-8">
                         CONNECT EXCHANGE
                     </a>
                 </div>
@@ -2482,7 +2482,7 @@ function renderFreeStatsView(showPremiumBanner = false) {
                     Your live portfolio performance will appear here once you connect your exchange API keys. Until then, you can view the forward-tested strategy performance below.
                 </p>
             </div>
-            <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-primary/20 border border-primary/50 text-primary font-bold text-xs tracking-wider rounded-lg hover:bg-primary hover:text-on-primary transition-colors">
+            <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-primary/20 border border-primary/50 text-primary font-bold text-xs tracking-wider rounded-lg hover:bg-primary hover:text-on-primary transition-colors sm:mr-8">
                 CONNECT
             </a>
         </div>
