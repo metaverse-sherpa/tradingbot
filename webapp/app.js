@@ -1664,7 +1664,12 @@ function renderDashboardView() {
         `;
     }
 
-    const mainMaxWidthClass = (hasLinkedCrypto && hasLinkedStock) ? 'max-w-[500px] md:max-w-[1000px]' : 'max-w-[500px]';
+    let mainMaxWidthClass = 'max-w-[500px]';
+    if (hasLinkedCrypto && hasLinkedStock) {
+        mainMaxWidthClass = 'max-w-[500px] md:max-w-[1000px]';
+    } else if (!hasLinkedKeys) {
+        mainMaxWidthClass = 'max-w-[500px] lg:max-w-full';
+    }
 
     return `
         ${renderHeader()}
