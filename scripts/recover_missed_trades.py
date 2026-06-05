@@ -220,6 +220,10 @@ async def main():
                     send_alert_email(user_email, subject, html_content)
                     logger.info(f"Email dispatched to {user_email}")
                     
+            except requests.exceptions.HTTPError as he:
+                resp_text = he.response.text if he.response is not None else "No response body"
+                logger.error(f"Failed to execute recovery trade for user {chat_id} symbol {sym}: {he} - Response: {resp_text}")
+                await send_telegram_message(chat_id, f"⚠️ *Alpaca Recovery Alert*: Buy signal for {sym} failed to execute during recovery: {he} ({resp_text})")
             except Exception as e:
                 logger.error(f"Failed to execute recovery trade for user {chat_id} symbol {sym}: {e}")
                 await send_telegram_message(chat_id, f"⚠️ *Alpaca Recovery Alert*: Buy signal for {sym} failed to execute during recovery: {e}")
