@@ -147,6 +147,13 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
     """
     Generates premium responsive HTML email template for trading signals.
     """
+    from bot.config import is_stock
+    if is_stock(symbol):
+        symbol_link = f'<a href="https://marketmasters.ai/stocks/{symbol}" style="color: #3cd7ff; text-decoration: underline;">{symbol}</a>'
+    else:
+        clean_sym = symbol.replace("/", "").split(":")[0]
+        symbol_link = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: #3cd7ff; text-decoration: underline;">{symbol}</a>'
+
     is_win = (pnl_pct and pnl_pct > 0)
     pnl_str = f"{pnl_pct:+.2f}%" if pnl_pct is not None else ""
     
@@ -297,7 +304,7 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
                             <table width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td align="left" style="color: #8892b0; font-size: 12px; text-transform: uppercase; font-weight: 600; width: 40%;">Symbol</td>
-                                    <td align="right" style="color: #3cd7ff; font-weight: bold; font-size: 14px; width: 60%;">{symbol}</td>
+                                    <td align="right" style="color: #3cd7ff; font-weight: bold; font-size: 14px; width: 60%;">{symbol_link}</td>
                                 </tr>
                             </table>
                         </td>
@@ -372,6 +379,7 @@ def get_daily_summary_html(signals_opened, signals_closed):
     """
     Generates premium responsive HTML email template for daily trading summaries.
     """
+    from bot.config import is_stock
     color_bg = "#0B0E14"
     color_card = "#141A24"
     
@@ -380,11 +388,17 @@ def get_daily_summary_html(signals_opened, signals_closed):
         opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">No new signals opened today.</td></tr>'
     else:
         for s in signals_opened:
+            sym = s['symbol']
+            if is_stock(sym):
+                symbol_link = f'<a href="https://marketmasters.ai/stocks/{sym}" style="color: #3cd7ff; text-decoration: underline;">{sym}</a>'
+            else:
+                clean_sym = sym.replace("/", "").split(":")[0]
+                symbol_link = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: #3cd7ff; text-decoration: underline;">{sym}</a>'
             direction_color = "#00C853" if s['side'] in ['buy', 'long', 'LONG'] else "#FF1744"
             direction_label = "LONG" if s['side'] in ['buy', 'long', 'LONG'] else "SHORT"
             opened_rows += f"""
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{s['symbol']}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{symbol_link}</td>
                 <td style="padding: 12px 10px; font-weight: bold; color: {direction_color}; font-size: 12px;">{direction_label}</td>
                 <td style="padding: 12px 10px; color: #FFF; font-size: 13px;">${s['entry_price']:.4f}</td>
                 <td style="padding: 12px 10px; color: rgba(255,255,255,0.6); font-size: 12px;">{s['strategy']}</td>
@@ -396,13 +410,19 @@ def get_daily_summary_html(signals_opened, signals_closed):
         closed_rows = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: rgba(255,255,255,0.4); font-size: 13px;">No positions resolved today.</td></tr>'
     else:
         for s in signals_closed:
+            sym = s['symbol']
+            if is_stock(sym):
+                symbol_link = f'<a href="https://marketmasters.ai/stocks/{sym}" style="color: #3cd7ff; text-decoration: underline;">{sym}</a>'
+            else:
+                clean_sym = sym.replace("/", "").split(":")[0]
+                symbol_link = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: #3cd7ff; text-decoration: underline;">{sym}</a>'
             direction_color = "#00C853" if s['side'] in ['buy', 'long', 'LONG'] else "#FF1744"
             direction_label = "LONG" if s['side'] in ['buy', 'long', 'LONG'] else "SHORT"
             
             pnl_pct = s.get('pnl_pct', 0.0)
-            from bot.config import is_stock, CRYPTO_LEVERAGE
+            from bot.config import CRYPTO_LEVERAGE
             # Apply crypto leverage display multiplier
-            if not is_stock(s['symbol']):
+            if not is_stock(sym):
                 pnl_pct *= CRYPTO_LEVERAGE
                 
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
@@ -410,7 +430,7 @@ def get_daily_summary_html(signals_opened, signals_closed):
             
             closed_rows += f"""
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{s['symbol']}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{symbol_link}</td>
                 <td style="padding: 12px 10px; font-weight: bold; color: {direction_color}; font-size: 12px;">{direction_label}</td>
                 <td style="padding: 12px 10px; font-weight: bold; color: {pnl_color}; font-size: 13px;">{pnl_str}</td>
                 <td style="padding: 12px 10px; color: rgba(255,255,255,0.6); font-size: 12px;">{s['status'].upper()}</td>
