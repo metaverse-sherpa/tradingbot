@@ -1522,6 +1522,7 @@ function renderDashboardView() {
                     ${tierBadge}
                 </div>
                 
+                ${(STATE.is_loading_active_signals || (STATE.active_signals && STATE.active_signals.length > 0)) ? `
                 <div class="flex items-center justify-between mt-6">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
                     <button onclick="window.toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
@@ -1529,6 +1530,7 @@ function renderDashboardView() {
                         <span>${STATE.active_signals_sort_by === 'pnl' ? 'Newest First' : 'Most Profitable First'}</span>
                     </button>
                 </div>
+                ` : ''}
                 
                 <div class="space-y-stack-gap">
                     ${STATE.is_loading_active_signals && STATE.active_signals.length === 0 ? `
@@ -1712,20 +1714,26 @@ function renderDashboardView() {
         dashboardContent = `
             <!-- No Exchange Linked / Active Signals -->
             <div class="space-y-6 mt-6 animate-fade-in w-full max-w-[500px] lg:max-w-full mx-auto">
-                <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                ${!STATE.hide_exchange_warning ? `
+                <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
+                    <button onclick="STATE.hide_exchange_warning = true; renderView();" class="absolute top-2 right-2 text-on-surface-variant hover:text-white transition-colors p-1" title="Hide">
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
                     <div class="space-y-1">
-                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[800px]">
-                            <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
-                                <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
-                            </h3>                        
-                            To view your live portfolio equity, open trades, and stats, connect your Crypto Exchange or Alpaca Stocks API credentials.
+                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
+                        </h3>      
+                        <p class="text-xs text-on-surface-variant leading-relaxed max-w-[800px] pt-1">
+                            Until you connect your crypto and/or stock exchange, you'll only see the free Alpha Signals.
                         </p>
                     </div>
-                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
+                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors sm:mr-6">
                         CONNECT EXCHANGE
                     </a>
                 </div>
+                ` : ''}
                 
+                ${(STATE.is_loading_active_signals || (STATE.active_signals && STATE.active_signals.length > 0)) ? `
                 <div class="flex items-center justify-between pt-4">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Active Signals</h2>
                     <button onclick="console.log('Sorting signals...'); window.toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
@@ -1733,6 +1741,7 @@ function renderDashboardView() {
                         <span>${STATE.active_signals_sort_by === 'pnl' ? 'Newest First' : 'Most Profitable First'}</span>
                     </button>
                 </div>
+                ` : ''}
                 
                 <div class="space-y-stack-gap">
                     ${STATE.is_loading_active_signals && STATE.active_signals.length === 0 ? `
