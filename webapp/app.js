@@ -2567,8 +2567,10 @@ function renderSettingsView() {
             <h2 class="font-headline-sm text-headline-sm text-on-surface mb-6">⚙️ Settings</h2>
             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-section-gap items-start">
-            
-            <!-- Premium Status & Renew Option -->
+
+                <!-- LEFT COLUMN -->
+                <div class="space-y-section-gap flex flex-col">
+                    <!-- Premium Status & Renew Option -->
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border border-white/10">
                 <div>
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
@@ -2586,23 +2588,8 @@ function renderSettingsView() {
                     </a>
                 `}
             </section>
-            
-            <!-- Bot Status Panel (Gated to Premium Users Only) -->
-            ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
-            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 ${isActive ? 'border-tertiary/40' : 'border-error/40'}">
-                <div>
-                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Autopilot Status</h3>
-                    <p class="text-xs text-on-surface-variant mt-1">${isActive ? 'Active and executing signals' : 'Paused'}</p>
-                </div>
-                <button onclick="toggleBotStatus(${isActive})" class="px-4 py-2 rounded-lg font-bold transition-all ${
-                    isActive ? 'bg-error/20 text-error border border-error/55' : 'bg-tertiary/20 text-tertiary border border-tertiary/55'
-                }">
-                    ${isActive ? 'STOP BOT' : 'START BOT'}
-                </button>
-            </section>
-            ` : ''}
-            
-            <!-- Connected Exchanges Summary -->
+
+                    <!-- Connected Exchanges Summary -->
             ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
             <section class="glass-card rounded-xl p-card-padding border border-white/10 animate-fade-in">
                 <details class="group">
@@ -2687,8 +2674,7 @@ function renderSettingsView() {
                 </details>
             </section>
             ` : ''}
-            
-            <!-- Connect Exchange Wizard (Premium Only) -->
+                    <!-- Connect Exchange Wizard (Premium Only) -->
             ${isPremium && (!hasLinkedCrypto || !hasLinkedStock || STATE.editing_exchange) ? `
             <section id="exchange-wizard-section" class="glass-card rounded-xl p-card-padding space-y-4 border border-white/10 animate-fade-in">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 ${STATE.editing_exchange ? 'Edit Connected Exchange' : 'Connect Exchange'}</h3>
@@ -2738,8 +2724,7 @@ function renderSettingsView() {
                 </form>
             </section>
             ` : ''}
-            
-            <!-- Telegram Sync -->
+                    <!-- Telegram Sync -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <div class="flex justify-between items-center">
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">📱 Telegram Sync</h3>
@@ -2769,7 +2754,45 @@ function renderSettingsView() {
                 `}
             </section>
 
-            <!-- Algorithmic Strategies Dropdowns -->
+                    <!-- Premium Plan & Referral Buttons -->
+            <section class="grid grid-cols-2 gap-stack-gap">
+                ${!isPremium ? `
+                <a href="#/premium" class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors text-center">
+                    <span class="material-symbols-outlined text-secondary-container text-2xl">diamond</span>
+                    <span class="text-xs font-semibold text-on-surface">Premium Plan</span>
+                </a>
+                ` : `
+                <div class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 text-center opacity-50">
+                    <span class="material-symbols-outlined text-secondary-container text-2xl">check_circle</span>
+                    <span class="text-xs font-semibold text-on-surface">Active Premium</span>
+                </div>
+                `}
+                <a href="#/referral" class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors text-center">
+                    <span class="material-symbols-outlined text-tertiary text-2xl">diversity_3</span>
+                    <span class="text-xs font-semibold text-on-surface">Refer & Earn</span>
+                </a>
+            </section>
+
+                </div>
+
+
+                <!-- RIGHT COLUMN -->
+                <div class="space-y-section-gap flex flex-col">
+                    <!-- Bot Status Panel (Gated to Premium Users Only) -->
+            ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
+            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 ${isActive ? 'border-tertiary/40' : 'border-error/40'}">
+                <div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Autopilot Status</h3>
+                    <p class="text-xs text-on-surface-variant mt-1">${isActive ? 'Active and executing signals' : 'Paused'}</p>
+                </div>
+                <button onclick="toggleBotStatus(${isActive})" class="px-4 py-2 rounded-lg font-bold transition-all ${
+                    isActive ? 'bg-error/20 text-error border border-error/55' : 'bg-tertiary/20 text-tertiary border border-tertiary/55'
+                }">
+                    ${isActive ? 'STOP BOT' : 'START BOT'}
+                </button>
+            </section>
+            ` : ''}
+                    <!-- Algorithmic Strategies Dropdowns -->
             <section class="glass-card rounded-xl p-card-padding space-y-4 relative z-50">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🤖 Algorithmic Strategies</h3>
                 <div class="space-y-3">
@@ -2844,8 +2867,8 @@ function renderSettingsView() {
                     ` : ''}
                 </div>
             </section>
-            
-            <!-- Risk Sizing Slider -->
+
+                    <!-- Risk Sizing Slider -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">⚖️ Risk & Sizing</h3>
                 <div class="space-y-4">
@@ -2870,7 +2893,7 @@ function renderSettingsView() {
                 </button>
             </section>
 
-            <!-- Email Notifications Setting -->
+                    <!-- Email Notifications Setting -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <div class="flex justify-between items-center">
                     <div>
@@ -2903,7 +2926,7 @@ function renderSettingsView() {
                 ` : ''}
             </section>
 
-            <!-- Browser Notifications Setting -->
+                    <!-- Browser Notifications Setting -->
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-secondary-container/40">
                 <div>
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🖥️ Browser Notifications</h3>
@@ -2916,7 +2939,7 @@ function renderSettingsView() {
                 </button>
             </section>
 
-            <!-- Privacy Mode Setting -->
+                    <!-- Privacy Mode Setting -->
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-primary/40">
                 <div>
                     <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Privacy Mode</h3>
@@ -2929,27 +2952,7 @@ function renderSettingsView() {
                 </button>
             </section>
 
-
-            <!-- Premium Plan & Referral Buttons -->
-            <section class="grid grid-cols-2 gap-stack-gap">
-                ${!isPremium ? `
-                <a href="#/premium" class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors text-center">
-                    <span class="material-symbols-outlined text-secondary-container text-2xl">diamond</span>
-                    <span class="text-xs font-semibold text-on-surface">Premium Plan</span>
-                </a>
-                ` : `
-                <div class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 text-center opacity-50">
-                    <span class="material-symbols-outlined text-secondary-container text-2xl">check_circle</span>
-                    <span class="text-xs font-semibold text-on-surface">Active Premium</span>
-                </div>
-                `}
-                <a href="#/referral" class="glass-card rounded-lg p-4 flex flex-col items-center gap-2 hover:bg-white/5 transition-colors text-center">
-                    <span class="material-symbols-outlined text-tertiary text-2xl">diversity_3</span>
-                    <span class="text-xs font-semibold text-on-surface">Refer & Earn</span>
-                </a>
-            </section>
-
-            <!-- Admin Gifting Center -->
+                    <!-- Admin Gifting Center -->
             ${isAdmin ? `
             <section class="glass-card rounded-xl p-card-padding space-y-4 border border-[#ffdb3c]/30 gold-glow">
                 <h3 class="font-body-lg text-body-lg font-bold text-[#ffdb3c] flex items-center gap-2">
@@ -2966,9 +2969,11 @@ function renderSettingsView() {
                 </div>
             </section>
             ` : ''}
+                </div>
+
+            </div>
 
             <!-- Logout Link -->
-            </div>
             <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center cursor-pointer mt-section-gap">
                 Logout Session
             </button>
