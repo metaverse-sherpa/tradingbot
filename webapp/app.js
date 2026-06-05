@@ -1714,10 +1714,10 @@ function renderDashboardView() {
             <div class="space-y-6 mt-6 animate-fade-in w-full max-w-[500px] lg:max-w-full mx-auto">
                 <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="space-y-1">
-                        <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
-                            <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
-                        </h3>
                         <p class="text-xs text-on-surface-variant leading-relaxed max-w-[800px]">
+                            <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
+                                <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
+                            </h3>                        
                             To view your live portfolio equity, open trades, and stats, connect your Crypto Exchange or Alpaca Stocks API credentials.
                         </p>
                     </div>
