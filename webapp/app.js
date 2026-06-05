@@ -2834,22 +2834,22 @@ function renderSettingsView() {
                         </div>
                     </div>
                 </div>
-                <form onsubmit="handleExchangeSetup(event)" class="space-y-3">
+                <form onsubmit="handleExchangeSetup(event)" class="space-y-3" autocomplete="off">
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Key</label>
-                        <input id="api-key" autocomplete="username" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Key" type="text" required/>
+                        <input id="api-key" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Key" type="text" required/>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Secret</label>
-                        <input id="api-secret" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Secret" type="password" required/>
+                        <input id="api-secret" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Secret" type="password" required/>
                     </div>
                     <div id="pwd-field-container" class="space-y-1">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Passphrase</label>
-                        <input id="api-password" autocomplete="new-password" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
+                        <input id="api-password" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
                     </div>
                     <div id="endpoint-field-container" class="space-y-1 hidden">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
-                        <input id="alpaca-endpoint" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://paper-api.alpaca.markets" type="text" value="https://paper-api.alpaca.markets"/>
+                        <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://paper-api.alpaca.markets" type="text" value="https://paper-api.alpaca.markets"/>
                     </div>
                     <div class="flex gap-3">
                         <button type="submit" class="flex-1 h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
