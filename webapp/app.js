@@ -3552,14 +3552,24 @@ function renderSignalsView() {
     }
 
     const currentTab = STATE.signals_tab || 'active';
+    
+    // Sort active signals based on the active_signals_sort_by setting
+    const sortedActiveSignals = [...STATE.active_signals].sort((a, b) => {
+        if (STATE.active_signals_sort_by === 'date') {
+            return (b.open_time || 0) - (a.open_time || 0);
+        } else {
+            return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+        }
+    });
+
     const listHtml = currentTab === 'active' 
-        ? (STATE.active_signals.length === 0 ? `
+        ? (sortedActiveSignals.length === 0 ? `
             <div class="text-center py-12">
                 <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
                 <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
                 <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
             </div>
-        ` : STATE.active_signals.map(s => renderSignalCard(s)).join(''))
+        ` : sortedActiveSignals.map(s => renderSignalCard(s)).join(''))
         : (STATE.closed_signals.length === 0 ? `
             <div class="text-center py-12">
                 <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
@@ -3606,7 +3616,7 @@ function renderSignalsView() {
                 const strategyRows = STATE.free_stats.strategies.map(s => {
                     const icon = strategyIcons[s.name] || "📈";
                     const guide = guides[s.name] || guides["Mean Reversion Scalper"];
-                    const guideId = `sig-guide-${s.name.replace(/\\s+/g, '-')}`;
+                    const guideId = `sig-guide-${s.name.replace(/\s+/g, '-')}`;
                     
                     const realizedPct = s.realized_pct || 0;
                     const unrealizedPct = s.unrealized_pct || 0;
@@ -3716,9 +3726,17 @@ function renderSignalsView() {
             <div class="sticky top-[58px] z-40 w-full bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-container-margin mb-4">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
-                    <button onclick="window.refreshSignals(true)" class="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all text-on-surface-variant hover:text-primary active:scale-95 group" title="Refresh Signals">
-                        <span class="material-symbols-outlined text-[20px] ${STATE.is_loading_signals ? 'animate-spin text-primary' : 'group-hover:rotate-180 transition-transform duration-500'}">refresh</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        ${currentTab === 'active' && STATE.active_signals.length > 0 ? `
+                        <button onclick="window.toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
+                            <span class="material-symbols-outlined text-[16px]">${STATE.active_signals_sort_by === 'pnl' ? 'calendar_month' : 'trending_up'}</span>
+                            <span>${STATE.active_signals_sort_by === 'pnl' ? 'Newest First' : 'Most Profitable First'}</span>
+                        </button>
+                        ` : ''}
+                        <button onclick="window.refreshSignals(true)" class="flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all text-on-surface-variant hover:text-primary active:scale-95 group" title="Refresh Signals">
+                            <span class="material-symbols-outlined text-[20px] ${STATE.is_loading_signals ? 'animate-spin text-primary' : 'group-hover:rotate-180 transition-transform duration-500'}">refresh</span>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Tabs -->
