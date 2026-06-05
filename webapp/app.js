@@ -1583,7 +1583,7 @@ function renderDashboardView() {
         // Neither connected
         dashboardContent = `
             <!-- No Exchange Linked / Active Signals -->
-            <div class="space-y-6 mt-6 animate-fade-in max-w-[500px] lg:max-w-5xl mx-auto">
+            <div class="space-y-6 mt-6 animate-fade-in w-full max-w-[500px] lg:max-w-full mx-auto">
                 <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="space-y-1">
                         <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">

@@ -3053,8 +3053,8 @@ input:where([type='file']):focus {
 }
 
 @media (min-width: 1024px) {
-  .lg\:max-w-5xl {
-    max-width: 64rem;
+  .lg\:max-w-full {
+    max-width: 100%;
   }
 
   .lg\:grid-cols-2 {
