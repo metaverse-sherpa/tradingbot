@@ -748,6 +748,37 @@ window.refreshSignals = function(showSpinner = false) {
         if (active) {
             STATE.active_signals = active;
             
+            if (window.location.hash.includes('debug_signals=true') || window.location.href.includes('debug_signals=true')) {
+                const now = Math.floor(Date.now() / 1000);
+                STATE.active_signals = [
+                    {
+                        id: "debug-crypto-1",
+                        symbol: "BTC/USDT",
+                        strategy: "Valkyrie Elite Scalper",
+                        side: "LONG",
+                        entry_price: 65400.0,
+                        tp_price: 66000.0,
+                        sl_price: 65000.0,
+                        pnl_pct: 0.45,
+                        pnl_usdt: 15.00,
+                        open_time: now - 3600
+                    },
+                    {
+                        id: "debug-stock-1",
+                        symbol: "AAPL",
+                        strategy: "Sherpa Velocity Pullback",
+                        side: "LONG",
+                        entry_price: 185.50,
+                        tp_price: 195.00,
+                        sl_price: 180.00,
+                        pnl_pct: -1.25,
+                        pnl_usdt: -5.50,
+                        open_time: now - 86400
+                    }
+                ];
+            }
+
+            
             // Auto-refresh in background if any signal is still calculating in the background
             const isAnyCalculating = active.some(s => s.pnl_pct === null || s.pnl_pct === undefined);
             if (isAnyCalculating && STATE.current_view === 'signals') {
