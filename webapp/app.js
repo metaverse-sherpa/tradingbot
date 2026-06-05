@@ -2093,7 +2093,7 @@ function renderTradesView() {
                 };
                 
                 const itemsHtml = pagedHistory.map(t => {
-                    const dateStr = t.close_time ? timeAgo(t.close_time) : 'Recent';
+                    const dateStr = t.timestamp ? timeAgo(t.timestamp) : 'Recent';
                     let displaySymbol = t.symbol;
                     if (t.type === 'crypto') {
                         displaySymbol = displaySymbol.replace(/\/USDT.*$/, '');
