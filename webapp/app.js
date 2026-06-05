@@ -1635,7 +1635,11 @@ function renderDashboardView() {
                             <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
                                 ${getFreeStatsHtml()}
                             </div>
-                        ` : sorted.map(s => renderSignalCard(s)).join('');
+                        ` : `
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 w-full">
+                                ${sorted.map(s => renderSignalCard(s)).join('')}
+                            </div>
+                        `;
                     })()}
                 </div>
             </div>
