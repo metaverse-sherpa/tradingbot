@@ -38,17 +38,24 @@ def verify_token(token: str) -> int:
         # print(f"[AUTH DEBUG] verify_token EXCEPTION: {type(e).__name__}: {e}")
         return None
 
+import time
+
 def verify_google_token(token: str) -> dict:
-    try:
-        # Verify the ID token against Google's OAuth2 endpoints
-        id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-        # Check issuer
-        if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-            raise ValueError('Wrong issuer.')
-        return id_info
-    except Exception as e:
-        print(f"Google Token Verification Error: {e}")
-        return None
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Verify the ID token against Google's OAuth2 endpoints
+            id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+            # Check issuer
+            if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise ValueError('Wrong issuer.')
+            return id_info
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(0.5)
+                continue
+            print(f"Google Token Verification Error: {e}")
+            return None
 
 def require_auth(f):
     @wraps(f)
