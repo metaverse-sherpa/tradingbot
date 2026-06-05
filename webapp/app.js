@@ -148,9 +148,9 @@ function renderStrategyGuideContent(name, includeBacktest = true) {
     }
 
     html += `
-        <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('${guide.img}', '_blank')">
-            <img src="${guide.img}" alt="${name} Infographic" class="w-full h-full object-cover" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
-            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <div class="relative overflow-y-auto rounded-xl border border-white/10 bg-black/40 max-h-[400px] flex items-start justify-center cursor-zoom-in group shadow-lg custom-scrollbar" onclick="window.open('${guide.img}', '_blank')">
+            <img src="${guide.img}" alt="${name} Infographic" class="w-full h-auto object-contain" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='"/>
+            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
                 <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
                 <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
             </div>
