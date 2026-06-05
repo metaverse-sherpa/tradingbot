@@ -1716,10 +1716,10 @@ function renderDashboardView() {
             <div class="space-y-6 mt-6 animate-fade-in w-full max-w-[500px] lg:max-w-full mx-auto">
                 ${!STATE.hide_exchange_warning ? `
                 <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
-                    <button onclick="STATE.hide_exchange_warning = true; renderView();" class="absolute top-2 right-2 text-on-surface-variant hover:text-white transition-colors p-1" title="Hide">
-                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    <button onclick="STATE.hide_exchange_warning = true; renderView();" class="absolute top-3 right-3 text-on-surface-variant hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10" title="Hide">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
                     </button>
-                    <div class="space-y-1">
+                    <div class="space-y-1 sm:pr-8">
                         <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
                             <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
                         </h3>      
@@ -1727,7 +1727,7 @@ function renderDashboardView() {
                             Until you connect your crypto and/or stock exchange, you'll only see the free Alpha Signals.
                         </p>
                     </div>
-                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors sm:mr-6">
+                    <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors">
                         CONNECT EXCHANGE
                     </a>
                 </div>
