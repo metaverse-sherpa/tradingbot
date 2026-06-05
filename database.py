@@ -1358,7 +1358,7 @@ def close_alpaca_trade(trade_id, close_time=None, close_price=None, pnl_raw=None
 
 def make_alpaca_request(user, method, path, params=None, json_data=None):
     import requests
-    endpoint = user.get("alpaca_endpoint") or "https://paper-api.alpaca.markets"
+    endpoint = user.get("alpaca_endpoint") or "https://api.alpaca.markets"
     # Ensure no trailing slash
     endpoint = endpoint.rstrip('/')
     # If the user included /v2 in their custom endpoint base URL, normalize it to prevent duplication with /v2 paths

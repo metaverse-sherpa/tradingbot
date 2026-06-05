@@ -2791,7 +2791,7 @@ function renderSettingsView() {
                             </div>
                             <div class="flex justify-between items-center gap-2">
                                 <span class="text-on-surface-variant">Endpoint URL:</span>
-                                <span class="text-on-surface font-mono text-xs">${user.alpaca_endpoint || 'https://paper-api.alpaca.markets'}</span>
+                                <span class="text-on-surface font-mono text-xs">${user.alpaca_endpoint || 'https://api.alpaca.markets'}</span>
                             </div>
                         </div>
                     </form>
@@ -2849,7 +2849,7 @@ function renderSettingsView() {
                     </div>
                     <div id="endpoint-field-container" class="space-y-1 hidden">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
-                        <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://paper-api.alpaca.markets" type="text" value="https://paper-api.alpaca.markets"/>
+                        <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://api.alpaca.markets" type="text" value="https://api.alpaca.markets"/>
                     </div>
                     <div class="flex gap-3">
                         <button type="submit" class="flex-1 h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
@@ -4201,7 +4201,7 @@ window.editExchange = function(type) {
             } else {
                 if (keyInput) keyInput.value = STATE.user.alpaca_api_key || '';
                 if (secretInput) secretInput.value = STATE.user.alpaca_api_secret || '';
-                if (endpointInput) endpointInput.value = STATE.user.alpaca_endpoint || 'https://paper-api.alpaca.markets';
+                if (endpointInput) endpointInput.value = STATE.user.alpaca_endpoint || 'https://api.alpaca.markets';
             }
             
             // Scroll to the wizard

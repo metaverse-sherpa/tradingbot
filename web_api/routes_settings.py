@@ -44,7 +44,7 @@ def settings_alpaca():
     data = request.json or {}
     api_key = data.get("api_key", "").strip()
     api_secret = data.get("api_secret", "").strip()
-    endpoint = data.get("endpoint", "https://paper-api.alpaca.markets").strip()
+    endpoint = data.get("endpoint", "https://api.alpaca.markets").strip()
     
     if not api_key or not api_secret:
         return jsonify({"error": "Alpaca API Key and Secret are required"}), 400
