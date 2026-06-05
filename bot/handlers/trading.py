@@ -185,17 +185,17 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             master_path = os.path.join(BASE_DIR, "stock_master_audit.png")
             
         if is_default and os.path.exists(master_path):
-             audit_msg = (
-                 "🦙 *Metaverse Sherpa: Stock Institutional 5-Year Audit*\n"
-                 "Strategy: `Sherpa Velocity Pullback` | Settings: `1.0% Risk` | `2x Leverage`\n\n"
-                 "Final Equity: *$14,589.49*\n"
-                 "Total PnL: *+45.9%*\n"
-                 "Sharpe Ratio: *0.80*\n"
-                 "Win Rate: *63.6%*\n"
-                 "Max Drawdown: *24.7%*\n"
-                 "Total Trades: *1500* (1.38/day)\n\n"
-                 "📈 _This simulation represents the core Sherpa Stock algorithm's performance over the last 5 years._"
-             )
+            audit_msg = (
+                "🦙 *Metaverse Sherpa: Stock Institutional 5-Year Audit*\n"
+                "Strategy: `Sherpa Velocity Pullback` | Settings: `1.0% Risk` | `2x Leverage`\n\n"
+                "Final Equity: *$14,589.49*\n"
+                "Total PnL: *+45.9%*\n"
+                "Sharpe Ratio: *0.80*\n"
+                "Win Rate: *63.6%*\n"
+                "Max Drawdown: *24.7%*\n"
+                "Total Trades: *1500* (1.38/day)\n\n"
+                "📈 _This simulation represents the core Sherpa Stock algorithm's performance over the last 5 years._"
+            )
             with open(master_path, 'rb') as photo:
                 await context.bot.send_photo(
                     chat_id=chat_id, 
