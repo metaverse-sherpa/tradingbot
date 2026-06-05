@@ -1728,7 +1728,7 @@ function renderDashboardView() {
                         </p>
                     </div>
                     <a href="#/settings" class="shrink-0 h-10 px-5 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors sm:mr-12">
-                        CONNECT EXCHANGE
+                         + CONNECT EXCHANGE + 
                     </a>
                 </div>
                 ` : ''}
