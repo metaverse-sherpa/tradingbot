@@ -1825,6 +1825,16 @@ function renderDashboardView() {
     `;
 }
 
+
+window.setHistoryPage = function(type, delta) {
+    if (type === 'crypto') {
+        STATE.history_page_crypto = (STATE.history_page_crypto || 1) + delta;
+    } else {
+        STATE.history_page_stock = (STATE.history_page_stock || 1) + delta;
+    }
+    renderView();
+};
+
 function renderTradesView() {
     const isPremium = STATE.user && STATE.user.is_premium;
     
@@ -2066,6 +2076,14 @@ function renderTradesView() {
                     </div>
                 `;
             } else {
+                const page = type === 'crypto' ? (STATE.history_page_crypto || 1) : (STATE.history_page_stock || 1);
+                const itemsPerPage = 10;
+                const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+                const safePage = Math.min(Math.max(1, page), totalPages);
+                
+                const startIndex = (safePage - 1) * itemsPerPage;
+                const pagedHistory = filteredHistory.slice(startIndex, startIndex + itemsPerPage);
+            
                 const timeAgo = (ts) => {
                     const diff = Math.floor(Date.now() / 1000) - ts;
                     if (diff < 60) return "Just now";
@@ -2074,7 +2092,7 @@ function renderTradesView() {
                     return Math.floor(diff / 86400) + "d ago";
                 };
                 
-                listHtml = filteredHistory.map(t => {
+                const itemsHtml = pagedHistory.map(t => {
                     const dateStr = t.close_time ? timeAgo(t.close_time) : 'Recent';
                     let displaySymbol = t.symbol;
                     if (t.type === 'crypto') {
@@ -2120,6 +2138,23 @@ function renderTradesView() {
                         </div>
                     `;
                 }).join('');
+                
+                let paginationHtml = '';
+                if (totalPages > 1) {
+                    paginationHtml = `
+                        <div class="flex items-center justify-between mt-6 px-2">
+                            <button onclick="setHistoryPage('${type}', -1)" ${safePage === 1 ? 'disabled' : ''} class="w-10 h-10 rounded-full flex items-center justify-center border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                <span class="material-symbols-outlined text-on-surface-variant">chevron_left</span>
+                            </button>
+                            <span class="text-xs font-bold text-on-surface-variant/80">Page ${safePage} of ${totalPages}</span>
+                            <button onclick="setHistoryPage('${type}', 1)" ${safePage === totalPages ? 'disabled' : ''} class="w-10 h-10 rounded-full flex items-center justify-center border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                listHtml = itemsHtml + paginationHtml;
             }
         }
         return listHtml;
