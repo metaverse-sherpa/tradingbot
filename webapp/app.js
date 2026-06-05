@@ -2838,6 +2838,20 @@ function renderSettingsView() {
                 </button>
             </section>
             ` : ''}
+
+                    <!-- Privacy Mode Setting -->
+            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-primary/40">
+                <div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Privacy Mode</h3>
+                    <p class="text-xs text-on-surface-variant mt-1">🔒 Hide Dollar PnL amounts across the app</p>
+                </div>
+                <button onclick="togglePrivacySetting()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                    (user.hide_dollars !== false) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
+                }">
+                    ${(user.hide_dollars !== false) ? 'Privacy On 🔒' : 'Privacy Off 👁️'}
+                </button>
+            </section>
+
                     <!-- Algorithmic Strategies Dropdowns -->
             <section class="glass-card rounded-xl p-card-padding space-y-4 relative z-50">
                 <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🤖 Algorithmic Strategies</h3>
@@ -2941,21 +2955,6 @@ function renderSettingsView() {
             </section>
 
 
-
-                    <!-- Privacy Mode Setting -->
-            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-primary/40">
-                <div>
-                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Privacy Mode</h3>
-                    <p class="text-xs text-on-surface-variant mt-1">🔒 Hide Dollar PnL amounts across the app</p>
-                </div>
-                <button onclick="togglePrivacySetting()" class="px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                    (user.hide_dollars !== false) ? 'bg-primary/20 text-primary border border-primary/55' : 'bg-surface-container-high text-on-surface border border-white/10'
-                }">
-                    ${(user.hide_dollars !== false) ? 'Privacy On 🔒' : 'Privacy Off 👁️'}
-                </button>
-            </section>
-
-                    <!-- Admin Gifting Center -->
             ${isAdmin ? `
             <section class="glass-card rounded-xl p-card-padding space-y-4 border border-[#ffdb3c]/30 gold-glow">
                 <h3 class="font-body-lg text-body-lg font-bold text-[#ffdb3c] flex items-center gap-2">
