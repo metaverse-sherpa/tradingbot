@@ -2674,6 +2674,20 @@ function renderSettingsView() {
                 </details>
             </section>
             ` : ''}
+                    <!-- Bot Status Panel (Gated to Premium Users Only) -->
+            ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
+            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 ${isActive ? 'border-tertiary/40' : 'border-error/40'}">
+                <div>
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Autopilot Status</h3>
+                    <p class="text-xs text-on-surface-variant mt-1">${isActive ? 'Active and executing signals' : 'Paused'}</p>
+                </div>
+                <button onclick="toggleBotStatus(${isActive})" class="px-4 py-2 rounded-lg font-bold transition-all ${
+                    isActive ? 'bg-error/20 text-error border border-error/55' : 'bg-tertiary/20 text-tertiary border border-tertiary/55'
+                }">
+                    ${isActive ? 'STOP BOT' : 'START BOT'}
+                </button>
+            </section>
+            ` : ''}
                     <!-- Connect Exchange Wizard (Premium Only) -->
             ${isPremium && (!hasLinkedCrypto || !hasLinkedStock || STATE.editing_exchange) ? `
             <section id="exchange-wizard-section" class="glass-card rounded-xl p-card-padding space-y-4 border border-white/10 animate-fade-in">
@@ -2824,20 +2838,7 @@ function renderSettingsView() {
 
                 <!-- RIGHT COLUMN -->
                 <div class="space-y-section-gap flex flex-col">
-                    <!-- Bot Status Panel (Gated to Premium Users Only) -->
-            ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
-            <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 ${isActive ? 'border-tertiary/40' : 'border-error/40'}">
-                <div>
-                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface">Autopilot Status</h3>
-                    <p class="text-xs text-on-surface-variant mt-1">${isActive ? 'Active and executing signals' : 'Paused'}</p>
-                </div>
-                <button onclick="toggleBotStatus(${isActive})" class="px-4 py-2 rounded-lg font-bold transition-all ${
-                    isActive ? 'bg-error/20 text-error border border-error/55' : 'bg-tertiary/20 text-tertiary border border-tertiary/55'
-                }">
-                    ${isActive ? 'STOP BOT' : 'START BOT'}
-                </button>
-            </section>
-            ` : ''}
+
 
                     <!-- Privacy Mode Setting -->
             <section class="glass-card rounded-xl p-card-padding flex items-center justify-between border-t-2 border-primary/40">
