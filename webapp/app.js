@@ -3337,14 +3337,15 @@ function renderSignalCard(sig, isLanding = false) {
     const isLong = sig.side === 'LONG' || sig.side === 'l' || sig.side === 'long';
     const sideStr = isLong ? 'LONG' : 'SHORT';
     
-    const sl_pct = entry > 0 ? ((sl - entry) / entry) * 100 : 0;
-    const tp_pct = entry > 0 ? ((tp - entry) / entry) * 100 : 0;
+    const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
+    const leverage = isCryptoSignal ? 20.0 : 1.0;
+    const sl_pct = entry > 0 ? -Math.abs(((sl - entry) / entry) * 100) * leverage : 0;
+    const tp_pct = entry > 0 ? Math.abs(((tp - entry) / entry) * 100) * leverage : 0;
     
     const isCalculating = sig.pnl_pct === null || sig.pnl_pct === undefined;
     const current_pnl_pct = isCalculating ? 0 : sig.pnl_pct;
     const current_pnl_val = isCalculating ? 0 : (sig.pnl_usdt || 0);
-    const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
-    const target_pnl_pct = Math.abs(tp_pct) * (isCryptoSignal ? 20.0 : 1.0);
+    const target_pnl_pct = Math.abs(tp_pct);
     const pos_size = sig.position_size || (current_pnl_pct !== 0 ? (current_pnl_val / (current_pnl_pct / 100)) : 1000);
     const simulated_target_val = (target_pnl_pct / 100) * pos_size;
 
