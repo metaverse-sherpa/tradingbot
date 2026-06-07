@@ -181,6 +181,26 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
             sl, tp = lp - sl_dist, lp + (sl_dist * rr)
         else: # sell (SHORT)
             sl, tp = lp + sl_dist, lp - (sl_dist * rr)
+            
+        # Determine the maximum safe leverage that keeps the Stop Loss above/below liquidation price
+        trade_leverage = LEVERAGE
+        if signal["side"] == "buy":
+            # For Long: sl > lp * (1 - 1/Lev + 0.025)  =>  Lev < 1 / (1.025 - sl/lp)
+            denom = 1.025 - (sl / lp)
+            if denom > 0:
+                trade_leverage = min(LEVERAGE, int(1.0 / denom))
+        else:
+            # For Short: sl < lp * (1 + 1/Lev - 0.025)  =>  Lev < 1 / (sl/lp - 0.975)
+            denom = (sl / lp) - 0.975
+            if denom > 0:
+                trade_leverage = min(LEVERAGE, int(1.0 / denom))
+        
+        # Ensure leverage is at least 1x
+        trade_leverage = max(1, trade_leverage)
+        
+        if trade_leverage < LEVERAGE:
+            log.info("ℹ️ Dynamic Leverage adjustment for %s: reduced from %dx to %dx to protect SL (%.4f)", symbol, LEVERAGE, trade_leverage, sl)
+
         contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
         
@@ -193,28 +213,28 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         if max_market is None:
             max_market = 999999999.0 # Safe fallback
             
-        max_leverage_size = (equity * LEVERAGE) / (lp * contract_size)
+        max_leverage_size = (equity * trade_leverage) / (lp * contract_size)
         size = round(min(float(raw_size), float(max_market), float(max_leverage_size)), 3)
         if size <= 0: return None
 
-        # 🛡️ FORCED LEVERAGE SYNC
+        # 🛡️ DYNAMIC LEVERAGE SYNC
         try:
-            await exchange.set_leverage(LEVERAGE, symbol)
+            await exchange.set_leverage(trade_leverage, symbol)
         except Exception as le:
             log.warning("⚠️ Leverage set failed for %s: %s. Continuing with caution.", symbol, le)
 
         # Risk Check: Liquidation vs Stop Loss
         # Institutional Buffer: Entry * (1 - 1/Lev + 2.5% Safety Margin)
-        liq_buffer = (1 / LEVERAGE) - 0.025 
+        liq_buffer = (1 / trade_leverage) - 0.025 
         if signal["side"] == "buy":
             est_liq = lp * (1 - liq_buffer)
             if sl <= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Long SL (%.4f) is beyond safety Liq (%.4f). Skipping.", symbol, sl, est_liq)
+                log.warning("⚠️ RISK ALERT: %s Long SL (%.4f) is beyond safety Liq (%.4f) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
                 return None
         else: # Short
             est_liq = lp * (1 + liq_buffer)
             if sl >= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Short SL (%.4f) is beyond safety Liq (%.4f). Skipping.", symbol, sl, est_liq)
+                log.warning("⚠️ RISK ALERT: %s Short SL (%.4f) is beyond safety Liq (%.4f) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
                 return None
 
         log.info("🔔 SIGNAL on %s: %s | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, signal["side"].upper(), lp, sl, tp)
