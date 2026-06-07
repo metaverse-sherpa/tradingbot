@@ -357,3 +357,10 @@ def get_settings_ui(user):
     keyboard.extend(get_nav_buttons(has_active, is_admin, has_exchange))
     
     return msg, InlineKeyboardMarkup(keyboard)
+
+async def safe_query_answer(query, *args, **kwargs):
+    """Answers a callback query safely, swallowing timeout and invalid query errors."""
+    try:
+        await query.answer(*args, **kwargs)
+    except Exception as e:
+        logger.warning(f"Swallowed callback query answer exception: {e}")

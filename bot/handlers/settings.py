@@ -20,7 +20,8 @@ from bot.ui.keyboards import (
     get_nav_buttons,
     get_main_inline_menu,
     get_admin_keyboard,
-    get_settings_ui
+    get_settings_ui,
+    safe_query_answer
 )
 from bot.ui.dashboards import build_forward_test_stats_block
 
@@ -1069,7 +1070,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await list_trades(update, context)
         return
     elif query.data == "dummy_spacer":
-        await query.answer()
+        await safe_query_answer(query)
         return
     elif query.data.startswith("free_active"):
         if "_" in query.data and query.data != "free_active":
@@ -1079,15 +1080,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
         sort_mode = context.user_data.get('active_signals_sort', 'date')
         
-        await query.answer()
+        await safe_query_answer(query)
         await open_free_trades(update, context, sort_mode=sort_mode)
         return
     elif query.data == "free_closed":
-        await query.answer()
+        await safe_query_answer(query)
         await list_free_trades(update, context)
         return
     elif query.data == "free_stats":
-        await query.answer()
+        await safe_query_answer(query)
         await show_free_trade_stats(update, context)
         return
     elif query.data.startswith("manual_exec_"):
