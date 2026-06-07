@@ -1655,8 +1655,9 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                     logger.error(f"Free chart generation failed for {sym}: {chart_err}")
             
             # Calculate percentages
-            sl_pct_val = (((sl - entry) / entry) * 100 if side_str == 'LONG' else ((entry - sl) / entry) * 100) if sl > 0 else 0
-            tp_pct_val = (((tp - entry) / entry) * 100 if side_str == 'LONG' else ((entry - tp) / entry) * 100) if tp > 0 else 0
+            lev = 1.0 if is_stock(sym) else CRYPTO_LEVERAGE
+            sl_pct_val = (((sl - entry) / entry) * 100 if side_str == 'LONG' else ((entry - sl) / entry) * 100) * lev if sl > 0 else 0
+            tp_pct_val = (((tp - entry) / entry) * 100 if side_str == 'LONG' else ((entry - tp) / entry) * 100) * lev if tp > 0 else 0
             
             upnl_str = f"{'+' if pnl_val >= 0 else '-'}${abs(pnl_val):.2f}"
             target_pnl_str = f"{'+' if target_pnl_val >= 0 else '-'}${abs(target_pnl_val):.2f}"
