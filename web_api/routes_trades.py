@@ -429,6 +429,14 @@ def get_open_trades():
                                 tp_price = float(row[0] or 0.0)
                                 sl_price = float(row[1] or 0.0)
                                 open_time = int(row[2] or 0)
+                            else:
+                                # Fallback: Check TheoreticalTrades for active signal data
+                                c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE symbol = ? AND status = 'open' LIMIT 1", (p.get("symbol"),))
+                                row_t = c.fetchone()
+                                if row_t:
+                                    tp_price = float(row_t[0] or 0.0)
+                                    sl_price = float(row_t[1] or 0.0)
+                                    open_time = int(row_t[2] or 0)
                     except Exception as db_err:
                         print(f"Alpaca DB lookup error: {db_err}")
 
