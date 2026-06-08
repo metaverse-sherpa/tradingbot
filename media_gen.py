@@ -13,6 +13,20 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, "images", "metaverse-bot-logo.png")
 
+def find_brand_font(size):
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+    ]
+    for path in font_paths:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
 def add_qr_code(base_img, link, size=180):
     """
     Generates a QR code for the link and overlays it onto the base image.
@@ -62,24 +76,10 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     draw = ImageDraw.Draw(overlay)
     
     try:
-        # Standard paths for Linux (Ubuntu) and Mac
-        font_paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-            "Arial"
-        ]
-        
-        def find_font(size):
-            for path in font_paths:
-                try: return ImageFont.truetype(path, size)
-                except: continue
-            return ImageFont.load_default()
-
-        font_main = find_font(60)
-        font_sub = find_font(40)
-        font_massive = find_font(140)
-        font_handle = find_font(25)
+        font_main = find_brand_font(60)
+        font_sub = find_brand_font(40)
+        font_massive = find_brand_font(140)
+        font_handle = find_brand_font(25)
     except:
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
@@ -148,27 +148,10 @@ def generate_stats_card(overall_pnl, daily_pnl, win_rate, total_trades, user_id=
     draw = ImageDraw.Draw(overlay)
     
     try:
-        font_paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-            "Arial"
-        ]
-        def find_font(size):
-            for path in font_paths:
-                try: 
-                    # Avoid bare font names like "Arial" which trigger slow system scans in Pillow
-                    if path == "Arial":
-                        continue
-                    f = ImageFont.truetype(path, size)
-                    return f
-                except: continue
-            return ImageFont.load_default()
-
-        font_main = find_font(60)
-        font_sub = find_font(45)
-        font_massive = find_font(100)
-        font_handle = find_font(25)
+        font_main = find_brand_font(60)
+        font_sub = find_brand_font(45)
+        font_massive = find_brand_font(100)
+        font_handle = find_brand_font(25)
     except Exception as fe:
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
@@ -223,22 +206,10 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     draw = ImageDraw.Draw(overlay)
     
     try:
-        font_paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-            "Arial"
-        ]
-        def find_font(size):
-            for path in font_paths:
-                try: return ImageFont.truetype(path, size)
-                except: continue
-            return ImageFont.load_default()
-
-        font_main = find_font(50)
-        font_sub = find_font(35)
-        font_massive = find_font(70)
-        font_handle = find_font(25)
+        font_main = find_brand_font(50)
+        font_sub = find_brand_font(35)
+        font_massive = find_brand_font(70)
+        font_handle = find_brand_font(25)
     except:
         font_main = font_sub = font_massive = font_handle = ImageFont.load_default()
 
@@ -286,18 +257,8 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     draw = ImageDraw.Draw(img)
     
     try:
-        font_paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-            "Arial"
-        ]
-        def find_font(size):
-            for path in font_paths:
-                try: return ImageFont.truetype(path, size)
-                except: continue
-            return ImageFont.load_default()
-        font_main = find_font(28)
-        font_sub = find_font(22)
+        font_main = find_brand_font(28)
+        font_sub = find_brand_font(22)
     except:
         font_main = font_sub = ImageFont.load_default()
 
@@ -386,22 +347,10 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
     draw = ImageDraw.Draw(overlay)
     
     try:
-        font_paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-            "Arial"
-        ]
-        def find_font(size):
-            for path in font_paths:
-                try: return ImageFont.truetype(path, size)
-                except: continue
-            return ImageFont.load_default()
-
-        font_header = find_font(24)
-        font_label = find_font(22)
-        font_val = find_font(44)
-        font_val_sub = find_font(36)
+        font_header = find_brand_font(24)
+        font_label = find_brand_font(22)
+        font_val = find_brand_font(44)
+        font_val_sub = find_brand_font(36)
     except:
         font_header = font_label = font_val = font_val_sub = ImageFont.load_default()
 
