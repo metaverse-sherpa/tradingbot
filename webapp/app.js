@@ -4509,32 +4509,8 @@ if (window.Notification && Notification.permission === "default") {
 }
 
 async function checkDeploymentAlert() {
-    try {
-        const res = await apiRequest('/admin/deployment');
-        if (res && res.commit_hash) {
-            const lastSeen = localStorage.getItem('last_seen_deployment');
-            if (lastSeen !== res.commit_hash) {
-                // Trigger the existing premium temporary toast balloon
-                showToast("🚀 New deployment Successful! Reloading app...");
-                localStorage.setItem('last_seen_deployment', res.commit_hash);
-                
-                // Trigger native OS push notification if permitted
-                if (window.Notification && Notification.permission === "granted") {
-                    new Notification("🚀 Metaverse Sherpa Upgraded", {
-                        body: "New deployment Successful! Features are ready for testing.",
-                        icon: "/favicon.ico"
-                    });
-                }
-                
-                // Force a reload to clear the cache and load the new code
-                setTimeout(() => {
-                    window.location.reload(true);
-                }, 3000);
-            }
-        }
-    } catch (e) {
-        console.log("Not an admin or error fetching deployment info:", e);
-    }
+    // Feature disabled - admin notifications and automatic reloads are turned off.
+    return;
 }
 
 window.toggleProfileMenu = function(event) {
