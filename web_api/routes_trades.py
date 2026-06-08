@@ -266,6 +266,8 @@ def get_stats():
     stock_unrealized = 0.0
     stock_open_count = 0
     stock_closed_count = 0
+    stock_wins = 0
+    stock_losses = 0
     
     stock_api_key = tg_user.get("alpaca_api_key")
     stock_api_secret = tg_user.get("alpaca_api_secret")
@@ -299,6 +301,21 @@ def get_stats():
             orders = database.make_alpaca_request(tg_user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
             if isinstance(orders, list):
                 stock_closed_count = len(orders)
+                # Compute actual stock wins/losses from closed orders on Alpaca
+                for o in orders:
+                    qty = float(o.get("filled_qty", 0) or 0)
+                    if qty > 0 and o.get("side") == "sell":
+                        price = float(o.get("filled_avg_price", 0))
+                        entry = price
+                        for prev in orders:
+                            if prev["symbol"] == o["symbol"] and prev["side"] == "buy":
+                                entry = float(prev.get("filled_avg_price", price))
+                                break
+                        pnl_raw = (price - entry) * qty
+                        if pnl_raw > 0:
+                            stock_wins += 1
+                        else:
+                            stock_losses += 1
         except Exception as se:
             print(f"[STATS] Stock live error: {se}")
             
@@ -306,26 +323,27 @@ def get_stats():
     stock_overall_pnl = stock_equity - stock_start_equity
     stock_overall_pnl_pct = round((stock_overall_pnl / stock_start_equity) * 100, 2) if stock_start_equity > 0 else 0.0
     
-    # Calculate stock win rate from AlpacaActiveTrades table
-    if tg_user.get("telegram_chat_id"):
-        trade_chat_id = int(tg_user["telegram_chat_id"])
-    else:
-        trade_chat_id = int(user["id"]) + 1000000000
-        
-    try:
-        with database.db_session() as conn:
-            c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw > 0", (trade_chat_id,))
-            stock_wins = c.fetchone()[0] or 0
-            c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw <= 0", (trade_chat_id,))
-            stock_losses = c.fetchone()[0] or 0
-    except:
-        stock_wins = 0
-        stock_losses = 0
+    # If not retrieved directly from Alpaca API, fall back to AlpacaActiveTrades table
+    if stock_wins == 0 and stock_losses == 0:
+        if tg_user.get("telegram_chat_id"):
+            trade_chat_id = int(tg_user["telegram_chat_id"])
+        else:
+            trade_chat_id = int(user["id"]) + 1000000000
+            
+        try:
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw > 0", (trade_chat_id,))
+                stock_wins = c.fetchone()[0] or 0
+                c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw <= 0", (trade_chat_id,))
+                stock_losses = c.fetchone()[0] or 0
+        except:
+            stock_wins = 0
+            stock_losses = 0
         
     stock_total_trades = stock_wins + stock_losses
     
-    # If local trades are wiped, fallback to computing win rate from the latest history cache
+    # If still 0, fallback to computing win rate from the latest history cache (filtering for stock symbols only)
     if stock_total_trades == 0:
         raw_cache = tg_user.get("history_cache") or user.get("history_cache")
         if raw_cache:
@@ -333,7 +351,7 @@ def get_stats():
                 import json
                 cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
                 for tr in cached:
-                    if "symbol" in tr: # Check if it's a valid trade object
+                    if "symbol" in tr and is_stock(tr.get("symbol")): # Check if it's a valid stock trade object
                         pnl = float(tr.get("pnl_raw", 0) or tr.get("net_pnl", 0) or tr.get("pnl_pct", 0) or 0)
                         if pnl > 0: stock_wins += 1
                         else: stock_losses += 1
@@ -1909,14 +1927,39 @@ def share_card():
                 
                 stock_wins = 0
                 stock_losses = 0
-                try:
-                    with database.db_session() as conn:
-                        c = conn.cursor()
-                        c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw > 0", (trade_chat_id,))
-                        stock_wins = c.fetchone()[0] or 0
-                        c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw <= 0", (trade_chat_id,))
-                        stock_losses = c.fetchone()[0] or 0
-                except: pass
+                
+                # Try to fetch actual closed orders from Alpaca API to compute wins/losses
+                if stock_api_key and stock_api_secret:
+                    try:
+                        orders = database.make_alpaca_request(tg_user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
+                        if isinstance(orders, list):
+                            for o in orders:
+                                qty = float(o.get("filled_qty", 0) or 0)
+                                if qty > 0 and o.get("side") == "sell":
+                                    price = float(o.get("filled_avg_price", 0))
+                                    entry = price
+                                    for prev in orders:
+                                        if prev["symbol"] == o["symbol"] and prev["side"] == "buy":
+                                            entry = float(prev.get("filled_avg_price", price))
+                                            break
+                                    pnl_raw = (price - entry) * qty
+                                    if pnl_raw > 0:
+                                        stock_wins += 1
+                                    else:
+                                        stock_losses += 1
+                    except Exception as se:
+                        print(f"[SHARE] Stock live error: {se}")
+                
+                # Fallback to database if still 0
+                if stock_wins == 0 and stock_losses == 0:
+                    try:
+                        with database.db_session() as conn:
+                            c = conn.cursor()
+                            c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw > 0", (trade_chat_id,))
+                            stock_wins = c.fetchone()[0] or 0
+                            c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw <= 0", (trade_chat_id,))
+                            stock_losses = c.fetchone()[0] or 0
+                    except: pass
                 
                 stock_total = stock_wins + stock_losses
                 stock_win_rate = (stock_wins / stock_total) * 100 if stock_total > 0 else 0.0
