@@ -140,6 +140,7 @@ def get_balance():
                 "password": crypto_api_password,
                 "options": {"defaultType": "swap"},
                 "enableRateLimit": True,
+                "timeout": 5000,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
@@ -486,6 +487,7 @@ def get_open_trades():
                 "password": crypto_api_password,
                 "options": {"defaultType": "swap"},
                 "enableRateLimit": True,
+                "timeout": 5000,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
@@ -629,6 +631,7 @@ def get_trades_history():
                     "password": crypto_api_password,
                     "options": {"defaultType": "swap"},
                     "enableRateLimit": True,
+                    "timeout": 5000,
                 }
                 
                 async def fetch_my_trades_async():

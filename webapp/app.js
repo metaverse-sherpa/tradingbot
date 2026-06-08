@@ -438,6 +438,16 @@ function navigate(hash) {
 async function handleRoute() {
     window.scrollTo(0, 0);
 
+    const token = localStorage.getItem('session_token');
+    const isFirstLoad = token && !STATE.user;
+    let hash = window.location.hash || '#/landing';
+    if (hash.includes('?')) {
+        hash = hash.split('?')[0];
+    }
+    if (isFirstLoad && hash !== '#/landing' && hash !== '#/' && hash !== '#/login' && hash !== '#/register' && hash !== '#/help') {
+        window.showGoogleLoading("Initializing Sherpa", "Loading your secure trading session...");
+    }
+
     const refCode = getQueryParam('ref');
     if (refCode) {
         localStorage.setItem('referred_by', refCode);
@@ -541,21 +551,20 @@ async function handleRoute() {
             }
         }).catch(err => console.error("Error updating profile in background:", err));
     } else {
-        // Blocking: first load requires profile and balance
-        const [profile, bal] = await Promise.all([
-            apiRequest('/user/profile'),
-            apiRequest('/user/balance')
-        ]);
-        if (!profile && hash !== '#/help') {
-            return;
-        }
-        STATE.user = profile;
-        if (bal) {
-            STATE.crypto_balance = bal.crypto_balance;
-            STATE.stock_balance = bal.stock_balance;
-            STATE.total_balance = bal.total_balance;
+        // Blocking: first load only requires profile to render
+        try {
+            const profile = await apiRequest('/user/profile');
+            if (!profile && hash !== '#/help') {
+                window.hideGoogleLoading();
+                return;
+            }
+            STATE.user = profile;
+        } catch (e) {
+            window.hideGoogleLoading();
+            if (hash !== '#/help') return;
         }
     }
+    window.hideGoogleLoading();
     
     // Check and redeem pending gift code if any
     await checkAndRedeemPendingGift();
