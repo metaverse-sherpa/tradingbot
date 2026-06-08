@@ -1963,9 +1963,11 @@ function renderTradesView() {
             const filteredTrades = (STATE.open_trades || []).filter(t => t.type === type);
             const sortedTrades = [...filteredTrades].sort((a, b) => {
                 if (STATE.open_trades_sort_by === 'date') {
-                    return (b.open_time || 0) - (a.open_time || 0);
+                    const timeA = a.open_time || (Date.now() / 1000);
+                    const timeB = b.open_time || (Date.now() / 1000);
+                    return timeB - timeA;
                 } else {
-                    return (b.unrealized_pnl || 0) - (a.unrealized_pnl || 0);
+                    return (b.roe || 0) - (a.roe || 0);
                 }
             });
             if (sortedTrades.length === 0) {
@@ -2061,14 +2063,14 @@ function renderTradesView() {
                                     <button onclick="event.stopPropagation(); window.shareTradeCard('${trade.type}', '${trade.symbol}', '${trade.side}', ${trade.roe}, ${trade.entry_price}, ${trade.mark_price}, ${trade.unrealized_pnl})" class="p-1.5 text-on-surface-variant hover:text-primary rounded-full hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center" title="Share Trade Card">
                                         <span class="material-symbols-outlined text-[18px]">share</span>
                                     </button>
-                                    <div class="text-right">
-                                        <p class="font-numeric-data text-numeric-data font-bold ${pnlColor}">
-                                            <span ${inlineBlur}>${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
-                                            ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> / <span ${inlineBlur}>+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
-                                        </p>
-                                        <p class="font-numeric-data text-numeric-data text-sm ${roeColor}">
+                                    <div class="text-right flex flex-col items-end">
+                                        <p class="font-numeric-data text-numeric-data font-bold text-lg ${roeColor}">
                                             ${(trade.roe || 0) >= 0 ? '+' : ''}${(trade.roe || 0).toFixed(2)}%
                                             ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-xs font-normal"> of ${Math.abs(((trade.tp_price - trade.entry_price) / trade.entry_price) * 100 * (trade.type === 'crypto' ? 20.0 : 1.0)).toFixed(0)}%</span>` : ''}
+                                        </p>
+                                        <p class="font-numeric-data text-numeric-data text-xs ${pnlColor} mt-0.5">
+                                            <span ${inlineBlur}>${(trade.unrealized_pnl || 0) >= 0 ? '+' : ''}$${Math.abs(trade.unrealized_pnl || 0).toFixed(2)}</span>
+                                            ${trade.tp_price > 0 ? `<span class="text-on-surface-variant/30 text-[10px] font-normal"> / <span ${inlineBlur}>+$${(Math.abs(trade.tp_price - trade.entry_price) * (trade.qty || 0)).toFixed(2)}</span></span>` : ''}
                                         </p>
                                     </div>
                                     <span class="material-symbols-outlined text-on-surface-variant/60 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}">expand_more</span>

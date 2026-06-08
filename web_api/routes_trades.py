@@ -432,6 +432,29 @@ def get_open_trades():
                     except Exception as db_err:
                         print(f"Alpaca DB lookup error: {db_err}")
 
+                    if open_time == 0:
+                        try:
+                            # Fallback: Query Alpaca order history to get filled timestamp for this symbol
+                            symbol_orders = database.make_alpaca_request(
+                                merged_user, 
+                                "GET", 
+                                "/v2/orders", 
+                                params={"status": "closed", "limit": 1, "symbols": p.get("symbol")}
+                            )
+                            if isinstance(symbol_orders, list) and len(symbol_orders) > 0:
+                                o = symbol_orders[0]
+                                from datetime import datetime
+                                dt_str = str(o.get("filled_at", ""))
+                                if dt_str:
+                                    try:
+                                        z_fixed = dt_str.replace("Z", "+00:00")
+                                        open_time = int(datetime.fromisoformat(z_fixed).timestamp())
+                                    except Exception:
+                                        cleaned = dt_str.split(".")[0].replace("Z", "").replace("T", " ")
+                                        open_time = int(datetime.strptime(cleaned, "%Y-%m-%d %H:%M:%S").timestamp())
+                        except Exception as alpaca_order_err:
+                            print(f"Alpaca order lookup error for {p.get('symbol')}: {alpaca_order_err}")
+
                     open_positions.append({
                         "id": p.get("asset_id", f"alpaca-{p.get('symbol')}"),
                         "type": "stock",
