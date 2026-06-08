@@ -470,14 +470,7 @@ async function handleRoute() {
         clearQueryParamFromUrl('tg_sync');
     }
 
-    let hash = window.location.hash || '#/landing';
-    // Clean query parameters for routing logic
-    if (hash.includes('?')) {
-        hash = hash.split('?')[0];
-    }
-    
     // Auto-login redirect logic
-    const token = localStorage.getItem('session_token');
     if (token && (hash === '#/login' || hash === '#/register' || hash === '#/landing' || hash === '#/' || window.location.hash.startsWith('#/reset-password'))) {
         try {
             const profile = await apiRequest('/user/profile');
