@@ -1963,8 +1963,8 @@ function renderTradesView() {
             const filteredTrades = (STATE.open_trades || []).filter(t => t.type === type);
             const sortedTrades = [...filteredTrades].sort((a, b) => {
                 if (STATE.open_trades_sort_by === 'date') {
-                    const timeA = a.open_time || (Date.now() / 1000);
-                    const timeB = b.open_time || (Date.now() / 1000);
+                    const timeA = a.open_time ? (a.open_time > 1000000000000 ? a.open_time : a.open_time * 1000) : Date.now();
+                    const timeB = b.open_time ? (b.open_time > 1000000000000 ? b.open_time : b.open_time * 1000) : Date.now();
                     return timeB - timeA;
                 } else {
                     return (b.roe || 0) - (a.roe || 0);
