@@ -766,8 +766,8 @@ async def email_summary_engine(application):
                 await asyncio.sleep(60) # Avoid instant refires
                 continue
                 
-            signals_opened = [s for s in signals if s['open_time'] >= since_ms and s['status'] == 'open']
-            signals_closed = [s for s in signals if s.get('close_time', 0) >= since_ms and s['status'] != 'open']
+            signals_opened = [s for s in signals if (s.get('open_time') or 0) >= since_ms and s['status'] == 'open']
+            signals_closed = [s for s in signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
             
             # Dispatch to daily subscribers
             from web_api.db_web import get_users_for_email_alerts
