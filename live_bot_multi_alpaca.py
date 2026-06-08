@@ -550,7 +550,6 @@ async def run_real_trader_execution(today_opens):
                             
                             from telegram import MessageEntity
                             from datetime import datetime, timezone
-                            import time
                             now_ts = int(time.time())
                             
                             if trade_db_id:

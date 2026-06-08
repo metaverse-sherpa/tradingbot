@@ -1373,7 +1373,16 @@ def make_alpaca_request(user, method, path, params=None, json_data=None):
     }
     
     response = requests.request(method, url, headers=headers, params=params, json=json_data, timeout=10)
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as http_err:
+        try:
+            err_json = response.json()
+            detailed_msg = err_json.get("message") or err_json.get("desc") or str(http_err)
+        except Exception:
+            detailed_msg = response.text or str(http_err)
+        raise Exception(f"{detailed_msg} (HTTP {response.status_code})")
+        
     try:
         return response.json()
     except Exception:
