@@ -30,6 +30,7 @@ let STATE = {
     free_history: [],
     active_signals: [],
     active_signals_sort_by: 'pnl',
+    open_trades_sort_by: 'pnl',
     closed_signals: [],
     stats: null,
     free_stats: null,
@@ -770,6 +771,13 @@ window.toggleActiveSignalsSort = function() {
     console.log("[SORT] Before toggle:", STATE.active_signals_sort_by);
     STATE.active_signals_sort_by = STATE.active_signals_sort_by === 'pnl' ? 'date' : 'pnl';
     console.log("[SORT] After toggle:", STATE.active_signals_sort_by);
+    renderView();
+};
+
+window.toggleOpenTradesSort = function() {
+    console.log("[SORT] Before open trades toggle:", STATE.open_trades_sort_by);
+    STATE.open_trades_sort_by = STATE.open_trades_sort_by === 'pnl' ? 'date' : 'pnl';
+    console.log("[SORT] After open trades toggle:", STATE.open_trades_sort_by);
     renderView();
 };
 
@@ -1953,7 +1961,14 @@ function renderTradesView() {
         
         if (tradesMode === 'active') {
             const filteredTrades = (STATE.open_trades || []).filter(t => t.type === type);
-            if (filteredTrades.length === 0) {
+            const sortedTrades = [...filteredTrades].sort((a, b) => {
+                if (STATE.open_trades_sort_by === 'date') {
+                    return (b.open_time || 0) - (a.open_time || 0);
+                } else {
+                    return (b.unrealized_pnl || 0) - (a.unrealized_pnl || 0);
+                }
+            });
+            if (sortedTrades.length === 0) {
                 listHtml = `
                     <div class="text-center py-12">
                         <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">hourglass_empty</span>
@@ -1962,7 +1977,7 @@ function renderTradesView() {
                     </div>
                 `;
             } else {
-                listHtml = filteredTrades.map(trade => {
+                listHtml = sortedTrades.map(trade => {
                     const dateStr = trade.open_time ? timeAgo(trade.open_time) : 'Recent';
                     let displaySymbol = trade.symbol;
                     if (trade.type === 'crypto') {
@@ -2175,6 +2190,16 @@ function renderTradesView() {
                     Closed History (${STATE.history ? STATE.history.length : 0})
                 </button>
             </div>
+
+            <!-- Sort Controls -->
+            ${tradesMode === 'active' && STATE.open_trades && STATE.open_trades.length > 0 ? `
+            <div class="flex justify-end items-center w-full z-10 relative">
+                <button onclick="window.toggleOpenTradesSort()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-xs font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
+                    <span class="material-symbols-outlined text-[16px]">${STATE.open_trades_sort_by === 'pnl' ? 'calendar_month' : 'trending_up'}</span>
+                    <span>${STATE.open_trades_sort_by === 'pnl' ? 'Newest First' : 'Most Profitable First'}</span>
+                </button>
+            </div>
+            ` : ''}
 
             <!-- Crypto vs Stocks Segmented Controller (Mobile Only) -->
             <div class="glass-card rounded-full flex border border-white/10 p-1 w-full relative overflow-hidden z-10 md:hidden">
