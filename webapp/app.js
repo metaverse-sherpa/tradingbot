@@ -3363,7 +3363,7 @@ function renderSignalCard(sig, isLanding = false) {
     const entry = sig.entry_price || 0;
     const tp = sig.tp_price || 0;
     const sl = sig.sl_price || 0;
-    const isLong = sig.side === 'LONG' || sig.side === 'l' || sig.side === 'long';
+    const isLong = !sig.side || sig.side.toUpperCase() === 'LONG' || sig.side.toUpperCase() === 'BUY' || sig.side.toUpperCase() === 'L';
     const sideStr = isLong ? 'LONG' : 'SHORT';
     
     const isCryptoSignal = sig.symbol && sig.symbol.includes('/');
@@ -3378,7 +3378,7 @@ function renderSignalCard(sig, isLanding = false) {
     const pos_size = sig.position_size || (current_pnl_pct !== 0 ? (current_pnl_val / (current_pnl_pct / 100)) : 1000);
     const simulated_target_val = (target_pnl_pct / 100) * pos_size;
 
-    const mark = entry + (entry * (current_pnl_pct / 100) * (isLong ? 1 : -1));
+    const mark = sig.current_price || (entry + (entry * ((current_pnl_pct / leverage) / 100) * (isLong ? 1 : -1)));
     let pct = 50;
     if (isLong) {
         if (mark <= sl) pct = 0;

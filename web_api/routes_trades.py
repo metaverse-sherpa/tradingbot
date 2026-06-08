@@ -1410,6 +1410,7 @@ def _update_active_signals_cache():
                 
                 sig["pnl_pct"] = pnl_pct
                 sig["pnl_usdt"] = pnl_val
+                sig["current_price"] = current
         
         if not signals:
             signals = [
