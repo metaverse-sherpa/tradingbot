@@ -1,7 +1,13 @@
+import os
+import sys
+
+# Ensure Matplotlib config directory is set to a writable local path in the workspace to prevent slow font cache rebuilds
+if 'MPLCONFIGDIR' not in os.environ:
+    os.environ['MPLCONFIGDIR'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", ".matplotlib")
+
 import mplfinance as mpf
 import pandas as pd
 import numpy as np
-import os
 import matplotlib
 import matplotlib.pyplot as plt
 

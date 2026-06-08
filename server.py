@@ -1,6 +1,10 @@
 import os
 import sys
 import time
+
+# Set Matplotlib config directory to a writable local path in the workspace to prevent slow font cache rebuilds
+os.environ['MPLCONFIGDIR'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", ".matplotlib")
+
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 
