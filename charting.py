@@ -108,7 +108,10 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     )
     
     os.makedirs("pnl_cards", exist_ok=True)
-    filename = f"chart_{symbol.replace('/', '_')}.png"
+    import hashlib
+    params_str = f"{symbol}_{entry}_{tp}_{sl}_{side}_{current_price}"
+    h = hashlib.md5(params_str.encode('utf-8')).hexdigest()
+    filename = f"chart_{symbol.replace('/', '_')}_{h}.png"
     filepath = os.path.join(os.getcwd(), "pnl_cards", filename)
     
     # Shaded Areas (R:R Boxes)

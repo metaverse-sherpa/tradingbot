@@ -1945,7 +1945,10 @@ def get_trade_chart():
         return "Symbol required", 400
 
     clean_sym = symbol.replace("/", "_").replace(":", "_")
-    filepath = os.path.join(os.getcwd(), "pnl_cards", f"chart_{clean_sym}.png")
+    import hashlib
+    params_str = f"{symbol}_{entry}_{tp}_{sl}_{side}_{current_price}"
+    h = hashlib.md5(params_str.encode('utf-8')).hexdigest()
+    filepath = os.path.join(os.getcwd(), "pnl_cards", f"chart_{clean_sym}_{h}.png")
     
     if os.path.exists(filepath) and (time.time() - os.path.getmtime(filepath) < 300):
         return send_file(filepath, mimetype='image/png')
