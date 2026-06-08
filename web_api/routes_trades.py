@@ -1947,7 +1947,7 @@ def get_trade_chart():
     clean_sym = symbol.replace("/", "_").replace(":", "_")
     filepath = os.path.join(os.getcwd(), "pnl_cards", f"chart_{clean_sym}.png")
     
-    if os.path.exists(filepath) and (time.time() - os.path.getmtime(filepath) < 60):
+    if os.path.exists(filepath) and (time.time() - os.path.getmtime(filepath) < 300):
         return send_file(filepath, mimetype='image/png')
 
     try:
@@ -1972,6 +1972,7 @@ def get_trade_chart():
             timeframe = "15M"
             try:
                 mdm = live_bot_multi.MarketDataManager()
+                mdm.exchange.timeout = 3000  # Set strict 3s timeout to prevent VPS hanging on network block
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
