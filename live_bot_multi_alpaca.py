@@ -490,23 +490,19 @@ async def run_real_trader_execution(today_opens):
     logger.info("Running Real Trader Execution Engine...")
     
     import database
-    with sqlite3.connect(USER_DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != ''")
-        rows = c.fetchall()
+    active_users = database.get_all_active_stock_users()
         
-    if not rows:
+    if not active_users:
         logger.info("No active Alpaca users to execute trades for.")
         return
         
-    for r in rows:
-        chat_id = r['telegram_chat_id']
-        user = database.get_user(chat_id)
+    for user in active_users:
+        chat_id = user.get('telegram_chat_id')
+        web_user_id = user.get('web_user_id')
         if not user or user.get("active_stock_strategy") != "Sherpa Velocity Pullback":
             continue
             
-        logger.info(f"Processing real trade execution for user chat_id={chat_id}...")
+        logger.info(f"Processing real trade execution for user chat_id={chat_id} web_user_id={web_user_id}...")
         
         try:
             # 1. Fetch current positions on Alpaca
@@ -516,8 +512,8 @@ async def run_real_trader_execution(today_opens):
             # Graceful strategy retirement check
             is_disabled = database.is_strategy_disabled("Sherpa Velocity Pullback")
             if is_disabled and len(active_positions) == 0:
-                database.migrate_user_if_no_open_positions(chat_id)
-                logger.info(f"User {chat_id} stock strategy retired gracefully (0 active positions).")
+                database.migrate_user_if_no_open_positions(chat_id, web_user_id=web_user_id)
+                logger.info(f"User {chat_id or f'web_{web_user_id}'} stock strategy retired gracefully (0 active positions).")
                 continue
             
             # --- PHASE 1: PROCESS DYNAMIC EXITS ---
@@ -528,14 +524,17 @@ async def run_real_trader_execution(today_opens):
                     is_dynamic_exit = indicator_dict['rsi'] > 75
                     
                     if is_dynamic_exit:
-                        logger.info(f"Dynamic Exit triggered for real user {chat_id} symbol {sym}. Liquidating...")
+                        logger.info(f"Dynamic Exit triggered for real user {chat_id or f'web_{web_user_id}'} symbol {sym}. Liquidating...")
                         try:
                             await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
                             
                             # Get open trade from local DB to get entry price and calculate PnL
                             conn_active = sqlite3.connect(USER_DB_PATH)
                             c_active = conn_active.cursor()
-                            c_active.execute("SELECT id, entry_price FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (chat_id, sym))
+                            if chat_id:
+                                c_active.execute("SELECT id, entry_price FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (chat_id, sym))
+                            else:
+                                c_active.execute("SELECT id, entry_price FROM AlpacaActiveTrades WHERE web_user_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (web_user_id, sym))
                             row_active = c_active.fetchone()
                             conn_active.close()
                             
@@ -581,12 +580,18 @@ async def run_real_trader_execution(today_opens):
                                 unix_time=now_dt,
                             )
                             msg_close = close_text_before + placeholder
-                            await send_telegram_message(chat_id, msg_close, entities=[close_entity])
+                            if chat_id:
+                                await send_telegram_message(chat_id, msg_close, entities=[close_entity])
+                            else:
+                                logger.info(f"Dynamic Exit logged for web user {web_user_id}. Symbol: {sym}")
                             
                             # Fetch user's email and email preferences from WebUsers
                             conn_email = sqlite3.connect(USER_DB_PATH)
                             c_email = conn_email.cursor()
-                            c_email.execute("SELECT email, email_notifications FROM WebUsers WHERE telegram_chat_id = ?", (chat_id,))
+                            if chat_id:
+                                c_email.execute("SELECT email, email_notifications FROM WebUsers WHERE telegram_chat_id = ?", (chat_id,))
+                            else:
+                                c_email.execute("SELECT email, email_notifications FROM WebUsers WHERE id = ?", (web_user_id,))
                             web_user_row = c_email.fetchone()
                             conn_email.close()
                             
@@ -608,12 +613,13 @@ async def run_real_trader_execution(today_opens):
                                 send_alert_email(user_email, subject, html_content)
                                 logger.info(f"Dynamic Exit email dispatched to {user_email}")
                         except Exception as e:
-                            logger.error(f"Failed to liquidate real user {chat_id} position {sym}: {e}")
-                            await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} dynamically: {e}")
+                            logger.error(f"Failed to liquidate real user {chat_id or f'web_{web_user_id}'} position {sym}: {e}")
+                            if chat_id:
+                                await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} dynamically: {e}")
             
             # --- PHASE 2: PROCESS NEW BUY ENTRIES ---
             if is_disabled:
-                logger.info(f"Stock strategy is disabled. Skipping new entries for user {chat_id}.")
+                logger.info(f"Stock strategy is disabled. Skipping new entries for user {chat_id or f'web_{web_user_id}'}.")
                 continue
             
             import stock_data_cache_daily
@@ -642,7 +648,7 @@ async def run_real_trader_execution(today_opens):
                         qty = round(qty, 4)
                         
                         if qty <= 0:
-                            logger.warning(f"Sizing quantity is 0 for {sym} (Chat ID: {chat_id}). Risk amount ${risk_amt:.2f} is too small.")
+                            logger.warning(f"Sizing quantity is 0 for {sym} (User: {chat_id or f'web_{web_user_id}'}). Risk amount ${risk_amt:.2f} is too small.")
                             continue
                             
                         order_payload = {
@@ -653,7 +659,7 @@ async def run_real_trader_execution(today_opens):
                             "time_in_force": "day"
                         }
                         
-                        logger.info(f"Submitting fractional market order for user {chat_id} symbol {sym}: {order_payload}")
+                        logger.info(f"Submitting fractional market order for user {chat_id or f'web_{web_user_id}'} symbol {sym}: {order_payload}")
                         res = await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
                         
                         # Store in local tracking DB
@@ -665,7 +671,8 @@ async def run_real_trader_execution(today_opens):
                             entry_price=o_price,
                             tp_price=tp_price,
                             sl_price=sl_price,
-                            open_time=open_ts
+                            open_time=open_ts,
+                            web_user_id=web_user_id
                         )
                         
                         from telegram import MessageEntity
@@ -691,14 +698,18 @@ async def run_real_trader_execution(today_opens):
                             unix_time=now_dt,
                         )
                         buy_msg = buy_text_before + placeholder
-                        await send_telegram_message(chat_id, buy_msg, entities=[buy_entity])
+                        if chat_id:
+                            await send_telegram_message(chat_id, buy_msg, entities=[buy_entity])
+                        else:
+                            logger.info(f"Buy trade logged for web user {web_user_id}. Symbol: {sym}")
                         
                     except Exception as e:
-                        logger.error(f"Failed to execute real trade for user {chat_id} symbol {sym}: {e}")
-                        await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Buy signal for {sym} failed to execute: {e}")
+                        logger.error(f"Failed to execute real trade for user {chat_id or f'web_{web_user_id}'} symbol {sym}: {e}")
+                        if chat_id:
+                            await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Buy signal for {sym} failed to execute: {e}")
                         
         except Exception as e:
-            logger.error(f"Error executing trades for user {chat_id}: {e}")
+            logger.error(f"Error executing trades for user {chat_id or f'web_{web_user_id}'}: {e}")
 
 async def main():
     logger.info("Starting Daily stock swing execution...")

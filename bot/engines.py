@@ -65,7 +65,8 @@ async def sync_engine(application):
             
             async def sync_user(user):
                 try:
-                    chat_id = user['telegram_chat_id']
+                    chat_id = user.get('telegram_chat_id')
+                    web_user_id = user.get('web_user_id')
                     
                     # 1. Sync Crypto
                     if user.get('api_key'):
@@ -81,14 +82,14 @@ async def sync_engine(application):
                             bal_params = database.get_exchange_balance_params(ex_id)
                             balance = await user_ex.fetch_balance(params=bal_params)
                             equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
-                            await database.update_user_stats_from_engine(chat_id, equity, user_ex, application)
+                            await database.update_user_stats_from_engine(chat_id, equity, user_ex, application, web_user_id=web_user_id)
                             
                     # 2. Sync Stocks
                     if user.get('alpaca_api_key'):
                         # Stocks stats update logic can be minimal as Alpaca provides portfolio value directly
                         pass
                 except Exception as e:
-                    logger.error(f"Sync error for {user.get('telegram_chat_id')}: {e}")
+                    logger.error(f"Sync error for {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
 
             await asyncio.gather(*(sync_user(u) for u in active_users))
             await asyncio.sleep(60)
@@ -433,7 +434,8 @@ async def signal_engine(application):
                         
                         async def execute_user_signals(user):
                             try:
-                                chat_id = user['telegram_chat_id']
+                                chat_id = user.get('telegram_chat_id')
+                                web_user_id = user.get('web_user_id')
                                 if not user.get('api_key'): return
                                 
                                 ex_id = user.get('exchange_id', 'blofin')
@@ -474,30 +476,33 @@ async def signal_engine(application):
                                                 
                                             res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
                                             if res:
-                                                database.increment_opened(chat_id)
-                                                side_icon = "📈" if sig['side'] == 'buy' else "📉"
-                                                msg = (
-                                                    f"{side_icon} *{strat_name}* SIGNAL!\n\n"
-                                                    f"Symbol: {get_symbol_link(res['symbol'])}\n"
-                                                    f"Risk: `{user_risk:.2f}%`\n"
-                                                    f"Entry: `{res['entry']:.8f}`\n"
-                                                    f"TP: `{res['tp']:.8f}`\n"
-                                                    f"SL: `{res['sl']:.8f}`"
-                                                )
-                                                try:
-                                                    df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
-                                                    side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
-                                                    open_ts = int(time.time() * 1000)
-                                                    chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
-                                                    is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-                                                    keyboard = get_nav_buttons(True, is_admin=is_admin)
-                                                    with open(chart_file, 'rb') as photo:
-                                                        await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-                                                except Exception as chart_err:
-                                                    logger.error(f"Chart generation failed: {chart_err}")
-                                                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                                                if chat_id:
+                                                    database.increment_opened(chat_id)
+                                                    side_icon = "📈" if sig['side'] == 'buy' else "📉"
+                                                    msg = (
+                                                        f"{side_icon} *{strat_name}* SIGNAL!\n\n"
+                                                        f"Symbol: {get_symbol_link(res['symbol'])}\n"
+                                                        f"Risk: `{user_risk:.2f}%`\n"
+                                                        f"Entry: `{res['entry']:.8f}`\n"
+                                                        f"TP: `{res['tp']:.8f}`\n"
+                                                        f"SL: `{res['sl']:.8f}`"
+                                                    )
+                                                    try:
+                                                        df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
+                                                        side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
+                                                        open_ts = int(time.time() * 1000)
+                                                        chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
+                                                        is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
+                                                        keyboard = get_nav_buttons(True, is_admin=is_admin)
+                                                        with open(chart_file, 'rb') as photo:
+                                                            await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                                                    except Exception as chart_err:
+                                                        logger.error(f"Chart generation failed: {chart_err}")
+                                                        await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                                                else:
+                                                    logger.info(f"Signal executed successfully for web-only user {web_user_id}. Symbol: {res['symbol']}")
                             except Exception as e:
-                                logger.error(f"Signal execution error for {user.get('telegram_chat_id')}: {e}")
+                                logger.error(f"Signal execution error for {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
 
                         await asyncio.gather(*(execute_user_signals(u) for u in users))
                 

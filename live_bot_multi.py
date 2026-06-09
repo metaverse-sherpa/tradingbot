@@ -306,7 +306,7 @@ async def process_user_on_symbol(user, symbol, signal):
         finally:
             await ex.close()
     except Exception as ue:
-        log.error("User %s error on %s: %s", user['telegram_chat_id'], symbol, ue)
+        log.error("User %s error on %s: %s", user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}", symbol, ue)
 
 
 async def run():
@@ -326,11 +326,11 @@ async def run():
                 try:
                     pos = await ex.fetch_positions()
                     has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
-                    database.update_position_status(user['telegram_chat_id'], has_active)
+                    database.update_position_status(user.get('telegram_chat_id'), has_active, web_user_id=user.get('web_user_id'))
                 finally:
                     await ex.close()
             except Exception as e:
-                log.error("Position sync failed for %s: %s", user['telegram_chat_id'], e)
+                log.error("Position sync failed for %s: %s", user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}", e)
 
         await asyncio.gather(*(sync_user_pos(u) for u in active_users))
 
@@ -345,9 +345,14 @@ async def run():
             strat = user.get("strategy", "Mean Reversion Scalper")
             if strat in disabled_strats:
                 if not user.get('has_open_positions', False):
-                    database.migrate_user_if_no_open_positions(user['telegram_chat_id'])
+                    database.migrate_user_if_no_open_positions(user.get('telegram_chat_id'), web_user_id=user.get('web_user_id'))
                     # Load the migrated strategy preference
-                    migrated_user = database.get_user(user['telegram_chat_id'])
+                    if user.get('telegram_chat_id'):
+                        migrated_user = database.get_user(user['telegram_chat_id'])
+                    else:
+                        from web_api.db_web import get_web_user_by_id
+                        web_raw = get_web_user_by_id(user['web_user_id'])
+                        migrated_user = database.get_user_from_web_row(web_raw) if web_raw else None
                     strat = migrated_user.get("strategy", "Valkyrie Elite Scalper") if migrated_user else "Valkyrie Elite Scalper"
 
             if strat not in strategy_groups:

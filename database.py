@@ -291,7 +291,8 @@ def init_db():
                           close_price REAL,
                           pnl_raw REAL,
                           pnl_pct REAL,
-                          status TEXT DEFAULT 'open')''')
+                          status TEXT DEFAULT 'open',
+                          web_user_id INTEGER)''')
                       
         # 🩹 Migration: Ensure new AlpacaActiveTrades columns exist
         c.execute("PRAGMA table_info(AlpacaActiveTrades)")
@@ -301,7 +302,8 @@ def init_db():
             "close_time": "INTEGER",
             "close_price": "REAL",
             "pnl_raw": "REAL",
-            "pnl_pct": "REAL"
+            "pnl_pct": "REAL",
+            "web_user_id": "INTEGER"
         }
         for col_name, col_def in alpaca_cols.items():
             if col_name not in existing_alpaca_cols:
@@ -491,12 +493,125 @@ def consume_referral_credits(chat_id, amount):
         c = conn.cursor()
         c.execute("UPDATE Users SET referral_credits = MAX(0, referral_credits - ?) WHERE telegram_chat_id = ?", (amount, chat_id))
 
+def get_user_from_web_row(row):
+    if not row:
+        return None
+    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
+    
+    # Decrypt keys
+    api_key = None
+    if row.get('api_key'):
+        try: api_key = decrypt(row['api_key'])
+        except: pass
+    api_secret = None
+    if row.get('api_secret'):
+        try: api_secret = decrypt(row['api_secret'])
+        except: pass
+    api_password = None
+    if row.get('api_password'):
+        try: api_password = decrypt(row['api_password'])
+        except: pass
+    alpaca_api_key = None
+    if row.get('alpaca_api_key'):
+        try: alpaca_api_key = decrypt(row['alpaca_api_key'])
+        except: pass
+    alpaca_api_secret = None
+    if row.get('alpaca_api_secret'):
+        try: alpaca_api_secret = decrypt(row['alpaca_api_secret'])
+        except: pass
+        
+    return {
+        "api_key": api_key,
+        "api_secret": api_secret,
+        "api_password": api_password,
+        "equity": None,
+        "is_active": bool(row.get('is_active')),
+        "wins": row.get('total_wins') or 0,
+        "losses": row.get('total_losses') or 0,
+        "opened": 0,
+        "cum_pnl": row.get('cumulative_pnl') or 0.0,
+        "last_ts": 0,
+        "strategy": row.get('active_crypto_strategy') or 'Mean Reversion Scalper',
+        "hide_dollars": bool(row.get('hide_dollars')),
+        "risk_pct": row.get('risk_pct') if row.get('risk_pct') is not None else 1.0,
+        "enabled_symbols": (row.get('enabled_symbols') if row.get('enabled_symbols') else def_syms).split(","),
+        "exchange_id": row.get('exchange_id') or 'blofin',
+        "referred_by": row.get('referred_by'),
+        "premium_expiry": row.get('premium_expiry') or 0,
+        "referral_count": row.get('referral_count') or 0,
+        "has_open_positions": bool(row.get('has_open_positions')),
+        "telegram_chat_id": row.get('telegram_chat_id'),
+        "web_user_id": row.get('id'),
+        "undercover_mode": 0,
+        "source_wallet": row.get('source_wallet'),
+        "last_audit_stats": row.get('last_audit_stats'),
+        "referral_credits": row.get('referral_credits') or 0.0,
+        "full_name": row.get('full_name'),
+        "username": None,
+        "is_admin": False,
+        "custom_equity_type": row.get('custom_equity_type') or 'all',
+        "custom_equity_value": row.get('custom_equity_value'),
+        "alpaca_api_key": alpaca_api_key,
+        "alpaca_api_secret": alpaca_api_secret,
+        "alpaca_endpoint": row.get('alpaca_endpoint'),
+        "active_crypto_strategy": row.get('active_crypto_strategy') or 'Mean Reversion Scalper',
+        "active_stock_strategy": row.get('active_stock_strategy') or 'None',
+        "stock_risk_pct": row.get('stock_risk_pct') if row.get('stock_risk_pct') is not None else 2.0,
+        "premium_referrals": row.get('premium_referrals') or 0,
+        "premium_expired_notified": False,
+        "had_premium_before": False,
+        "referral_reward_triggered": bool(row.get('referral_reward_triggered'))
+    }
+
 def get_all_active_users():
     with db_session() as conn:
         c = conn.cursor()
+        
+        # 1. Fetch active users from Users (Telegram)
         c.execute('SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND blofin_api_key IS NOT NULL AND blofin_api_key != ""')
-        chat_ids = [row[0] for row in c.fetchall()]
-    return [get_user(cid) for cid in chat_ids]
+        tg_chat_ids = [row[0] for row in c.fetchall()]
+        active_users = [get_user(cid) for cid in tg_chat_ids]
+        
+        # 2. Fetch active users from WebUsers (Web-only or not synced)
+        try:
+            c.execute('SELECT * FROM WebUsers WHERE is_active = 1 AND api_key IS NOT NULL AND api_key != ""')
+            web_rows = c.fetchall()
+            for r in web_rows:
+                web_user = dict(r)
+                tg_id = web_user.get('telegram_chat_id')
+                if tg_id and tg_id in tg_chat_ids:
+                    continue
+                formatted_web_user = get_user_from_web_row(web_user)
+                active_users.append(formatted_web_user)
+        except Exception as e:
+            print(f"Error querying WebUsers in get_all_active_users: {e}")
+            
+    return active_users
+
+def get_all_active_stock_users():
+    with db_session() as conn:
+        c = conn.cursor()
+        
+        # 1. Fetch active stock users from Users (Telegram)
+        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != ''")
+        tg_chat_ids = [row[0] for row in c.fetchall()]
+        active_users = [get_user(cid) for cid in tg_chat_ids]
+        
+        # 2. Fetch active stock users from WebUsers (Web-only or not synced)
+        try:
+            c.execute("SELECT * FROM WebUsers WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != ''")
+            web_rows = c.fetchall()
+            for r in web_rows:
+                web_user = dict(r)
+                tg_id = web_user.get('telegram_chat_id')
+                if tg_id and tg_id in tg_chat_ids:
+                    continue
+                formatted_web_user = get_user_from_web_row(web_user)
+                active_users.append(formatted_web_user)
+        except Exception as e:
+            print(f"Error querying WebUsers in get_all_active_stock_users: {e}")
+            
+    return active_users
 
 def set_active(chat_id, is_active):
     with db_session() as conn:
@@ -567,14 +682,14 @@ def update_user_crypto_strategy(chat_id, strategy):
 def update_user_stock_strategy(chat_id, strategy):
     update_user_preference(chat_id, "active_stock_strategy", strategy)
 
-async def rebuild_history_cache_from_engine(chat_id, exchange):
+async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None):
     """
     Called from the engine loop (running on the VPS with active whitelisting)
     to rebuild the history_cache column for the user in the database.
     """
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"Rebuilding history cache from engine for chat_id: {chat_id}")
+    logger.info(f"Rebuilding history cache from engine for chat_id: {chat_id} web_user_id: {web_user_id}")
     try:
         import live_bot_multi
         all_closed = []
@@ -641,7 +756,7 @@ async def rebuild_history_cache_from_engine(chat_id, exchange):
                     })
             except Exception as sym_err:
                 logger.error(f"Error fetching history for {sym}: {sym_err}")
-
+ 
         # Fetch in parallel
         await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
         
@@ -649,17 +764,25 @@ async def rebuild_history_cache_from_engine(chat_id, exchange):
         last_50 = all_closed[:50]
         
         if last_50:
-            set_history_cache(chat_id, last_50)
-            logger.info(f"Rebuild cache success. Saved {len(last_50)} trades for chat_id {chat_id}.")
+            set_history_cache(chat_id, last_50, web_user_id=web_user_id)
+            logger.info(f"Rebuild cache success. Saved {len(last_50)} trades for chat_id {chat_id} web_user_id {web_user_id}.")
     except Exception as e:
         logger.error(f"Failed to rebuild history cache from engine: {e}")
-
-async def update_user_stats_from_engine(chat_id, equity, exchange, application):
+ 
+async def update_user_stats_from_engine(chat_id, equity, exchange, application, web_user_id=None):
     """
     Syncs trades from exchange and updates DB stats.
     Sends Telegram notifications for closed trades.
     """
-    user = get_user(chat_id)
+    if chat_id:
+        user = get_user(chat_id)
+    elif web_user_id:
+        from web_api.db_web import get_web_user_by_id
+        web_raw = get_web_user_by_id(web_user_id)
+        user = get_user_from_web_row(web_raw) if web_raw else None
+    else:
+        return
+        
     if not user: return
     
     last_ts = user['last_ts']
@@ -681,7 +804,7 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
             # We'll update this in the DB at the end of the function with the other stats
         except:
             has_active = False
-
+ 
         new_closed = []
         
         # We'll process all symbols in parallel for this user
@@ -748,30 +871,33 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
                 import logging
                 logging.getLogger(__name__).error(f"Error fetching trades for {sym}: {e}")
                 return []
-
+ 
         results = await asyncio.gather(*(process_symbol_trades(sym) for sym in live_bot_multi.SYMBOLS))
         for r in results:
             new_closed.extend(r)
             
         if new_closed:
-            clear_history_cache(chat_id)
-
+            clear_history_cache(chat_id, web_user_id=web_user_id)
+ 
         # Robust engine cache synchronization: check if cache is empty or if we had new closed trades
         cache_empty = False
         try:
             with db_session() as conn:
                 c = conn.cursor()
-                c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+                if chat_id:
+                    c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+                else:
+                    c.execute("SELECT history_cache FROM WebUsers WHERE id = ?", (web_user_id,))
                 row = c.fetchone()
                 if not row or not row[0]:
                     cache_empty = True
         except Exception as cache_check_err:
             import logging
             logging.getLogger(__name__).error(f"Error checking cache: {cache_check_err}")
-
+ 
         if new_closed or cache_empty:
             try:
-                await rebuild_history_cache_from_engine(chat_id, exchange)
+                await rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=web_user_id)
             except Exception as cache_rebuild_err:
                 import logging
                 logging.getLogger(__name__).error(f"Error rebuilding cache: {cache_rebuild_err}")
@@ -780,25 +906,35 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application):
         # Update DB
         with db_session() as conn:
             c = conn.cursor()
-            c.execute('''UPDATE Users SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ?, starting_equity = ?, has_open_positions = ?
-                         WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, now_ts, equity, 1 if has_active else 0, chat_id))
+            if chat_id:
+                c.execute('''UPDATE Users SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, last_fetch_timestamp = ?, starting_equity = ?, has_open_positions = ?
+                             WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, now_ts, equity, 1 if has_active else 0, chat_id))
+                try:
+                    c.execute('''UPDATE WebUsers SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, has_open_positions = ?
+                                 WHERE telegram_chat_id = ?''', (wins, losses, cum_pnl, 1 if has_active else 0, chat_id))
+                except:
+                    pass
+            elif web_user_id:
+                c.execute('''UPDATE WebUsers SET total_wins = ?, total_losses = ?, cumulative_pnl = ?, has_open_positions = ?
+                             WHERE id = ?''', (wins, losses, cum_pnl, 1 if has_active else 0, web_user_id))
         
         # Notify User
-        for nc in new_closed:
-            markup = None
-            if nc.get("share_data"):
-                btn = InlineKeyboardButton("📸 Share Result", callback_data=nc["share_data"])
-                markup = InlineKeyboardMarkup([[btn]])
-            
-            await application.bot.send_message(
-                chat_id=chat_id, 
-                text=nc['msg'], 
-                reply_markup=markup,
-                parse_mode="Markdown"
-            )
+        if chat_id:
+            for nc in new_closed:
+                markup = None
+                if nc.get("share_data"):
+                    btn = InlineKeyboardButton("📸 Share Result", callback_data=nc["share_data"])
+                    markup = InlineKeyboardMarkup([[btn]])
+                
+                await application.bot.send_message(
+                    chat_id=chat_id, 
+                    text=nc['msg'], 
+                    reply_markup=markup,
+                    parse_mode="Markdown"
+                )
     except Exception as e:
         import logging
-        logging.getLogger(__name__).error(f"Critical error in sync_trades_from_exchange for {chat_id}: {e}")
+        logging.getLogger(__name__).error(f"Critical error in sync_trades_from_exchange for {chat_id or web_user_id}: {e}")
 
 def set_referrer(chat_id, referrer_id):
     """Links a new user to a referrer and increments the referrer's count."""
@@ -885,11 +1021,18 @@ def award_premium_referral(referrer_id):
         c.execute("UPDATE Users SET premium_referrals = premium_referrals + 1 WHERE telegram_chat_id = ?", (referrer_id,))
     return check_and_award_referral_bonus(referrer_id)
 
-def update_position_status(chat_id, has_active):
+def update_position_status(chat_id, has_active, web_user_id=None):
     """Updates the has_open_positions flag in the database."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE Users SET has_open_positions = ? WHERE telegram_chat_id = ?", (1 if has_active else 0, chat_id))
+        if chat_id:
+            c.execute("UPDATE Users SET has_open_positions = ? WHERE telegram_chat_id = ?", (1 if has_active else 0, chat_id))
+            try:
+                c.execute("UPDATE WebUsers SET has_open_positions = ? WHERE telegram_chat_id = ?", (1 if has_active else 0, chat_id))
+            except:
+                pass
+        elif web_user_id:
+            c.execute("UPDATE WebUsers SET has_open_positions = ? WHERE id = ?", (1 if has_active else 0, web_user_id))
 
 def update_user_strategy(chat_id, strategy_name):
     """Updates the user's active trading strategy."""
@@ -897,28 +1040,34 @@ def update_user_strategy(chat_id, strategy_name):
         c = conn.cursor()
         c.execute("UPDATE Users SET strategy = ? WHERE telegram_chat_id = ?", (strategy_name, chat_id))
 
-def set_history_cache(chat_id, trades):
+def set_history_cache(chat_id, trades, web_user_id=None):
     """Stores the last 10 trades as a JSON blob."""
     import json
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE Users SET history_cache = ? WHERE telegram_chat_id = ?", (json.dumps(trades), chat_id))
-        try:
-            c.execute("UPDATE WebUsers SET history_cache = ? WHERE telegram_chat_id = ?", (json.dumps(trades), chat_id))
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"Failed to sync WebUsers history_cache: {e}")
+        if chat_id:
+            c.execute("UPDATE Users SET history_cache = ? WHERE telegram_chat_id = ?", (json.dumps(trades), chat_id))
+            try:
+                c.execute("UPDATE WebUsers SET history_cache = ? WHERE telegram_chat_id = ?", (json.dumps(trades), chat_id))
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to sync WebUsers history_cache: {e}")
+        elif web_user_id:
+            c.execute("UPDATE WebUsers SET history_cache = ? WHERE id = ?", (json.dumps(trades), web_user_id))
 
-def clear_history_cache(chat_id):
+def clear_history_cache(chat_id, web_user_id=None):
     """Clears the trade history cache."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE Users SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
-        try:
-            c.execute("UPDATE WebUsers SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"Failed to sync WebUsers clear cache: {e}")
+        if chat_id:
+            c.execute("UPDATE Users SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
+            try:
+                c.execute("UPDATE WebUsers SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to sync WebUsers clear cache: {e}")
+        elif web_user_id:
+            c.execute("UPDATE WebUsers SET history_cache = NULL WHERE id = ?", (web_user_id,))
 
 def is_premium(user):
     """Returns True if the user has an active premium subscription or is the Admin."""
@@ -1305,13 +1454,13 @@ def get_theoretical_trade(trade_id):
 
 # --- Alpaca Active Trades Helpers ---
 
-def add_alpaca_active_trade(chat_id, symbol, qty, entry_price, tp_price, sl_price, open_time):
+def add_alpaca_active_trade(chat_id, symbol, qty, entry_price, tp_price, sl_price, open_time, web_user_id=None):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('''
-            INSERT INTO AlpacaActiveTrades (telegram_chat_id, symbol, qty, entry_price, tp_price, sl_price, open_time, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'open')
-        ''', (chat_id, symbol, float(qty), float(entry_price), float(tp_price), float(sl_price), open_time))
+            INSERT INTO AlpacaActiveTrades (telegram_chat_id, symbol, qty, entry_price, tp_price, sl_price, open_time, status, web_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)
+        ''', (chat_id, symbol, float(qty), float(entry_price), float(tp_price), float(sl_price), open_time, web_user_id))
 
 def get_open_alpaca_trades():
     with db_session() as conn:
@@ -1320,17 +1469,27 @@ def get_open_alpaca_trades():
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
-def get_open_alpaca_trades_by_user(chat_id):
+def get_open_alpaca_trades_by_user(chat_id, web_user_id=None):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'open' AND telegram_chat_id = ?", (chat_id,))
+        if chat_id:
+            c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'open' AND telegram_chat_id = ?", (chat_id,))
+        elif web_user_id:
+            c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'open' AND web_user_id = ?", (web_user_id,))
+        else:
+            return []
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
-def get_closed_alpaca_trades_by_user(chat_id, limit=10):
+def get_closed_alpaca_trades_by_user(chat_id, limit=10, web_user_id=None):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'closed' AND telegram_chat_id = ? ORDER BY close_time DESC LIMIT ?", (chat_id, limit))
+        if chat_id:
+            c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'closed' AND telegram_chat_id = ? ORDER BY close_time DESC LIMIT ?", (chat_id, limit))
+        elif web_user_id:
+            c.execute("SELECT * FROM AlpacaActiveTrades WHERE status = 'closed' AND web_user_id = ? ORDER BY close_time DESC LIMIT ?", (web_user_id, limit))
+        else:
+            return []
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
@@ -1338,10 +1497,11 @@ def close_alpaca_trade(trade_id, close_time=None, close_price=None, pnl_raw=None
     with db_session() as conn:
         c = conn.cursor()
         
-        # Get chat_id to clear cache
-        c.execute("SELECT telegram_chat_id FROM AlpacaActiveTrades WHERE id = ?", (trade_id,))
+        # Get chat_id and web_user_id to clear cache
+        c.execute("SELECT telegram_chat_id, web_user_id FROM AlpacaActiveTrades WHERE id = ?", (trade_id,))
         row = c.fetchone()
         chat_id = row[0] if row else None
+        web_user_id = row[1] if row else None
         
         c.execute("""
             UPDATE AlpacaActiveTrades 
@@ -1355,6 +1515,12 @@ def close_alpaca_trade(trade_id, close_time=None, close_price=None, pnl_raw=None
         
         if chat_id:
             c.execute("UPDATE Users SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
+            try:
+                c.execute("UPDATE WebUsers SET history_cache = NULL WHERE telegram_chat_id = ?", (chat_id,))
+            except:
+                pass
+        elif web_user_id:
+            c.execute("UPDATE WebUsers SET history_cache = NULL WHERE id = ?", (web_user_id,))
 
 def make_alpaca_request(user, method, path, params=None, json_data=None):
     import requests
@@ -1461,9 +1627,17 @@ def toggle_strategy(strategy_name):
             conn.commit()
         return True # Strategy is now disabled
 
-def migrate_user_if_no_open_positions(chat_id):
+def migrate_user_if_no_open_positions(chat_id, web_user_id=None):
     """If the user has a disabled strategy active and 0 open positions, migrates them to an enabled alternative."""
-    user = get_user(chat_id)
+    if chat_id:
+        user = get_user(chat_id)
+    elif web_user_id:
+        from web_api.db_web import get_web_user_by_id
+        web_raw = get_web_user_by_id(web_user_id)
+        user = get_user_from_web_row(web_raw) if web_raw else None
+    else:
+        return
+        
     if not user:
         return
         
@@ -1482,18 +1656,24 @@ def migrate_user_if_no_open_positions(chat_id):
                 next_strat = 'Valkyrie Elite Scalper' if active_crypto == 'Mean Reversion Scalper' else 'Mean Reversion Scalper'
                 if next_strat in disabled_list:
                     next_strat = 'None'
-                c.execute("UPDATE Users SET active_crypto_strategy = ?, strategy = ? WHERE telegram_chat_id = ?", (next_strat, next_strat, chat_id))
-                try:
-                    c.execute("UPDATE WebUsers SET active_crypto_strategy = ? WHERE telegram_chat_id = ?", (next_strat, chat_id))
-                except:
-                    pass
+                if chat_id:
+                    c.execute("UPDATE Users SET active_crypto_strategy = ?, strategy = ? WHERE telegram_chat_id = ?", (next_strat, next_strat, chat_id))
+                    try:
+                        c.execute("UPDATE WebUsers SET active_crypto_strategy = ? WHERE telegram_chat_id = ?", (next_strat, chat_id))
+                    except:
+                        pass
+                elif web_user_id:
+                    c.execute("UPDATE WebUsers SET active_crypto_strategy = ? WHERE id = ?", (next_strat, web_user_id))
                 
             if active_stock in disabled_list:
-                c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE telegram_chat_id = ?", (chat_id,))
-                try:
-                    c.execute("UPDATE WebUsers SET active_stock_strategy = 'None' WHERE telegram_chat_id = ?", (chat_id,))
-                except:
-                    pass
+                if chat_id:
+                    c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE telegram_chat_id = ?", (chat_id,))
+                    try:
+                        c.execute("UPDATE WebUsers SET active_stock_strategy = 'None' WHERE telegram_chat_id = ?", (chat_id,))
+                    except:
+                        pass
+                elif web_user_id:
+                    c.execute("UPDATE WebUsers SET active_stock_strategy = 'None' WHERE id = ?", (web_user_id,))
             conn.commit()
 
 
