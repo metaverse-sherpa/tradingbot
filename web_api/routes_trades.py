@@ -551,6 +551,9 @@ def get_open_trades():
                              with database.db_session() as conn:
                                  c = conn.cursor()
                                  symbol_clean = pos.get('symbol', '').split(':')[0].replace('-', '/')
+                                 import re
+                                 symbol_clean = re.sub(r'^(\d+)', '', symbol_clean)
+                                 symbol_clean = symbol_clean.replace('TONCOIN', 'TON')
                                  c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
                                  row = c.fetchone()
                                  if row:

@@ -1725,9 +1725,22 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
     tp_price = t['tp_price']
     sl_price = t['sl_price']
     
+    from bot.config import is_stock
+    import re
+    
+    if not is_stock(sym):
+        ex_id = user.get('exchange_id', 'blofin')
+        sym = database.normalize_symbol(sym, ex_id)
+        # Extract contract multiplier (e.g. 1000 from 1000PEPE)
+        base_part = sym.split('/')[0] if '/' in sym else sym
+        m = re.match(r'^(\d+)', base_part)
+        multiplier = float(m.group(1)) if m else 1.0
+        
+        tp_price = tp_price * multiplier
+        sl_price = sl_price * multiplier
+    
     # 1. Fetch Current Price
     current_price = None
-    from bot.config import is_stock
     import live_bot_multi
     
     if is_stock(sym):

@@ -54,8 +54,48 @@ def normalize_symbol(symbol, exchange_id):
     """
     Handles exchange-specific symbol dialects.
     """
-    if exchange_id == 'mexc':
-        return symbol.split(":")[0]
+    if not symbol:
+        return symbol
+
+    # Clean symbol inputs (standardize slashes, uppercase)
+    sym = symbol.upper().replace('-', '/')
+
+    # Exchange-specific symbol mapping tables
+    MAPPINGS = {
+        'bingx': {
+            'TON/USDT:USDT': 'TONCOIN/USDT:USDT',
+            'TON/USDT': 'TONCOIN/USDT:USDT',
+            'PEPE/USDT:USDT': '1000PEPE/USDT:USDT',
+            'PEPE/USDT': '1000PEPE/USDT:USDT',
+        },
+        'binance': {
+            'PEPE/USDT:USDT': '1000PEPE/USDT:USDT',
+            'PEPE/USDT': '1000PEPE/USDT:USDT',
+            'SHIB/USDT:USDT': '1000SHIB/USDT:USDT',
+            'SHIB/USDT': '1000SHIB/USDT:USDT',
+        },
+        'mexc': {
+            'TON/USDT:USDT': 'TONCOIN/USDT:USDT',
+            'TON/USDT': 'TONCOIN/USDT:USDT',
+        },
+        'bybit': {
+            'PEPE/USDT:USDT': '1000PEPE/USDT:USDT',
+            'PEPE/USDT': '1000PEPE/USDT:USDT',
+            'SHIB/USDT:USDT': '1000SHIB/USDT:USDT',
+            'SHIB/USDT': '1000SHIB/USDT:USDT',
+            'BONK/USDT:USDT': '1000BONK/USDT:USDT',
+            'BONK/USDT': '1000BONK/USDT:USDT',
+        }
+    }
+
+    ex_id = exchange_id.lower()
+    if ex_id in MAPPINGS and sym in MAPPINGS[ex_id]:
+        return MAPPINGS[ex_id][sym]
+
+    # Fallback to mexc split behavior if mexc (after checking the mapping table)
+    if ex_id == 'mexc':
+        return sym.split(":")[0]
+
     return symbol
 
 def get_exchange_balance_params(exchange_id):
@@ -759,7 +799,7 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
                     is_long = fills[0]['is_long']
                     
                     try:
-                        market = exchange.market(sym)
+                        market = exchange.market(norm_sym)
                         contract_size = float(market.get('contractSize', 1))
                         initial_margin = (avg_price * total_amount * contract_size) / 20
                         roe_val = (total_net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
@@ -825,6 +865,17 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application, 
             # We'll update this in the DB at the end of the function with the other stats
         except:
             has_active = False
+
+        # Optimization: If the user currently has no active positions AND had no open positions recorded in the DB,
+        # skip fetching trade history entirely since no trade could have closed.
+        if not has_active and not user.get('has_open_positions', False):
+            with db_session() as conn:
+                c = conn.cursor()
+                if chat_id:
+                    c.execute("UPDATE Users SET has_open_positions = 0, last_fetch_timestamp = ? WHERE telegram_chat_id = ?", (now_ts, chat_id))
+                elif web_user_id:
+                    c.execute("UPDATE WebUsers SET has_open_positions = 0 WHERE id = ?", (web_user_id,))
+            return
  
         new_closed = []
         

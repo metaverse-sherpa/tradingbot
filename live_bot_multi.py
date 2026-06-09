@@ -175,8 +175,18 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         market = exchange.market(symbol)
         ticker = await exchange.fetch_ticker(symbol)
         lp = ticker["last"]
-        if abs(lp - signal["entry"]) / signal["entry"] > 0.01: return None
-        sl_dist, rr = signal["sl_dist"], signal["rr"]
+        
+        # Determine symbol multiplier (e.g., 1000 for 1000PEPE)
+        base = market.get('base', '')
+        import re
+        m = re.match(r'^(\d+)', base)
+        multiplier = float(m.group(1)) if m else 1.0
+        
+        scaled_entry = signal["entry"] * multiplier
+        scaled_sl_dist = signal["sl_dist"] * multiplier
+        
+        if abs(lp - scaled_entry) / scaled_entry > 0.01: return None
+        sl_dist, rr = scaled_sl_dist, signal["rr"]
         if signal["side"] == "buy":
             sl, tp = lp - sl_dist, lp + (sl_dist * rr)
         else: # sell (SHORT)
