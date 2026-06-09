@@ -691,14 +691,35 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
     logger = logging.getLogger(__name__)
     logger.info(f"Rebuilding history cache from engine for chat_id: {chat_id} web_user_id: {web_user_id}")
     try:
+        await exchange.load_markets()
         import live_bot_multi
         all_closed = []
+        
+        # Determine enabled symbols
+        enabled_symbols = []
+        user_data = get_user(chat_id) if chat_id else None
+        if not user_data and web_user_id:
+            from web_api.db_web import get_web_user_by_id
+            web_raw = get_web_user_by_id(web_user_id)
+            user_data = get_user_from_web_row(web_raw) if web_raw else None
+        if user_data:
+            enabled_symbols = user_data.get('enabled_symbols', [])
+            
+        symbols_to_check = [sym for sym in live_bot_multi.SYMBOLS if sym.split("/")[0] in enabled_symbols]
+        if not symbols_to_check:
+            symbols_to_check = live_bot_multi.SYMBOLS
+            
+        sem = asyncio.Semaphore(2) # rate limit helper
         
         async def fetch_sym_history(sym):
             try:
                 norm_sym = normalize_symbol(sym, exchange.id)
+                if norm_sym not in exchange.markets:
+                    return
                 since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
-                trades = await exchange.fetch_my_trades(norm_sym, since=since, limit=50)
+                async with sem:
+                    await asyncio.sleep(0.1) # tiny throttle
+                    trades = await exchange.fetch_my_trades(norm_sym, since=since, limit=50)
                 
                 order_groups = {}
                 for t in trades:
@@ -758,7 +779,7 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
                 logger.error(f"Error fetching history for {sym}: {sym_err}")
  
         # Fetch in parallel
-        await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
+        await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
         
         all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
         last_50 = all_closed[:50]
@@ -807,13 +828,25 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application, 
  
         new_closed = []
         
+        # Determine enabled symbols
+        enabled_symbols = user.get('enabled_symbols', [])
+        symbols_to_check = [sym for sym in live_bot_multi.SYMBOLS if sym.split("/")[0] in enabled_symbols]
+        
+        sem = asyncio.Semaphore(2) # rate limit helper
+        
         # We'll process all symbols in parallel for this user
         async def process_symbol_trades(sym):
             nonlocal wins, losses, cum_pnl
             try:
                 norm_sym = normalize_symbol(sym, exchange.id)
+                if norm_sym not in exchange.markets:
+                    return []
+                    
                 params = {'instType': 'SWAP'} if exchange.id == 'blofin' else {}
-                trades = await exchange.fetch_my_trades(norm_sym, since=last_ts, params=params)
+                async with sem:
+                    await asyncio.sleep(0.1) # tiny throttle
+                    trades = await exchange.fetch_my_trades(norm_sym, since=last_ts, params=params)
+                
                 symbol_new_closed = []
                 for t in trades:
                     if t['timestamp'] <= last_ts: continue
@@ -872,7 +905,7 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application, 
                 logging.getLogger(__name__).error(f"Error fetching trades for {sym}: {e}")
                 return []
  
-        results = await asyncio.gather(*(process_symbol_trades(sym) for sym in live_bot_multi.SYMBOLS))
+        results = await asyncio.gather(*(process_symbol_trades(sym) for sym in symbols_to_check))
         for r in results:
             new_closed.extend(r)
             
