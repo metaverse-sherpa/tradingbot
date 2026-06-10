@@ -27,7 +27,7 @@ if BASE_DIR not in sys.path:
 from bot.config import TELEGRAM_TOKEN, SUPER_ADMIN_ID, logger
 import database
 from bot.handlers import register_handlers
-from bot.engines import sync_engine, signal_engine, alpaca_equities_engine, alpaca_fractional_monitor_engine, premium_expiration_engine, email_summary_engine
+from bot.engines import sync_engine, signal_engine, alpaca_equities_engine, alpaca_fractional_monitor_engine, premium_expiration_engine, email_summary_engine, theory_trades_resolution_engine
 from bot.handlers.system import error_handler
 
 # Backward compatibility imports for downstream charting/audit scripts
@@ -98,9 +98,10 @@ async def post_init(application):
     task4 = asyncio.create_task(alpaca_fractional_monitor_engine(application))
     task5 = asyncio.create_task(premium_expiration_engine(application))
     task6 = asyncio.create_task(email_summary_engine(application))
+    task7 = asyncio.create_task(theory_trades_resolution_engine(application))
     
     # Store references to prevent garbage collection
-    application.bot_data["bg_tasks"] = [task1, task2, task3, task4, task5, task6]
+    application.bot_data["bg_tasks"] = [task1, task2, task3, task4, task5, task6, task7]
 
 
 async def post_stop(application):

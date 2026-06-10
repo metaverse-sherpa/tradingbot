@@ -97,50 +97,30 @@ async def sync_engine(application):
             logger.error(f"Sentinel critical failure: {e}")
             await asyncio.sleep(60)
 
-async def signal_engine(application):
+async def theory_trades_resolution_engine(application):
     """
-    Sherpa Signal Task (15m Precision Loop)
+    Theoretical Trades Resolution Task (60s Precision Loop)
     
-    This is the core engine for Crypto trading. It operates on a strict 15-minute schedule
-    aligned with global candle closures (e.g., 00:00, 00:15, 00:30, 00:45).
-    
-    Execution Flow:
-    1. Timer Math: Calculates the exact seconds remaining until the next 15m candle close + 30s buffer.
-    2. Data Ingestion: Uses MarketDataManager to concurrently fetch the latest 100 15m OHLCV candles 
-       for all tracked crypto symbols.
-    3. Forward Testing (Simulation):
-       a. Resolves open theoretical trades (checking if high/low hit TP/SL).
-       b. Computes new signals and opens simulated trades for broadcast.
-    4. Live Execution:
-       a. Groups active users by their chosen strategy.
-       b. Computes live signals.
-       c. Places market limit orders with calculated risk constraints via CCXT.
-       d. Broadcasts entry notifications with dynamically generated neon charts.
+    Checks open theoretical (free) signals and resolves them if the current price (high/low of 1m candle)
+    crosses TP/SL targets. Only queries market data for active symbols to prevent server strain.
     """
-    logger.info("🏔️ Starting Sherpa Signal Task (15m Precision)...")
-    mdm = live_bot_multi.MarketDataManager()
-    try:
-        while True:
-            try:
-                # 1. Wait until next 15-minute mark + buffer
-                now = time.time()
-                seconds_past_mark = now % 900
-                wait_time = 900 - seconds_past_mark + 30
-                logger.info(f"Sherpa Sleeping {wait_time:.1f}s until next candle close...")
-                await asyncio.sleep(wait_time)
-
-                # Reset MDM cache for the new cycle
-                mdm.ohlcv_cache = {}
+    logger.info("📡 Starting Theoretical Trades Resolution Task (60s loop)...")
+    while True:
+        try:
+            await asyncio.sleep(60)
+            
+            open_theory_trades = database.get_open_theoretical_trades()
+            if not open_theory_trades:
+                continue
                 
-                # Fetch all OHLCV in parallel using public API
-                await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=100) for sym in live_bot_multi.SYMBOLS))
-
-                # 🧪 A. RESOLVE OPEN THEORETICAL TRADES
-                open_theory_trades = database.get_open_theoretical_trades()
-                for t in open_theory_trades:
+            crypto_trades = [t for t in open_theory_trades if not is_stock(t['symbol'])]
+            if not crypto_trades:
+                continue
+                
+            mdm = live_bot_multi.MarketDataManager()
+            try:
+                for t in crypto_trades:
                     symbol = t['symbol']
-                    if is_stock(symbol):
-                        continue
                     side = t['side']
                     entry_price = t['entry_price']
                     tp_price = t['tp_price']
@@ -148,35 +128,42 @@ async def signal_engine(application):
                     trade_id = t['id']
                     position_size = t['position_size']
                     
-                    df = await mdm.fetch_ohlcv(symbol, "15m")
+                    df = await mdm.fetch_ohlcv(symbol, "1m", limit=5)
                     if df is not None and len(df) > 0:
-                        last_candle = df.iloc[-1]
-                        high = float(last_candle['high'])
-                        low = float(last_candle['low'])
+                        # Check last 2 candles of 1m timeframe
+                        candles_to_check = df.iloc[-2:] if len(df) >= 2 else df.iloc[-1:]
                         
                         triggered = False
                         status = 'open'
                         exit_price = 0.0
                         
-                        if side == 'buy':  # Long
-                            if low <= sl_price:
-                                triggered = True
-                                status = 'sl'
-                                exit_price = sl_price
-                            elif high >= tp_price:
-                                triggered = True
-                                status = 'tp'
-                                exit_price = tp_price
-                        else:  # Short
-                            if high >= sl_price:
-                                triggered = True
-                                status = 'sl'
-                                exit_price = sl_price
-                            elif low <= tp_price:
-                                triggered = True
-                                status = 'tp'
-                                exit_price = tp_price
-                        
+                        for idx, candle in candles_to_check.iterrows():
+                            high = float(candle['high'])
+                            low = float(candle['low'])
+                            
+                            if side == 'buy':  # Long
+                                if low <= sl_price:
+                                    triggered = True
+                                    status = 'sl'
+                                    exit_price = sl_price
+                                    break
+                                elif high >= tp_price:
+                                    triggered = True
+                                    status = 'tp'
+                                    exit_price = tp_price
+                                    break
+                            else:  # Short
+                                if high >= sl_price:
+                                    triggered = True
+                                    status = 'sl'
+                                    exit_price = sl_price
+                                    break
+                                elif low <= tp_price:
+                                    triggered = True
+                                    status = 'tp'
+                                    exit_price = tp_price
+                                    break
+                                    
                         if triggered:
                             close_time = int(time.time() * 1000)
                             pnl_raw = exit_price - entry_price if side == 'buy' else entry_price - exit_price
@@ -217,7 +204,6 @@ async def signal_engine(application):
                                             send_alert_email(ru["email"], subject, html_content)
                             except Exception as email_err:
                                 logger.error(f"Failed to dispatch exit email alerts: {email_err}")
-
 
                             strategy = t.get('strategy', 'Mean Reversion Scalper')
                             currency = get_currency(symbol)
@@ -267,6 +253,50 @@ async def signal_engine(application):
                                     )
                                 except Exception as e:
                                     logger.warning(f"Failed forward test exit broadcast to {target_id}: {e}")
+            finally:
+                await mdm.close()
+        except Exception as e:
+            logger.error(f"Error in theory_trades_resolution_engine: {e}")
+
+async def signal_engine(application):
+    """
+    Sherpa Signal Task (15m Precision Loop)
+    
+    This is the core engine for Crypto trading. It operates on a strict 15-minute schedule
+    aligned with global candle closures (e.g., 00:00, 00:15, 00:30, 00:45).
+    
+    Execution Flow:
+    1. Timer Math: Calculates the exact seconds remaining until the next 15m candle close + 30s buffer.
+    2. Data Ingestion: Uses MarketDataManager to concurrently fetch the latest 100 15m OHLCV candles 
+       for all tracked crypto symbols.
+    3. Forward Testing (Simulation):
+       a. (Theoretical trade resolution is handled separately by theory_trades_resolution_engine).
+       b. Computes new signals and opens simulated trades for broadcast.
+    4. Live Execution:
+       a. Groups active users by their chosen strategy.
+       b. Computes live signals.
+       c. Places market limit orders with calculated risk constraints via CCXT.
+       d. Broadcasts entry notifications with dynamically generated neon charts.
+    """
+    logger.info("🏔️ Starting Sherpa Signal Task (15m Precision)...")
+    mdm = live_bot_multi.MarketDataManager()
+    try:
+        while True:
+            try:
+                # 1. Wait until next 15-minute mark + buffer
+                now = time.time()
+                seconds_past_mark = now % 900
+                wait_time = 900 - seconds_past_mark + 30
+                logger.info(f"Sherpa Sleeping {wait_time:.1f}s until next candle close...")
+                await asyncio.sleep(wait_time)
+
+                # Reset MDM cache for the new cycle
+                mdm.ohlcv_cache = {}
+                
+                # Fetch all OHLCV in parallel using public API
+                await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=100) for sym in live_bot_multi.SYMBOLS))
+
+                # (Theoretical trade resolution is handled separately by theory_trades_resolution_engine every 60s)
 
                 # 🧪 B. EVALUATE NEW THEORETICAL SIGNALS FOR ALL STRATEGIES
                 disabled_strats = database.get_disabled_strategies()
