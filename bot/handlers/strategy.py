@@ -27,7 +27,7 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("Please run /setup first.")
         return
         
-    active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    active_crypto = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
     active_stock = user.get('active_stock_strategy', 'None')
     risk_val = user.get('risk_pct', 1.5)
     

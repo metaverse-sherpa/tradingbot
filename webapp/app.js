@@ -331,7 +331,7 @@ let STATE = {
     free_history_expanded_id: null,
     profile_menu_open: false,
     google_verifying: false,
-    backtest: { running: false, result: null, period: '3 Years', capital: 1000, strategy: 'Mean Reversion Scalper' }
+    backtest: { running: false, result: null, period: '3 Years', capital: 1000, strategy: 'Valkyrie Elite Scalper' }
 };
 
 const STRATEGY_ICONS = {
@@ -374,7 +374,7 @@ const STRATEGY_GUIDES = {
 };
 
 function renderStrategyGuideContent(name, includeBacktest = true) {
-    const guide = STRATEGY_GUIDES[name] || STRATEGY_GUIDES["Mean Reversion Scalper"];
+    const guide = STRATEGY_GUIDES[name] || STRATEGY_GUIDES["Valkyrie Elite Scalper"];
     const isStock = (name === 'Sherpa Velocity Pullback');
     let html = '';
     
@@ -1533,7 +1533,7 @@ function renderLandingView() {
                 <div class="space-y-4">
                     ${STATE.free_stats.strategies.map(s => {
                         const icon = STRATEGY_ICONS[s.name] || "📈";
-                        const guide = STRATEGY_GUIDES[s.name] || STRATEGY_GUIDES["Mean Reversion Scalper"];
+                        const guide = STRATEGY_GUIDES[s.name] || STRATEGY_GUIDES["Valkyrie Elite Scalper"];
                         const guideId = `landing-guide-${s.name.replace(/\s+/g, '-')}`;
                         const realizedClass = s.realized_pct >= 0 ? "text-tertiary" : "text-error";
                         const unrealizedClass = (s.unrealized_pct || 0) >= 0 ? "text-tertiary" : "text-error";
@@ -2073,12 +2073,12 @@ function renderDashboardView() {
     }
     
     const activeStats = (STATE.stats && (isCrypto ? STATE.stats.crypto : STATE.stats.stock)) || { cumulative_pnl: 0, win_rate: 0, overall_pnl: 0, overall_pnl_pct: 0 };
-    const activeStrategy = STATE.user ? (isCrypto ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCrypto ? 'Mean Reversion Scalper' : 'None');
+    const activeStrategy = STATE.user ? (isCrypto ? (STATE.user.active_crypto_strategy || 'Valkyrie Elite Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCrypto ? 'Valkyrie Elite Scalper' : 'None');
     const balance = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
     const activeTradesCount = STATE.open_trades.filter(t => t.type === (isCrypto ? 'crypto' : 'stock')).length;
     
     const backtestOnclick = isCrypto 
-        ? `resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${activeStrategy === 'None' ? 'Mean Reversion Scalper' : activeStrategy}'); triggerBacktest(); }, 150);`
+        ? `resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${activeStrategy === 'None' ? 'Valkyrie Elite Scalper' : activeStrategy}'); triggerBacktest(); }, 150);`
         : `resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('Sherpa Velocity Pullback'); triggerBacktest(); }, 150);`;
 
     // Gated actions for premium
@@ -2129,12 +2129,12 @@ function renderDashboardView() {
         }
 
         const typeStats = (STATE.stats && (isCryptoType ? STATE.stats.crypto : STATE.stats.stock)) || { cumulative_pnl: 0, win_rate: 0, overall_pnl: 0, overall_pnl_pct: 0 };
-        const typeStrategy = STATE.user ? (isCryptoType ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCryptoType ? 'Mean Reversion Scalper' : 'None');
+        const typeStrategy = STATE.user ? (isCryptoType ? (STATE.user.active_crypto_strategy || 'Valkyrie Elite Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCryptoType ? 'Valkyrie Elite Scalper' : 'None');
         const typeBalance = isCryptoType ? STATE.crypto_balance : STATE.stock_balance;
         const typeActiveTradesCount = STATE.open_trades.filter(t => t.type === type).length;
         
         const typeBacktestOnclick = isCryptoType 
-            ? `STATE.dashboard_tab = 'crypto'; resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${typeStrategy === 'None' ? 'Mean Reversion Scalper' : typeStrategy}'); triggerBacktest(); }, 150);`
+            ? `STATE.dashboard_tab = 'crypto'; resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${typeStrategy === 'None' ? 'Valkyrie Elite Scalper' : typeStrategy}'); triggerBacktest(); }, 150);`
             : `STATE.dashboard_tab = 'stock'; resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('Sherpa Velocity Pullback'); triggerBacktest(); }, 150);`;
 
         const typeActionCards = `
@@ -3523,12 +3523,12 @@ function renderSettingsView() {
                         <div class="relative">
                             <select onchange="handleStrategyChange('crypto', this.value)" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all appearance-none cursor-pointer">
                                 ${!(user.disabled_strategies || []).includes('Mean Reversion Scalper') ? `
-                                <option value="Mean Reversion Scalper" ${(user.active_crypto_strategy || 'Mean Reversion Scalper') === 'Mean Reversion Scalper' ? 'selected' : ''}>Mean Reversion Scalper</option>
+                                <option value="Mean Reversion Scalper" ${(user.active_crypto_strategy || 'Valkyrie Elite Scalper') === 'Mean Reversion Scalper' ? 'selected' : ''}>Mean Reversion Scalper</option>
                                 ` : ''}
                                 ${!(user.disabled_strategies || []).includes('Valkyrie Elite Scalper') ? `
-                                <option value="Valkyrie Elite Scalper" ${(user.active_crypto_strategy || 'Mean Reversion Scalper') === 'Valkyrie Elite Scalper' ? 'selected' : ''}>Valkyrie Elite Scalper</option>
+                                <option value="Valkyrie Elite Scalper" ${(user.active_crypto_strategy || 'Valkyrie Elite Scalper') === 'Valkyrie Elite Scalper' ? 'selected' : ''}>Valkyrie Elite Scalper</option>
                                 ` : ''}
-                                <option value="None" ${(user.active_crypto_strategy || 'Mean Reversion Scalper') === 'None' ? 'selected' : ''}>None (Disabled)</option>
+                                <option value="None" ${(user.active_crypto_strategy || 'Valkyrie Elite Scalper') === 'None' ? 'selected' : ''}>None (Disabled)</option>
                             </select>
                             <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
                                 <span class="material-symbols-outlined text-xl">expand_more</span>
@@ -3541,7 +3541,7 @@ function renderSettingsView() {
                                 <span id="crypto-chev" class="material-symbols-outlined text-on-surface-variant text-sm transition-transform duration-300">expand_more</span>
                             </div>
                             <div id="crypto-guide" class="hidden pt-3 animate-fade-in text-left">
-                                ${renderStrategyGuideContent(user.active_crypto_strategy || 'Mean Reversion Scalper', true)}
+                                ${renderStrategyGuideContent(user.active_crypto_strategy || 'Valkyrie Elite Scalper', true)}
                             </div>
                         </div>
                         ` : ''}
@@ -3600,7 +3600,7 @@ function renderSettingsView() {
                     ${(hasLinkedCrypto || hasLinkedStock) ? `
                     <div class="flex gap-3 pt-4">
                         ${hasLinkedCrypto ? `
-                        <button onclick="resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${user.active_crypto_strategy === 'None' ? 'Mean Reversion Scalper' : user.active_crypto_strategy}'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-primary to-[#3cd7ff] text-background font-bold text-xs uppercase rounded-lg shadow-lg cyan-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                        <button onclick="resetBacktester(); navigate('#/backtest'); setTimeout(() => { window.selectStrategy('${user.active_crypto_strategy === 'None' ? 'Valkyrie Elite Scalper' : user.active_crypto_strategy}'); triggerBacktest(); }, 150);" class="flex-1 h-11 bg-gradient-to-r from-primary to-[#3cd7ff] text-background font-bold text-xs uppercase rounded-lg shadow-lg cyan-glow hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                             <span class="material-symbols-outlined text-[16px]">science</span>
                             Backtest Crypto
                         </button>
@@ -3697,7 +3697,7 @@ function renderStrategyView() {
 function renderBacktestView() {
     const bt = STATE.backtest;
     const user = STATE.user || {};
-    const selectedStrategy = bt.strategy || 'Mean Reversion Scalper';
+    const selectedStrategy = bt.strategy || 'Valkyrie Elite Scalper';
     const isStock = (selectedStrategy === 'Sherpa Velocity Pullback');
     
     return `
@@ -3777,7 +3777,7 @@ function renderBacktestView() {
                                 <option value="Mean Reversion Scalper">Mean Reversion Scalper</option>
                                 ` : ''}
                                 ${!(user.disabled_strategies || []).includes('Valkyrie Elite Scalper') ? `
-                                <option value="Valkyrie Elite Scalper" ${((user.disabled_strategies || []).includes('Mean Reversion Scalper')) ? 'selected' : ''}>Valkyrie Elite Scalper</option>
+                                <option value="Valkyrie Elite Scalper" ${((user.disabled_strategies || []).includes('Mean Reversion Scalper') || (user.active_crypto_strategy || 'Valkyrie Elite Scalper') === 'Valkyrie Elite Scalper') ? 'selected' : ''}>Valkyrie Elite Scalper</option>
                                 ` : ''}
                                 ${!(user.disabled_strategies || []).includes('Sherpa Velocity Pullback') ? `
                                 <option value="Sherpa Velocity Pullback">Sherpa Velocity Pullback</option>
@@ -4151,7 +4151,7 @@ function renderSignalsView() {
 
                 const strategyRows = STATE.free_stats.strategies.map(s => {
                     const icon = strategyIcons[s.name] || "📈";
-                    const guide = guides[s.name] || guides["Mean Reversion Scalper"];
+                    const guide = guides[s.name] || guides["Valkyrie Elite Scalper"];
                     const guideId = `sig-guide-${s.name.replace(/\s+/g, '-')}`;
                     
                     const realizedPct = s.realized_pct || 0;
@@ -4792,7 +4792,7 @@ async function triggerBacktest() {
     const capitalEl = document.getElementById('bt-capital');
     const riskEl = document.getElementById('bt-risk');
     
-    const strategy = strategyEl ? strategyEl.value : 'Mean Reversion Scalper';
+    const strategy = strategyEl ? strategyEl.value : 'Valkyrie Elite Scalper';
     const capital = capitalEl ? parseFloat(capitalEl.value) : 10000.0;
     const risk = riskEl ? parseFloat(riskEl.value) : 1.0;
 

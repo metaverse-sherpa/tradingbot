@@ -56,7 +56,7 @@ async def show_symbol_menu(update, context, user):
     query = update.callback_query
     chat_id = user['telegram_chat_id']
     
-    strategy = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    strategy = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
     if strategy == "Valkyrie Elite Scalper":
         all_syms = ["SOL", "LINK", "BTC", "ADA", "DOT", "ETH", "SUI"]
         title_text = "🛰 *Manage Valkyrie Symbols*\n\nTap a symbol to toggle it ON or OFF. Valkyrie operates on these Top 7 institutional volume assets."
@@ -1216,7 +1216,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         risk_val = user.get('risk_pct', 1.5)
         stock_risk_val = user.get('stock_risk_pct', 2.0)
-        active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+        active_crypto = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
         active_stock = user.get('active_stock_strategy', 'None')
         
         strategy_overview = (

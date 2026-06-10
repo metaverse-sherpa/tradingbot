@@ -313,7 +313,7 @@ def get_settings_ui(user):
         f"Status: *{bot_status}*\n"
         f"Tier: *{tier_display}*\n"
         f"{expiry_msg}"
-        f"🪙 Crypto Strategy: *{user.get('active_crypto_strategy', 'Mean Reversion Scalper')}*\n"
+        f"🪙 Crypto Strategy: *{user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')}*\n"
         f"🦙 Stock Strategy: *{user.get('active_stock_strategy', 'None')}*\n"
         f"🪙 Crypto Risk: *{risk_val:.2f}%*\n"
         f"🦙 Stock Risk: *{stock_risk_val:.2f}%*\n"

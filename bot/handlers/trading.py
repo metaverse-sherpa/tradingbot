@@ -99,7 +99,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
     stock_risk = user.get('stock_risk_pct', 2.0)
     syms = user.get('enabled_symbols', [])
     
-    active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    active_crypto = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
     active_stock = user.get('active_stock_strategy', 'None')
     
     # 1. Determine target asset class if force_asset is None
@@ -279,7 +279,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             start_balance=start_balance
         ))
     else:
-        strategy = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+        strategy = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
         if database.is_strategy_disabled(strategy):
             await status_msg.edit_text(
                 f"❌ *Simulation Aborted*\n\nThe strategy `{strategy}` has been disabled by the administrator and cannot be backtested at this time.", 
@@ -287,7 +287,7 @@ async def trigger_personalized_audit(update: Update, context: ContextTypes.DEFAU
             )
             return
         if strategy == 'None':
-            strategy = 'Mean Reversion Scalper'
+            strategy = 'Valkyrie Elite Scalper'
         audit_task = asyncio.create_task(asyncio.to_thread(
             run_visual_audit, 
             target_risk, 

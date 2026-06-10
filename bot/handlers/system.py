@@ -308,7 +308,7 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     
     # 1. Crypto Strategy Audit
-    crypto_strat = user_data.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    crypto_strat = user_data.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
     has_crypto_creds = bool(user_data.get('api_key') and user_data.get('api_key') != "")
     report_lines.append("🪙 *Crypto Strategy Engine*")
     report_lines.append(f"• Strategy: `{crypto_strat}`")

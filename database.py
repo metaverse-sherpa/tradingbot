@@ -242,7 +242,7 @@ def init_db():
                           total_trades_opened INTEGER DEFAULT 0,
                           cumulative_pnl REAL DEFAULT 0.0,
                           last_fetch_timestamp INTEGER DEFAULT 0,
-                          strategy TEXT DEFAULT 'Mean Reversion Scalper',
+                          strategy TEXT DEFAULT 'Valkyrie Elite Scalper',
                           source_wallet TEXT,
                           stock_risk_pct REAL DEFAULT 2.0,
                           alpaca_start_equity REAL)'''
@@ -256,7 +256,7 @@ def init_db():
             ("exchange_id", "TEXT DEFAULT 'blofin'"),
             ("cumulative_pnl", "REAL DEFAULT 0.0"),
             ("last_fetch_timestamp", "INTEGER DEFAULT 0"),
-            ("strategy", "TEXT DEFAULT 'Mean Reversion Scalper'"),
+            ("strategy", "TEXT DEFAULT 'Valkyrie Elite Scalper'"),
             ("hide_dollars", "BOOLEAN DEFAULT 0"),
             ("risk_pct", "REAL DEFAULT 1.0"),
             ("enabled_symbols", "TEXT"),
@@ -277,7 +277,7 @@ def init_db():
             ("alpaca_api_key", "TEXT"),
             ("alpaca_api_secret", "TEXT"),
             ("alpaca_endpoint", "TEXT"),
-            ("active_crypto_strategy", "TEXT DEFAULT 'Mean Reversion Scalper'"),
+            ("active_crypto_strategy", "TEXT DEFAULT 'Valkyrie Elite Scalper'"),
             ("active_stock_strategy", "TEXT DEFAULT 'None'"),
             ("stock_risk_pct", "REAL DEFAULT 2.0"),
             ("alpaca_start_equity", "REAL"),
@@ -306,13 +306,13 @@ def init_db():
             if c.fetchone():
                 c.execute("""
                     UPDATE Users 
-                    SET active_crypto_strategy = COALESCE(strategy, 'Mean Reversion Scalper'), active_stock_strategy = 'None'
+                    SET active_crypto_strategy = COALESCE(strategy, 'Valkyrie Elite Scalper'), active_stock_strategy = 'None'
                     WHERE active_crypto_strategy IS NULL OR active_crypto_strategy = ''
                 """)
             # 3. Ensure no NULL values exist for the new fields
             c.execute("SELECT 1 FROM Users WHERE active_crypto_strategy IS NULL LIMIT 1")
             if c.fetchone():
-                c.execute("UPDATE Users SET active_crypto_strategy = 'Mean Reversion Scalper' WHERE active_crypto_strategy IS NULL")
+                c.execute("UPDATE Users SET active_crypto_strategy = 'Valkyrie Elite Scalper' WHERE active_crypto_strategy IS NULL")
             c.execute("SELECT 1 FROM Users WHERE active_stock_strategy IS NULL LIMIT 1")
             if c.fetchone():
                 c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE active_stock_strategy IS NULL")
@@ -324,6 +324,17 @@ def init_db():
                     SET exchange_id = 'blofin'
                     WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != ''
                 """)
+            # 5. Force-migrate all users away from disabled Mean Reversion Scalper to Valkyrie Elite Scalper
+            c.execute("""
+                UPDATE Users
+                SET active_crypto_strategy = 'Valkyrie Elite Scalper', strategy = 'Valkyrie Elite Scalper'
+                WHERE active_crypto_strategy = 'Mean Reversion Scalper' OR strategy = 'Mean Reversion Scalper'
+            """)
+            c.execute("""
+                UPDATE WebUsers
+                SET active_crypto_strategy = 'Valkyrie Elite Scalper'
+                WHERE active_crypto_strategy = 'Mean Reversion Scalper'
+            """)
             conn.commit()
         except Exception as migration_err:
             pass
@@ -447,7 +458,7 @@ def init_db():
                 hide_dollars BOOLEAN DEFAULT 0,
                 custom_equity_type TEXT DEFAULT 'all',
                 custom_equity_value REAL,
-                active_crypto_strategy TEXT DEFAULT 'Mean Reversion Scalper',
+                active_crypto_strategy TEXT DEFAULT 'Valkyrie Elite Scalper',
                 active_stock_strategy TEXT DEFAULT 'None',
                 source_wallet TEXT,
                 premium_expiry INTEGER DEFAULT 0,
@@ -554,7 +565,7 @@ def get_user(chat_id):
             "opened": row[7],
             "cum_pnl": row[8] or 0.0,
             "last_ts": row[9] or 0,
-            "strategy": row[10] or 'Mean Reversion Scalper',
+            "strategy": row[10] or 'Valkyrie Elite Scalper',
             "hide_dollars": bool(row[11]),
             "risk_pct": row[12] if row[12] is not None else 1.0,
             "enabled_symbols": (row[13] if row[13] else def_syms).split(","),
@@ -576,7 +587,7 @@ def get_user(chat_id):
             "alpaca_api_key": decrypt(row[28]) if len(row) > 28 and row[28] else None,
             "alpaca_api_secret": decrypt(row[29]) if len(row) > 29 and row[29] else None,
             "alpaca_endpoint": row[30] if len(row) > 30 else None,
-            "active_crypto_strategy": row[31] if len(row) > 31 and row[31] else 'Mean Reversion Scalper',
+            "active_crypto_strategy": row[31] if len(row) > 31 and row[31] else 'Valkyrie Elite Scalper',
             "active_stock_strategy": row[32] if len(row) > 32 and row[32] else 'None',
             "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 2.0,
             "premium_referrals": row[34] if len(row) > 34 else 0,
@@ -640,7 +651,7 @@ def get_user_from_web_row(row):
         "opened": 0,
         "cum_pnl": row.get('cumulative_pnl') or 0.0,
         "last_ts": 0,
-        "strategy": row.get('active_crypto_strategy') or 'Mean Reversion Scalper',
+        "strategy": row.get('active_crypto_strategy') or 'Valkyrie Elite Scalper',
         "hide_dollars": bool(row.get('hide_dollars')),
         "risk_pct": row.get('risk_pct') if row.get('risk_pct') is not None else 1.0,
         "enabled_symbols": (row.get('enabled_symbols') if row.get('enabled_symbols') else def_syms).split(","),
@@ -663,7 +674,7 @@ def get_user_from_web_row(row):
         "alpaca_api_key": alpaca_api_key,
         "alpaca_api_secret": alpaca_api_secret,
         "alpaca_endpoint": row.get('alpaca_endpoint'),
-        "active_crypto_strategy": row.get('active_crypto_strategy') or 'Mean Reversion Scalper',
+        "active_crypto_strategy": row.get('active_crypto_strategy') or 'Valkyrie Elite Scalper',
         "active_stock_strategy": row.get('active_stock_strategy') or 'None',
         "stock_risk_pct": row.get('stock_risk_pct') if row.get('stock_risk_pct') is not None else 2.0,
         "premium_referrals": row.get('premium_referrals') or 0,
@@ -1798,7 +1809,7 @@ def migrate_user_if_no_open_positions(chat_id, web_user_id=None):
     if not disabled_list:
         return
         
-    active_crypto = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+    active_crypto = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
     active_stock = user.get('active_stock_strategy', 'None')
     has_open = user.get('has_open_positions', False)
     

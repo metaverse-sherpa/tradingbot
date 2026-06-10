@@ -80,6 +80,7 @@ def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password
             SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?
             WHERE id = ?
         ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), user_id))
+    update_web_user_status(user_id, 1)
 
 def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
     with db_session() as conn:
@@ -89,6 +90,7 @@ def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
             SET alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?
             WHERE id = ?
         ''', (encrypt(api_key), encrypt(api_secret), endpoint, user_id))
+    update_web_user_status(user_id, 1)
 
 def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, email_notifications=1, email_frequency='realtime', browser_notifications=1):
     with db_session() as conn:

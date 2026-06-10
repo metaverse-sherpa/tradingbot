@@ -416,7 +416,7 @@ async def signal_engine(application):
                     disabled_strats = database.get_disabled_strategies()
                     strategy_groups = {}
                     for user in active_users:
-                        strat = user.get('active_crypto_strategy', 'Mean Reversion Scalper')
+                        strat = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
                         if strat == 'None' or not strat:
                             continue  # Crypto strategy is paused for this user
                         if strat in disabled_strats:
