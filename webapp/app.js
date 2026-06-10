@@ -2241,14 +2241,26 @@ function renderDashboardView() {
                 <section class="grid grid-cols-2 gap-stack-gap">
                     <a href="#/trades" onclick="STATE.dashboard_tab = '${type}';" class="glass-card rounded-lg p-3 text-center border-t-2 border-primary/40 hover:bg-white/5 transition-colors group block">
                         <p class="font-label-sm text-label-sm text-on-surface-variant mb-1 group-hover:text-primary transition-colors">Open Trades</p>
+                        ${showLoadingBalance ? `
+                        <div class="flex items-center justify-center py-1 animate-pulse">
+                            <span class="material-symbols-outlined text-primary text-sm animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="font-numeric-data text-numeric-data text-primary">${typeActiveTradesCount}</p>
+                        `}
                     </a>
                     <div class="glass-card rounded-lg p-3 text-center border-t-2 border-tertiary/40">
                         <p class="font-label-sm text-label-sm text-on-surface-variant mb-1">Win Rate</p>
+                        ${showLoadingBalance ? `
+                        <div class="flex items-center justify-center py-1 animate-pulse">
+                            <span class="material-symbols-outlined text-tertiary text-sm animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="font-numeric-data text-numeric-data text-tertiary flex items-baseline gap-2 justify-center">
                             ${typeStats.win_rate || 0}% 
                             <span class="text-xs text-on-surface-variant font-normal">(${typeStats.wins || 0}W / ${typeStats.losses || 0}L)</span>
                         </p>
+                        `}
                     </div>
                 </section>
                 
