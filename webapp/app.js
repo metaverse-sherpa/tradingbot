@@ -1467,7 +1467,7 @@ function renderRegisterView() {
 
 function renderLandingView() {
     const headerHtml = `
-        <div class="relative overflow-hidden rounded-2xl mb-6 p-6 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
+        <div id="landing-hero" class="relative overflow-hidden rounded-2xl mb-6 p-6 bg-gradient-to-br from-primary/20 via-[#0c1f30] to-tertiary/20 border border-primary/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
             <!-- Mountain neon glow in the background -->
             <div class="absolute -right-10 -top-10 w-64 h-64 bg-primary/30 rounded-full blur-[80px] pointer-events-none"></div>
             <div class="absolute -left-10 -bottom-10 w-64 h-64 bg-tertiary/30 rounded-full blur-[80px] pointer-events-none"></div>
@@ -1669,7 +1669,7 @@ function renderLandingView() {
                 <p class="text-xs text-on-surface-variant max-w-[340px] leading-relaxed">
                     You need to sign up for an account in order to take advantage of the free premium access. Once registered, your Premium days will be activated automatically.
                 </p>
-                <button onclick="document.getElementById('landing-auth-panel')?.scrollIntoView({ behavior: 'smooth' });" class="mt-1 px-5 py-2.5 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold text-xs uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md cursor-pointer">
+                <button onclick="document.getElementById('landing-hero')?.scrollIntoView({ behavior: 'smooth' });" class="mt-1 px-5 py-2.5 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold text-xs uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md cursor-pointer">
                     Claim Premium Access Now
                 </button>
             </div>
@@ -1821,7 +1821,7 @@ function renderLandingView() {
                                 <span class="material-symbols-outlined text-primary text-base">lock</span> Trade Details Locked
                             </p>
                             <p class="text-[11px] text-on-surface-variant leading-normal">
-                                <a class="text-primary font-bold cursor-pointer hover:underline" onclick="document.getElementById('landing-auth-panel')?.scrollIntoView({ behavior: 'smooth' });">Create a free account</a> to unlock real-time entry targets, stop losses, and dynamic charts.
+                                <a class="text-primary font-bold cursor-pointer hover:underline" onclick="document.getElementById('landing-hero')?.scrollIntoView({ behavior: 'smooth' });">Create a free account</a> to unlock real-time entry targets, stop losses, and dynamic charts.
                             </p>
                         </div>
                     </div>
