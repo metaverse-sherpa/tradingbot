@@ -2113,6 +2113,21 @@ function renderDashboardView() {
 
     function renderDashboardColumn(type) {
         const isCryptoType = type === 'crypto';
+        const isPremium = STATE.user && STATE.user.is_premium;
+        const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
+        const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
+
+        let showLoadingBalance = false;
+        if (isPremium) {
+            if (hasLinkedCrypto && hasLinkedStock) {
+                showLoadingBalance = (STATE.crypto_balance === 0 || STATE.stock_balance === 0);
+            } else if (isCryptoType && hasLinkedCrypto) {
+                showLoadingBalance = (STATE.crypto_balance === 0);
+            } else if (!isCryptoType && hasLinkedStock) {
+                showLoadingBalance = (STATE.stock_balance === 0);
+            }
+        }
+
         const typeStats = (STATE.stats && (isCryptoType ? STATE.stats.crypto : STATE.stats.stock)) || { cumulative_pnl: 0, win_rate: 0, overall_pnl: 0, overall_pnl_pct: 0 };
         const typeStrategy = STATE.user ? (isCryptoType ? (STATE.user.active_crypto_strategy || 'Mean Reversion Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCryptoType ? 'Mean Reversion Scalper' : 'None');
         const typeBalance = isCryptoType ? STATE.crypto_balance : STATE.stock_balance;
@@ -2160,6 +2175,12 @@ function renderDashboardView() {
                     <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
                     <div class="relative z-10 pointer-events-none">
                         <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCryptoType ? 'Crypto Equity' : 'Stock Equity'}</p>
+                        ${showLoadingBalance ? `
+                        <div class="flex items-center gap-3 py-1.5 animate-pulse">
+                            <span class="material-symbols-outlined text-primary text-xl animate-spin">sync</span>
+                            <span class="text-xs text-on-surface-variant font-medium">Loading encrypted account balance details...</span>
+                        </div>
+                        ` : `
                         <div class="flex items-baseline gap-3">
                             <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(typeBalance || 0).toFixed(2)}</h1>
                             <div class="${typePnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1">
@@ -2167,6 +2188,7 @@ function renderDashboardView() {
                                 <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${privacyClass}" ${privacyStyle}>${typePnlVal >= 0 ? '+' : '-'}$${Math.abs(typePnlVal).toFixed(2)}</span>)</span>
                             </div>
                         </div>
+                        `}
                     </div>
                 </section>
                 
