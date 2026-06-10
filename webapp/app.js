@@ -1947,7 +1947,7 @@ function renderBalanceChartWidget(type) {
     
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
     const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
-    const privacyStyle = shouldBlurDollars ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : '';
+    const privacyStyle = shouldBlurDollars ? 'style="filter: blur(14px); transition: filter 0.2s ease;"' : '';
     const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
     
     const pointsJsonEsc = encodeURIComponent(JSON.stringify(chartPoints));
@@ -2150,9 +2150,9 @@ function renderDashboardView() {
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
     const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
     
-    const privacyStyle = shouldBlurDollars ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
+    const privacyStyle = shouldBlurDollars ? 'style="filter: blur(14px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
     const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
-    const privacyHoverHandlers = shouldBlurDollars ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(5px)')"` : '';
+    const privacyHoverHandlers = shouldBlurDollars ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(14px)')"` : '';
 
     function renderDashboardColumn(type) {
         const isCryptoType = type === 'crypto';
@@ -2542,7 +2542,7 @@ function renderTradesView() {
                     const isExpanded = STATE.expanded_trade_id === trade.id;
                     
                     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-                    const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
+                    const inlineBlur = isPrivacyOn ? 'style="filter: blur(14px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(14px)\'"' : '';
                     
                     let progressBarHtml = '';
                     if (isExpanded && trade.tp_price > 0 && trade.sl_price > 0) {
@@ -2670,7 +2670,7 @@ function renderTradesView() {
                     const isLong = t.side === 'LONG' || t.side === 'l' || t.side === 'long';
                     
                     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-                    const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
+                    const inlineBlur = isPrivacyOn ? 'style="filter: blur(14px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(14px)\'"' : '';
                     
                     return `
                         <div class="glass-card p-4 rounded-lg flex justify-between items-center border border-white/5">
@@ -2929,7 +2929,7 @@ function renderHistoryView() {
                         const dollarStr = (t.net_pnl || 0) >= 0 ? `+$${Math.abs(t.net_pnl || 0).toFixed(2)}` : `-$${Math.abs(t.net_pnl || 0).toFixed(2)}`;
                         
                         const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-                        const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
+                        const inlineBlur = isPrivacyOn ? 'style="filter: blur(14px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(14px)\'"' : '';
                         
                         const assetIcon = t.type === 'stock' ? '🦙' : '🪙';
                         
@@ -3111,7 +3111,7 @@ function renderStatsView() {
     const stockNetPnlPct = stock.overall_pnl_pct + stock.unrealized_pnl_pct;
     
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-    const inlineBlur = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(5px)\'"' : '';
+    const inlineBlur = isPrivacyOn ? 'style="filter: blur(14px); transition: filter 0.2s ease;" onmouseenter="this.style.filter=\'none\'" onmouseleave="this.style.filter=\'blur(14px)\'"' : '';
     
     return `
         ${renderHeader()}
@@ -3898,9 +3898,9 @@ function renderSignalCard(sig, isLanding = false) {
     const isPremium = STATE.user && STATE.user.is_premium;
     const isExpanded = !isLanding && isPremium && String(STATE.expanded_signal_id) === String(sig.id);
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-    const privacyStyle = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
+    const privacyStyle = isPrivacyOn ? 'style="filter: blur(14px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
     const privacyClass = isPrivacyOn ? 'privacy-blur' : '';
-    const privacyHoverHandlers = isPrivacyOn ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(5px)')"` : '';
+    const privacyHoverHandlers = isPrivacyOn ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(14px)')"` : '';
     
     const getSignalAge = (openTime) => {
         if (!openTime) return 'N/A';
@@ -4037,7 +4037,7 @@ function renderSignalCard(sig, isLanding = false) {
 
 function renderClosedSignalCard(sig) {
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-    const privacyStyle = isPrivacyOn ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
+    const privacyStyle = isPrivacyOn ? 'style="filter: blur(14px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
     const privacyClass = isPrivacyOn ? 'privacy-blur' : '';
     
     const entry = sig.entry_price || 0;
