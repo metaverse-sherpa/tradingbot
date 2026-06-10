@@ -136,3 +136,50 @@ def settings_strategy():
         
     update_web_user_strategy(g.user["id"], strategy_type, strategy_name)
     return jsonify({"message": f"Active {strategy_type} strategy updated to {strategy_name}"}), 200
+
+@settings_bp.route('/api/settings/zk-keys', methods=['POST'])
+@require_auth
+def settings_zk_keys():
+    data = request.json or {}
+    public_key = data.get("public_key", "").strip()
+    encrypted_private_key = data.get("encrypted_private_key", "").strip()
+    
+    if not public_key or not encrypted_private_key:
+        return jsonify({"error": "Public key and encrypted private key are required"}), 400
+        
+    with database.db_session() as conn:
+        c = conn.cursor()
+        c.execute('UPDATE WebUsers SET public_key = ?, encrypted_private_key = ? WHERE id = ?', (public_key, encrypted_private_key, g.user["id"]))
+    return jsonify({"message": "Zero-knowledge keys registered successfully"}), 200
+
+@settings_bp.route('/api/settings/zk-keys', methods=['GET'])
+@require_auth
+def get_zk_keys():
+    with database.db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT public_key, encrypted_private_key FROM WebUsers WHERE id = ?', (g.user["id"],))
+        row = c.fetchone()
+    
+    if not row:
+        return jsonify({"public_key": None, "encrypted_private_key": None}), 200
+    return jsonify({
+        "public_key": row[0],
+        "encrypted_private_key": row[1]
+    }), 200
+
+@settings_bp.route('/api/user/balance-history', methods=['GET'])
+@require_auth
+def get_balance_history():
+    with database.db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT timestamp, encrypted_crypto_balance, encrypted_stock_balance FROM PortfolioBalanceHistory WHERE user_id = ? ORDER BY timestamp ASC', (g.user["id"],))
+        rows = c.fetchall()
+        
+    history = []
+    for r in rows:
+        history.append({
+            "timestamp": r[0],
+            "encrypted_crypto_balance": r[1],
+            "encrypted_stock_balance": r[2]
+        })
+    return jsonify(history), 200

@@ -121,6 +121,41 @@ def encrypt(data):
 def decrypt(data):
     return cipher_suite.decrypt(data.encode()).decode()
 
+def encrypt_with_public_key(public_key_pem: str, plaintext: str) -> str:
+    """
+    Encrypts plaintext using the user's public key (PEM/SPKI base64 format).
+    Returns base64 encoded ciphertext.
+    """
+    if not public_key_pem or not plaintext:
+        return ""
+    try:
+        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+        import base64
+
+        pem_data = public_key_pem.strip()
+        if not pem_data.startswith("-----BEGIN PUBLIC KEY-----"):
+            # Format raw SPKI base64 into standard PEM
+            base64_clean = "".join(pem_data.split())
+            lines = [base64_clean[i:i+64] for i in range(0, len(base64_clean), 64)]
+            pem_data = "-----BEGIN PUBLIC KEY-----\n" + "\n".join(lines) + "\n-----END PUBLIC KEY-----"
+
+        pub_key = load_pem_public_key(pem_data.encode())
+        
+        ciphertext = pub_key.encrypt(
+            plaintext.encode(),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        return base64.b64encode(ciphertext).decode('utf-8')
+    except Exception as e:
+        print(f"Encryption error: {e}")
+        return ""
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DB_PATH = os.path.join(BASE_DIR, 'bot_users.db')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
@@ -408,6 +443,16 @@ def init_db():
                 referral_reward_triggered BOOLEAN DEFAULT 0
             )''')
 
+        if "PortfolioBalanceHistory" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS PortfolioBalanceHistory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                timestamp INTEGER NOT NULL,
+                encrypted_crypto_balance TEXT,
+                encrypted_stock_balance TEXT,
+                FOREIGN KEY(user_id) REFERENCES WebUsers(id)
+            )''')
+
         # Migration: Ensure WebUsers has additional columns
         c.execute("PRAGMA table_info(WebUsers)")
         existing_web_cols_2 = {row['name'] for row in c.fetchall()}
@@ -418,7 +463,9 @@ def init_db():
             "referral_reward_triggered": "BOOLEAN DEFAULT 0",
             "email_notifications": "INTEGER DEFAULT 1",
             "email_frequency": "TEXT DEFAULT 'realtime'",
-            "browser_notifications": "INTEGER DEFAULT 1"
+            "browser_notifications": "INTEGER DEFAULT 1",
+            "public_key": "TEXT",
+            "encrypted_private_key": "TEXT"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:

@@ -20,6 +20,288 @@ function clearQueryParamFromUrl(paramName) {
     }
 }
 
+const ZKCrypto = {
+    async deriveMasterKey(password, email) {
+        const encoder = new TextEncoder();
+        const baseKey = await window.crypto.subtle.importKey(
+            "raw",
+            encoder.encode(password),
+            "PBKDF2",
+            false,
+            ["deriveKey"]
+        );
+        const salt = encoder.encode(email + "_sherpa_salt");
+        return window.crypto.subtle.deriveKey(
+            {
+                name: "PBKDF2",
+                salt: salt,
+                iterations: 100000,
+                hash: "SHA-256"
+            },
+            baseKey,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"]
+        );
+    },
+
+    async encryptPrivateKey(privateKeyJwk, aesKey) {
+        const encoder = new TextEncoder();
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encrypted = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            aesKey,
+            encoder.encode(JSON.stringify(privateKeyJwk))
+        );
+        const ivBase64 = btoa(String.fromCharCode(...iv));
+        const ciphertextBase64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+        return ivBase64 + ":" + ciphertextBase64;
+    },
+
+    async decryptPrivateKey(encryptedStr, aesKey) {
+        const parts = encryptedStr.split(":");
+        if (parts.length !== 2) throw new Error("Invalid encrypted key format");
+        const iv = new Uint8Array(atob(parts[0]).split("").map(c => c.charCodeAt(0)));
+        const ciphertext = new Uint8Array(atob(parts[1]).split("").map(c => c.charCodeAt(0)));
+        
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv },
+            aesKey,
+            ciphertext
+        );
+        const decoder = new TextDecoder();
+        return JSON.parse(decoder.decode(decrypted));
+    },
+
+    async generateRSAKeyPair() {
+        return window.crypto.subtle.generateKey(
+            {
+                name: "RSA-OAEP",
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: "SHA-256"
+            },
+            true,
+            ["encrypt", "decrypt"]
+        );
+    },
+
+    async exportPublicKeyPEM(publicKey) {
+        const exported = await window.crypto.subtle.exportKey("spki", publicKey);
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(exported)));
+        let pem = "-----BEGIN PUBLIC KEY-----\n";
+        for (let i = 0; i < b64.length; i += 64) {
+            pem += b64.substring(i, i + 64) + "\n";
+        }
+        pem += "-----END PUBLIC KEY-----";
+        return pem;
+    },
+
+    async importPrivateKey(privateKeyJwk) {
+        return window.crypto.subtle.importKey(
+            "jwk",
+            privateKeyJwk,
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            false,
+            ["decrypt"]
+        );
+    },
+
+    async decryptRSA(encryptedBase64, rsaPrivateKey) {
+        const binary = atob(encryptedBase64);
+        const array = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            array[i] = binary.charCodeAt(i);
+        }
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "RSA-OAEP" },
+            rsaPrivateKey,
+            array
+        );
+        const decoder = new TextDecoder();
+        return decoder.decode(decrypted);
+    }
+};
+
+async function setupZKKeys(email, password) {
+    try {
+        const keys = await apiRequest('/settings/zk-keys', 'GET');
+        
+        let passphrase = password;
+        if (!passphrase) {
+            passphrase = localStorage.getItem('zk_passphrase');
+            if (!passphrase) {
+                passphrase = btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(24))));
+                localStorage.setItem('zk_passphrase', passphrase);
+            }
+        }
+        let aesKey = await ZKCrypto.deriveMasterKey(passphrase, email);
+        
+        if (keys && keys.public_key && keys.encrypted_private_key) {
+            try {
+                const pKeyJwk = await ZKCrypto.decryptPrivateKey(keys.encrypted_private_key, aesKey);
+                sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));
+                STATE.rsa_private_key = await ZKCrypto.importPrivateKey(pKeyJwk);
+                console.log("🔒 Decrypted and loaded pre-existing ZK keys.");
+                return;
+            } catch (decErr) {
+                console.error("Could not decrypt pre-existing private key:", decErr);
+            }
+        }
+        
+        console.log("🔒 Generating new ZK Keypair...");
+        const keypair = await ZKCrypto.generateRSAKeyPair();
+        const pubKeyPem = await ZKCrypto.exportPublicKeyPEM(keypair.publicKey);
+        const pKeyJwk = await window.crypto.subtle.exportKey("jwk", keypair.privateKey);
+        sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));
+        const encryptedPrivKey = await ZKCrypto.encryptPrivateKey(pKeyJwk, aesKey);
+        
+        await apiRequest('/settings/zk-keys', 'POST', {
+            public_key: pubKeyPem,
+            encrypted_private_key: encryptedPrivKey
+        });
+        
+        STATE.rsa_private_key = keypair.privateKey;
+        console.log("🔒 Generated and registered new ZK keypair.");
+    } catch (err) {
+        console.error("ZK Cryptography setup failed:", err);
+    }
+}
+
+async function decryptAndProcessBalanceHistory() {
+    if (!STATE.raw_balance_history || !STATE.raw_balance_history.length) {
+        STATE.balance_history = [];
+        return;
+    }
+    if (!STATE.rsa_private_key) {
+        if (STATE.user && STATE.user.email) {
+            await setupZKKeys(STATE.user.email, null);
+        }
+    }
+    if (!STATE.rsa_private_key) {
+        console.warn("🔐 Decryption key not available for balance history.");
+        STATE.balance_history = null;
+        return;
+    }
+    
+    const decrypted = [];
+    for (const item of STATE.raw_balance_history) {
+        let cryptoBal = 0;
+        let stockBal = 0;
+        
+        try {
+            if (item.encrypted_crypto_balance) {
+                const dec = await ZKCrypto.decryptRSA(item.encrypted_crypto_balance, STATE.rsa_private_key);
+                cryptoBal = parseFloat(dec) || 0;
+            }
+        } catch (err) {
+            console.error("Failed to decrypt crypto balance:", err);
+        }
+        
+        try {
+            if (item.encrypted_stock_balance) {
+                const dec = await ZKCrypto.decryptRSA(item.encrypted_stock_balance, STATE.rsa_private_key);
+                stockBal = parseFloat(dec) || 0;
+            }
+        } catch (err) {
+            console.error("Failed to decrypt stock balance:", err);
+        }
+        
+        decrypted.push({
+            timestamp: item.timestamp,
+            crypto: cryptoBal,
+            stock: stockBal,
+            total: cryptoBal + stockBal
+        });
+    }
+    STATE.balance_history = decrypted;
+}
+
+window.handleChartHover = function(e, type, pointsJson) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const svgWidth = 500;
+    const scale = svgWidth / rect.width;
+    const svgX = x * scale;
+    
+    const points = JSON.parse(decodeURIComponent(pointsJson));
+    if (!points || !points.length) return;
+    
+    let closest = null;
+    let minDist = Infinity;
+    
+    const paddingLeft = 55;
+    const paddingRight = 20;
+    const minX = Math.min(...points.map(p => p.x));
+    const maxX = Math.max(...points.map(p => p.x));
+    
+    points.forEach((p, idx) => {
+        let px = paddingLeft + (points.length <= 1 ? (svgWidth - paddingLeft - paddingRight) / 2 : ((p.x - minX) / (maxX - minX)) * (svgWidth - paddingLeft - paddingRight));
+        let dist = Math.abs(px - svgX);
+        if (dist < minDist) {
+            minDist = dist;
+            closest = { ...p, index: idx, px: px };
+        }
+    });
+    
+    if (closest) {
+        const markerLine = document.getElementById(`chart-marker-line-${type}`);
+        const markerDot = document.getElementById(`chart-marker-dot-${type}`);
+        const tooltip = document.getElementById(`chart-tooltip-${type}`);
+        
+        if (markerLine && markerDot && tooltip) {
+            markerLine.setAttribute('x1', closest.px);
+            markerLine.setAttribute('x2', closest.px);
+            markerLine.classList.remove('hidden');
+            
+            const minYVal = Math.min(...points.map(p => p.y));
+            let maxYVal = Math.max(...points.map(p => p.y));
+            if (minYVal === maxYVal) {
+                maxYVal = maxYVal * 1.1;
+            } else {
+                const pad = (maxYVal - minYVal) * 0.15;
+                maxYVal = maxYVal + pad;
+            }
+            
+            const yMinBound = Math.max(0, minYVal - (maxYVal - minYVal) * 0.15);
+            const py = 180 - 25 - ((closest.y - yMinBound) / (maxYVal - yMinBound || 1)) * (180 - 20 - 25);
+            
+            markerDot.setAttribute('cx', closest.px);
+            markerDot.setAttribute('cy', py);
+            markerDot.classList.remove('hidden');
+            
+            const dateStr = new Date(closest.x * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+            const valStr = isPrivacyOn ? '••••••' : '$' + closest.y.toFixed(2);
+            
+            tooltip.innerHTML = `
+                <div class="font-bold text-xs text-on-surface">${valStr}</div>
+                <div class="text-[10px] text-on-surface-variant">${dateStr}</div>
+            `;
+            
+            const tooltipWidth = tooltip.offsetWidth || 80;
+            let tooltipX = (closest.px / svgWidth) * rect.width - tooltipWidth / 2;
+            if (tooltipX < 0) tooltipX = 0;
+            if (tooltipX + tooltipWidth > rect.width) tooltipX = rect.width - tooltipWidth;
+            
+            tooltip.style.left = `${tooltipX}px`;
+            tooltip.style.top = `10px`;
+            tooltip.style.opacity = '1';
+        }
+    }
+};
+
+window.handleChartLeave = function(type) {
+    const markerLine = document.getElementById(`chart-marker-line-${type}`);
+    const markerDot = document.getElementById(`chart-marker-dot-${type}`);
+    const tooltip = document.getElementById(`chart-tooltip-${type}`);
+    
+    if (markerLine) markerLine.classList.add('hidden');
+    if (markerDot) markerDot.classList.add('hidden');
+    if (tooltip) tooltip.style.opacity = '0';
+};
+
+
 let STATE = {
     user: null,
     crypto_balance: 0.0,
@@ -422,6 +704,7 @@ async function handleGoogleCredentialResponse(response) {
     if (res) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
+        await setupZKKeys(res.user.email, null);
         if (referrer) {
             showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
             localStorage.removeItem('referred_by');
@@ -438,6 +721,16 @@ function navigate(hash) {
 
 async function handleRoute() {
     window.scrollTo(0, 0);
+
+    const savedPrivKey = sessionStorage.getItem('zk_private_key_jwk');
+    if (savedPrivKey && !STATE.rsa_private_key) {
+        try {
+            STATE.rsa_private_key = await ZKCrypto.importPrivateKey(JSON.parse(savedPrivKey));
+            console.log("🔒 Restored ZK private key from sessionStorage.");
+        } catch (err) {
+            console.error("Failed to restore ZK key:", err);
+        }
+    }
 
     const token = localStorage.getItem('session_token');
     const isFirstLoad = token && !STATE.user;
@@ -587,14 +880,16 @@ async function handleRoute() {
         const statsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats') : Promise.resolve(null);
         const hasLinkedKeys = STATE.user && (STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys);
         const freeStatsPromise = (!STATE.user || !STATE.user.is_premium || !hasLinkedKeys) ? apiRequest('/stats/free') : Promise.resolve(null);
+        const balHistoryPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/balance-history') : Promise.resolve(null);
 
         Promise.all([
             apiRequest('/user/balance'),
             apiRequest('/signals/active'),
             apiRequest('/trades/open'),
             statsPromise,
-            freeStatsPromise
-        ]).then(([bal, sigs, open, stats, freeStats]) => {
+            freeStatsPromise,
+            balHistoryPromise
+        ]).then(async ([bal, sigs, open, stats, freeStats, balHist]) => {
             STATE.is_loading_balance = false;
             STATE.is_loading_active_signals = false;
             let stateChanged = true; // Always re-render to remove the blur
@@ -649,6 +944,10 @@ async function handleRoute() {
             }
             if (freeStats) {
                 STATE.free_stats = freeStats;
+            }
+            if (balHist) {
+                STATE.raw_balance_history = balHist;
+                await decryptAndProcessBalanceHistory();
             }
             
             // 3. Silently re-render the dashboard to "hydrate" the widgets if the user is still on it
@@ -1490,6 +1789,185 @@ function renderLandingView() {
     `;
 }
 
+function renderBalanceChartWidget(type) {
+    const isCrypto = type === 'crypto';
+    const color = isCrypto ? '#3cd7ff' : '#ffdb3c';
+    
+    // Check if balance history is null (locked) or empty
+    if (STATE.balance_history === null) {
+        return `
+            <section class="glass-card rounded-xl p-card-padding border border-white/5 bg-surface-container/20 flex flex-col items-center justify-center min-h-[160px] text-center">
+                <span class="material-symbols-outlined text-primary text-3xl mb-2 animate-pulse">lock</span>
+                <h4 class="font-label-md text-label-md text-on-surface font-semibold uppercase tracking-wider">Secure History Locked</h4>
+                <p class="text-[11px] text-on-surface-variant max-w-[280px] mt-1 leading-normal">
+                    Balances are encrypted using end-to-end ZK keys. Please sign out and sign back in with your password to decrypt.
+                </p>
+            </section>
+        `;
+    }
+    
+    // Extract points
+    const rawPoints = (STATE.balance_history || []).map(item => ({
+        x: item.timestamp,
+        y: isCrypto ? item.crypto : item.stock
+    }));
+    
+    let isPreview = false;
+    let chartPoints = [];
+    const currentVal = isCrypto ? STATE.crypto_balance : STATE.stock_balance;
+    
+    if (rawPoints.length >= 2) {
+        chartPoints = rawPoints;
+    } else {
+        isPreview = true;
+        // Dotted fallback preview curve with logged points
+        const now = Math.floor(Date.now() / 1000);
+        const daySec = 86400;
+        const baseVal = currentVal || 5000;
+        chartPoints = [
+            { x: now - 4 * daySec, y: baseVal * 0.94 },
+            { x: now - 3 * daySec, y: baseVal * 0.98 },
+            { x: now - 2 * daySec, y: baseVal * 0.93 },
+            { x: now - 1 * daySec, y: baseVal * 1.01 },
+            { x: now, y: baseVal }
+        ];
+    }
+    
+    const xs = chartPoints.map(p => p.x);
+    const ys = chartPoints.map(p => p.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    let minY = Math.min(...ys);
+    let maxY = Math.max(...ys);
+    
+    if (minY === maxY) {
+        minY = minY * 0.9;
+        maxY = maxY * 1.1;
+    } else {
+        const pad = (maxY - minY) * 0.15;
+        minY = Math.max(0, minY - pad);
+        maxY = maxY + pad;
+    }
+    
+    const svgWidth = 500;
+    const svgHeight = 180;
+    const padding = { top: 20, right: 20, bottom: 25, left: 55 };
+    
+    const getX = (val) => {
+        if (maxX === minX) return padding.left + (svgWidth - padding.left - padding.right) / 2;
+        return padding.left + ((val - minX) / (maxX - minX)) * (svgWidth - padding.left - padding.right);
+    };
+    
+    const getY = (val) => {
+        if (maxY === minY) return padding.top + (svgHeight - padding.top - padding.bottom) / 2;
+        return svgHeight - padding.bottom - ((val - minY) / (maxY - minY)) * (svgHeight - padding.top - padding.bottom);
+    };
+    
+    // Build path points
+    const svgPoints = chartPoints.map(p => ({ x: getX(p.x), y: getY(p.y) }));
+    
+    let pathD = "";
+    if (svgPoints.length > 0) {
+        pathD = `M ${svgPoints[0].x} ${svgPoints[0].y}`;
+        for (let i = 1; i < svgPoints.length; i++) {
+            pathD += ` L ${svgPoints[i].x} ${svgPoints[i].y}`;
+        }
+    }
+    
+    let fillD = "";
+    if (svgPoints.length > 0) {
+        fillD = `${pathD} L ${svgPoints[svgPoints.length - 1].x} ${svgHeight - padding.bottom} L ${svgPoints[0].x} ${svgHeight - padding.bottom} Z`;
+    }
+    
+    // Draw horizontal grid lines (3 levels)
+    const gridLevels = 3;
+    const gridLines = [];
+    for (let i = 0; i < gridLevels; i++) {
+        const ratio = i / (gridLevels - 1);
+        const yVal = minY + ratio * (maxY - minY);
+        const yPos = getY(yVal);
+        
+        let label = "";
+        if (yVal >= 1000000) {
+            label = (yVal / 1000000).toFixed(1) + 'M';
+        } else if (yVal >= 1000) {
+            label = (yVal / 1000).toFixed(1) + 'k';
+        } else {
+            label = yVal.toFixed(0);
+        }
+        gridLines.push({ y: yPos, label: label });
+    }
+    
+    // Formatting date axis labels (start & end)
+    const startStr = new Date(minX * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const endStr = new Date(maxX * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    
+    const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+    const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
+    const privacyStyle = shouldBlurDollars ? 'style="filter: blur(5px); transition: filter 0.2s ease;"' : '';
+    const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
+    
+    const pointsJsonEsc = encodeURIComponent(JSON.stringify(chartPoints));
+    
+    return `
+        <section class="glass-card rounded-xl p-4 relative overflow-hidden border border-white/5 bg-gradient-to-b from-surface-container-low/20 to-surface-container/10 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary text-lg">show_chart</span>
+                    <h4 class="font-label-md text-label-md text-on-surface font-semibold">Equity Curve</h4>
+                </div>
+                ${isPreview ? `
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-primary/20 text-primary border border-primary/30 animate-pulse">
+                    Preview Mode
+                </span>
+                ` : `
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-tertiary/20 text-tertiary border border-tertiary/30">
+                    Live
+                </span>
+                `}
+            </div>
+            
+            <div class="relative w-full h-[180px] select-none" onmouseleave="window.handleChartLeave('${type}')">
+                <!-- Tooltip box -->
+                <div id="chart-tooltip-${type}" class="absolute bg-surface-container/90 border border-white/15 rounded-md px-2.5 py-1 text-center pointer-events-none opacity-0 shadow-lg transition-opacity duration-150 z-20 min-w-[70px]"></div>
+                
+                <!-- SVG Canvas -->
+                <svg viewBox="0 0 500 180" class="w-full h-full overflow-visible">
+                    <defs>
+                        <linearGradient id="gradient-${type}" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+                            <stop offset="100%" stop-color="${color}" stop-opacity="0.0"/>
+                        </linearGradient>
+                    </defs>
+                    
+                    <!-- Horizontal Grid Lines & Labels -->
+                    ${gridLines.map(line => `
+                        <line x1="${padding.left}" y1="${line.y}" x2="${svgWidth - padding.right}" y2="${line.y}" stroke="rgba(255,255,255,0.06)" stroke-width="1" />
+                        <text x="${padding.left - 8}" y="${line.y + 4}" fill="rgba(255,255,255,0.4)" font-size="9" text-anchor="end" class="${privacyClass}" ${privacyStyle}>$${line.label}</text>
+                    `).join('')}
+                    
+                    <!-- Fill under curve -->
+                    ${fillD ? `<path d="${fillD}" fill="url(#gradient-${type})" />` : ''}
+                    
+                    <!-- Line curve -->
+                    ${pathD ? `<path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" ${isPreview ? 'stroke-dasharray="4,4"' : ''} stroke-linecap="round" stroke-linejoin="round" />` : ''}
+                    
+                    <!-- Hover elements -->
+                    <line id="chart-marker-line-${type}" x1="0" y1="${padding.top}" x2="0" y2="${svgHeight - padding.bottom}" stroke="rgba(255,255,255,0.2)" stroke-dasharray="3,3" class="hidden" />
+                    <circle id="chart-marker-dot-${type}" r="5" fill="${color}" stroke="#0c0e12" stroke-width="1.5" class="hidden shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+                    
+                    <!-- X-Axis Labels -->
+                    <text x="${padding.left}" y="${svgHeight - 6}" fill="rgba(255,255,255,0.4)" font-size="9" text-anchor="start">${startStr}</text>
+                    <text x="${svgWidth - padding.right}" y="${svgHeight - 6}" fill="rgba(255,255,255,0.4)" font-size="9" text-anchor="end">${endStr}</text>
+                    
+                    <!-- Interactive Hover Overlay Rect -->
+                    <rect x="${padding.left}" y="${padding.top}" width="${svgWidth - padding.left - padding.right}" height="${svgHeight - padding.top - padding.bottom}" fill="transparent" class="cursor-crosshair" onmousemove="window.handleChartHover(event, '${type}', '${pointsJsonEsc}')" />
+                </svg>
+            </div>
+        </section>
+    `;
+}
+
 function renderDashboardView() {
     if (STATE.is_loading_dashboard) {
         return `
@@ -1691,6 +2169,8 @@ function renderDashboardView() {
                         </div>
                     </div>
                 </section>
+                
+                ${renderBalanceChartWidget(type)}
                 
                 <!-- Quick Stats -->
                 <section class="grid grid-cols-2 gap-stack-gap">
@@ -3995,6 +4475,7 @@ async function handleEmailLogin(e) {
     if (res) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
+        await setupZKKeys(email, password);
         showToast("Welcome back, Sherpa trader!");
         navigate('#/dashboard');
     }
@@ -4065,6 +4546,7 @@ async function handleEmailRegister(e) {
     if (res) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
+        await setupZKKeys(email, password);
         showToast("Account successfully registered!");
         if (refCode) {
             showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");

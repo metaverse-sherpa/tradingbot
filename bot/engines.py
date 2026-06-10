@@ -1004,6 +1004,33 @@ async def email_summary_engine(application):
                                     "losses": stock_losses
                                 })
                             user_stats["stock"] = stock_data
+                            
+                            # Record daily balance history for premium user using ZK public key
+                            pub_key = ru.get("public_key")
+                            if pub_key:
+                                encrypted_crypto = ""
+                                encrypted_stock = ""
+                                if crypto_linked:
+                                    raw_crypto_bal = str(crypto_equity + crypto_unrealized)
+                                    encrypted_crypto = database.encrypt_with_public_key(pub_key, raw_crypto_bal)
+                                if stock_linked:
+                                    raw_stock_bal = str(stock_equity)
+                                    encrypted_stock = database.encrypt_with_public_key(pub_key, raw_stock_bal)
+                                    
+                                try:
+                                    with database.db_session() as conn:
+                                        c = conn.cursor()
+                                        now_sec = int(time.time())
+                                        twelve_hours_ago = now_sec - 12 * 3600
+                                        c.execute("SELECT id FROM PortfolioBalanceHistory WHERE user_id = ? AND timestamp >= ?", (ru["id"], twelve_hours_ago))
+                                        existing_history = c.fetchone()
+                                        
+                                        if existing_history:
+                                            c.execute("UPDATE PortfolioBalanceHistory SET timestamp = ?, encrypted_crypto_balance = ?, encrypted_stock_balance = ? WHERE id = ?", (now_sec, encrypted_crypto, encrypted_stock, existing_history[0]))
+                                        else:
+                                            c.execute("INSERT INTO PortfolioBalanceHistory (user_id, timestamp, encrypted_crypto_balance, encrypted_stock_balance) VALUES (?, ?, ?, ?)", (ru["id"], now_sec, encrypted_crypto, encrypted_stock))
+                                except Exception as db_err:
+                                    logger.error(f"Error saving portfolio balance history: {db_err}")
                     
                     html_content = get_daily_summary_html(signals_opened, signals_closed, is_premium_user=is_prem, user_stats=user_stats)
                     send_alert_email(ru["email"], subject, html_content)
