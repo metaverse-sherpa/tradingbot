@@ -746,16 +746,20 @@ async function handleRoute() {
     if (refCode) {
         localStorage.setItem('referred_by', refCode);
         clearQueryParamFromUrl('ref');
-        navigate('#/login');
-        return;
+        if (hash !== '#/login') {
+            navigate('#/login');
+            return;
+        }
     }
 
     const giftCode = getQueryParam('gift');
     if (giftCode) {
         localStorage.setItem('pending_gift_code', giftCode);
         clearQueryParamFromUrl('gift');
-        navigate('#/landing');
-        return;
+        if (hash !== '#/landing') {
+            navigate('#/landing');
+            return;
+        }
     }
 
     const tgSync = getQueryParam('tg_sync');
@@ -1665,7 +1669,7 @@ function renderLandingView() {
                 <p class="text-xs text-on-surface-variant max-w-[340px] leading-relaxed">
                     You need to sign up for an account in order to take advantage of the free premium access. Once registered, your Premium days will be activated automatically.
                 </p>
-                <button onclick="setLandingAuthMode('register'); setTimeout(() => { document.getElementById('reg-name')?.focus(); }, 50);" class="mt-1 px-5 py-2.5 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold text-xs uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md cursor-pointer">
+                <button onclick="document.getElementById('landing-auth-panel')?.scrollIntoView({ behavior: 'smooth' });" class="mt-1 px-5 py-2.5 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold text-xs uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md cursor-pointer">
                     Claim Premium Access Now
                 </button>
             </div>
@@ -1680,7 +1684,7 @@ function renderLandingView() {
             
             <div class="relative">
                 <!-- Sticky CTA Panel -->
-                <div class="sticky top-20 z-20 mb-6 pointer-events-none">
+                <div id="landing-auth-panel" class="sticky top-20 z-20 mb-6 pointer-events-none">
                     <div class="p-5 rounded-2xl border-2 border-primary/60 text-center shadow-[0_0_30px_rgba(60,215,255,0.4)] bg-gradient-to-b from-[#0c1f30]/95 to-[#050a10]/95 backdrop-blur-xl pointer-events-auto relative overflow-hidden mx-auto max-w-[380px] transition-all hover:border-primary hover:shadow-[0_0_40px_rgba(60,215,255,0.6)]">
                         <div class="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-primary via-tertiary to-secondary-container"></div>
                         <div class="absolute -inset-1 bg-gradient-to-r from-primary/30 via-transparent to-tertiary/30 blur-2xl z-0 pointer-events-none"></div>
