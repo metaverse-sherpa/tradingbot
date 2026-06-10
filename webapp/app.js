@@ -754,7 +754,7 @@ async function handleRoute() {
     if (giftCode) {
         localStorage.setItem('pending_gift_code', giftCode);
         clearQueryParamFromUrl('gift');
-        navigate('#/login');
+        navigate('#/landing');
         return;
     }
 
@@ -1652,9 +1652,30 @@ function renderLandingView() {
         ` : STATE.signals.map(s => renderSignalCard(s, true)).join('');
     }
 
+    const pendingGiftCode = localStorage.getItem('pending_gift_code');
+    const giftBannerHtml = (pendingGiftCode && !STATE.user) ? `
+        <div class="relative overflow-hidden rounded-2xl mb-6 p-6 bg-gradient-to-br from-[#ffdb3c]/20 via-[#1b1a0e] to-primary/20 border border-[#ffdb3c]/40 text-center shadow-[0_0_30px_rgba(255,219,60,0.25)] animate-fade-in z-20">
+            <div class="absolute -right-10 -top-10 w-48 h-48 bg-[#ffdb3c]/20 rounded-full blur-[60px] pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col items-center gap-3">
+                <span class="text-[10px] flex items-center gap-1.5 text-[#ffdb3c] font-bold uppercase tracking-widest bg-[#ffdb3c]/10 px-3 py-1 rounded-full border border-[#ffdb3c]/25">
+                    <span class="material-symbols-outlined text-[12px] animate-bounce">redeem</span>
+                    Gift Code Detected!
+                </span>
+                <h3 class="font-bold text-lg text-white">Unlock Free Premium Access!</h3>
+                <p class="text-xs text-on-surface-variant max-w-[340px] leading-relaxed">
+                    You need to sign up for an account in order to take advantage of the free premium access. Once registered, your Premium days will be activated automatically.
+                </p>
+                <button onclick="setLandingAuthMode('register'); setTimeout(() => { document.getElementById('reg-name')?.focus(); }, 50);" class="mt-1 px-5 py-2.5 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold text-xs uppercase rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md cursor-pointer">
+                    Claim Premium Access Now
+                </button>
+            </div>
+        </div>
+    ` : '';
+
     return `
         ${renderHeader()}
         <main class="pt-20 px-container-margin pb-24 max-w-[500px] mx-auto relative flex flex-col gap-2">
+            ${giftBannerHtml}
             ${headerHtml}
             
             <div class="relative">
@@ -3641,9 +3662,16 @@ function renderSettingsView() {
                     <span class="material-symbols-outlined">workspace_premium</span> Admin Gifting Center
                 </h3>
                 <p class="text-xs text-on-surface-variant leading-relaxed">
-                    Generate single-use premium gift links that can be shared with anyone. The recipient can redeem the code either on the Web App or the Telegram Bot to get 1 Month of Premium.
+                    Generate single-use premium gift links that can be shared with anyone. The recipient can redeem the code either on the Web App or the Telegram Bot.
                 </p>
                 <div id="gift-generation-container" class="space-y-3">
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-on-surface-variant">Gift Duration</span>
+                            <span id="gift-duration-val" class="text-[#ffdb3c] font-bold">1 Month</span>
+                        </div>
+                        <input id="gift-duration-slider" class="w-full accent-primary bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer" type="range" min="1" max="12" step="1" value="1" oninput="document.getElementById('gift-duration-val').innerText = this.value + (this.value == 1 ? ' Month' : ' Months');"/>
+                    </div>
                     <button onclick="generateAdminGiftCode()" class="w-full h-11 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer">
                         <span class="material-symbols-outlined text-lg">redeem</span>
                         <span>Generate Universal Gift Link</span>
@@ -5276,6 +5304,9 @@ window.generateAdminGiftCode = async function() {
     const container = document.getElementById('gift-generation-container');
     if (!container) return;
     
+    const slider = document.getElementById('gift-duration-slider');
+    const months = slider ? parseInt(slider.value) : 1;
+    
     container.innerHTML = `
         <div class="flex items-center justify-center p-4">
             <div class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -5283,7 +5314,7 @@ window.generateAdminGiftCode = async function() {
     `;
     
     try {
-        const res = await apiRequest('/admin/generate-gift', 'POST', {});
+        const res = await apiRequest('/admin/generate-gift', 'POST', { months });
         if (res && res.code) {
             container.innerHTML = `
                 <div class="space-y-3 animate-fade-in text-left mt-2">

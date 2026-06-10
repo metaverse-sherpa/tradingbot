@@ -357,7 +357,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bot_username = (await context.bot.get_me()).username
             
             # Universal gift or targeted gift links
-            web_gift_url = f"https://bot.metaversesherpa.io/#/login?gift={code}"
+            web_gift_url = f"https://bot.metaversesherpa.io/#/landing?gift={code}"
             tg_gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
             
             if target_id:

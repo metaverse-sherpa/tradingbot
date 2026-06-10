@@ -213,10 +213,19 @@ def admin_generate_gift():
         return jsonify({"error": "Unauthorized"}), 403
         
     try:
-        code = database.create_gift_code(target_chat_id=None, target_username=None, days=30)
+        data = request.get_json() or {}
+        try:
+            months = int(data.get("months", 1))
+            if months < 1 or months > 12:
+                months = 1
+        except (ValueError, TypeError):
+            months = 1
+            
+        days = months * 30
+        code = database.create_gift_code(target_chat_id=None, target_username=None, days=days)
         bot_username = os.getenv("TELEGRAM_BOT_USERNAME", "metaverse_sherpa_bot")
         
-        web_gift_url = f"https://bot.metaversesherpa.io/#/login?gift={code}"
+        web_gift_url = f"https://bot.metaversesherpa.io/#/landing?gift={code}"
         tg_gift_url = f"https://t.me/{bot_username}?start=gift_{code}"
         
         return jsonify({
