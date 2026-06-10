@@ -657,6 +657,10 @@ async function handleRoute() {
             }
         });
     } else if (hash === '#/trades') {
+        const tabParam = getQueryParam('tab');
+        if (tabParam === 'crypto' || tabParam === 'stock') {
+            STATE.dashboard_tab = tabParam;
+        }
         STATE.current_view = 'trades';
         // Render instantly using cached data (stale) for maximum responsiveness
         renderView();
