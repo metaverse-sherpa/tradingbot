@@ -1759,6 +1759,24 @@ function renderLandingView() {
                 </div>
             </div>
 
+            <!-- System Architecture Infographic -->
+            <div class="glass-card rounded-xl p-5 border border-white/5 space-y-3 mb-6 relative overflow-hidden group hover:border-primary/20 transition-all">
+                <h3 class="font-bold text-on-surface text-base flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[20px]">map</span>
+                    System Architecture
+                </h3>
+                <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-square flex items-center justify-center cursor-zoom-in group shadow-lg" onclick="window.open('/architecture_infographic.png', '_blank')">
+                    <img src="/architecture_infographic.png" alt="System Architecture Infographic" class="w-full h-full object-cover"/>
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-white text-2xl">zoom_in</span>
+                        <span class="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
+                    </div>
+                </div>
+                <p class="text-[11px] text-on-surface-variant leading-relaxed text-center">
+                    Click the image to view the high-resolution architecture diagram.
+                </p>
+            </div>
+
             <!-- Redesigned Promo Info -->
             ${howItWorksHtml}
             
