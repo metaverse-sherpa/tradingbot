@@ -1821,7 +1821,7 @@ function renderLandingView() {
                                 <span class="material-symbols-outlined text-primary text-base">lock</span> Trade Details Locked
                             </p>
                             <p class="text-[11px] text-on-surface-variant leading-normal">
-                                Create a free account to unlock real-time entry targets, stop losses, and dynamic charts.
+                                <a class="text-primary font-bold cursor-pointer hover:underline" onclick="document.getElementById('landing-auth-panel')?.scrollIntoView({ behavior: 'smooth' });">Create a free account</a> to unlock real-time entry targets, stop losses, and dynamic charts.
                             </p>
                         </div>
                     </div>
