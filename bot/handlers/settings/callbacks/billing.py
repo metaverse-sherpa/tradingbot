@@ -15,7 +15,7 @@ from bot.ui.keyboards import (
 )
 from bot.handlers.settings.helpers import clear_input_states
 
-async def handle_billing_callbacks(update, context, query, chat_id, user) -> bool:
+async def handle_billing_callback(query, update, context, user, chat_id) -> bool:
     if query.data == "activate_with_credits":
         credits = user.get('referral_credits', 0.0)
         if credits < 20.0:

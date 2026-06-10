@@ -25,7 +25,7 @@ import live_bot_multi
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
-async def handle_admin_callbacks(update, context, query, chat_id, user) -> bool:
+async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
     if query.data == "admin_get_link":
         if chat_id != SUPER_ADMIN_ID: return True
         await query.answer()
