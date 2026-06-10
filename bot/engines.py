@@ -45,6 +45,11 @@ from bot.config import (
 )
 from bot.ui.keyboards import get_nav_buttons, build_datetime_entity_message
 
+# Global CCXT markets cache to prevent rate-limiting and redundant loading of contracts
+SHARED_MARKETS = {}
+SHARED_MARKETS_TIME = {}
+SHARED_MARKETS_LOCK = asyncio.Lock()
+
 async def sync_engine(application):
     """
     Sentinel Sync Task (60s loop)
@@ -79,6 +84,15 @@ async def sync_engine(application):
                             "password": user['api_password'],
                             "options": {"defaultType": "swap"},
                         }) as user_ex:
+                            async with SHARED_MARKETS_LOCK:
+                                cache_time = SHARED_MARKETS_TIME.get(ex_id, 0)
+                                if ex_id in SHARED_MARKETS and (time.time() - cache_time) < 900:
+                                    user_ex.markets = SHARED_MARKETS[ex_id]
+                                else:
+                                    await user_ex.load_markets()
+                                    SHARED_MARKETS[ex_id] = user_ex.markets
+                                    SHARED_MARKETS_TIME[ex_id] = time.time()
+                            
                             bal_params = database.get_exchange_balance_params(ex_id)
                             balance = await user_ex.fetch_balance(params=bal_params)
                             equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
