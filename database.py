@@ -126,7 +126,7 @@ def get_exchange_balance_params(exchange_id):
     representing the correct futures/swap trading account.
     """
     if exchange_id == 'bingx':
-        return {"type": "swap"}     # USDT perpetual swaps (swap)
+        return {"standard": True}   # Standard Futures (stdFutures) - requires standard=True
     elif exchange_id == 'bitget':
         return {"type": "swap"}     # USDT perpetual swaps (usdt_futures)
     elif exchange_id == 'mexc':
