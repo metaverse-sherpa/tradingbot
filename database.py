@@ -62,7 +62,8 @@ def get_exchange_client(user):
     ex_id = user.get('exchange_id', 'blofin')
     if ex_id == 'alpaca':
         ex_id = 'blofin'
-    default_type = 'future' if ex_id == 'bingx' else 'swap'
+    futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
+    default_type = 'future' if (ex_id == 'bingx' and futures_type == 'standard') else 'swap'
     config = {
         "apiKey": user["api_key"],
         "secret": user["api_secret"],
@@ -121,12 +122,14 @@ def normalize_symbol(symbol, exchange_id):
 
     return symbol
 
-def get_exchange_balance_params(exchange_id):
+def get_exchange_balance_params(exchange_id, futures_type='standard'):
     """
     Returns the unified CCXT parameters for balance fetching
     representing the correct futures/swap trading account.
     """
     if exchange_id == 'bingx':
+        if futures_type == 'perpetual':
+            return {"type": "swap"}
         return {"standard": True}   # Standard Futures (stdFutures) - requires standard=True
     elif exchange_id == 'bitget':
         return {"type": "swap"}     # USDT perpetual swaps (usdt_futures)
@@ -285,7 +288,8 @@ def init_db():
             ("premium_referrals", "INTEGER DEFAULT 0"),
             ("premium_expired_notified", "BOOLEAN DEFAULT 0"),
             ("had_premium_before", "BOOLEAN DEFAULT 0"),
-            ("referral_reward_triggered", "BOOLEAN DEFAULT 0")
+            ("referral_reward_triggered", "BOOLEAN DEFAULT 0"),
+            ("bingx_futures_type", "TEXT DEFAULT 'standard'")
         ]
         for col_name, col_def in cols:
             if col_name not in existing_cols:
@@ -499,7 +503,8 @@ def init_db():
             "email_frequency": "TEXT DEFAULT 'realtime'",
             "browser_notifications": "INTEGER DEFAULT 1",
             "public_key": "TEXT",
-            "encrypted_private_key": "TEXT"
+            "encrypted_private_key": "TEXT",
+            "bingx_futures_type": "TEXT DEFAULT 'standard'"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:

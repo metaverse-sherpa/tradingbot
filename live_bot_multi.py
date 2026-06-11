@@ -319,7 +319,13 @@ async def process_user_on_symbol(user, symbol, signal):
         finally:
             await ex.close()
     except Exception as ue:
-        log.error("User %s error on %s: %s", user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}", symbol, ue)
+        futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
+        log.error("User %s error on %s using exchange %s (%s futures): %s",
+                  user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}",
+                  symbol,
+                  user.get('exchange_id', 'blofin'),
+                  futures_type,
+                  ue)
 
 
 async def run():
@@ -343,7 +349,12 @@ async def run():
                 finally:
                     await ex.close()
             except Exception as e:
-                log.error("Position sync failed for %s: %s", user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}", e)
+                futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
+                log.error("Position sync failed for %s on exchange %s (%s futures): %s",
+                          user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}",
+                          user.get('exchange_id', 'blofin'),
+                          futures_type,
+                          e)
 
         await asyncio.gather(*(sync_user_pos(u) for u in active_users))
 

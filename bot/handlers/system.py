@@ -321,8 +321,9 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_msg.edit_text("\n".join(report_lines), parse_mode="Markdown")
         
         try:
+            futures_type = user_data.get('bingx_futures_type', 'standard') or 'standard'
             ex_class = getattr(ccxt, ex_id)
-            default_type = 'future' if ex_id == 'bingx' else 'swap'
+            default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
             async with ex_class({
                 "apiKey": user_data['api_key'],
                 "secret": user_data['api_secret'],
@@ -330,10 +331,11 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "options": {"defaultType": default_type},
                 "timeout": 8000
             }) as user_ex:
-                bal_params = database.get_exchange_balance_params(ex_id)
+                bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
                 await user_ex.fetch_balance(params=bal_params)
                 report_lines[-1] = "• Live Connection Check: `✅ Connected Successfully`"
         except Exception as e:
+            logger.error(f"Diagnostics check failed for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
             err_msg = str(e)
             if "152406" in err_msg or "whitelist" in err_msg.lower():
                 report_lines[-1] = (

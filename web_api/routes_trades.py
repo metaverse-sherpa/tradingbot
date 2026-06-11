@@ -145,7 +145,8 @@ def get_balance():
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
-                bal_params = database.get_exchange_balance_params(crypto_exchange_id)
+                futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
+                bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
                 free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
                 
@@ -167,7 +168,9 @@ def get_balance():
                 except Exception:
                     pass
         except Exception as e:
-            print(f"Error fetching crypto balance: {e}")
+            futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
+            type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
+            print(f"Error fetching crypto balance for {crypto_exchange_id}{type_desc}: {e}")
             balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
     else:
         balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
@@ -257,7 +260,9 @@ def get_stats():
                 try: client.close()
                 except: pass
         except Exception as ce:
-            print(f"[STATS] Crypto live error: {ce}")
+            futures_type = tg_user.get("bingx_futures_type", "standard")
+            type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
+            print(f"[STATS] Crypto live error for {crypto_exchange_id}{type_desc}: {ce}")
             
     crypto_overall_pnl = crypto_cum_pnl + crypto_unrealized
     crypto_overall_pnl_pct = round((crypto_overall_pnl / crypto_equity) * 100, 2) if crypto_equity > 0 else 0.0
@@ -586,7 +591,9 @@ def get_open_trades():
                 except Exception:
                     pass
         except Exception as e:
-            print(f"Crypto positions fetch error: {e}")
+            futures_type = merged_user.get("bingx_futures_type", "standard")
+            type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
+            print(f"Crypto positions fetch error for {crypto_exchange_id}{type_desc}: {e}")
         
     with RESPONSE_CACHE_LOCK:
         RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, open_positions)
@@ -741,7 +748,9 @@ def get_trades_history():
                 finally:
                     loop.close()
             except Exception as e:
-                print(f"[HISTORY] CCXT fallback error: {e}")
+                futures_type = (tg_user.get("bingx_futures_type") if tg_user else None) or user.get("bingx_futures_type", "standard")
+                type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
+                print(f"[HISTORY] CCXT fallback error for {crypto_exchange_id}{type_desc}: {e}")
             
     # 2. Fetch stock history
     print(f"[HISTORY] Checking Alpaca trades for chat_id={trade_chat_id}")
@@ -1862,7 +1871,9 @@ def share_card():
                             try: client.close()
                             except: pass
                     except Exception as ce:
-                        print(f"[SHARE] Crypto live error: {ce}", flush=True)
+                        futures_type = tg_user.get("bingx_futures_type", "standard")
+                        type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
+                        print(f"[SHARE] Crypto live error for {crypto_exchange_id}{type_desc}: {ce}", flush=True)
                         
                 overall_pnl = crypto_cum_pnl + crypto_unrealized
                 overall_pnl_pct = (overall_pnl / crypto_equity) * 100 if crypto_equity > 0 else 0.0

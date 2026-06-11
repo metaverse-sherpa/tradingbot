@@ -393,69 +393,73 @@ async def signal_engine(application):
                                 ex_id = user.get('exchange_id', 'blofin')
                                 if ex_id == 'alpaca':
                                     ex_id = 'blofin'
+                                futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
+                                default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
                                 ex_class = getattr(ccxt, ex_id)
-                                default_type = 'future' if ex_id == 'bingx' else 'swap'
-                                async with ex_class({
-                                    "apiKey": user['api_key'],
-                                    "secret": user['api_secret'],
-                                    "password": user['api_password'],
-                                    "options": {"defaultType": default_type},
-                                }) as user_ex:
-                                    
-                                    bal_params = database.get_exchange_balance_params(ex_id)
-                                    balance = await user_ex.fetch_balance(params=bal_params)
-                                    actual_equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
-                                    
-                                    # Custom Capital Allocation Override
-                                    eq_type = user.get('custom_equity_type', 'all')
-                                    eq_val = user.get('custom_equity_value')
-                                    
-                                    equity = actual_equity
-                                    if eq_type == 'amount' and eq_val is not None:
-                                        equity = min(float(eq_val), actual_equity)
-                                    elif eq_type == 'pct' and eq_val is not None:
-                                        equity = actual_equity * (float(eq_val) / 100.0)
-                                    
-                                    user_enabled = user.get('enabled_symbols', [])
-                                    user_risk = user.get('risk_pct', 1.5)
-                                    
-                                    for symbol, sig in user_signals.items():
-                                        if symbol.split("/")[0] not in user_enabled: continue
+                                try:
+                                    async with ex_class({
+                                        "apiKey": user['api_key'],
+                                        "secret": user['api_secret'],
+                                        "password": user['api_password'],
+                                        "options": {"defaultType": default_type},
+                                    }) as user_ex:
                                         
-                                        norm_sym = database.normalize_symbol(symbol, user_ex.id)
-                                        pos = await user_ex.fetch_positions()
-                                        if not any(p.get('symbol') == norm_sym and float(p.get("contracts", 0) or 0) != 0 for p in pos):
-                                            if live_bot_multi.DRY_RUN: continue
-                                                
-                                            res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
-                                            if res:
-                                                if chat_id:
-                                                    database.increment_opened(chat_id)
-                                                    side_icon = "📈" if sig['side'] == 'buy' else "📉"
-                                                    msg = (
-                                                        f"{side_icon} *{strat_name}* SIGNAL!\n\n"
-                                                        f"Symbol: {get_symbol_link(res['symbol'])}\n"
-                                                        f"Risk: `{user_risk:.2f}%`\n"
-                                                        f"Entry: `{res['entry']:.8f}`\n"
-                                                        f"TP: `{res['tp']:.8f}`\n"
-                                                        f"SL: `{res['sl']:.8f}`"
-                                                    )
-                                                    try:
-                                                        df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
-                                                        side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
-                                                        open_ts = int(time.time() * 1000)
-                                                        chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
-                                                        is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-                                                        keyboard = get_nav_buttons(True, is_admin=is_admin)
-                                                        with open(chart_file, 'rb') as photo:
-                                                            await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-                                                    except Exception as chart_err:
-                                                        logger.error(f"Chart generation failed: {chart_err}")
-                                                        await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
-                                                else:
-                                                    logger.info(f"Signal executed successfully for web-only user {web_user_id}. Symbol: {res['symbol']}")
+                                        bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
+                                        balance = await user_ex.fetch_balance(params=bal_params)
+                                        actual_equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
+                                        
+                                        # Custom Capital Allocation Override
+                                        eq_type = user.get('custom_equity_type', 'all')
+                                        eq_val = user.get('custom_equity_value')
+                                        
+                                        equity = actual_equity
+                                        if eq_type == 'amount' and eq_val is not None:
+                                            equity = min(float(eq_val), actual_equity)
+                                        elif eq_type == 'pct' and eq_val is not None:
+                                            equity = actual_equity * (float(eq_val) / 100.0)
+                                        
+                                        user_enabled = user.get('enabled_symbols', [])
+                                        user_risk = user.get('risk_pct', 1.5)
+                                        
+                                        for symbol, sig in user_signals.items():
+                                            if symbol.split("/")[0] not in user_enabled: continue
+                                            
+                                            norm_sym = database.normalize_symbol(symbol, user_ex.id)
+                                            pos = await user_ex.fetch_positions()
+                                            if not any(p.get('symbol') == norm_sym and float(p.get("contracts", 0) or 0) != 0 for p in pos):
+                                                if live_bot_multi.DRY_RUN: continue
+                                                    
+                                                res = await live_bot_multi.place_order(user_ex, norm_sym, sig, equity, risk_pct=user_risk)
+                                                if res:
+                                                    if chat_id:
+                                                        database.increment_opened(chat_id)
+                                                        side_icon = "📈" if sig['side'] == 'buy' else "📉"
+                                                        msg = (
+                                                            f"{side_icon} *{strat_name}* SIGNAL!\n\n"
+                                                            f"Symbol: {get_symbol_link(res['symbol'])}\n"
+                                                            f"Risk: `{user_risk:.2f}%`\n"
+                                                            f"Entry: `{res['entry']:.8f}`\n"
+                                                            f"TP: `{res['tp']:.8f}`\n"
+                                                            f"SL: `{res['sl']:.8f}`"
+                                                        )
+                                                        try:
+                                                            df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
+                                                            side_str = "LONG" if sig['side'] == 'buy' else "SHORT"
+                                                            open_ts = int(time.time() * 1000)
+                                                            chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=open_ts)
+                                                            is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
+                                                            keyboard = get_nav_buttons(True, is_admin=is_admin)
+                                                            with open(chart_file, 'rb') as photo:
+                                                                await application.bot.send_photo(chat_id=chat_id, photo=photo, caption=msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+                                                        except Exception as chart_err:
+                                                            logger.error(f"Chart generation failed: {chart_err}")
+                                                            await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                                                    else:
+                                                        logger.info(f"Signal executed successfully for web-only user {web_user_id}. Symbol: {res['symbol']}")
+                                except Exception as e:
+                                    logger.error(f"Signal execution client/order error for user {chat_id or f'web_{web_user_id}'} on exchange {ex_id} ({futures_type} futures): {e}")
                             except Exception as e:
-                                logger.error(f"Signal execution error for {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
+                                logger.error(f"Signal execution outer error for user {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
  
                         await asyncio.gather(*(execute_user_signals(u) for u in users))
                 

@@ -71,14 +71,14 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             logger.error(f"Failed to fetch Alpaca positions for free stats check: {e}")
             
     # Fetch active Crypto symbols
-    has_crypto = bool(user.get('api_key') and user.get('api_key') != "")
     if has_crypto:
         ex_id = user.get('exchange_id', 'blofin')
         if ex_id != 'alpaca':
+            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
             try:
                 import ccxt.async_support as ccxt
                 ex_class = getattr(ccxt, ex_id)
-                default_type = 'future' if ex_id == 'bingx' else 'swap'
+                default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
                 exchange = ex_class({
                     "apiKey": user['api_key'],
                     "secret": user['api_secret'],
@@ -95,7 +95,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                         active_live_symbols.add(clean_sym)
                 await exchange.close()
             except Exception as e:
-                logger.error(f"Failed to fetch Crypto positions for free stats check: {e}")
+                logger.error(f"Failed to fetch Crypto positions for free stats check on exchange {ex_id} ({futures_type} futures) for user {chat_id}: {e}")
 
     from live_bot_multi_alpaca import check_is_market_open
     is_mkt_open = check_is_market_open()

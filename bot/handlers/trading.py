@@ -469,8 +469,9 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ex_id = user.get('exchange_id', 'blofin')
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
+            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
             ex_class = getattr(ccxt, ex_id)
-            default_type = 'future' if ex_id == 'bingx' else 'swap'
+            default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
@@ -539,6 +540,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"• Closed Trades: *{total_closed}*\n"
             )
         except Exception as ce:
+            logger.error(f"Crypto stats check failed for user {user.get('telegram_chat_id')} on exchange {ex_id} ({futures_type} futures): {ce}")
             errors.append(f"Crypto: {ce}")
 
     # 2. Fetch Stock Stats if Alpaca API Key exists
@@ -650,8 +652,9 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ex_id = user.get('exchange_id', 'blofin')
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
+            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
             ex_class = getattr(ccxt, ex_id)
-            default_type = 'future' if ex_id == 'bingx' else 'swap'
+            default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
@@ -725,7 +728,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
         except Exception as e:
-            logger.error(f"Error fetching Crypto history: {e}")
+            logger.error(f"Error fetching Crypto history for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
 
     # 2. Fetch Alpaca History
     if has_stocks:
@@ -1068,8 +1071,9 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ex_id = active_exchange
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
+            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
             ex_class = getattr(ccxt, ex_id)
-            default_type = 'future' if ex_id == 'bingx' else 'swap'
+            default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
@@ -1087,7 +1091,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"🪙 *Active Crypto Trades Found: {crypto_trades_count}*\nGenerating charts...",
                         parse_mode="Markdown"
                     )
-
+ 
                     async def process_active_position(p):
                         try:
                             sym = p['symbol']
@@ -1165,11 +1169,12 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
                         except Exception as e:
                             logger.error(f"Error processing position: {e}")
-
+ 
                     await asyncio.gather(*(process_active_position(p) for p in active_crypto))
                     
                     found_any = True
         except Exception as e:
+            logger.error(f"Error checking Crypto positions for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
             await update.effective_message.reply_text(f"❌ Error checking Crypto positions: {e}")
         finally:
             await status_msg.delete()
@@ -1216,15 +1221,16 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ex_id = user_data.get('exchange_id', 'blofin')
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
+            futures_type = user_data.get('bingx_futures_type', 'standard') or 'standard'
             ex_class = getattr(ccxt, ex_id)
-            default_type = 'future' if ex_id == 'bingx' else 'swap'
+            default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
             async with ex_class({
                 "apiKey": user_data['api_key'],
                 "secret": user_data['api_secret'],
                 "password": user_data['api_password'],
                 "options": {"defaultType": default_type},
             }) as user_ex:
-                bal_params = database.get_exchange_balance_params(ex_id)
+                bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
                 balance = await user_ex.fetch_balance(params=bal_params)
                 free = float(balance.get("USDT", {}).get("free", 0))
                 
@@ -1245,6 +1251,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "total": total_value
                 }
         except Exception as e:
+            logger.error(f"Crypto balance check failed for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
             errors.append(f"Crypto ({user_data.get('exchange_id', 'blofin').upper()}): {e}")
 
     # 2. Fetch Alpaca/Stock Balance if configured
@@ -1525,8 +1532,9 @@ async def close_single_position(chat_id, sym):
         ex_id = user.get('exchange_id', 'blofin')
         if ex_id == 'alpaca':
             ex_id = 'blofin'
+        futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
         ex_class = getattr(ccxt, ex_id)
-        default_type = 'future' if ex_id == 'bingx' else 'swap'
+        default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
         async with ex_class({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
@@ -1572,6 +1580,7 @@ async def close_single_position(chat_id, sym):
             
             return True, f"Market Closed {sym} position."
     except Exception as e:
+        logger.error(f"Failed to close position on exchange {ex_id} ({futures_type} futures) for user {chat_id}: {e}")
         return False, f"Failed to close {sym}: {e}"
 
 async def panic_close_all(chat_id):
@@ -1850,8 +1859,9 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
         user_risk = float(user.get('risk_pct', 1.5)) / 100.0
         
         ex_id = user.get('exchange_id', 'blofin')
+        futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
         ex_class = getattr(ccxt, ex_id)
-        default_type = 'future' if ex_id == 'bingx' else 'swap'
+        default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
         exchange = ex_class({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
@@ -1912,7 +1922,7 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
             )
             return True, msg
         except Exception as e:
-            logger.error(f"Crypto manual exec error: {e}")
+            logger.error(f"Crypto manual exec error on exchange {ex_id} ({futures_type} futures) for user {chat_id}: {e}")
             return False, f"❌ Failed to execute trade: {e}"
         finally:
             await exchange.close()

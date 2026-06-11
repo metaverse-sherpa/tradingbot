@@ -33,34 +33,38 @@ async def sync_engine(application):
                     if user.get('api_key'):
                         ex_id = user.get('exchange_id', 'blofin')
                         if ex_id == 'alpaca': ex_id = 'blofin'
+                        futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
+                        default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
                         ex_class = getattr(ccxt, ex_id)
-                        default_type = 'future' if ex_id == 'bingx' else 'swap'
-                        async with ex_class({
-                            "apiKey": user['api_key'],
-                            "secret": user['api_secret'],
-                            "password": user['api_password'],
-                            "options": {"defaultType": default_type},
-                        }) as user_ex:
-                            async with SHARED_MARKETS_LOCK:
-                                cache_time = SHARED_MARKETS_TIME.get(ex_id, 0)
-                                if ex_id in SHARED_MARKETS and (time.time() - cache_time) < 900:
-                                    user_ex.markets = SHARED_MARKETS[ex_id]
-                                else:
-                                    await user_ex.load_markets()
-                                    SHARED_MARKETS[ex_id] = user_ex.markets
-                                    SHARED_MARKETS_TIME[ex_id] = time.time()
-                            
-                            bal_params = database.get_exchange_balance_params(ex_id)
-                            balance = await user_ex.fetch_balance(params=bal_params)
-                            equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
-                            await database.update_user_stats_from_engine(chat_id, equity, user_ex, application, web_user_id=web_user_id)
+                        try:
+                            async with ex_class({
+                                "apiKey": user['api_key'],
+                                "secret": user['api_secret'],
+                                "password": user['api_password'],
+                                "options": {"defaultType": default_type},
+                            }) as user_ex:
+                                async with SHARED_MARKETS_LOCK:
+                                    cache_time = SHARED_MARKETS_TIME.get(ex_id, 0)
+                                    if ex_id in SHARED_MARKETS and (time.time() - cache_time) < 900:
+                                        user_ex.markets = SHARED_MARKETS[ex_id]
+                                    else:
+                                        await user_ex.load_markets()
+                                        SHARED_MARKETS[ex_id] = user_ex.markets
+                                        SHARED_MARKETS_TIME[ex_id] = time.time()
+                                
+                                bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
+                                balance = await user_ex.fetch_balance(params=bal_params)
+                                equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
+                                await database.update_user_stats_from_engine(chat_id, equity, user_ex, application, web_user_id=web_user_id)
+                        except Exception as e:
+                            logger.error(f"Sync error for user {chat_id or f'web_{web_user_id}'} on exchange {ex_id} ({futures_type} futures): {e}")
                             
                     # 2. Sync Stocks
                     if user.get('alpaca_api_key'):
                         # Stocks stats update logic can be minimal as Alpaca provides portfolio value directly
                         pass
                 except Exception as e:
-                    logger.error(f"Sync error for {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
+                    logger.error(f"General sync error for user {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
 
             await asyncio.gather(*(sync_user(u) for u in active_users))
             await asyncio.sleep(60)

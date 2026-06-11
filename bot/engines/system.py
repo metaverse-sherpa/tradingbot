@@ -215,7 +215,8 @@ async def email_summary_engine(application):
                                 crypto_exchange_id = tg_user.get("exchange_id", "blofin")
                                 try:
                                     import ccxt
-                                    default_type = 'future' if crypto_exchange_id == 'bingx' else 'swap'
+                                    futures_type = tg_user.get("bingx_futures_type", "standard") or "standard"
+                                    default_type = 'swap' if (crypto_exchange_id == 'bingx' and futures_type == 'perpetual') else ('future' if crypto_exchange_id == 'bingx' else 'swap')
                                     config = {
                                         "apiKey": crypto_api_key,
                                         "secret": crypto_api_secret,
@@ -235,7 +236,7 @@ async def email_summary_engine(application):
                                         try: client.close()
                                         except: pass
                                 except Exception as ce:
-                                    logger.error(f"CCXT fetch error in daily summary for {tg_id}: {ce}")
+                                    logger.error(f"CCXT fetch error in daily summary for {tg_id} on {crypto_exchange_id} ({futures_type} futures): {ce}")
                                 
                                 c_wins = tg_user.get("wins", tg_user.get("total_wins", 0)) or 0
                                 c_losses = tg_user.get("losses", tg_user.get("total_losses", 0)) or 0
