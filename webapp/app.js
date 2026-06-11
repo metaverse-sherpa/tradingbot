@@ -739,7 +739,7 @@ async function handleRoute() {
         hash = hash.split('?')[0];
     }
     if (isFirstLoad && hash !== '#/landing' && hash !== '#/' && hash !== '#/login' && hash !== '#/register' && hash !== '#/help') {
-        window.showGoogleLoading("Initializing Sherpa", "Loading your secure trading session...");
+        window.showGoogleLoading("Climbing up the Metaverse...", "Loading your secure trading session...");
     }
 
     const refCode = getQueryParam('ref');
