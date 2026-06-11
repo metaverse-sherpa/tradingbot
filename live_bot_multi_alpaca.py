@@ -743,4 +743,13 @@ async def main():
     logger.info("Daily stock swing execution completed successfully!")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        logger.error("Fatal exception in stock trading engine: %s", e, exc_info=True)
+        try:
+            from utils_error import send_telegram_alert
+            send_telegram_alert("Stock Trading Engine (live_bot_multi_alpaca.py)", e)
+        except Exception as alert_err:
+            logger.error("Failed to send Telegram alert for stock engine crash: %s", alert_err)
+

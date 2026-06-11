@@ -137,13 +137,24 @@ def unsubscribe_page():
 def health():
     return jsonify({"status": "healthy", "timestamp": int(time.time())}), 200
 
-# ----------------- Configuration Endpoint -----------------
-@app.route('/api/config', methods=['GET'])
-def get_config():
-    """Serves non-sensitive, public configuration to the frontend SPA."""
-    return jsonify({
-        "google_client_id": utils_gcp.get_secret("GOOGLE_CLIENT_ID") or ""
-    }), 200
+# ----------------- Global Error Handler -----------------
+@app.errorhandler(Exception)
+def handle_exception(e):
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return e
+
+    # Log locally
+    app.logger.error(f"Unhandled exception in WebAPI: {e}", exc_info=True)
+
+    # Send Telegram alert
+    from utils_error import send_telegram_alert
+    try:
+        send_telegram_alert(f"WebAPI ({request.method} {request.path})", e)
+    except Exception as telegram_err:
+        app.logger.error(f"Failed to send Telegram error alert: {telegram_err}")
+
+    return jsonify({"error": "Internal Server Error"}), 500
 
 # Start Flask Server
 if __name__ == '__main__':

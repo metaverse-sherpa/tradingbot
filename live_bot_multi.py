@@ -405,4 +405,13 @@ async def run():
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except Exception as e:
+        log.error("Fatal exception in crypto trading engine: %s", e, exc_info=True)
+        try:
+            from utils_error import send_telegram_alert
+            send_telegram_alert("Crypto Trading Engine (live_bot_multi.py)", e)
+        except Exception as alert_err:
+            log.error("Failed to send Telegram alert for crypto engine crash: %s", alert_err)
+
