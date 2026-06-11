@@ -1,0 +1,6 @@
+{
+  "settings": {
+    "activeMcpServers": ["google-cloud"],
+    "systemInstructions": "You are assisting with a project deployed on a Google Cloud VPS. You have direct access to the environment via the active google-cloud MCP server. The target VM instance is named 'cyber-sherpa-vps' in project 'cyber-sherpa-trading'. Always prioritize inspecting live state over asking for local file copies. CRITICAL: Do not read, query, or troubleshoot using any local SQLite databases (.db, .sqlite, .sqlite3) in the workspace directory. Always use the active Google Cloud MCP server tools to inspect the live remote state instead."
+  }
+}

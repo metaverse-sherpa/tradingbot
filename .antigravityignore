@@ -1,0 +1,32 @@
+# virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+
+# Local SQLite databases (CRITICAL: Active remote GCP state is used instead)
+data/*.db
+*.db
+*.db.backup
+*.sqlite
+*.sqlite3
+
+# Temporary / Generated assets
+pnl_cards/
+results/
+images/
+.DS_Store
+Thumbs.db
+
+# Environment secret copies
+.env
+.env.copy
+
+# Historical developer scripts/audits
+scripts/
+webapp/node_modules/
