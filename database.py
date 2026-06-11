@@ -62,11 +62,12 @@ def get_exchange_client(user):
     ex_id = user.get('exchange_id', 'blofin')
     if ex_id == 'alpaca':
         ex_id = 'blofin'
+    default_type = 'future' if ex_id == 'bingx' else 'swap'
     config = {
         "apiKey": user["api_key"],
         "secret": user["api_secret"],
         "password": user["api_password"],
-        "options": {"defaultType": "swap"},
+        "options": {"defaultType": default_type},
         "enableRateLimit": True,
     }
     client = getattr(ccxt, ex_id)(config)

@@ -134,11 +134,12 @@ def get_balance():
     if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
+            default_type = "future" if crypto_exchange_id == "bingx" else "swap"
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
                 "password": crypto_api_password,
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
                 "enableRateLimit": True,
                 "timeout": 5000,
             }
@@ -236,11 +237,12 @@ def get_stats():
     if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
+            default_type = "future" if crypto_exchange_id == "bingx" else "swap"
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
                 "password": crypto_api_password or "",
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
                 "timeout": 5000
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
@@ -530,11 +532,12 @@ def get_open_trades():
     if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
+            default_type = "future" if crypto_exchange_id == "bingx" else "swap"
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
                 "password": crypto_api_password,
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
                 "enableRateLimit": True,
                 "timeout": 5000,
             }
@@ -677,11 +680,12 @@ def get_trades_history():
                 import ccxt.async_support as ccxt_async
                 from bot import live_bot_multi
                 
+                default_type = "future" if crypto_exchange_id == "bingx" else "swap"
                 config = {
                     "apiKey": crypto_api_key,
                     "secret": crypto_api_secret,
                     "password": crypto_api_password,
-                    "options": {"defaultType": "swap"},
+                    "options": {"defaultType": default_type},
                     "enableRateLimit": True,
                     "timeout": 5000,
                 }
@@ -1839,11 +1843,12 @@ def share_card():
                 if crypto_api_key and crypto_api_secret:
                     try:
                         import ccxt
+                        default_type = "future" if crypto_exchange_id == "bingx" else "swap"
                         config = {
                             "apiKey": crypto_api_key,
                             "secret": crypto_api_secret,
                             "password": crypto_api_password or "",
-                            "options": {"defaultType": "swap"},
+                            "options": {"defaultType": default_type},
                             "timeout": 3000
                         }
                         client = getattr(ccxt, crypto_exchange_id)(config)

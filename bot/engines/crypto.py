@@ -394,11 +394,12 @@ async def signal_engine(application):
                                 if ex_id == 'alpaca':
                                     ex_id = 'blofin'
                                 ex_class = getattr(ccxt, ex_id)
+                                default_type = 'future' if ex_id == 'bingx' else 'swap'
                                 async with ex_class({
                                     "apiKey": user['api_key'],
                                     "secret": user['api_secret'],
                                     "password": user['api_password'],
-                                    "options": {"defaultType": "swap"},
+                                    "options": {"defaultType": default_type},
                                 }) as user_ex:
                                     
                                     bal_params = database.get_exchange_balance_params(ex_id)

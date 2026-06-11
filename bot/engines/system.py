@@ -215,11 +215,12 @@ async def email_summary_engine(application):
                                 crypto_exchange_id = tg_user.get("exchange_id", "blofin")
                                 try:
                                     import ccxt
+                                    default_type = 'future' if crypto_exchange_id == 'bingx' else 'swap'
                                     config = {
                                         "apiKey": crypto_api_key,
                                         "secret": crypto_api_secret,
                                         "password": crypto_api_password or "",
-                                        "options": {"defaultType": "swap"},
+                                        "options": {"defaultType": default_type},
                                         "timeout": 3000
                                     }
                                     client = getattr(ccxt, crypto_exchange_id)(config)

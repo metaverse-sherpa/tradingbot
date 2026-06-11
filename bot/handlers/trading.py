@@ -470,11 +470,12 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
+            default_type = 'future' if ex_id == 'bingx' else 'swap'
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
                 "password": user['api_password'],
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
             }) as user_ex:
                 
                 now_ms = int(time.time() * 1000)
@@ -650,11 +651,12 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
+            default_type = 'future' if ex_id == 'bingx' else 'swap'
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
                 "password": user['api_password'],
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
             }) as user_ex:
                 await user_ex.load_markets()
                 
@@ -1067,11 +1069,12 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
+            default_type = 'future' if ex_id == 'bingx' else 'swap'
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
                 "password": user['api_password'],
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
             }) as user_ex:
                 await user_ex.load_markets()
                 
@@ -1214,11 +1217,12 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ex_id == 'alpaca':
                 ex_id = 'blofin'
             ex_class = getattr(ccxt, ex_id)
+            default_type = 'future' if ex_id == 'bingx' else 'swap'
             async with ex_class({
                 "apiKey": user_data['api_key'],
                 "secret": user_data['api_secret'],
                 "password": user_data['api_password'],
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
             }) as user_ex:
                 bal_params = database.get_exchange_balance_params(ex_id)
                 balance = await user_ex.fetch_balance(params=bal_params)
@@ -1522,11 +1526,12 @@ async def close_single_position(chat_id, sym):
         if ex_id == 'alpaca':
             ex_id = 'blofin'
         ex_class = getattr(ccxt, ex_id)
+        default_type = 'future' if ex_id == 'bingx' else 'swap'
         async with ex_class({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
             "password": user['api_password'],
-            "options": {"defaultType": "swap"},
+            "options": {"defaultType": default_type},
         }) as user_ex:
             # Fetch the specific position
             positions = await user_ex.fetch_positions()
@@ -1846,12 +1851,12 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
         
         ex_id = user.get('exchange_id', 'blofin')
         ex_class = getattr(ccxt, ex_id)
-        
+        default_type = 'future' if ex_id == 'bingx' else 'swap'
         exchange = ex_class({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
             "password": user['api_password'],
-            "options": {"defaultType": "swap"},
+            "options": {"defaultType": default_type},
             "enableRateLimit": True,
         })
         try:

@@ -322,11 +322,12 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         try:
             ex_class = getattr(ccxt, ex_id)
+            default_type = 'future' if ex_id == 'bingx' else 'swap'
             async with ex_class({
                 "apiKey": user_data['api_key'],
                 "secret": user_data['api_secret'],
                 "password": user_data['api_password'] or "",
-                "options": {"defaultType": "swap"},
+                "options": {"defaultType": default_type},
                 "timeout": 8000
             }) as user_ex:
                 bal_params = database.get_exchange_balance_params(ex_id)

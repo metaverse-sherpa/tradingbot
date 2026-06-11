@@ -78,11 +78,12 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             try:
                 import ccxt.async_support as ccxt
                 ex_class = getattr(ccxt, ex_id)
+                default_type = 'future' if ex_id == 'bingx' else 'swap'
                 exchange = ex_class({
                     "apiKey": user['api_key'],
                     "secret": user['api_secret'],
                     "password": user['api_password'],
-                    "options": {"defaultType": "swap"},
+                    "options": {"defaultType": default_type},
                     "enableRateLimit": True,
                 })
                 await exchange.load_markets()

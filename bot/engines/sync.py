@@ -34,11 +34,12 @@ async def sync_engine(application):
                         ex_id = user.get('exchange_id', 'blofin')
                         if ex_id == 'alpaca': ex_id = 'blofin'
                         ex_class = getattr(ccxt, ex_id)
+                        default_type = 'future' if ex_id == 'bingx' else 'swap'
                         async with ex_class({
                             "apiKey": user['api_key'],
                             "secret": user['api_secret'],
                             "password": user['api_password'],
-                            "options": {"defaultType": "swap"},
+                            "options": {"defaultType": default_type},
                         }) as user_ex:
                             async with SHARED_MARKETS_LOCK:
                                 cache_time = SHARED_MARKETS_TIME.get(ex_id, 0)
