@@ -146,7 +146,7 @@ async def theory_trades_resolution_engine(application):
                             all_targets = database.get_all_broadcast_targets()
                             now_ts = int(time.time())
                             exit_text, exit_entities = build_datetime_entity_message(
-                                f"📊 *FREE TRADE CLOSED* (Forward Test)\n"
+                                f"📊 *FREE SIGNAL CLOSED* \n"
                                 f"───────────────────────────────\n"
                                 f"Symbol:        {get_symbol_link(symbol)}\n"
                                 f"Strategy:      {strategy}\n"
@@ -319,7 +319,7 @@ async def signal_engine(application):
                         currency = get_currency(symbol)
                         signal_ts = open_ts // 1000  # convert ms to seconds
                         entry_text, entry_entities = build_datetime_entity_message(
-                            f"🏔️ *NEW FREE SIGNAL* (Forward Test)\n"
+                            f"🏔️ *NEW FREE SIGNAL* \n"
                             f"───────────────────────────────\n"
                             f"Symbol:        {get_symbol_link(symbol)}\n"
                             f"Strategy:      {strategy_name}\n"

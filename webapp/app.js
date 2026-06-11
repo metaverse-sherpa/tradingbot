@@ -1615,7 +1615,7 @@ function renderLandingView() {
                                     <div class="mt-4 pt-4 border-t border-white/5">
                                         <div class="flex items-center gap-2 mb-3">
                                             <span class="material-symbols-outlined text-tertiary text-sm">sensors</span>
-                                            <h5 class="text-xs font-bold text-tertiary uppercase tracking-wider">Live Forward Test Stats</h5>
+                                            <h5 class="text-xs font-bold text-tertiary uppercase tracking-wider">Live Signal Stats</h5>
                                         </div>
                                         <div class="text-sm space-y-2 bg-tertiary/10 border border-tertiary/20 rounded-xl p-4">
                                             <p class="text-on-surface-variant">• Win Rate: <span class="text-primary font-medium">${s.win_rate.toFixed(1)}%</span> (${s.wins} W | ${s.losses} L)</p>

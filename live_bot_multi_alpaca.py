@@ -291,7 +291,7 @@ async def run_theoretical_tally_engine(today_opens):
                         close_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
                         
                         exit_text_before = (
-                            "📊 *FREE TRADE CLOSED* (Forward Test) 📊\n"
+                            "📊 *FREE TRADE CLOSED* 📊\n"
                             "───────────────────────────────\n"
                             f"Symbol:        `{sym}`\n"
                             "Strategy:      Sherpa Velocity Pullback\n"
@@ -359,7 +359,7 @@ async def run_theoretical_tally_engine(today_opens):
                     close_dt = datetime.fromtimestamp(close_time_ts, tz=timezone.utc)
                     
                     exit_text_before = (
-                        "📊 *FREE TRADE CLOSED* (Forward Test) 📊\n"
+                        "📊 *FREE SIGNAL CLOSED* 📊\n"
                         "───────────────────────────────\n"
                         f"Symbol:        `{sym}`\n"
                         "Strategy:      Sherpa Velocity Pullback\n"
@@ -431,7 +431,7 @@ async def run_theoretical_tally_engine(today_opens):
                     now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
                     
                     entry_text_before = (
-                        "🏔️ *NEW FREE SIGNAL* (Forward Test) 🏔️\n"
+                        "🏔️ *NEW FREE SIGNAL* 🏔️\n"
                         "───────────────────────────────\n"
                         f"Symbol:        `{sym}`\n"
                         "Strategy:      Sherpa Velocity Pullback\n"

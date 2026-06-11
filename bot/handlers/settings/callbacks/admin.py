@@ -383,7 +383,7 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
                         logger.error(f"Free chart generation failed for {sym}: {chart_err}")
                     
                     caption = (
-                        f"🧪 *ACTIVE FREE SIGNAL* (Forward Test)\n"
+                        f"🧪 *ACTIVE FREE SIGNAL* \n"
                         f"🤖 Strategy: *{strat}*\n\n"
                         f"{'🟢' if side_str == 'LONG' else '🔴'} *{sym} ({side_str})*\n"
                         f"PnL: ||{pnl_pct:+.2f}% ({pnl_val:+.2f} {currency})|| of target\n"

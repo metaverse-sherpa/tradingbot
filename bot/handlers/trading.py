@@ -423,7 +423,7 @@ async def show_forward_test_stats(update: Update, context: ContextTypes.DEFAULT_
     growth_pct = ((current_balance - 1000.0) / 1000.0) * 100
     
     msg = (
-        "📊 *Bot Forward Test Performance* (Simulated)\n"
+        "📊 *Bot Performance* (Simulated)\n"
         "🏔️ _Simulated paper trading starting from a $1,000 balance_\n\n"
         f"Simulated Balance: *${current_balance:,.2f} USDT*\n"
         f"Simulated Growth: *{growth_pct:+.2f}%*\n"

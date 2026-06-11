@@ -166,7 +166,7 @@ async def build_forward_test_stats_block():
                     f"  {direction} {sym_link}: `{pnl_pct:+.2f}%`{target_pct_str}"
                 )
     except Exception as e:
-        logger.error(f"Error fetching live prices for forward test stats: {e}")
+        logger.error(f"Error fetching live prices for free signal stats: {e}")
     finally:
         await mdm.close()
     

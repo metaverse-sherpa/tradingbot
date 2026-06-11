@@ -96,7 +96,7 @@ async def main():
         now_dt = datetime.fromtimestamp(open_time, tz=timezone.utc)
         
         entry_text_before = (
-            "🏔️ *NEW FREE SIGNAL* (Forward Test) 🏔️\n"
+            "🏔️ *NEW FREE SIGNAL* 🏔️\n"
             "───────────────────────────────\n"
             f"Symbol:        `{sym}`\n"
             "Strategy:      Sherpa Velocity Pullback\n"

@@ -53,7 +53,7 @@ def get_currency(symbol):
     return "USDT"
 
 async def main():
-    print("🏔️ Starting manual Forward Test alert trigger script...")
+    print("🏔️ Starting manual signal alert trigger script...")
     
     # 1. Initialize DB and gather targets
     database.init_db()
@@ -138,7 +138,7 @@ async def main():
     # 5. Broadcast simulated entry alert
     currency = get_currency(symbol)
     entry_msg = (
-        f"🏔️ *NEW SIMULATED SIGNAL* (Forward Test)\n"
+        f"🏔️ *NEW SIMULATED SIGNAL* \n"
         f"───────────────────────────────\n"
         f"Symbol:        *{symbol}*\n"
         f"Strategy:      *{strategy_name}*\n"
@@ -207,7 +207,7 @@ async def main():
     )
     
     exit_msg = (
-        f"📊 *SIMULATED TRADE CLOSED* (Forward Test)\n"
+        f"📊 *SIMULATED TRADE CLOSED* \n"
         f"───────────────────────────────\n"
         f"Symbol:        *{symbol}*\n"
         f"Strategy:      *{strategy_name}*\n"
@@ -238,7 +238,7 @@ async def main():
         except Exception as e:
             print(f"⚠️ Failed exit send to {target_id}: {e}")
             
-    print("💎 Manual simulated forward test alerts cycle completed successfully!")
+    print("💎 Manual simulated alerts cycle completed successfully!")
 
 if __name__ == "__main__":
     asyncio.run(main())

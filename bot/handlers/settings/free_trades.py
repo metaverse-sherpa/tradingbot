@@ -243,7 +243,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             is_premium = database.is_premium(user)
             sym_link = get_symbol_link(sym, text=f"*{sym}*")
             caption = (
-                f"🛰️ *ACTIVE FREE SIGNAL* (Forward Test)\n"
+                f"🛰️ *ACTIVE FREE SIGNAL* \n"
                 f"🤖 Strategy: *{strat}*\n\n"
                 f"{'🟢' if side_str == 'LONG' else '🔴'} {sym_link} ({side_str})\n"
                 f"Current PnL: {pnl_pct:+.2f}% ({upnl_str}) of {target_pnl_pct:+.2f}% ({target_pnl_str})"

@@ -159,7 +159,7 @@ async def run_force_pass():
                     # Broadcast EXIT alert
                     all_targets = database.get_all_broadcast_targets()
                     exit_msg = (
-                        f"📊 *SIMULATED TRADE CLOSED* (Forward Test)\n"
+                        f"📊 *SIMULATED TRADE CLOSED* \n"
                         f"───────────────────────────────\n"
                         f"Symbol:        *{symbol}*\n"
                         f"Strategy:      *{strategy}*\n"
@@ -261,7 +261,7 @@ async def run_force_pass():
                 all_targets = database.get_all_broadcast_targets()
                 currency = get_currency(symbol)
                 entry_msg = (
-                    f"🏔️ *NEW SIMULATED SIGNAL* (Forward Test)\n"
+                    f"🏔️ *NEW SIMULATED SIGNAL* \n"
                     f"───────────────────────────────\n"
                     f"Symbol:        *{symbol}*\n"
                     f"Strategy:      *{strategy_name}*\n"
