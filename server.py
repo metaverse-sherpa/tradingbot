@@ -132,6 +132,12 @@ def unsubscribe_page():
     else:
         return "<h3>Account not found or already unsubscribed.</h3>", 404
 
+# ----------------- Config Endpoint -----------------
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    google_client_id = utils_gcp.get_secret("GOOGLE_CLIENT_ID")
+    return jsonify({"google_client_id": google_client_id}), 200
+
 # ----------------- Health Endpoint -----------------
 @app.route('/api/health', methods=['GET'])
 def health():
