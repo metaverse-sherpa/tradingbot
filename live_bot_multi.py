@@ -229,7 +229,10 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
 
         # 🛡️ DYNAMIC LEVERAGE SYNC
         try:
-            await exchange.set_leverage(trade_leverage, symbol)
+            params = {}
+            if exchange.id == 'bingx':
+                params['side'] = 'LONG' if signal["side"] == 'buy' else 'SHORT'
+            await exchange.set_leverage(trade_leverage, symbol, params=params)
         except Exception as le:
             log.warning("⚠️ Leverage set failed for %s: %s. Continuing with caution.", symbol, le)
 
