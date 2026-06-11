@@ -678,7 +678,7 @@ def get_trades_history():
         if crypto_api_key and crypto_api_secret:
             try:
                 import ccxt.async_support as ccxt_async
-                from bot import live_bot_multi
+                import live_bot_multi
                 
                 default_type = "future" if crypto_exchange_id == "bingx" else "swap"
                 config = {
