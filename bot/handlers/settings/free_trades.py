@@ -71,6 +71,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             logger.error(f"Failed to fetch Alpaca positions for free stats check: {e}")
             
     # Fetch active Crypto symbols
+    has_crypto = bool(user.get('api_key'))
     if has_crypto:
         ex_id = user.get('exchange_id', 'blofin')
         if ex_id != 'alpaca':
