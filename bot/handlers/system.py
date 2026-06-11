@@ -378,6 +378,11 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a Telegram message to the Super Admin."""
+    from telegram.error import NetworkError
+    if isinstance(context.error, NetworkError):
+        logger.warning(f"Transient NetworkError encountered: {context.error}")
+        return
+
     logger.error(f"Exception while handling an update: {context.error}")
     
     # Send trace to Super Admin
