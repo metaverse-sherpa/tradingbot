@@ -120,6 +120,97 @@ def normalize_symbol(symbol, exchange_id):
 
     return symbol
 
+def process_exchange_trades_for_symbol(trades, exchange_id):
+    """
+    Groups and calculates PnL of trades for a symbol, computing PnL
+    locally if the exchange (e.g. BingX) does not report realized PnL on fills.
+    """
+    sorted_trades = sorted(trades, key=lambda x: x.get('timestamp', 0))
+    
+    positions = {
+        "LONG": {"qty": 0.0, "entry": 0.0},
+        "SHORT": {"qty": 0.0, "entry": 0.0}
+    }
+    
+    results = []
+    
+    for t in sorted_trades:
+        info = t.get("info", {})
+        side = t.get('side', '').lower() # 'buy' or 'sell'
+        
+        # Determine raw/computed position side
+        t_pos_side = info.get('positionSide', '').upper()
+        if not t_pos_side or t_pos_side in ['BOTH', 'NET']:
+            # Fallback based on side
+            t_pos_side = 'LONG' if side == 'buy' else 'SHORT'
+            
+        qty = float(t.get('amount') or 0)
+        price = float(t.get('price') or 0)
+        
+        # Check if the exchange provides realized PnL
+        reported_pnl = None
+        if exchange_id == 'blofin':
+            reported_pnl = info.get("fillPnl")
+        else:
+            reported_pnl = info.get("realizedPnl")
+            
+        gross_pnl = 0.0
+        is_closing_fill = False
+        
+        if reported_pnl is not None and str(reported_pnl) != '' and str(reported_pnl).lower() != 'none':
+            try:
+                gross_pnl = float(reported_pnl)
+                is_closing_fill = (gross_pnl != 0.0)
+            except ValueError:
+                pass
+        else:
+            # Exchange does not report realized PnL on trades (e.g., BingX)
+            # We calculate PnL locally based on position side
+            pos = positions[t_pos_side]
+            is_increase = (side == 'buy') if t_pos_side == 'LONG' else (side == 'sell')
+            
+            if is_increase:
+                new_qty = pos["qty"] + qty
+                if new_qty > 0:
+                    pos["entry"] = ((pos["entry"] * pos["qty"]) + (price * qty)) / new_qty
+                pos["qty"] = new_qty
+            else:
+                is_closing_fill = True
+                closed_qty = min(pos["qty"], qty)
+                if closed_qty > 0 and pos["entry"] > 0:
+                    if t_pos_side == 'LONG':
+                        gross_pnl = (price - pos["entry"]) * closed_qty
+                    else: # SHORT
+                        gross_pnl = (pos["entry"] - price) * closed_qty
+                
+                pos["qty"] = max(0.0, pos["qty"] - qty)
+                if pos["qty"] == 0.0:
+                    pos["entry"] = 0.0
+                    
+        # Calculate fee
+        fee_cost = 0.0
+        fee_data = t.get('fee')
+        if fee_data and isinstance(fee_data, dict):
+            fee_cost = float(fee_data.get('cost') or 0)
+        elif info.get('commission') is not None:
+            try:
+                fee_cost = abs(float(info.get('commission')))
+            except ValueError:
+                pass
+                
+        # We include the trade if the exchange reports a non-zero PnL,
+        # or if we calculated it as a closing fill
+        if is_closing_fill or gross_pnl != 0.0:
+            net_pnl = gross_pnl - (fee_cost * 2)
+            results.append({
+                "trade": t,
+                "gross_pnl": gross_pnl,
+                "fee": fee_cost,
+                "net_pnl": net_pnl
+            })
+            
+    return results
+
 def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
     """
     Returns the unified CCXT parameters for balance fetching
@@ -853,34 +944,26 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
                 async with sem:
                     await asyncio.sleep(0.1) # tiny throttle
                     trades = await exchange.fetch_my_trades(norm_sym, since=since, limit=50)
+                pnl_results = process_exchange_trades_for_symbol(trades, exchange.id)
                 
                 order_groups = {}
-                for t in trades:
-                    info = t.get("info", {})
-                    gross_pnl = 0
-                    if exchange.id == 'blofin':
-                        gross_pnl = float(info.get("fillPnl") or 0)
-                    else:
-                        gross_pnl = float(info.get("realizedPnl") or 0)
+                for res in pnl_results:
+                    t = res["trade"]
+                    net_pnl = res["net_pnl"]
+                    side_raw = t.get('side', 'buy').lower()
+                    is_long = (side_raw == 'sell')
+                    
+                    order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
+                    if order_id not in order_groups:
+                        order_groups[order_id] = []
                         
-                    if gross_pnl != 0:
-                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                        net_pnl = gross_pnl - (fee * 2)
-                        
-                        side_raw = t.get('side', 'buy').lower()
-                        is_long = (side_raw == 'sell')
-                        
-                        order_id = t.get('order') or t.get('id') or f"{t['timestamp']}_{sym}"
-                        if order_id not in order_groups:
-                            order_groups[order_id] = []
-                            
-                        order_groups[order_id].append({
-                            "net_pnl": net_pnl,
-                            "price": t['price'],
-                            "amount": t['amount'],
-                            "timestamp": t['timestamp'],
-                            "is_long": is_long
-                        })
+                    order_groups[order_id].append({
+                        "net_pnl": net_pnl,
+                        "price": t['price'],
+                        "amount": t['amount'],
+                        "timestamp": t['timestamp'],
+                        "is_long": is_long
+                    })
                         
                 for order_id, fills in order_groups.items():
                     total_net_pnl = sum(f['net_pnl'] for f in fills)

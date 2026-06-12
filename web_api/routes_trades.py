@@ -727,26 +727,18 @@ def get_trades_history():
                                 async with sem:
                                     await asyncio.sleep(0.1) # tiny throttle delay to respect rate limits
                                     trades = await client.fetch_my_trades(norm_sym, since=since, limit=50)
+                                processed = database.process_exchange_trades_for_symbol(trades, crypto_exchange_id)
                                 results = []
-                                for t in trades:
-                                    info = t.get("info", {})
-                                    gross_pnl = 0
-                                    if crypto_exchange_id == 'blofin':
-                                        gross_pnl = float(info.get("fillPnl") or 0)
-                                    else:
-                                        gross_pnl = float(info.get("realizedPnl") or info.get("fillPnl") or 0)
-                                        
-                                    if gross_pnl != 0:
-                                        fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                                        net_pnl = gross_pnl - (fee * 2)
-                                        results.append({
-                                            "type": "crypto",
-                                            "symbol": sym,
-                                            "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
-                                            "timestamp": t.get('timestamp', 0),
-                                            "net_pnl": net_pnl,
-                                            "price": t.get('price', 0),
-                                        })
+                                for p in processed:
+                                    t = p["trade"]
+                                    results.append({
+                                        "type": "crypto",
+                                        "symbol": sym,
+                                        "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
+                                        "timestamp": t.get('timestamp', 0),
+                                        "net_pnl": p["net_pnl"],
+                                        "price": t.get('price', 0),
+                                    })
                                 return results
                             except Exception as e:
                                 print(f"[HISTORY] Error fetching {sym}: {e}")
