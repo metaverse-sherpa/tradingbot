@@ -3345,11 +3345,6 @@ function renderStatsView() {
         </main>
     `;
 }
-            </section>
-            </div>
-        </main>
-    `;
-}
 function renderSettingsView() {
     const user = STATE.user || {};
     const isActive = user.is_active;
