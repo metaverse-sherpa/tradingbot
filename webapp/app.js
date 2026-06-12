@@ -4681,11 +4681,26 @@ async function triggerGoogleLogin() {
 }
 
 async function handleLogout() {
-    await apiRequest('/auth/logout', 'POST');
-    STATE.user = null;
+    try {
+        await apiRequest('/auth/logout', 'POST');
+    } catch (e) {}
     localStorage.removeItem('session_token');
+    
+    // Reset STATE to defaults
+    STATE.user = null;
+    STATE.crypto_balance = 0.0;
+    STATE.stock_balance = 0.0;
+    STATE.total_balance = 0.0;
+    STATE.open_trades = [];
+    STATE.history = [];
+    STATE.free_history = [];
+    STATE.active_signals = [];
+    STATE.stats = null;
+    STATE.free_stats = null;
+    STATE.current_view = 'landing';
+    
     showToast("Logged out successfully");
-    navigate('#/landing');
+    window.location.href = '/';
 }
 
 async function handleExchangeSetup(e) {
