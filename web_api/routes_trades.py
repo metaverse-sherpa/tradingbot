@@ -702,15 +702,39 @@ def get_trades_history():
                     try:
                         await client.load_markets()
                         
+                        # Filter to only the user's enabled symbols if defined
+                        enabled_symbols = []
+                        user_symbols_raw = (tg_user or {}).get("enabled_symbols") or user.get("enabled_symbols")
+                        if user_symbols_raw:
+                            if isinstance(user_symbols_raw, list):
+                                enabled_symbols = user_symbols_raw
+                            else:
+                                enabled_symbols = str(user_symbols_raw).split(",")
+                        
+                        symbols_to_check = [sym for sym in live_bot_multi.SYMBOLS if sym.split("/")[0] in enabled_symbols]
+                        if not symbols_to_check:
+                            symbols_to_check = live_bot_multi.SYMBOLS
+                            
+                        sem = asyncio.Semaphore(2) # rate limit protection
+                        
                         async def fetch_sym_history(sym):
                             try:
                                 norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
+                                if norm_sym not in client.markets:
+                                    return []
                                 since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
-                                trades = await client.fetch_my_trades(norm_sym, since=since, limit=50)
+                                async with sem:
+                                    await asyncio.sleep(0.1) # tiny throttle delay to respect rate limits
+                                    trades = await client.fetch_my_trades(norm_sym, since=since, limit=50)
                                 results = []
                                 for t in trades:
                                     info = t.get("info", {})
-                                    gross_pnl = float(info.get("fillPnl") or info.get("realizedPnl") or 0)
+                                    gross_pnl = 0
+                                    if crypto_exchange_id == 'blofin':
+                                        gross_pnl = float(info.get("fillPnl") or 0)
+                                    else:
+                                        gross_pnl = float(info.get("realizedPnl") or info.get("fillPnl") or 0)
+                                        
                                     if gross_pnl != 0:
                                         fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
                                         net_pnl = gross_pnl - (fee * 2)
@@ -727,7 +751,7 @@ def get_trades_history():
                                 print(f"[HISTORY] Error fetching {sym}: {e}")
                                 return []
                         
-                        all_results = await asyncio.gather(*(fetch_sym_history(sym) for sym in live_bot_multi.SYMBOLS))
+                        all_results = await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
                         return [item for sublist in all_results for item in sublist]
                     finally:
                         await client.close()
@@ -739,10 +763,13 @@ def get_trades_history():
                     history.extend(ccxt_trades)
                     print(f"[HISTORY] Concurrently fetched {len(ccxt_trades)} crypto trades from exchange")
                     
-                    if tg_user and ccxt_trades:
+                    if ccxt_trades:
                         try:
                             last_50 = sorted(ccxt_trades, key=lambda x: x.get('timestamp', 0), reverse=True)[:50]
-                            database.set_history_cache(trade_chat_id, last_50)
+                            if tg_user:
+                                database.set_history_cache(trade_chat_id, last_50)
+                            else:
+                                database.set_history_cache(None, last_50, web_user_id=user.get('id'))
                         except Exception as cache_err:
                             print(f"[HISTORY] Error saving history cache: {cache_err}")
                 finally:
