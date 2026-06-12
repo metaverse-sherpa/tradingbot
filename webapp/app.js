@@ -4285,6 +4285,10 @@ function renderSignalsView() {
                                     <span class="uppercase text-on-surface-variant font-semibold tracking-wider text-[10px]">Unreal</span>
                                     <span class="font-numeric-data ${unrealizedClass} font-bold leading-tight mt-0.5 text-sm">${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%</span>
                                 </div>
+                                <div class="flex flex-col items-center">
+                                    <span class="uppercase text-on-surface-variant font-semibold tracking-wider text-[10px]">Open</span>
+                                    <span class="font-numeric-data text-on-surface font-bold leading-tight mt-0.5 text-sm">${s.active_count || 0}</span>
+                                </div>
                             </div>
                             
                             <!-- Expandable Guide Section -->
