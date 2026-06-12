@@ -624,15 +624,19 @@ window.addEventListener('focus', () => {
 
 // ----------------- Google Sign In Initialization -----------------
 let cachedGoogleClientId = null;
+let googleInitialized = false;
 
 window.renderGoogleButtons = function() {
     if (!window.google || !cachedGoogleClientId) return;
     
-    window.google.accounts.id.initialize({
-        client_id: cachedGoogleClientId,
-        callback: handleGoogleCredentialResponse,
-        use_fedcm_for_prompt: false
-    });
+    if (!googleInitialized) {
+        window.google.accounts.id.initialize({
+            client_id: cachedGoogleClientId,
+            callback: handleGoogleCredentialResponse,
+            use_fedcm_for_prompt: false
+        });
+        googleInitialized = true;
+    }
 
     // Render button on Login Page container if present
     const btnLogin = document.getElementById('google-signin-btn-login');
