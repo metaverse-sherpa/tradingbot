@@ -184,13 +184,33 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         
         scaled_entry = signal["entry"] * multiplier
         scaled_sl_dist = signal["sl_dist"] * multiplier
+        rr = signal["rr"]
         
         if abs(lp - scaled_entry) / scaled_entry > 0.01: return None
-        sl_dist, rr = scaled_sl_dist, signal["rr"]
+
+        # Keep SL and TP fixed to the theoretical targets based on the signal entry price
         if signal["side"] == "buy":
-            sl, tp = lp - sl_dist, lp + (sl_dist * rr)
+            sl = scaled_entry - scaled_sl_dist
+            tp = scaled_entry + (scaled_sl_dist * rr)
         else: # sell (SHORT)
-            sl, tp = lp + sl_dist, lp - (sl_dist * rr)
+            sl = scaled_entry + scaled_sl_dist
+            tp = scaled_entry - (scaled_sl_dist * rr)
+
+        # Reject the trade if the live price has already crossed the fixed SL or TP
+        if signal["side"] == "buy":
+            if lp <= sl:
+                log.warning("⚠️ Skipping %s: current price %.4f is already at or below fixed SL %.4f", symbol, lp, sl)
+                return None
+            if lp >= tp:
+                log.warning("⚠️ Skipping %s: current price %.4f is already at or above fixed TP %.4f", symbol, lp, tp)
+                return None
+        else:
+            if lp >= sl:
+                log.warning("⚠️ Skipping %s: current price %.4f is already at or above fixed SL %.4f", symbol, lp, sl)
+                return None
+            if lp <= tp:
+                log.warning("⚠️ Skipping %s: current price %.4f is already at or below fixed TP %.4f", symbol, lp, tp)
+                return None
             
         # Determine the maximum safe leverage that keeps the Stop Loss above/below liquidation price
         trade_leverage = LEVERAGE
@@ -214,7 +234,9 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
         
-        raw_size = (equity * risk_val) / (sl_dist * contract_size)
+        # Calculate actual Stop Loss distance from our live entry (lp) to the fixed SL
+        actual_sl_dist = abs(lp - sl)
+        raw_size = (equity * risk_val) / (actual_sl_dist * contract_size)
         
         limits = market.get('limits', {})
         max_market = limits.get('market', {}).get('amount', {}).get('max')
