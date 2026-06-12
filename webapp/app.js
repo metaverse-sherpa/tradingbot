@@ -880,28 +880,31 @@ async function handleRoute() {
         // 1. Render immediately using cached/default state for a lightning fast load
         renderView();
         
-        // 2. Fetch ALL data (including live balance) in the background
+        // 2. Fetch ALL data (including live balance) in the background asynchronously
         const statsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats') : Promise.resolve(null);
         const freeStatsPromise = apiRequest('/stats/free');
         const balHistoryPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/balance-history') : Promise.resolve(null);
 
-        Promise.all([
-            apiRequest('/user/balance'),
-            apiRequest('/signals/active'),
-            apiRequest('/trades/open'),
-            statsPromise,
-            freeStatsPromise,
-            balHistoryPromise
-        ]).then(async ([bal, sigs, open, stats, freeStats, balHist]) => {
-            STATE.is_loading_balance = false;
-            STATE.is_loading_active_signals = false;
-            let stateChanged = true; // Always re-render to remove the blur
-            
+        const updateViewIfOnDashboard = () => {
+            if (STATE.current_view === 'dashboard') {
+                renderView();
+            }
+        };
+
+        apiRequest('/user/balance').then(bal => {
             if (bal) {
                 STATE.crypto_balance = bal.crypto_balance;
                 STATE.stock_balance = bal.stock_balance;
                 STATE.total_balance = bal.total_balance;
             }
+            STATE.is_loading_balance = false;
+            updateViewIfOnDashboard();
+        }).catch(err => {
+            STATE.is_loading_balance = false;
+            updateViewIfOnDashboard();
+        });
+
+        apiRequest('/signals/active').then(sigs => {
             if (sigs) {
                 STATE.active_signals = sigs;
                 
@@ -935,29 +938,46 @@ async function handleRoute() {
                     ];
                 }
                 
-                // Auto-refresh in background if any signal is still calculating in the background
                 const isAnyCalculating = sigs.some(s => s.pnl_pct === null || s.pnl_pct === undefined);
                 if (isAnyCalculating && STATE.current_view === 'dashboard') {
                     setTimeout(window.pollActiveSignalsForHydration, 2000);
                 }
             }
-            if (open) STATE.open_trades = open;
+            STATE.is_loading_active_signals = false;
+            updateViewIfOnDashboard();
+        }).catch(err => {
+            STATE.is_loading_active_signals = false;
+            updateViewIfOnDashboard();
+        });
+
+        apiRequest('/trades/open').then(open => {
+            if (open) {
+                STATE.open_trades = open;
+                updateViewIfOnDashboard();
+            }
+        }).catch(err => {});
+
+        statsPromise.then(stats => {
             if (stats) {
                 STATE.stats = stats;
+                updateViewIfOnDashboard();
             }
+        }).catch(err => {});
+
+        freeStatsPromise.then(freeStats => {
             if (freeStats) {
                 STATE.free_stats = freeStats;
+                updateViewIfOnDashboard();
             }
+        }).catch(err => {});
+
+        balHistoryPromise.then(async balHist => {
             if (balHist) {
                 STATE.raw_balance_history = balHist;
                 await decryptAndProcessBalanceHistory();
+                updateViewIfOnDashboard();
             }
-            
-            // 3. Silently re-render the dashboard to "hydrate" the widgets if the user is still on it
-            if (stateChanged && STATE.current_view === 'dashboard') {
-                renderView();
-            }
-        });
+        }).catch(err => {});
     } else if (hash === '#/trades') {
         const tabParam = getQueryParam('tab');
         if (tabParam === 'crypto' || tabParam === 'stock') {
