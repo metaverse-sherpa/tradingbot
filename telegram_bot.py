@@ -141,8 +141,13 @@ def main():
         register_handlers(app)
         
         logger.info("Starting Telegram Bot Polling...")
-        app.run_polling(bootstrap_retries=-1)
+        app.run_polling(bootstrap_retries=5)
     except Exception as e:
+        # Gracefully handle event loop closure artifact during shutdown under Python 3.12+
+        if isinstance(e, RuntimeError) and "no running event loop" in str(e):
+            logger.info("Event loop was closed/stopped during shutdown cleanup.")
+            sys.exit(0)
+            
         import traceback
         import requests
         err_msg = f"🚨 *FATAL BOT CRASH*\n\nThe Cyber-Sherpa has fallen! 🏔️\n\n*Error:* `{str(e)}`"
