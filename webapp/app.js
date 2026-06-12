@@ -709,6 +709,10 @@ async function handleGoogleCredentialResponse(response) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
         await setupZKKeys(res.user.email, null);
+        const profile = await apiRequest('/user/profile');
+        if (profile) {
+            STATE.user = profile;
+        }
         if (referrer) {
             showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
             localStorage.removeItem('referred_by');
@@ -4655,6 +4659,10 @@ async function handleEmailLogin(e) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
         await setupZKKeys(email, password);
+        const profile = await apiRequest('/user/profile');
+        if (profile) {
+            STATE.user = profile;
+        }
         showToast("Welcome back, Sherpa trader!");
         navigate('#/dashboard');
     }
@@ -4726,6 +4734,10 @@ async function handleEmailRegister(e) {
         STATE.user = res.user;
         if (res.token) localStorage.setItem('session_token', res.token);
         await setupZKKeys(email, password);
+        const profile = await apiRequest('/user/profile');
+        if (profile) {
+            STATE.user = profile;
+        }
         showToast("Account successfully registered!");
         if (refCode) {
             showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
@@ -4751,9 +4763,11 @@ async function handleLogout() {
         await apiRequest('/auth/logout', 'POST');
     } catch (e) {}
     localStorage.removeItem('session_token');
+    sessionStorage.removeItem('zk_private_key_jwk');
     
     // Reset STATE to defaults
     STATE.user = null;
+    STATE.rsa_private_key = null;
     STATE.crypto_balance = 0.0;
     STATE.stock_balance = 0.0;
     STATE.total_balance = 0.0;
