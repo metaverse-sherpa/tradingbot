@@ -34,11 +34,8 @@ class SqliteSharedCache:
         try:
             with db_session() as conn:
                 c = conn.cursor()
-                c.execute("SELECT expiry FROM SharedResponseCache WHERE cache_key = ?", (skey,))
-                row = c.fetchone()
-                if row:
-                    expiry = row[0]
-                    return time.time() < expiry
+                c.execute("SELECT 1 FROM SharedResponseCache WHERE cache_key = ?", (skey,))
+                return c.fetchone() is not None
         except Exception as e:
             print(f"Error checking cache contains: {e}")
         return False
