@@ -1717,22 +1717,28 @@ def get_free_stats():
     cache_key = "stats_free"
     now = time.time()
     
+    cached_data = None
+    has_cache = False
+    is_expired = True
+    
     with RESPONSE_CACHE_LOCK:
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
-            if now < expiry:
-                return jsonify(cached_data), 200
-            else:
-                with STATS_FREE_UPDATING_LOCK:
-                    if not STATS_FREE_UPDATING:
-                        STATS_FREE_UPDATING = True
-                        threading.Thread(target=_update_free_stats_cache).start()
-                return jsonify(cached_data), 200
-                
-        with STATS_FREE_UPDATING_LOCK:
-            if not STATS_FREE_UPDATING:
-                STATS_FREE_UPDATING = True
-                threading.Thread(target=_update_free_stats_cache).start()
+            has_cache = True
+            is_expired = (now >= expiry)
+            
+    if has_cache:
+        if is_expired:
+            with STATS_FREE_UPDATING_LOCK:
+                if not STATS_FREE_UPDATING:
+                    STATS_FREE_UPDATING = True
+                    threading.Thread(target=_update_free_stats_cache).start()
+        return jsonify(cached_data), 200
+        
+    with STATS_FREE_UPDATING_LOCK:
+        if not STATS_FREE_UPDATING:
+            STATS_FREE_UPDATING = True
+            threading.Thread(target=_update_free_stats_cache).start()
             
     # Fallback placeholder if cache is empty and background task is still running
     disabled = database.get_disabled_strategies()
