@@ -1729,19 +1729,10 @@ def get_free_stats():
                         threading.Thread(target=_update_free_stats_cache).start()
                 return jsonify(cached_data), 200
                 
-        should_update = False
         with STATS_FREE_UPDATING_LOCK:
             if not STATS_FREE_UPDATING:
                 STATS_FREE_UPDATING = True
-                should_update = True
-                
-        if should_update:
-            try:
-                data = _update_free_stats_cache()
-                if data:
-                    return jsonify(data), 200
-            except Exception as e:
-                print(f"Error updating free stats synchronously: {e}")
+                threading.Thread(target=_update_free_stats_cache).start()
             
     # Fallback placeholder if cache is empty and background task is still running
     disabled = database.get_disabled_strategies()
