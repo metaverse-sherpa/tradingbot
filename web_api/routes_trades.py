@@ -134,7 +134,7 @@ def get_balance():
     if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
-            default_type = "future" if crypto_exchange_id == "bingx" else "swap"
+            default_type = "swap"
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
@@ -240,7 +240,7 @@ def get_stats():
     if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
-            default_type = "future" if crypto_exchange_id == "bingx" else "swap"
+            default_type = "swap"
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
@@ -537,7 +537,7 @@ def get_open_trades():
     if crypto_api_key and crypto_api_secret:
         try:
             import ccxt
-            default_type = "future" if crypto_exchange_id == "bingx" else "swap"
+            default_type = "swap"
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
@@ -687,7 +687,7 @@ def get_trades_history():
                 import ccxt.async_support as ccxt_async
                 import live_bot_multi
                 
-                default_type = "future" if crypto_exchange_id == "bingx" else "swap"
+                default_type = "swap"
                 config = {
                     "apiKey": crypto_api_key,
                     "secret": crypto_api_secret,
@@ -1733,7 +1733,12 @@ def get_free_stats():
             is_updating = STATS_FREE_UPDATING
             if not is_updating:
                 STATS_FREE_UPDATING = True
-                threading.Thread(target=_update_free_stats_cache).start()
+                try:
+                    data = _update_free_stats_cache()
+                    if data:
+                        return jsonify(data), 200
+                except Exception as e:
+                    print(f"Error updating free stats synchronously: {e}")
             
     # Fallback placeholder if cache is empty and background task is still running
     disabled = database.get_disabled_strategies()
@@ -1879,7 +1884,7 @@ def share_card():
                 if crypto_api_key and crypto_api_secret:
                     try:
                         import ccxt
-                        default_type = "future" if crypto_exchange_id == "bingx" else "swap"
+                        default_type = "swap"
                         config = {
                             "apiKey": crypto_api_key,
                             "secret": crypto_api_secret,

@@ -323,7 +323,7 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             futures_type = user_data.get('bingx_futures_type', 'standard') or 'standard'
             ex_class = getattr(ccxt, ex_id)
-            default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
+            default_type = 'swap'
             async with ex_class({
                 "apiKey": user_data['api_key'],
                 "secret": user_data['api_secret'],

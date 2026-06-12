@@ -34,7 +34,7 @@ async def sync_engine(application):
                         ex_id = user.get('exchange_id', 'blofin')
                         if ex_id == 'alpaca': ex_id = 'blofin'
                         futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-                        default_type = 'swap' if (ex_id == 'bingx' and futures_type == 'perpetual') else ('future' if ex_id == 'bingx' else 'swap')
+                        default_type = 'swap'
                         ex_class = getattr(ccxt, ex_id)
                         try:
                             async with ex_class({

@@ -216,7 +216,7 @@ async def email_summary_engine(application):
                                 try:
                                     import ccxt
                                     futures_type = tg_user.get("bingx_futures_type", "standard") or "standard"
-                                    default_type = 'swap' if (crypto_exchange_id == 'bingx' and futures_type == 'perpetual') else ('future' if crypto_exchange_id == 'bingx' else 'swap')
+                                    default_type = 'swap'
                                     config = {
                                         "apiKey": crypto_api_key,
                                         "secret": crypto_api_secret,

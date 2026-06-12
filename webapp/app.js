@@ -882,8 +882,7 @@ async function handleRoute() {
         
         // 2. Fetch ALL data (including live balance) in the background
         const statsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats') : Promise.resolve(null);
-        const hasLinkedKeys = STATE.user && (STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys);
-        const freeStatsPromise = (!STATE.user || !STATE.user.is_premium || !hasLinkedKeys) ? apiRequest('/stats/free') : Promise.resolve(null);
+        const freeStatsPromise = apiRequest('/stats/free');
         const balHistoryPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/balance-history') : Promise.resolve(null);
 
         Promise.all([
