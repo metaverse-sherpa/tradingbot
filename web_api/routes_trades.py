@@ -24,11 +24,11 @@ trades_bp = Blueprint('trades', __name__)
 
 # Module-level variable to prevent concurrent background updates for active signals
 SIGNALS_ACTIVE_UPDATING = False
-SIGNALS_ACTIVE_UPDATING_LOCK = threading.Lock()
+SIGNALS_ACTIVE_UPDATING_LOCK = threading.RLock()
 
 # Module-level variable to prevent concurrent background updates for free stats
 STATS_FREE_UPDATING = False
-STATS_FREE_UPDATING_LOCK = threading.Lock()
+STATS_FREE_UPDATING_LOCK = threading.RLock()
 
 def _get_telegram_user(web_user):
     """If the web user has linked a Telegram chat ID, load the bot's User record."""
@@ -1729,16 +1729,19 @@ def get_free_stats():
                         threading.Thread(target=_update_free_stats_cache).start()
                 return jsonify(cached_data), 200
                 
+        should_update = False
         with STATS_FREE_UPDATING_LOCK:
-            is_updating = STATS_FREE_UPDATING
-            if not is_updating:
+            if not STATS_FREE_UPDATING:
                 STATS_FREE_UPDATING = True
-                try:
-                    data = _update_free_stats_cache()
-                    if data:
-                        return jsonify(data), 200
-                except Exception as e:
-                    print(f"Error updating free stats synchronously: {e}")
+                should_update = True
+                
+        if should_update:
+            try:
+                data = _update_free_stats_cache()
+                if data:
+                    return jsonify(data), 200
+            except Exception as e:
+                print(f"Error updating free stats synchronously: {e}")
             
     # Fallback placeholder if cache is empty and background task is still running
     disabled = database.get_disabled_strategies()
