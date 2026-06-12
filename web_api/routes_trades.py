@@ -285,8 +285,21 @@ def get_stats():
             if acc:
                 stock_equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
                 
-            # Use the user's configured starting equity directly to avoid heavy API transfer queries
-            stock_start_equity = tg_user.get("alpaca_start_equity") or 10000.0
+            # Use the user's configured starting equity if set. Otherwise, query Alpaca's portfolio history.
+            stock_start_equity = tg_user.get("alpaca_start_equity")
+            if not stock_start_equity:
+                try:
+                    portfolio_hist = database.make_alpaca_request(tg_user, "GET", "/v2/account/portfolio/history", params={"period": "all", "timeframe": "1D"})
+                    if portfolio_hist and portfolio_hist.get("base_value") is not None:
+                        stock_start_equity = float(portfolio_hist["base_value"])
+                    elif portfolio_hist and portfolio_hist.get("equity") and len(portfolio_hist["equity"]) > 0:
+                        stock_start_equity = float(portfolio_hist["equity"][0])
+                except Exception as hist_err:
+                    print(f"Error fetching Alpaca portfolio history starting equity: {hist_err}")
+                
+                # Fallback to current equity or 10k if history query failed/returned zero
+                if not stock_start_equity or stock_start_equity <= 0:
+                    stock_start_equity = stock_equity or 10000.0
                 
             positions = database.make_alpaca_request(tg_user, "GET", "/v2/positions")
             if isinstance(positions, list):
