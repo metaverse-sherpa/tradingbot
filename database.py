@@ -45,8 +45,8 @@ def db_session():
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     try:
-        conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA busy_timeout=30000;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
         yield conn
         conn.commit()
     except Exception as e:
@@ -222,6 +222,14 @@ except sqlite3.OperationalError as e:
 
 
 def init_db():
+    # Configure WAL mode and synchronous settings once on startup
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
+    except Exception as pragma_err:
+        print(f"Warning: Failed to set WAL/synchronous pragmas on database startup: {pragma_err}")
+
     with db_session() as conn:
         c = conn.cursor()
         
