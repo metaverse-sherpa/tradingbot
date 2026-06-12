@@ -3124,13 +3124,15 @@ function renderStatsView() {
         return renderFreeStatsView(true);
     }
     
+    const showLoadingStats = !STATE.stats;
+    
     const s = STATE.stats || {
-        crypto: { portfolio_value: 1000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0 },
-        stock: { portfolio_value: 10000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0, closed_trades: 0 }
+        crypto: { portfolio_value: 0.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0 },
+        stock: { portfolio_value: 0.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0, closed_trades: 0 }
     };
     
-    const crypto = s.crypto || { portfolio_value: 1000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0 };
-    const stock = s.stock || { portfolio_value: 10000.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0, closed_trades: 0 };
+    const crypto = s.crypto || { portfolio_value: 0.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0 };
+    const stock = s.stock || { portfolio_value: 0.0, overall_pnl: 0.0, overall_pnl_pct: 0.0, wins: 0, losses: 0, total_trades: 0, win_rate: 0.0, open_positions: 0, unrealized_pnl: 0.0, closed_trades: 0 };
     
     if (crypto.unrealized_pnl_pct === undefined) {
         crypto.unrealized_pnl_pct = crypto.portfolio_value > 0 ? (crypto.unrealized_pnl / crypto.portfolio_value) * 100 : 0;
@@ -3162,24 +3164,42 @@ function renderStatsView() {
                 </div>
                 
                 <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
                         <p class="text-[10px] mt-0.5">&nbsp;</p>
+                        `}
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                            <span class="material-symbols-outlined text-tertiary text-lg animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-tertiary mt-1">${crypto.win_rate.toFixed(1)}%</p>
                         <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${crypto.wins}W / ${crypto.losses}L)</p>
+                        `}
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold ${crypto.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${crypto.overall_pnl_pct >= 0 ? '+' : ''}${crypto.overall_pnl_pct.toFixed(2)}%</p>
                         <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${crypto.overall_pnl >= 0 ? '+' : ''}$${crypto.overall_pnl.toFixed(2)})</p>
+                        `}
                     </div>
                 </div>
                 
-                ${crypto.open_positions > 0 ? `
+                ${(crypto.open_positions > 0 && !showLoadingStats) ? `
                 <div class="grid grid-cols-3 gap-2 text-center mt-2" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
@@ -3201,17 +3221,29 @@ function renderStatsView() {
                 </div>
                 ` : `
                 <div class="grid grid-cols-2 gap-2 text-center mt-2" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[58px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Open Trades</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1 animate-pulse mt-0.5">
+                            <span class="material-symbols-outlined text-primary text-sm animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-on-surface mt-1">
                             <a href="#/trades" onclick="STATE.dashboard_tab='crypto'; STATE.trades_mode='active';" class="hover:text-primary transition-colors">0</a>
                         </p>
+                        `}
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[58px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Closed Trades</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1 animate-pulse mt-0.5">
+                            <span class="material-symbols-outlined text-primary text-sm animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-on-surface mt-1">
                             <a href="#/trades" onclick="STATE.dashboard_tab='crypto'; STATE.trades_mode='closed';" class="hover:text-primary transition-colors">${crypto.wins + crypto.losses}</a>
                         </p>
+                        `}
                     </div>
                 </div>
                 `}
@@ -3225,24 +3257,42 @@ function renderStatsView() {
                 </div>
                 
                 <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
                         <p class="text-[10px] mt-0.5">&nbsp;</p>
+                        `}
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                            <span class="material-symbols-outlined text-tertiary text-lg animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-tertiary mt-1">${stock.win_rate.toFixed(1)}%</p>
                         <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${stock.wins}W / ${stock.losses}L)</p>
+                        `}
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold ${stock.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${stock.overall_pnl_pct >= 0 ? '+' : ''}${stock.overall_pnl_pct.toFixed(2)}%</p>
                         <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${stock.overall_pnl >= 0 ? '+' : ''}$${stock.overall_pnl.toFixed(2)})</p>
+                        `}
                     </div>
                 </div>
                 
-                ${stock.open_positions > 0 ? `
+                ${(stock.open_positions > 0 && !showLoadingStats) ? `
                 <div class="grid grid-cols-3 gap-2 text-center mt-2" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
                     <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider"># Open</p>
@@ -3264,20 +3314,37 @@ function renderStatsView() {
                 </div>
                 ` : `
                 <div class="grid grid-cols-2 gap-2 text-center mt-2" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[58px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Open Trades</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1 animate-pulse mt-0.5">
+                            <span class="material-symbols-outlined text-primary text-sm animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-on-surface mt-1">
                             <a href="#/trades" onclick="STATE.dashboard_tab='stock'; STATE.trades_mode='active';" class="hover:text-primary transition-colors">0</a>
                         </p>
+                        `}
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center">
+                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[58px]">
                         <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Closed Trades</p>
+                        ${showLoadingStats ? `
+                        <div class="flex items-center justify-center py-1 animate-pulse mt-0.5">
+                            <span class="material-symbols-outlined text-primary text-sm animate-spin">sync</span>
+                        </div>
+                        ` : `
                         <p class="text-sm font-bold text-on-surface mt-1">
                             <a href="#/trades" onclick="STATE.dashboard_tab='stock'; STATE.trades_mode='closed';" class="hover:text-primary transition-colors">${stock.wins + stock.losses}</a>
                         </p>
+                        `}
                     </div>
                 </div>
                 `}
+            </section>
+            </div>
+        </main>
+    `;
+}
             </section>
             </div>
         </main>
