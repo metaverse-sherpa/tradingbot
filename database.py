@@ -556,50 +556,52 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
 def get_user(chat_id):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT blofin_api_key, blofin_api_secret, blofin_api_password, starting_equity, is_active, total_wins, total_losses, total_trades_opened, cumulative_pnl, last_fetch_timestamp, strategy, hide_dollars, risk_pct, enabled_symbols, exchange_id, referred_by, premium_expiry, referral_count, has_open_positions, undercover_mode, source_wallet, last_audit_stats, referral_credits, full_name, username, is_admin, custom_equity_type, custom_equity_value, alpaca_api_key, alpaca_api_secret, alpaca_endpoint, active_crypto_strategy, active_stock_strategy, stock_risk_pct, alpaca_start_equity, premium_referrals, premium_expired_notified, had_premium_before, referral_reward_triggered FROM Users WHERE telegram_chat_id = ?', (chat_id,))
+        c.execute('SELECT * FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         row = c.fetchone()
     if row:
+        row_dict = dict(row)
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
         return {
-            "api_key": decrypt(row[0]),
-            "api_secret": decrypt(row[1]),
-            "api_password": decrypt(row[2]),
-            "equity": row[3],
-            "is_active": row[4],
-            "wins": row[5],
-            "losses": row[6],
-            "opened": row[7],
-            "cum_pnl": row[8] or 0.0,
-            "last_ts": row[9] or 0,
-            "strategy": row[10] or 'Valkyrie Elite Scalper',
-            "hide_dollars": bool(row[11]),
-            "risk_pct": row[12] if row[12] is not None else 1.0,
-            "enabled_symbols": (row[13] if row[13] else def_syms).split(","),
-            "exchange_id": row[14] or 'blofin',
-            "referred_by": row[15],
-            "premium_expiry": row[16] or 0,
-            "referral_count": row[17] or 0,
-            "has_open_positions": bool(row[18]),
+            "api_key": decrypt(row_dict.get('blofin_api_key')),
+            "api_secret": decrypt(row_dict.get('blofin_api_secret')),
+            "api_password": decrypt(row_dict.get('blofin_api_password')),
+            "equity": row_dict.get('starting_equity'),
+            "is_active": row_dict.get('is_active'),
+            "wins": row_dict.get('total_wins') or 0,
+            "losses": row_dict.get('total_losses') or 0,
+            "opened": row_dict.get('total_trades_opened') or 0,
+            "cum_pnl": row_dict.get('cumulative_pnl') or 0.0,
+            "last_ts": row_dict.get('last_fetch_timestamp') or 0,
+            "strategy": row_dict.get('strategy') or 'Valkyrie Elite Scalper',
+            "hide_dollars": bool(row_dict.get('hide_dollars')),
+            "risk_pct": row_dict.get('risk_pct') if row_dict.get('risk_pct') is not None else 1.0,
+            "enabled_symbols": (row_dict.get('enabled_symbols') if row_dict.get('enabled_symbols') else def_syms).split(","),
+            "exchange_id": row_dict.get('exchange_id') or 'blofin',
+            "referred_by": row_dict.get('referred_by'),
+            "premium_expiry": row_dict.get('premium_expiry') or 0,
+            "referral_count": row_dict.get('referral_count') or 0,
+            "has_open_positions": bool(row_dict.get('has_open_positions')),
             "telegram_chat_id": chat_id,
-            "undercover_mode": row[19] if len(row) > 19 else 0,
-            "source_wallet": row[20] if len(row) > 20 else None,
-            "last_audit_stats": row[21] if len(row) > 21 else None,
-            "referral_credits": row[22] if len(row) > 22 else 0.0,
-            "full_name": row[23] if len(row) > 23 else None,
-            "username": row[24] if len(row) > 24 else None,
-            "is_admin": bool(row[25]) if len(row) > 25 else False,
-            "custom_equity_type": row[26] if len(row) > 26 and row[26] is not None else 'all',
-            "custom_equity_value": row[27] if len(row) > 27 else None,
-            "alpaca_api_key": decrypt(row[28]) if len(row) > 28 and row[28] else None,
-            "alpaca_api_secret": decrypt(row[29]) if len(row) > 29 and row[29] else None,
-            "alpaca_endpoint": row[30] if len(row) > 30 else None,
-            "active_crypto_strategy": row[31] if len(row) > 31 and row[31] else 'Valkyrie Elite Scalper',
-            "active_stock_strategy": row[32] if len(row) > 32 and row[32] else 'None',
-            "stock_risk_pct": row[33] if len(row) > 33 and row[33] is not None else 2.0,
-            "premium_referrals": row[34] if len(row) > 34 else 0,
-            "premium_expired_notified": bool(row[35]) if len(row) > 35 else False,
-            "had_premium_before": bool(row[36]) if len(row) > 36 else False,
-            "referral_reward_triggered": bool(row[37]) if len(row) > 37 else False
+            "undercover_mode": row_dict.get('undercover_mode') or 0,
+            "source_wallet": row_dict.get('source_wallet'),
+            "last_audit_stats": row_dict.get('last_audit_stats'),
+            "referral_credits": row_dict.get('referral_credits') or 0.0,
+            "full_name": row_dict.get('full_name'),
+            "username": row_dict.get('username'),
+            "is_admin": bool(row_dict.get('is_admin')),
+            "custom_equity_type": row_dict.get('custom_equity_type') or 'all',
+            "custom_equity_value": row_dict.get('custom_equity_value'),
+            "alpaca_api_key": decrypt(row_dict.get('alpaca_api_key')) if row_dict.get('alpaca_api_key') else None,
+            "alpaca_api_secret": decrypt(row_dict.get('alpaca_api_secret')) if row_dict.get('alpaca_api_secret') else None,
+            "alpaca_endpoint": row_dict.get('alpaca_endpoint'),
+            "active_crypto_strategy": row_dict.get('active_crypto_strategy') or 'Valkyrie Elite Scalper',
+            "active_stock_strategy": row_dict.get('active_stock_strategy') or 'None',
+            "stock_risk_pct": row_dict.get('stock_risk_pct') if row_dict.get('stock_risk_pct') is not None else 2.0,
+            "premium_referrals": row_dict.get('premium_referrals') or 0,
+            "premium_expired_notified": bool(row_dict.get('premium_expired_notified')),
+            "had_premium_before": bool(row_dict.get('had_premium_before')),
+            "referral_reward_triggered": bool(row_dict.get('referral_reward_triggered')),
+            "bingx_futures_type": row_dict.get('bingx_futures_type') or 'standard'
         }
     return None
 
@@ -686,7 +688,8 @@ def get_user_from_web_row(row):
         "premium_referrals": row.get('premium_referrals') or 0,
         "premium_expired_notified": False,
         "had_premium_before": False,
-        "referral_reward_triggered": bool(row.get('referral_reward_triggered'))
+        "referral_reward_triggered": bool(row.get('referral_reward_triggered')),
+        "bingx_futures_type": row.get('bingx_futures_type') or 'standard'
     }
 
 def get_all_active_users():
