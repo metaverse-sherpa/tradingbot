@@ -285,20 +285,8 @@ def get_stats():
             if acc:
                 stock_equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
                 
-            # Smart Start Equity: sum up deposits and withdrawals
-            transfers = database.make_alpaca_request(tg_user, "GET", "/v2/account/activities/TRANS", params={"direction": "asc"})
-            if isinstance(transfers, list) and len(transfers) > 0:
-                net_deposits = 0.0
-                for t in transfers:
-                    # Depending on Alpaca's transfer status, usually we count 'COMPLETE' or 'EXECUTED'
-                    if t.get("status") in ["COMPLETE", "complete", "EXECUTED", "executed"]:
-                        net_deposits += float(t.get("net_amount", 0) or 0)
-                if net_deposits > 0:
-                    stock_start_equity = net_deposits
-                else:
-                    stock_start_equity = tg_user.get("alpaca_start_equity", 10000.0) or 10000.0
-            else:
-                stock_start_equity = tg_user.get("alpaca_start_equity", 10000.0) or 10000.0
+            # Use the user's configured starting equity directly to avoid heavy API transfer queries
+            stock_start_equity = tg_user.get("alpaca_start_equity") or 10000.0
                 
             positions = database.make_alpaca_request(tg_user, "GET", "/v2/positions")
             if isinstance(positions, list):
