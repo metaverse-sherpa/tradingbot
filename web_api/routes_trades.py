@@ -1382,8 +1382,15 @@ def _update_active_signals_cache():
                                             prices[sym] = float(snap["dailyBar"]["c"])
                                         elif snap.get("prevDailyBar") and snap["prevDailyBar"].get("c"):
                                             prices[sym] = float(snap["prevDailyBar"]["c"])
+                            else:
+                                try:
+                                    err_body = await resp.text()
+                                except Exception:
+                                    err_body = "Could not read response body"
+                                print(f"Error fetching Alpaca snapshots: HTTP {resp.status} - {err_body}")
                     except Exception as e:
-                        print(f"Error fetching Alpaca snapshots: {e}")
+                        import traceback
+                        print(f"Error fetching Alpaca snapshots: Exception type={type(e).__name__}, details={e}\n{traceback.format_exc()}")
 
                 async def fetch_binance():
                     if not crypto_syms:
