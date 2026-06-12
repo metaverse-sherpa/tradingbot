@@ -1556,7 +1556,9 @@ async def close_single_position(chat_id, sym):
             order_side = "sell" if is_long else "buy"
             
             # Determine position parameters dynamically for the order
-            params = {"reduceOnly": True}
+            params = {}
+            if ex_id != "bingx":
+                params["reduceOnly"] = True
             
             # Extract marginMode
             margin_mode = pos.get('marginMode')
@@ -1572,9 +1574,9 @@ async def close_single_position(chat_id, sym):
             if 'info' in pos:
                 raw_pos_side = pos['info'].get('positionSide') or pos['info'].get('posSide')
             if raw_pos_side:
-                params["positionSide"] = raw_pos_side.lower()
+                params["positionSide"] = raw_pos_side.upper() if ex_id == "bingx" else raw_pos_side.lower()
             else:
-                params["positionSide"] = "long" if is_long else "short"
+                params["positionSide"] = ("LONG" if is_long else "SHORT") if ex_id == "bingx" else ("long" if is_long else "short")
                 
             await user_ex.create_market_order(sym, order_side, contracts, params=params)
             
@@ -1680,7 +1682,9 @@ async def panic_close_all(chat_id):
                             order_side = "sell" if is_long else "buy"
                             
                             # Determine position parameters dynamically for the order
-                            params = {"reduceOnly": True}
+                            params = {}
+                            if user_ex.id != "bingx":
+                                params["reduceOnly"] = True
                             
                             # Extract marginMode
                             margin_mode = p.get('marginMode')
@@ -1696,9 +1700,9 @@ async def panic_close_all(chat_id):
                             if 'info' in p:
                                 raw_pos_side = p['info'].get('positionSide') or p['info'].get('posSide')
                             if raw_pos_side:
-                                params["positionSide"] = raw_pos_side.lower()
+                                params["positionSide"] = raw_pos_side.upper() if user_ex.id == "bingx" else raw_pos_side.lower()
                             else:
-                                params["positionSide"] = "long" if is_long else "short"
+                                params["positionSide"] = ("LONG" if is_long else "SHORT") if user_ex.id == "bingx" else ("long" if is_long else "short")
                                 
                             await user_ex.create_market_order(sym, order_side, contracts, params=params)
                             results.append(f"✅ Closed crypto {sym}")

@@ -31,8 +31,9 @@ def settings_exchange():
     api_key = data.get("api_key", "").strip()
     api_secret = data.get("api_secret", "").strip()
     api_password = data.get("api_password", "").strip()
-    
-    bingx_futures_type = data.get("bingx_futures_type", "standard").strip()
+    bingx_futures_type = data.get("bingx_futures_type", "perpetual").strip()
+    if exchange_id == "bingx":
+        bingx_futures_type = "perpetual"
     
     if not api_key or not api_secret:
         return jsonify({"error": "API Key and Secret are required"}), 400

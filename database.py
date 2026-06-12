@@ -62,13 +62,11 @@ def get_exchange_client(user):
     ex_id = user.get('exchange_id', 'blofin')
     if ex_id == 'alpaca':
         ex_id = 'blofin'
-    futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-    default_type = 'future' if (ex_id == 'bingx' and futures_type == 'standard') else 'swap'
     config = {
         "apiKey": user["api_key"],
         "secret": user["api_secret"],
         "password": user["api_password"],
-        "options": {"defaultType": default_type},
+        "options": {"defaultType": "swap"},
         "enableRateLimit": True,
     }
     client = getattr(ccxt, ex_id)(config)
@@ -122,15 +120,13 @@ def normalize_symbol(symbol, exchange_id):
 
     return symbol
 
-def get_exchange_balance_params(exchange_id, futures_type='standard'):
+def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
     """
     Returns the unified CCXT parameters for balance fetching
     representing the correct futures/swap trading account.
     """
     if exchange_id == 'bingx':
-        if futures_type == 'perpetual':
-            return {"type": "swap"}
-        return {"standard": True}   # Standard Futures (stdFutures) - requires standard=True
+        return {"type": "swap"}     # USDT-M Perpetual Account
     elif exchange_id == 'bitget':
         return {"type": "swap"}     # USDT perpetual swaps (usdt_futures)
     elif exchange_id == 'mexc':
@@ -601,7 +597,7 @@ def get_user(chat_id):
             "premium_expired_notified": bool(row_dict.get('premium_expired_notified')),
             "had_premium_before": bool(row_dict.get('had_premium_before')),
             "referral_reward_triggered": bool(row_dict.get('referral_reward_triggered')),
-            "bingx_futures_type": row_dict.get('bingx_futures_type') or 'standard'
+            "bingx_futures_type": row_dict.get('bingx_futures_type') or 'perpetual'
         }
     return None
 
@@ -689,7 +685,7 @@ def get_user_from_web_row(row):
         "premium_expired_notified": False,
         "had_premium_before": False,
         "referral_reward_triggered": bool(row.get('referral_reward_triggered')),
-        "bingx_futures_type": row.get('bingx_futures_type') or 'standard'
+        "bingx_futures_type": row.get('bingx_futures_type') or 'perpetual'
     }
 
 def get_all_active_users():

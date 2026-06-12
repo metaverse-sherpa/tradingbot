@@ -3325,7 +3325,7 @@ function renderSettingsView() {
                     <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
-                                🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ` (${user.bingx_futures_type === 'perpetual' ? 'Perpetual' : 'Standard'} Futures)` : ''}</span>
+                                🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''}</span>
                             </span>
                             <button onclick="editExchange('crypto')" class="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer">
                                 <span class="material-symbols-outlined text-[14px]">edit</span>Edit
@@ -3437,17 +3437,11 @@ function renderSettingsView() {
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Passphrase</label>
                         <input id="api-password" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
                     </div>
-                    <div id="bingx-futures-field-container" class="space-y-1 hidden">
-                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">BingX Account Type</label>
-                        <div class="relative">
-                            <select id="bingx-futures-type" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all animate-none appearance-none cursor-pointer">
-                                <option value="standard">Standard Futures (Default)</option>
-                                <option value="perpetual">Perpetual Futures</option>
-                            </select>
-                            <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
-                                <span class="material-symbols-outlined text-xl">expand_more</span>
-                            </div>
-                        </div>
+                    <div id="bingx-futures-field-container" class="p-3 bg-primary/10 rounded-lg border border-primary/20 text-xs text-on-surface-variant space-y-1 hidden">
+                        <span class="font-bold text-primary flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">info</span> BingX Requirement
+                        </span>
+                        <p>Metaverse Sherpa connects to BingX using <strong>Perpetual Futures</strong>. Please make sure your API key has <strong>Read</strong> and <strong>Perpetual Futures Trading</strong> permissions enabled, and your funds are in your Perpetual Futures account.</p>
                     </div>
                     <div id="endpoint-field-container" class="space-y-1 hidden">
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
@@ -4687,13 +4681,12 @@ async function handleExchangeSetup(e) {
         });
     } else {
         const pwd = document.getElementById('api-password').value;
-        const bingxFuturesType = document.getElementById('bingx-futures-type') ? document.getElementById('bingx-futures-type').value : 'standard';
         res = await apiRequest('/settings/exchange', 'POST', {
             exchange_id: exId,
             api_key: key,
             api_secret: secret,
             api_password: pwd,
-            bingx_futures_type: bingxFuturesType
+            bingx_futures_type: 'perpetual'
         });
     }
     
@@ -4839,8 +4832,6 @@ window.editExchange = function(type) {
                 if (keyInput) keyInput.value = STATE.user.api_key || '';
                 if (secretInput) secretInput.value = STATE.user.api_secret || '';
                 if (passInput) passInput.value = STATE.user.api_password || '';
-                const bingxSelect = document.getElementById('bingx-futures-type');
-                if (bingxSelect) bingxSelect.value = STATE.user.bingx_futures_type || 'standard';
             } else {
                 if (keyInput) keyInput.value = STATE.user.alpaca_api_key || '';
                 if (secretInput) secretInput.value = STATE.user.alpaca_api_secret || '';

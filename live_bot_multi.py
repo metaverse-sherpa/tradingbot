@@ -264,6 +264,8 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         }
         if exchange.id == 'bitget':
             params['tdMode'] = 'isolated' # Bitget specific override
+        elif exchange.id == 'bingx':
+            params['positionSide'] = 'LONG' if signal["side"] == "buy" else 'SHORT'
             
         await exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
             
