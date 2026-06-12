@@ -1440,14 +1440,14 @@ def _update_active_signals_cache():
             for sym in stock_syms:
                 if sym not in prices:
                     try:
-                        conn2 = sqlite3.connect("data/stock_daily_cache.db")
-                        c2 = conn2.cursor()
-                        c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
-                        row = c2.fetchone()
-                        conn2.close()
-                        if row: prices[sym] = float(row[0])
-                        else: prices[sym] = 0.0
-                    except:
+                        with sqlite3.connect("data/stock_daily_cache.db") as conn2:
+                            c2 = conn2.cursor()
+                            c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                            row = c2.fetchone()
+                            if row: prices[sym] = float(row[0])
+                            else: prices[sym] = 0.0
+                    except Exception as db_err:
+                        print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
                         prices[sym] = 0.0
 
             remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
@@ -1525,46 +1525,49 @@ def get_active_signals():
     cache_key = "signals_active"
     now = time.time()
     
+    # Quick lock check: If we have cached active signals, return them
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            if now < expiry:
+                disabled = database.get_disabled_strategies()
+                filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+                return jsonify(filtered_data), 200
+                
+    # Cache is empty or expired. Trigger background update if not running.
+    with SIGNALS_ACTIVE_UPDATING_LOCK:
+        is_updating = SIGNALS_ACTIVE_UPDATING
+        if not is_updating:
+            SIGNALS_ACTIVE_UPDATING = True
+            threading.Thread(target=_update_active_signals_cache).start()
+            
+    # If the cache had expired data, return it immediately while it refreshes in the background
     with RESPONSE_CACHE_LOCK:
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             disabled = database.get_disabled_strategies()
             filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
-            if now < expiry:
-                return jsonify(filtered_data), 200
-            else:
-                with SIGNALS_ACTIVE_UPDATING_LOCK:
-                    if not SIGNALS_ACTIVE_UPDATING:
-                        SIGNALS_ACTIVE_UPDATING = True
-                        threading.Thread(target=_update_active_signals_cache).start()
-                return jsonify(filtered_data), 200
+            return jsonify(filtered_data), 200
+            
+    # Cache is completely empty. Fetch from DB (OUTSIDE of RESPONSE_CACHE_LOCK to prevent bottlenecks)
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC LIMIT 50")
+            rows = c.fetchall()
+        signals = [dict(r) for r in rows]
+        disabled = database.get_disabled_strategies()
+        signals = [s for s in signals if s.get("strategy") not in disabled]
+        for s in signals:
+            s["pnl_pct"] = None
+            s["pnl_usdt"] = None
+    except Exception:
+        signals = []
         
-        # Cache is empty. Spawn thread.
-        with SIGNALS_ACTIVE_UPDATING_LOCK:
-            is_updating = SIGNALS_ACTIVE_UPDATING
-            if not is_updating:
-                SIGNALS_ACTIVE_UPDATING = True
-                
-        try:
-            with database.db_session() as conn:
-                c = conn.cursor()
-                c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC LIMIT 50")
-                rows = c.fetchall()
-            signals = [dict(r) for r in rows]
-            disabled = database.get_disabled_strategies()
-            signals = [s for s in signals if s.get("strategy") not in disabled]
-            for s in signals:
-                s["pnl_pct"] = None
-                s["pnl_usdt"] = None
-        except Exception:
-            signals = []
-        
+    with RESPONSE_CACHE_LOCK:
         RESPONSE_CACHE[cache_key] = (now + 15, signals)
         
-        if not is_updating:
-            threading.Thread(target=_update_active_signals_cache).start()
-            
-        return jsonify(signals), 200
+    return jsonify(signals), 200
 
 @trades_bp.route('/api/signals/closed', methods=['GET'])
 def get_closed_signals():
@@ -1647,15 +1650,14 @@ def _update_free_stats_cache():
             for sym in stock_syms:
                 if sym not in live_prices:
                     try:
-                        conn2 = sqlite3.connect("data/stock_daily_cache.db")
-                        c2 = conn2.cursor()
-                        c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
-                        row = c2.fetchone()
-                        conn2.close()
-                        if row:
-                            live_prices[sym] = float(row[0])
-                        else:
-                            live_prices[sym] = 0.0
+                        with sqlite3.connect("data/stock_daily_cache.db") as conn2:
+                            c2 = conn2.cursor()
+                            c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                            row = c2.fetchone()
+                            if row:
+                                live_prices[sym] = float(row[0])
+                            else:
+                                live_prices[sym] = 0.0
                     except Exception as db_err:
                         print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
                         live_prices[sym] = 0.0
