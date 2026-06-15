@@ -2182,13 +2182,13 @@ def get_trade_chart():
 
     clean_sym = symbol.replace("/", "_").replace(":", "_")
     import hashlib
-    # Bucket by a 2-minute time window to prevent redundant redraws on every price change.
-    time_bucket = int(time.time() // 120)
+    # Bucket by a 15-minute time window to prevent redundant redraws on every price change.
+    time_bucket = int(time.time() // 900)
     params_str = f"{symbol}_{entry}_{tp}_{sl}_{side}_{time_bucket}"
     h = hashlib.md5(params_str.encode('utf-8')).hexdigest()
     filepath = os.path.join(os.getcwd(), "pnl_cards", f"chart_{clean_sym}_{h}.png")
     
-    if os.path.exists(filepath) and (time.time() - os.path.getmtime(filepath) < 300):
+    if os.path.exists(filepath) and (time.time() - os.path.getmtime(filepath) < 900):
         return send_file(filepath, mimetype='image/png')
 
     t_start = time.time()
