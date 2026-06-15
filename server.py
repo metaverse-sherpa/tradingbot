@@ -17,25 +17,6 @@ import utils_gcp
 # Initialize Database on Startup
 database.init_db()
 
-# Check and update Stock Daily Cache on Startup in a background thread
-def startup_stock_cache_update():
-    try:
-        import threading
-        def bg_update():
-            try:
-                import live_bot_multi_alpaca
-                print("🏔️ Startup: Checking and updating stock daily cache...")
-                live_bot_multi_alpaca.update_stock_daily_cache()
-                print("🏔️ Startup: Stock daily cache check/update completed.")
-            except Exception as ex:
-                print(f"Error updating stock daily cache on startup: {ex}")
-        
-        threading.Thread(target=bg_update, daemon=True).start()
-    except Exception as e:
-        print(f"Error scheduling startup stock daily cache update: {e}")
-
-startup_stock_cache_update()
-
 app = Flask(__name__, static_folder='webapp', static_url_path='')
 # Configure Flask session secret
 app.secret_key = utils_gcp.get_secret("FLASK_SECRET_KEY") or "metaverse-sherpa-secret-key"

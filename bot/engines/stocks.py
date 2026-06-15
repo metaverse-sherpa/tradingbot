@@ -21,6 +21,19 @@ async def alpaca_equities_engine(application):
     import live_bot_multi_alpaca
 
     logger.info("🦙 Starting Alpaca Stocks Daily Scheduler (9:31 AM EST)...")
+    
+    # Run cache catch-up update on scheduler startup in a non-blocking background task
+    async def run_startup_cache_update():
+        try:
+            logger.info("🏔️ Startup: Checking and updating stock daily cache...")
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, live_bot_multi_alpaca.update_stock_daily_cache)
+            logger.info("🏔️ Startup: Stock daily cache check/update completed.")
+        except Exception as startup_err:
+            logger.error(f"Error checking daily stock cache on startup: {startup_err}")
+
+    asyncio.create_task(run_startup_cache_update())
+
     while True:
         try:
             tz = ZoneInfo('US/Eastern')
