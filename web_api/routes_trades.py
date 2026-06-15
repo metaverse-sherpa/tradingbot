@@ -17,6 +17,23 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import database
 import utils_gcp
 import media_gen
+def is_us_market_open():
+    """Checks if the US stock market is currently open (9:30 AM - 4:00 PM Eastern Time, Monday-Friday)."""
+    import datetime
+    import pytz
+    try:
+        tz_et = pytz.timezone('US/Eastern')
+        now_et = datetime.datetime.now(tz_et)
+        # 0 = Monday, ..., 4 = Friday
+        if now_et.weekday() >= 5:
+            return False
+        market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+        market_end = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+        return market_start <= now_et <= market_end
+    except Exception as e:
+        print(f"Error checking market hours: {e}")
+        return True # Default to True so updates aren't blocked if timezone check fails
+
 def is_stock(symbol):
     """Determines if a symbol is a stock ticker."""
     symbol_str = str(symbol).upper()
@@ -1433,6 +1450,9 @@ def _update_active_signals_cache():
                 async def fetch_alpaca():
                     if not stock_syms or not sys_user.get("alpaca_api_key"):
                         return
+                    if not is_us_market_open():
+                        print("[MARKET CLOSED] Skipping live Alpaca stock snapshot fetching.")
+                        return
                     try:
                         sym_str = ",".join(stock_syms)
                         url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
@@ -1509,18 +1529,19 @@ def _update_active_signals_cache():
 
             for sym in stock_syms:
                 if sym not in prices:
-                    try:
-                        import yfinance as yf
-                        ticker = yf.Ticker(sym)
-                        info = ticker.fast_info
-                        if 'lastPrice' in info and info['lastPrice'] is not None and not np.isnan(info['lastPrice']):
-                            prices[sym] = float(info['lastPrice'])
-                        else:
-                            hist = ticker.history(period="1d")
-                            if not hist.empty:
-                                prices[sym] = float(hist['Close'].iloc[-1])
-                    except Exception as yf_err:
-                        print(f"yfinance fallback failed for {sym}: {yf_err}")
+                    if is_us_market_open():
+                        try:
+                            import yfinance as yf
+                            ticker = yf.Ticker(sym)
+                            info = ticker.fast_info
+                            if 'lastPrice' in info and info['lastPrice'] is not None and not np.isnan(info['lastPrice']):
+                                prices[sym] = float(info['lastPrice'])
+                            else:
+                                hist = ticker.history(period="1d")
+                                if not hist.empty:
+                                    prices[sym] = float(hist['Close'].iloc[-1])
+                        except Exception as yf_err:
+                            print(f"yfinance fallback failed for {sym}: {yf_err}")
                     
                     if sym not in prices:
                         try:
