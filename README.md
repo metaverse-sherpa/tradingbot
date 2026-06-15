@@ -1,198 +1,197 @@
-# Trading Bot: Multi-Symbol BB Scalper 📈
+# Trading Bot: Multi-Symbol BB Scalper & Premium Web Dashboard 📈
 
-A production-ready, multi-tenant Telegram trading bot for Blofin, Binance, MEXC, and Bitget. This bot utilizes advanced algorithmic strategies (including Bollinger Band scalping, trend filters, and volatility protection) to trade for multiple users simultaneously from a dedicated VPS.
+A production-ready, multi-tenant Telegram trading bot and companion web dashboard. This system supports futures trading on Blofin, Binance, MEXC, and Bitget, as well as equities swing trading via Alpaca. It is designed to run efficiently on a Google Cloud hosted free VM instance (`e2-micro`) using an asynchronous python execution loop, a Flask API backend, a Tailwind CSS + Vanilla JS SPA, and SQLite in WAL mode with Fernet symmetric encryption for credentials.
 
-## 🚀 Features
+---
 
-*   **Multi-Tenant Telegram Interface**: Users securely connect their own accounts via `/setup` or `/reset`.
-*   **Multi-Exchange Support**: Fully integrated with Blofin, Binance, MEXC, and Bitget futures.
-*   **Professional Dashboards**: Real-time stats, open position charts with Bollinger Clouds, and trade history.
-*   **Precision Execution**: Async engine runs every 15 minutes (30s after the candle close) with marketable limit orders to bypass size limits.
-*   **Safety & Privacy**: 
-    *   **Military-Grade Encryption**: API keys are encrypted with Fernet symmetric encryption at rest.
-    *   **Privacy Mode**: Toggle between showing dollar PnL or protected percentages (`/privacy`).
-*   **Advanced Algorithmic Strategies**: Switch between multiple brains, including the *Mean Reversion Scalper* and the *Valkyrie Elite Scalper* (`/strategy`).
-*   **Tactical Controls**: Manual overrides including One-Click Close and Panic Close functionality directly from Telegram.
-*   **Capital Allocation**: Granular control over position sizing (trade with full balance, fixed $ amount, or % isolation) via `/settings`.
-*   **Tiered Access & Referrals**: Standard (Free trade signals) and Institutional (Premium exchange autopilot) tiers. Built-in referral system to earn Premium.
-*   **Automated & Forward Testing**: Real-time Win Rate, PnL %, and trade counts updated live (`/stats`), plus simulated forward test tracking (`/forwardtest`).
+## 🚀 Key Features
+
+*   **Multi-Tenant Telegram Interface**: Secure `/setup` or `/reset` flows. Each tenant runs autonomously using their own credentials.
+*   **Multi-Exchange Engine**: Real-time integration with Blofin, Binance, MEXC, and Bitget futures via CCXT.
+*   **Equities Integration**: Automated stock trading using the Alpaca API driven by the **Sherpa Velocity Pullback** strategy.
+*   **Lightweight Web SPA**: A highly responsive premium web dashboard featuring glassmorphic designs, real-time position status, and inline technical charting.
+*   **Military-Grade Encryption**: Fernet symmetric encryption key encrypts exchange API keys/passwords at rest in the SQLite database.
+*   **Performance Tracking**: Live win rate, total trade counts, and theoretical/forward testing simulations.
+*   **Administrative Control Overrides**: Admin-only commands to manage tiers, referrals, generate gift codes, and execute emergency panic closes.
+
+---
 
 ## 📁 Codebase Architecture & File Reference
 
-This repository is organized into distinct components separating production operations, background engines, database state, and web services.
+The codebase is modularized to separate the Telegram user interface, background trading engines, Flask API routes, and front-end SPA resources.
 
-### 🌐 Web API Backend (`web_api/`)
-
-The web dashboard's endpoints are highly modularized inside the `web_api/` directory using **Flask Blueprints** for enhanced legibility, structure, and extensibility:
-
-*   **`web_api/routes_auth.py`**: Blueprint route handler for register, login, forgot/reset password, and Google OAuth credentials.
-*   **`web_api/routes_settings.py`**: Blueprint route handler for user preference settings, active strategy controls, exchange API key configuration, and Telegram account linking.
-*   **`web_api/routes_trades.py`**: Blueprint route handler containing all core data streams, including real-time user stats, balances, open positions, close/panic overrides, inline charting, live signal triggers, and institutional backtesting engines.
-*   **`web_api/routes_premium.py`**: Blueprint route handler for Tron USDT transactions, universal gift code generation/redemption, referrals, and administrative release tools.
-*   **`web_api/auth.py`**: Cryptographic hash helper utilities and JWT token protection middleware.
-*   **`web_api/db_web.py`**: Database controller mapping operations for user records in the web system.
-*   **`web_api/email_service.py`**: Handles alert notifications, templates, and reset links.
-*   **`web_api/cache.py`**: Thread-safe in-memory cache definitions (`RESPONSE_CACHE`, locks, TTL values) ensuring high-speed data fetching under 1ms.
-
----
-
-### 🐍 Production Root Scripts
-
-The project root contains only active production-critical scripts that drive the user interface and real-time execution engines:
-
-*   **`server.py`**: The lightweight entrypoint for the Flask backend. Initializes the database, defines static endpoints, sets CORS, and registers the dynamic `web_api/` Blueprints.
-*   **`telegram_bot.py`**: The main application entrypoint. Boots up the Telegram bot daemon using `python-telegram-bot`, maps command callbacks (e.g., `/setup`, `/settings`, `/stats`), manages user interactions, and schedules the async background trading loop.
-*   **`live_bot_multi.py`**: The core multi-exchange execution engine for crypto futures. It acts asynchronously to fetch market feeds, calculate Bollinger Band scalp levels, trigger order submissions (marketable limits) for user tenants, and manage active position lifecycles.
-*   **`live_bot_multi_alpaca.py`**: The production execution engine for equities trading via the Alpaca API. Automates the **Sherpa Velocity Pullback** strategy at the market open, manages orders, and tallies theoretical trade outcomes.
-*   **`database.py`**: The data abstraction layer. Manages SQLite database operations, handles cryptographic symmetric encryption/decryption (Fernet) of exchange API keys at rest, maintains user preferences, and records theoretical backtest logs.
-*   **`charting.py`**: Renders real-time technical analysis charts of active positions (overlaying candles, Bollinger Clouds, entries, and current prices) which are sent directly to users via Telegram.
-*   **`media_gen.py`**: Generates premium visual asset cards (such as P&L performance, portfolio allocation, and dynamic UI panels) using drawing libraries (`PIL/Pillow`) to enhance user reporting.
-*   **`strategies.py`**: Implements technical indicator math and signal triggers (such as BB Scalping, Valkyrie Elite signals, and trend filters) for execution engines.
-*   **`bot_ui.py`**: Houses layout utilities, keyboard formatting helpers, inline button builders, and markdown parsing for the Telegram user interface.
-*   **`stock_backtester_daily.py`** & **`stock_data_cache_daily.py`**: Backtester and caching tools that update historical stock price data feeds for live swing trading evaluation.
-
----
-
-### 🗄️ Database Architecture (`data/` Directory)
-
-All database engines and SQLite state files are isolated inside the `data/` subdirectory to keep the workspace root tidy, secure, and separated from version control:
-
-*   **`data/bot_users.db`**: **The active user database.** Securely stores Telegram chat profiles, encrypted API keys/secrets, active strategies, tier access states, referral analytics, and open simulated forward-testing trades. *Must never be committed to Git.*
-*   **`data/stock_daily_cache.db`**: Stores cached daily price histories for equities used by the Alpaca live bot.
-*   **`data/stock_cache.db`**: A comprehensive historical stock price cache populated via the Tiingo API for local daily backtesting.
-*   **`data/blofin_stock_cache.db`**: Local caching database storing historical futures data for backtest validations.
-
----
-
-### 🧪 Supplementary Directories
-
-*   **`scripts/`**: Retained exclusively for historical developer research, ad-hoc audits, and variance-checking scripts (e.g., `sherpa_visual_audit.py`, `blofin_variance_check.py`).
-*   **`results/`**: Stores generated technical analysis equity curves, strategy audit infographics, and premium performance report images.
-*   **`pnl_cards/`**: Serves as a temporary directory for generated user P&L social sharing cards.
-
-## 🛠️ Initial VPS Setup (GCP/Ubuntu)
-
-If setting up a new `e2-micro` instance, follow these essential steps:
-
-1.  **Memory Safety (Swap File)**:
-    ```bash
-    sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
-    sudo mkswap /swapfile && sudo swapon /swapfile
-    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-    ```
-2.  **Install Dependencies & Setup Venv**:
-    ```bash
-    sudo apt update && sudo apt install -y python3-pip python3-venv git libfontconfig1 fonts-dejavu-core
-    cd ~/tradingbot
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    ```
-3.  **Setup Service (Systemd)**:
-    Create the service file: `sudo nano /etc/systemd/system/tradingbot.service`
-    ```ini
-    [Unit]
-    Description=Cyber-Sherpa Trading Bot
-    After=network.target
-
-    [Service]
-    User=gilesasp
-    WorkingDirectory=/home/gilesasp/tradingbot
-    ExecStart=/home/gilesasp/tradingbot/venv/bin/python3 telegram_bot.py
-    Restart=always
-    RestartSec=10
-    StandardOutput=journal
-    StandardError=journal
-
-    [Install]
-    WantedBy=multi-user.target
-    ```
-    Then run:
-    ```bash
-    sudo systemctl daemon-reload
-    sudo systemctl enable tradingbot
-    sudo systemctl start tradingbot
-    ```
-
-
-## 🔐 Google Cloud Secret Manager Setup
-
-
-To securely run the bot on GCP without hardcoding API keys in `.env` files, the bot uses Google Cloud Secret Manager.
-
-1.  **Create Secrets**: Go to **Security > Secret Manager** in the Google Cloud Console and create your secrets (e.g., `ALPACA_API_KEY`, `ALPACA_API_SECRET`).
-2.  **Grant Permissions**: Give your VM's Service Account the **Secret Manager Secret Accessor** role in IAM.
-3.  **Enable VM Scopes**: 
-    * Stop your VM instance.
-    * Click **Edit**.
-    * Under **Identity and API access**, change the **Access scopes** to **"Allow full access to all Cloud APIs"**.
-    * Save and restart the VM.
-4.  **Local Fallback**: When running locally on your own machine (outside of GCP), the bot will gracefully fall back to checking your local `.env` file for uppercase equivalents (e.g., `ALPACA_API_KEY` and `ALPACA_API_SECRET`).
-
-## 🌐 Premium Web Application
-
-The companion premium trading dashboard serves as an elite, high-performance web dashboard integrated directly with your VPS trading systems.
-
-### Core Features
-
-*   **Instant Load Speeds**: Optimizes tab transitions using parallelized request handling (`Promise.all`) and thread-safe in-memory caching on the backend (60-second TTL) for near `<1ms` response times.
-*   **Segmented Mobile controls**: Custom dual segmented controllers built with clean glassmorphic CSS styling:
-    *   **Modes**: Switch seamlessly between **Active Positions** and **Closed History**.
-    *   **Sizing**: Swaps dynamically between **Crypto** and **Stocks** with real-time active position counters directly inside the tab labels, e.g. `Crypto (0)` and `Stocks (4)`. No wrapping, no layout shifting.
-*   **Inline Candlestick Charting**: Exposes an `/api/trades/chart` route that dynamically fetches live 15-minute crypto or daily stock bars and renders technical candlestick analysis with indicator overlays (Bollinger Clouds, EMAs).
-*   **Dynamic glowing progress bar**: Clicking any active position smoothly expands it to display a custom progress visual mapping Stop Loss (SL), Entry, and Take Profit (TP) levels relative to the current live mark price, using a glowing neon indicator.
-*   **Real-time deployment alerts**: Periodically checks the VPS for commits every 30 seconds. Uses a static git commit hash system so that when updates are pushed and the server restarts, a temporary **"🚀 New deployment Successful"** toast and native browser push notification automatically trigger for admin users without needing a refresh.
+```
+tradingbot/
+├── bot/                         # Telegram Bot Source Directory
+│   ├── engines/                 # Execution Loops & Market Sync Processes
+│   │   ├── base.py              # Base class defining executor loop interface
+│   │   ├── crypto.py            # Multi-exchange futures trading execution loops
+│   │   ├── stocks.py            # Alpaca equities trading execution engine
+│   │   ├── sync.py              # Balance/position synchronization engine
+│   │   └── system.py            # Background scheduler, system audits & database backup
+│   ├── handlers/                # Telegram Event Command & Callback Logic
+│   │   ├── settings/            # Sizing, isolation, strategy whitelists
+│   │   │   ├── commands.py      # Entry point for settings commands
+│   │   │   ├── free_trades.py   # Settings for standard tier/free signals
+│   │   │   └── helpers.py       # Layout formatting utility helpers
+│   │   ├── admin.py             # Administrator commands (gift codes, vacuum, audit)
+│   │   ├── auth.py              # Setup flow, reset API keys, user linking
+│   │   ├── strategy.py          # Command handlers for switching trading strategies
+│   │   ├── system.py            # System checks, uptime diagnostics, general help
+│   │   └── trading.py           # Position details, one-click close, manual overrides
+│   └── ui/                      # UI Rendering Layout Templates
+│       ├── dashboards.py        # Text-based dashboards (crypto/stock/stats)
+│       └── keyboards.py         # Dynamic markup inline keyboards and buttons
+│
+├── web_api/                     # Flask Backend API Blueprints
+│   ├── auth.py                  # Argon2 password hashing and JWT token middleware
+│   ├── cache.py                 # Thread-safe in-memory caching engine
+│   ├── db_web.py                # Database controller wrapping web user operations
+│   ├── email_service.py         # Alert templates, OTP, and registration triggers
+│   ├── routes_auth.py           # Route blueprint: registration, login, OAuth
+│   ├── routes_premium.py        # Route blueprint: Tron USDT payments, gift codes
+│   ├── routes_settings.py       # Route blueprint: user API key storage, risk settings
+│   └── routes_trades.py         # Route blueprint: positions, balance history, charts
+│
+├── webapp/                      # Single-Page Frontend Application (SPA)
+│   ├── app.js                   # Main application controller (view logic & API routing)
+│   ├── index.html               # Main index containing the UI structure
+│   ├── input.css / output.css   # Tailwind CSS source styling sheets
+│   └── tailwind.config.js       # Tailwind setup and custom color configurations
+│
+├── data/                        # Local SQLite Database Files (WAL Mode)
+│   ├── bot_users.db             # Active database for user settings & API keys
+│   └── stock_daily_cache.db     # Daily stock data cache for equity algorithms
+│
+├── docs/                        # Project Documentation
+│   ├── db_schema.md             # In-depth SQLite schema mapping for all tables
+│   ├── SSL_SETUP_GUIDE.md       # SSL/Nginx reverse proxy setup walkthrough
+│   └── multiexchange-strategy.md# Multi-exchange futures scaling details
+│
+└── [Root Level Scripts]         # High-level entrypoints and helper utilities
+    ├── server.py                # Entrypoint for the Flask backend web API
+    ├── telegram_bot.py          # Entrypoint daemon for the Telegram Bot
+    ├── live_bot_multi.py        # Production multi-exchange crypto futures engine
+    ├── live_bot_multi_alpaca.py # Production Alpaca stock trading engine
+    ├── database.py              # Core SQLite data layer and Fernet encryption wrapper
+    ├── charting.py              # Technical candle/Bollinger Cloud rendering utility
+    ├── media_gen.py             # PIL-based graphical performance card generator
+    ├── strategies.py            # Math formulas for indicators and trigger conditions
+    └── bot_ui.py                # Formatting layout blocks for Telegram markdown
+```
 
 ---
 
-## 🔄 Updates & Maintenance
+## 🛠️ GCP Free VM Setup Guide (Ubuntu `e2-micro`)
 
-Follow these steps each time you push new code to Github to deploy it live to the VPS:
+Follow this step-by-step guide to set up the system on Google Cloud Platform's Free Tier instance (`e2-micro` virtual machine running Ubuntu 22.04 LTS).
 
-1.  **Local**: Push commits to GitHub:
+### 1. Provision the VM Instance
+*   Go to **Google Compute Engine** > **VM Instances** > **Create Instance**.
+*   **Name**: `tradingbot-free-tier`
+*   **Region**: Pick a free tier region (e.g., `us-central1` (Iowa), `us-east1` (South Carolina), `us-west1` (Oregon)).
+*   **Machine configuration**: Machine family: **General-purpose** > Series: **E2** > Machine type: **e2-micro** (2 vCPUs, 1 GB memory).
+*   **Boot Disk**: Ubuntu 22.04 LTS (Standard persistent disk up to 30 GB is free).
+*   **Firewall**: Check both **Allow HTTP traffic** and **Allow HTTPS traffic**.
+*   **Access Scopes**: Under *Identity and API access*, choose **Allow full access to all Cloud APIs** (required if using GCP Secret Manager).
+
+### 2. Configure Virtual Memory (Swap File)
+The `e2-micro` instance only has 1 GB of RAM. Setting up a 2 GB swap file is **mandatory** to prevent the web app or background engines from being killed by the Linux Out-Of-Memory (OOM) killer.
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+### 3. Install System Packages & Node.js
+Update the system package repository and install Git, Python 3 development libraries, Nginx (for SSL reverse proxying), and Cairo graphics dependencies (needed by PIL for P&L card generation).
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3-pip python3-venv python3-dev git libfontconfig1 fonts-dejavu-core Nginx pkg-config libcairo2-dev
+```
+
+### 4. Clone Repository & Setup Python Virtual Environment
+Clone the bot code to your user home directory, configure the virtual environment, and install dependencies.
+```bash
+cd ~
+git clone https://github.com/YOUR_GITHUB_USERNAME/tradingbot.git
+cd tradingbot
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 5. Setup Local Database File Structure
+Initialize the data directory (the SQLite databases will be automatically created by the system upon the first start of the server or telegram bot).
+```bash
+mkdir -p data results pnl_cards
+```
+
+### 6. Environment Configurations (`.env`)
+Copy `.env.copy` to `.env` and fill in the configuration values:
+```bash
+cp .env.copy .env
+nano .env
+```
+Ensure the following key variables are defined in your local `.env`:
+*   `TELEGRAM_BOT_TOKEN`: The API token from `@BotFather`.
+*   `ENCRYPTION_KEY`: A 32-byte URL-safe base64-encoded key generated via cryptography (e.g. `python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). This is critical for encrypting API credentials at rest.
+*   `FLASK_SECRET_KEY` and `JWT_SECRET`: Random secure string tokens for web authentication.
+*   `TIINGO_API_KEY`: API Key for pulling daily stock pricing.
+
+---
+
+## 🔐 Google Cloud Secret Manager Integration
+
+If running on GCP, the bot can securely load credentials from Google Secret Manager instead of saving them as plaintext in `.env`:
+1.  **Create Secrets**: In the GCP Console under **Security > Secret Manager**, create secrets for sensitive keys (e.g., `ALPACA_API_KEY`, `ALPACA_API_SECRET`, `TELEGRAM_BOT_TOKEN`).
+2.  **IAM Role**: Assign the **Secret Manager Secret Accessor** role to your VM's default service account.
+3.  **Local Fallback**: Outside of GCP (during local testing), the system automatically falls back to values defined inside your local `.env` file.
+
+---
+
+## 🔄 VPS Deployment & Maintenance Commands
+
+Use the following commands to manage the production services on your VPS.
+
+### Restart Services
+
+*   **Telegram Bot Daemon**: Running as a background systemd service:
     ```bash
-    git add .
-    git commit -m "feat: implement webapp optimizations"
-    git push
-    ```
-2.  **VPS**: Connect via SSH and pull the changes:
-    ```bash
-    cd ~/tradingbot
-    git pull
-    ```
-3.  **Restart Services**: Restart the Telegram bot daemon and the Flask web server:
-    ```bash
-    # Restart the Telegram Bot
     sudo systemctl restart tradingbot
-
-    # Restart or start the Flask Web Application Server (manually or via service)
-    # If running manually in the background:
+    ```
+*   **Web API (Flask backend)**: Managed in a persistent `screen` session:
+    ```bash
     screen -S webapp -X quit 2>/dev/null
     screen -dmS webapp bash -c "source venv/bin/activate && python3 server.py"
     ```
-4.  **Logs**: Monitor live console logs:
-    *   Telegram Bot: `journalctl -u tradingbot -f`
-    *   Disk Safety: Limit system logs to 500MB to prevent disk bloat:
-        ```bash
-        sudo journalctl --vacuum-size=500M
-        ```
 
-## 🛠️ Troubleshooting & Environment
+### Monitor Console Logs
+*   **Bot Output**: `journalctl -u tradingbot -f`
+*   **Web Server Output**: `screen -r webapp` (Press `Ctrl+A` then `D` to detach without stopping it)
 
+### Maintenance Operations
+*   **Vacuum System Logs**: Run periodically to clean system journal files and prevent disk exhaustion:
+    ```bash
+    sudo journalctl --vacuum-size=500M
+    ```
+*   **SQLite DB Backups**: Automatically handled in the background by `bot/engines/system.py`, saving timestamped SQL dumps to the workspace directory.
 
-
-
-### ⚠️ PATH Warnings
-If you see a warning like `WARNING: The script ... is installed in ... which is not on PATH`, **don't worry.** This is normal and doesn't affect the bot. It just means the optional command-line tools aren't in your system's shortcut list. The bot code itself will work perfectly.
-
-### 🐍 Virtual Environment (Venv)
-To ensure all libraries are installed correctly, always activate your virtual environment before running `pip`:
+### Pull Code Updates from GitHub
 ```bash
-source ~/tradingbot/venv/bin/activate
-pip install -r requirements.txt
+cd ~/tradingbot
+git pull
+# Run service restart commands after pulling changes
+sudo systemctl restart tradingbot
+screen -S webapp -X quit 2>/dev/null
+screen -dmS webapp bash -c "source venv/bin/activate && python3 server.py"
 ```
 
 ---
 
 ## ⚠️ Disclaimer
-Trading cryptocurrency involves significant risk. This bot is provided for educational purposes. Always start with **Dry Run** mode to verify behavior before committing real capital.
+
+Trading cryptocurrency futures and equities carries high risk and may not be suitable for all investors. This software is provided for educational and research purposes. Always verify strategy executions in **Dry Run** mode (`BLOFIN_DRY_RUN=true`) before committing live funds.
