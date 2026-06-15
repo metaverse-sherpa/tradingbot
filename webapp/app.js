@@ -2893,10 +2893,10 @@ function renderTradesView() {
                             </div>
                             <div class="flex justify-between items-center pt-3 border-t border-white/10">
                                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                                    SL: <span class="text-on-surface">$${(trade.sl_price || 0).toFixed(4)} (${trade.entry_price > 0 && trade.sl_price > 0 ? (((trade.sl_price - trade.entry_price) / trade.entry_price) * 100 * (trade.type === 'crypto' ? 20.0 : 1.0)).toFixed(0) : '0'}%)</span>
+                                    SL: <span class="text-on-surface">$${(trade.sl_price || 0).toFixed(trade.type === 'crypto' ? 4 : 2)} (${trade.entry_price > 0 && trade.sl_price > 0 ? (((trade.sl_price - trade.entry_price) / trade.entry_price) * 100 * (trade.type === 'crypto' ? 20.0 : 1.0)).toFixed(0) : '0'}%)</span>
                                 </div>
                                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                                    TP: <span class="text-on-surface">$${(trade.tp_price || 0).toFixed(4)} (${trade.entry_price > 0 && trade.tp_price > 0 ? (((trade.tp_price - trade.entry_price) / trade.entry_price) * 100 * (trade.type === 'crypto' ? 20.0 : 1.0)).toFixed(0) : '0'}%)</span>
+                                    TP: <span class="text-on-surface">$${(trade.tp_price || 0).toFixed(trade.type === 'crypto' ? 4 : 2)} (${trade.entry_price > 0 && trade.tp_price > 0 ? (((trade.tp_price - trade.entry_price) / trade.entry_price) * 100 * (trade.type === 'crypto' ? 20.0 : 1.0)).toFixed(0) : '0'}%)</span>
                                 </div>
                             </div>
                             ${progressBarHtml}
@@ -4387,10 +4387,10 @@ function renderSignalCard(sig, isLanding = false) {
             </div>
             <div class="flex justify-between items-center pt-3 border-t border-white/10 pointer-events-none" ${(isLanding || !isPremium) ? 'style="filter: blur(8px); user-select: none;"' : ''}>
                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                    SL: <span class="text-on-surface">$${sl.toFixed(4)} (${sl_pct.toFixed(0)}%)</span>
+                    SL: <span class="text-on-surface">$${sl.toFixed(isCryptoSignal ? 4 : 2)} (${sl_pct.toFixed(0)}%)</span>
                 </div>
                 <div class="font-numeric-data text-numeric-data text-sm text-on-surface-variant">
-                    TP: <span class="text-on-surface">$${tp.toFixed(4)} (+${tp_pct.toFixed(0)}%)</span>
+                    TP: <span class="text-on-surface">$${tp.toFixed(isCryptoSignal ? 4 : 2)} (+${tp_pct.toFixed(0)}%)</span>
                 </div>
             </div>
             ${progressBarHtml}
