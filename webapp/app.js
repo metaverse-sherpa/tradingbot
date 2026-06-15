@@ -4412,6 +4412,11 @@ window.setSignalsTab = function(tab) {
     renderView();
 };
 
+window.setSignalsCategoryTab = function(tab) {
+    STATE.signals_category_tab = tab;
+    renderView();
+};
+
 function renderSignalsView() {
     if (STATE.is_loading_signals) {
         const loadingMessages = [
@@ -4443,31 +4448,223 @@ function renderSignalsView() {
     }
 
     const currentTab = STATE.signals_tab || 'active';
+    let listHtml = '';
     
-    // Sort active signals based on the active_signals_sort_by setting
-    const sortedActiveSignals = [...STATE.active_signals].sort((a, b) => {
-        if (STATE.active_signals_sort_by === 'date') {
-            return (b.open_time || 0) - (a.open_time || 0);
-        } else {
-            return (b.pnl_pct || 0) - (a.pnl_pct || 0);
-        }
-    });
+    if (currentTab === 'active') {
+        const active_signals = STATE.active_signals || [];
+        const cryptoActive = active_signals.filter(s => s.symbol && s.symbol.includes('/'));
+        const stockActive = active_signals.filter(s => s.symbol && !s.symbol.includes('/'));
+        const cryptoCount = cryptoActive.length;
+        const stockCount = stockActive.length;
 
-    const listHtml = currentTab === 'active' 
-        ? (sortedActiveSignals.length === 0 ? `
+        let showCryptoTab = cryptoCount > 0;
+        let showStockTab = stockCount > 0;
+        if (cryptoCount === 0 && stockCount === 0) {
+            showCryptoTab = true;
+            showStockTab = true;
+        }
+
+        let isCrypto = (STATE.signals_category_tab || 'crypto') === 'crypto';
+        if (isCrypto && !showCryptoTab && showStockTab) {
+            isCrypto = false;
+        } else if (!isCrypto && !showStockTab && showCryptoTab) {
+            isCrypto = true;
+        }
+
+        const sortedCrypto = [...cryptoActive].sort((a, b) => {
+            if (STATE.active_signals_sort_by === 'date') {
+                return (b.open_time || 0) - (a.open_time || 0);
+            } else {
+                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+            }
+        });
+
+        const sortedStock = [...stockActive].sort((a, b) => {
+            if (STATE.active_signals_sort_by === 'date') {
+                return (b.open_time || 0) - (a.open_time || 0);
+            } else {
+                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+            }
+        });
+
+        const cryptoHtml = sortedCrypto.length === 0 ? `
             <div class="text-center py-12">
-                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
-                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
-                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">hourglass_empty</span>
+                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active crypto signals</p>
             </div>
-        ` : sortedActiveSignals.map(s => renderSignalCard(s)).join(''))
-        : (STATE.closed_signals.length === 0 ? `
+        ` : sortedCrypto.map(s => renderSignalCard(s)).join('');
+
+        const stockHtml = sortedStock.length === 0 ? `
             <div class="text-center py-12">
-                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
-                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No closed signals</p>
-                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Closed signals will appear here once resolved.</p>
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">hourglass_empty</span>
+                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active stock signals</p>
             </div>
-        ` : STATE.closed_signals.map(s => renderClosedSignalCard(s)).join(''));
+        ` : sortedStock.map(s => renderSignalCard(s)).join('');
+
+        if (active_signals.length === 0) {
+            listHtml = `
+                <div class="text-center py-12">
+                    <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                    <p class="font-body-lg text-body-lg text-on-surface font-semibold">No active signals</p>
+                    <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Sherpa is analyzing markets...</p>
+                </div>
+            `;
+        } else if (showCryptoTab && showStockTab) {
+            listHtml = `
+                <!-- Category Tab Bar (Mobile Only) -->
+                <div class="glass-card rounded-full flex border border-white/10 p-1 w-full max-w-[500px] mx-auto relative overflow-hidden z-10 md:hidden mb-4 animate-fade-in">
+                    <button onclick="setSignalsCategoryTab('crypto')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                        Crypto (${cryptoCount})
+                    </button>
+                    <button onclick="setSignalsCategoryTab('stock')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                        Stocks (${stockCount})
+                    </button>
+                </div>
+
+                <!-- Mobile List (Single Column) -->
+                <div class="space-y-stack-gap md:hidden animate-fade-in">
+                    ${isCrypto ? cryptoHtml : stockHtml}
+                </div>
+
+                <!-- Desktop View (Two Columns) -->
+                <div class="hidden md:grid md:grid-cols-2 md:gap-6 animate-fade-in">
+                    <!-- Crypto Column -->
+                    <div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                            <span>🪙</span> Crypto (${cryptoCount})
+                        </h3>
+                        <div class="space-y-stack-gap">
+                            ${cryptoHtml}
+                        </div>
+                    </div>
+                    <!-- Stocks Column -->
+                    <div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                            <span>🦙</span> Stocks (${stockCount})
+                        </h3>
+                        <div class="space-y-stack-gap">
+                            ${stockHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            const singleHtml = showCryptoTab ? cryptoHtml : stockHtml;
+            const singleCount = showCryptoTab ? cryptoCount : stockCount;
+            const singleLabel = showCryptoTab ? 'Crypto' : 'Stocks';
+            const singleIcon = showCryptoTab ? '🪙' : '🦙';
+            
+            listHtml = `
+                <div class="w-full max-w-[600px] mx-auto space-y-4 animate-fade-in">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                        <span>${singleIcon}</span> ${singleLabel} (${singleCount})
+                    </h3>
+                    <div class="space-y-stack-gap">
+                        ${singleHtml}
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        const closed_signals = STATE.closed_signals || [];
+        const cryptoClosed = closed_signals.filter(s => s.symbol && s.symbol.includes('/'));
+        const stockClosed = closed_signals.filter(s => s.symbol && !s.symbol.includes('/'));
+        const cryptoCount = cryptoClosed.length;
+        const stockCount = stockClosed.length;
+
+        let showCryptoTab = cryptoCount > 0;
+        let showStockTab = stockCount > 0;
+        if (cryptoCount === 0 && stockCount === 0) {
+            showCryptoTab = true;
+            showStockTab = true;
+        }
+
+        let isCrypto = (STATE.signals_category_tab || 'crypto') === 'crypto';
+        if (isCrypto && !showCryptoTab && showStockTab) {
+            isCrypto = false;
+        } else if (!isCrypto && !showStockTab && showCryptoTab) {
+            isCrypto = true;
+        }
+
+        const cryptoHtml = cryptoClosed.length === 0 ? `
+            <div class="text-center py-12">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">history</span>
+                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No closed crypto signals</p>
+            </div>
+        ` : cryptoClosed.map(s => renderClosedSignalCard(s)).join('');
+
+        const stockHtml = stockClosed.length === 0 ? `
+            <div class="text-center py-12">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">history</span>
+                <p class="font-body-lg text-body-lg text-on-surface font-semibold">No closed stock signals</p>
+            </div>
+        ` : stockClosed.map(s => renderClosedSignalCard(s)).join('');
+
+        if (closed_signals.length === 0) {
+            listHtml = `
+                <div class="text-center py-12">
+                    <span class="material-symbols-outlined text-on-surface-variant/40 text-6xl mb-4">satellite_alt</span>
+                    <p class="font-body-lg text-body-lg text-on-surface font-semibold">No closed signals</p>
+                    <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Closed signals will appear here once resolved.</p>
+                </div>
+            `;
+        } else if (showCryptoTab && showStockTab) {
+            listHtml = `
+                <!-- Category Tab Bar (Mobile Only) -->
+                <div class="glass-card rounded-full flex border border-white/10 p-1 w-full max-w-[500px] mx-auto relative overflow-hidden z-10 md:hidden mb-4 animate-fade-in">
+                    <button onclick="setSignalsCategoryTab('crypto')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                        Crypto (${cryptoCount})
+                    </button>
+                    <button onclick="setSignalsCategoryTab('stock')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                        Stocks (${stockCount})
+                    </button>
+                </div>
+
+                <!-- Mobile List (Single Column) -->
+                <div class="space-y-stack-gap md:hidden animate-fade-in">
+                    ${isCrypto ? cryptoHtml : stockHtml}
+                </div>
+
+                <!-- Desktop View (Two Columns) -->
+                <div class="hidden md:grid md:grid-cols-2 md:gap-6 animate-fade-in">
+                    <!-- Crypto Column -->
+                    <div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                            <span>🪙</span> Crypto (${cryptoCount})
+                        </h3>
+                        <div class="space-y-stack-gap">
+                            ${cryptoHtml}
+                        </div>
+                    </div>
+                    <!-- Stocks Column -->
+                    <div>
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                            <span>🦙</span> Stocks (${stockCount})
+                        </h3>
+                        <div class="space-y-stack-gap">
+                            ${stockHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            const singleHtml = showCryptoTab ? cryptoHtml : stockHtml;
+            const singleCount = showCryptoTab ? cryptoCount : stockCount;
+            const singleLabel = showCryptoTab ? 'Crypto' : 'Stocks';
+            const singleIcon = showCryptoTab ? '🪙' : '🦙';
+            
+            listHtml = `
+                <div class="w-full max-w-[600px] mx-auto space-y-4 animate-fade-in">
+                    <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                        <span>${singleIcon}</span> ${singleLabel} (${singleCount})
+                    </h3>
+                    <div class="space-y-stack-gap">
+                        ${singleHtml}
+                    </div>
+                </div>
+            `;
+        }
+    }
 
     let statsSection = '';
     if (currentTab === 'closed') {
@@ -4602,7 +4799,7 @@ function renderSignalsView() {
         }
         
         statsSection = `
-            <div class="glass-card rounded-xl p-3 border border-white/10 mb-4 transition-all duration-300">
+            <div class="glass-card rounded-xl p-3 border border-white/10 mb-4 transition-all duration-300 w-full max-w-[600px] mx-auto">
                 <button onclick="window.toggleSignalsStats()" class="flex items-center justify-between w-full text-on-surface-variant hover:text-on-surface transition-colors active:scale-[0.99]">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-[20px] text-primary">analytics</span>
@@ -4617,7 +4814,7 @@ function renderSignalsView() {
 
     return `
         ${renderHeader()}
-        <main class="w-full pt-[60px] pb-24 max-w-[500px] mx-auto animate-fade-in relative">
+        <main class="w-full pt-[60px] pb-24 max-w-[500px] md:max-w-5xl mx-auto animate-fade-in relative">
             <div class="sticky top-[58px] z-40 w-full bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-container-margin mb-4">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="font-headline-sm text-headline-sm text-on-surface">🛰️ Alpha Signals</h2>
@@ -4635,7 +4832,7 @@ function renderSignalsView() {
                 </div>
                 
                 <!-- Tabs -->
-                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 w-full z-10">
+                <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 w-full max-w-[500px] mx-auto z-10">
                     <button onclick="setSignalsTab('active')" class="flex-1 py-2 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${currentTab === 'active' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">Active Signals</button>
                     <button onclick="setSignalsTab('closed')" class="flex-1 py-2 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${currentTab === 'closed' ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">Closed Signals</button>
                 </div>
@@ -4644,9 +4841,7 @@ function renderSignalsView() {
             <div class="px-container-margin space-y-section-gap">
                 ${statsSection}
                 
-                <div class="space-y-stack-gap">
-                    ${listHtml}
-                </div>
+                ${listHtml}
             </div>
         </main>
     `;
