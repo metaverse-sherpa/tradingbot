@@ -13,6 +13,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from flask import Blueprint, request, jsonify, make_response, g, send_file
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import database
 import utils_gcp
 import media_gen
@@ -21,6 +22,17 @@ from web_api.auth import require_auth
 from web_api.cache import RESPONSE_CACHE, RESPONSE_CACHE_LOCK, CACHE_TTL_SECONDS
 
 trades_bp = Blueprint('trades', __name__)
+
+# Global thread pool for executing slow exchange API queries with timeouts
+THREAD_POOL = ThreadPoolExecutor(max_workers=20)
+
+def run_with_timeout(func, timeout_sec, fallback):
+    try:
+        future = THREAD_POOL.submit(func)
+        return future.result(timeout=timeout_sec)
+    except Exception as e:
+        print(f"[TIMEOUT HELPER] Task failed, exceeded timeout ({timeout_sec}s), or threw error: {e}")
+        return fallback
 
 # Module-level variable to prevent concurrent background updates for active signals
 SIGNALS_ACTIVE_UPDATING = False
@@ -111,12 +123,13 @@ def get_balance():
     user = g.user
     user_id = user["id"]
     segment = request.args.get("segment") # 'crypto' or 'stock'
+    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     
     # Check cache
     now = time.time()
     cache_key = ("balance", user_id, segment)
     with RESPONSE_CACHE_LOCK:
-        if cache_key in RESPONSE_CACHE:
+        if not bypass_cache and cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             if now < expiry:
                 return jsonify(cached_data), 200
@@ -133,7 +146,7 @@ def get_balance():
     
     # 1. Query live Crypto balance (CCXT)
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
-        try:
+        def fetch_crypto_balance():
             import ccxt
             default_type = "swap"
             config = {
@@ -141,8 +154,8 @@ def get_balance():
                 "secret": crypto_api_secret,
                 "password": crypto_api_password,
                 "options": {"defaultType": default_type},
-                "enableRateLimit": True,
-                "timeout": 5000,
+                "enableRateLimit": False,
+                "timeout": 4000,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
@@ -151,7 +164,6 @@ def get_balance():
                 bal = client.fetch_balance(params=bal_params)
                 free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
                 
-                # Calculate true equity (free + margin + unrealized pnl)
                 total_equity = free_usdt
                 try:
                     positions = client.fetch_positions()
@@ -161,18 +173,15 @@ def get_balance():
                         total_equity += (margin + upnl)
                 except Exception as pos_err:
                     print(f"Error fetching positions for balance: {pos_err}")
-                    
-                balance_crypto = total_equity
+                return total_equity
             finally:
                 try:
                     client.close()
                 except Exception:
                     pass
-        except Exception as e:
-            futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
-            type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
-            print(f"Error fetching crypto balance for {crypto_exchange_id}{type_desc}: {e}")
-            balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
+
+        db_fallback = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
+        balance_crypto = run_with_timeout(fetch_crypto_balance, 6.0, db_fallback)
     elif not segment or segment == 'crypto':
         balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
             
@@ -182,13 +191,12 @@ def get_balance():
     alpaca_secret = (tg_user or {}).get("alpaca_api_secret") or user.get("alpaca_api_secret")
     
     if (not segment or segment == 'stock') and alpaca_key and alpaca_secret:
-        try:
+        def fetch_stock_balance():
             alpaca_user = tg_user or user
             res = database.make_alpaca_request(alpaca_user, "GET", "/v2/account")
-            balance_stock = float(res.get("portfolio_value", 0.0))
-        except Exception as e:
-            print(f"Error fetching stock balance: {e}")
-            balance_stock = 0.0
+            return float(res.get("portfolio_value", 0.0))
+        
+        balance_stock = run_with_timeout(fetch_stock_balance, 6.0, 0.0)
             
     if segment == 'crypto':
         response_data = {
@@ -220,12 +228,13 @@ def get_stats():
     user = g.user
     user_id = user["id"]
     segment = request.args.get("segment") # 'crypto' or 'stock'
+    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     
     # Check cache
     now = time.time()
     cache_key = ("stats", user_id, segment)
     with RESPONSE_CACHE_LOCK:
-        if cache_key in RESPONSE_CACHE:
+        if not bypass_cache and cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             if now < expiry:
                 return jsonify(cached_data), 200
@@ -253,7 +262,7 @@ def get_stats():
     crypto_exchange_id = tg_user.get("exchange_id", "blofin")
     
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
-        try:
+        def fetch_crypto_stats():
             import ccxt
             default_type = "swap"
             config = {
@@ -261,23 +270,27 @@ def get_stats():
                 "secret": crypto_api_secret,
                 "password": crypto_api_password or "",
                 "options": {"defaultType": default_type},
-                "timeout": 5000
+                "enableRateLimit": False,
+                "timeout": 4000
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
+                open_count = 0
+                unrealized = 0.0
                 positions = client.fetch_positions()
                 for p in positions:
                     contracts = float(p.get("contracts", 0) or 0)
                     if contracts != 0:
-                        crypto_open_count += 1
-                        crypto_unrealized += float(p.get("unrealizedPnl", 0) or 0)
+                        open_count += 1
+                        unrealized += float(p.get("unrealizedPnl", 0) or 0)
+                return open_count, unrealized
             finally:
                 try: client.close()
                 except: pass
-        except Exception as ce:
-            futures_type = tg_user.get("bingx_futures_type", "standard")
-            type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
-            print(f"[STATS] Crypto live error for {crypto_exchange_id}{type_desc}: {ce}")
+
+        open_count, unrealized = run_with_timeout(fetch_crypto_stats, 6.0, (0, 0.0))
+        crypto_open_count = open_count
+        crypto_unrealized = unrealized
             
     crypto_overall_pnl = crypto_cum_pnl + crypto_unrealized
     crypto_overall_pnl_pct = round((crypto_overall_pnl / crypto_equity) * 100, 2) if crypto_equity > 0 else 0.0
@@ -295,47 +308,55 @@ def get_stats():
     stock_api_secret = tg_user.get("alpaca_api_secret")
     
     if (not segment or segment == 'stock') and stock_api_key and stock_api_secret:
-        try:
+        def fetch_stock_stats():
+            eq = 10000.0
+            start_eq = 10000.0
+            unreal = 0.0
+            open_c = 0
+            closed_c = 0
+            w = 0
+            l = 0
+            
             acc = database.make_alpaca_request(tg_user, "GET", "/v2/account")
             if acc:
-                stock_equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
+                eq = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
                 
             # Use the user's configured starting equity if set. Otherwise, query Alpaca's portfolio history.
-            stock_start_equity = tg_user.get("alpaca_start_equity") or user.get("alpaca_start_equity")
-            if not stock_start_equity:
+            start_eq = tg_user.get("alpaca_start_equity") or user.get("alpaca_start_equity")
+            if not start_eq:
                 try:
                     portfolio_hist = database.make_alpaca_request(tg_user, "GET", "/v2/account/portfolio/history", params={"period": "all", "timeframe": "1D"})
                     if portfolio_hist and portfolio_hist.get("base_value") is not None:
-                        stock_start_equity = float(portfolio_hist["base_value"])
+                        start_eq = float(portfolio_hist["base_value"])
                     elif portfolio_hist and portfolio_hist.get("equity") and len(portfolio_hist["equity"]) > 0:
-                        stock_start_equity = float(portfolio_hist["equity"][0])
+                        start_eq = float(portfolio_hist["equity"][0])
                 except Exception as hist_err:
                     print(f"Error fetching Alpaca portfolio history starting equity: {hist_err}")
                 
                 # Fallback to current equity or 10k if history query failed/returned zero
-                if not stock_start_equity or stock_start_equity <= 0:
-                    stock_start_equity = stock_equity or 10000.0
+                if not start_eq or start_eq <= 0:
+                    start_eq = eq or 10000.0
                 
                 # Save it to the database so we never hit Alpaca's slow history endpoint again
-                if stock_start_equity and stock_start_equity > 0:
+                if start_eq and start_eq > 0:
                     try:
                         with database.db_session() as conn:
                             c = conn.cursor()
                             if tg_user.get("telegram_chat_id"):
-                                c.execute("UPDATE Users SET alpaca_start_equity = ? WHERE telegram_chat_id = ?", (stock_start_equity, tg_user["telegram_chat_id"]))
-                            c.execute("UPDATE WebUsers SET alpaca_start_equity = ? WHERE id = ?", (stock_start_equity, user_id))
+                                c.execute("UPDATE Users SET alpaca_start_equity = ? WHERE telegram_chat_id = ?", (start_eq, tg_user["telegram_chat_id"]))
+                            c.execute("UPDATE WebUsers SET alpaca_start_equity = ? WHERE id = ?", (start_eq, user_id))
                             conn.commit()
                     except Exception as db_save_err:
                         print(f"Error saving alpaca_start_equity: {db_save_err}")
                 
             positions = database.make_alpaca_request(tg_user, "GET", "/v2/positions")
             if isinstance(positions, list):
-                stock_open_count = len(positions)
-                stock_unrealized = sum(float(p.get("unrealized_pl", 0) or p.get("unrealized_intraday_pl", 0) or 0) for p in positions)
+                open_c = len(positions)
+                unreal = sum(float(p.get("unrealized_pl", 0) or p.get("unrealized_intraday_pl", 0) or 0) for p in positions)
                 
             orders = database.make_alpaca_request(tg_user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
             if isinstance(orders, list):
-                stock_closed_count = len(orders)
+                closed_c = len(orders)
                 # Compute actual stock wins/losses from closed orders on Alpaca
                 for o in orders:
                     qty = float(o.get("filled_qty", 0) or 0)
@@ -348,11 +369,15 @@ def get_stats():
                                 break
                         pnl_raw = (price - entry) * qty
                         if pnl_raw > 0:
-                            stock_wins += 1
+                            w += 1
                         else:
-                            stock_losses += 1
-        except Exception as se:
-            print(f"[STATS] Stock live error: {se}")
+                            l += 1
+            return eq, start_eq, unreal, open_c, closed_c, w, l
+
+        stock_stats_fallback = (stock_equity, stock_start_equity, stock_unrealized, stock_open_count, stock_closed_count, stock_wins, stock_losses)
+        stock_equity, stock_start_equity, stock_unrealized, stock_open_count, stock_closed_count, stock_wins, stock_losses = run_with_timeout(
+            fetch_stock_stats, 6.0, stock_stats_fallback
+        )
             
     # Calculate stock growth from starting base
     stock_overall_pnl = stock_equity - stock_start_equity
@@ -440,12 +465,13 @@ def get_open_trades():
     user = g.user
     user_id = user["id"]
     segment = request.args.get("segment") # 'crypto' or 'stock'
+    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     
     # Check cache
     now = time.time()
     cache_key = ("open_trades", user_id, segment)
     with RESPONSE_CACHE_LOCK:
-        if cache_key in RESPONSE_CACHE:
+        if not bypass_cache and cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             if now < expiry:
                 return jsonify(cached_data), 200
@@ -473,7 +499,8 @@ def get_open_trades():
     alpaca_secret = merged_user.get("alpaca_api_secret")
     
     if (not segment or segment == 'stock') and alpaca_key and alpaca_secret:
-        try:
+        def fetch_alpaca_open_trades():
+            trades = []
             positions = database.make_alpaca_request(merged_user, "GET", "/v2/positions")
             if isinstance(positions, list):
                 # Fetch recent closed orders once to resolve open_time for positions where we don't have local DB records
@@ -533,7 +560,7 @@ def get_open_trades():
                                     except Exception:
                                         pass
 
-                    open_positions.append({
+                    trades.append({
                         "id": p.get("asset_id", f"alpaca-{p.get('symbol')}"),
                         "type": "stock",
                         "symbol": p.get("symbol"),
@@ -547,8 +574,10 @@ def get_open_trades():
                         "sl_price": sl_price,
                         "open_time": open_time
                     })
-        except Exception as e:
-            print(f"Alpaca live positions error: {e}")
+            return trades
+
+        alpaca_open_trades = run_with_timeout(fetch_alpaca_open_trades, 6.0, [])
+        open_positions.extend(alpaca_open_trades)
             
         # Add fallback for internal tracking
         try:
@@ -580,7 +609,8 @@ def get_open_trades():
     crypto_exchange_id = merged_user.get("exchange_id", "blofin")
     
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
-        try:
+        def fetch_crypto_open_trades():
+            trades = []
             import ccxt
             default_type = "swap"
             config = {
@@ -588,8 +618,8 @@ def get_open_trades():
                 "secret": crypto_api_secret,
                 "password": crypto_api_password,
                 "options": {"defaultType": default_type},
-                "enableRateLimit": True,
-                "timeout": 5000,
+                "enableRateLimit": False,
+                "timeout": 4000,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
             try:
@@ -616,7 +646,7 @@ def get_open_trades():
                         except Exception as db_err:
                             print(f"Crypto DB lookup error: {db_err}")
 
-                        open_positions.append({
+                        trades.append({
                             "id": pos.get("id", f"crypto-{pos.get('symbol')}"),
                             "type": "crypto",
                             "symbol": pos.get("symbol"),
@@ -630,15 +660,15 @@ def get_open_trades():
                             "sl_price": sl_price,
                             "open_time": open_time
                         })
+                return trades
             finally:
                 try:
                     client.close()
                 except Exception:
                     pass
-        except Exception as e:
-            futures_type = merged_user.get("bingx_futures_type", "standard")
-            type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
-            print(f"Crypto positions fetch error for {crypto_exchange_id}{type_desc}: {e}")
+
+        crypto_open_trades = run_with_timeout(fetch_crypto_open_trades, 6.0, [])
+        open_positions.extend(crypto_open_trades)
         
     with RESPONSE_CACHE_LOCK:
         RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, open_positions)

@@ -301,6 +301,70 @@ window.handleChartLeave = function(type) {
     if (tooltip) tooltip.style.opacity = '0';
 };
 
+window.forceRefreshSegment = function(segment) {
+    if (segment === 'crypto') {
+        STATE.is_loading_crypto_balance = true;
+    } else {
+        STATE.is_loading_stock_balance = true;
+    }
+    
+    const updateViewIfOnDashboard = () => {
+        if (STATE.current_view === 'dashboard') {
+            renderView();
+        }
+    };
+    
+    updateViewIfOnDashboard();
+    
+    const balancePromise = apiRequest(`/user/balance?segment=${segment}&bypass_cache=true`)
+        .then(bal => {
+            if (bal) {
+                if (segment === 'crypto') {
+                    STATE.crypto_balance = bal.crypto_balance;
+                } else {
+                    STATE.stock_balance = bal.stock_balance;
+                }
+                STATE.total_balance = STATE.crypto_balance + STATE.stock_balance;
+            }
+        }).catch(err => {
+            console.error(`Failed to refresh balance for ${segment}:`, err);
+        });
+        
+    const statsPromise = apiRequest(`/user/stats?segment=${segment}&bypass_cache=true`)
+        .then(stats => {
+            if (stats && stats[segment]) {
+                if (!STATE.stats) STATE.stats = {};
+                STATE.stats[segment] = stats[segment];
+                if (segment === 'crypto') {
+                    STATE.stats.active_crypto_strategy = stats.active_crypto_strategy;
+                } else {
+                    STATE.stats.active_stock_strategy = stats.active_stock_strategy;
+                }
+            }
+        }).catch(err => {
+            console.error(`Failed to refresh stats for ${segment}:`, err);
+        });
+        
+    const openTradesPromise = apiRequest(`/trades/open?segment=${segment}&bypass_cache=true`)
+        .then(open => {
+            if (open) {
+                STATE.open_trades = STATE.open_trades.filter(t => t.type !== segment).concat(open);
+            }
+        }).catch(err => {
+            console.error(`Failed to refresh open trades for ${segment}:`, err);
+        });
+        
+    Promise.all([balancePromise, statsPromise, openTradesPromise])
+        .finally(() => {
+            if (segment === 'crypto') {
+                STATE.is_loading_crypto_balance = false;
+            } else {
+                STATE.is_loading_stock_balance = false;
+            }
+            updateViewIfOnDashboard();
+        });
+};
+
 
 let STATE = {
     user: null,
@@ -2279,7 +2343,12 @@ function renderDashboardView() {
                 <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${colPrivacyHoverHandlers}>
                     <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
                     <div class="relative z-10 pointer-events-none">
-                        <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCryptoType ? 'Crypto Equity' : 'Stock Equity'}</p>
+                        <p class="font-label-md text-label-md text-on-surface-variant mb-1 flex items-center gap-1.5">
+                            <span>${isCryptoType ? 'Crypto Equity' : 'Stock Equity'}</span>
+                            <button onclick="event.stopPropagation(); window.forceRefreshSegment('${type}')" class="p-1 -m-1 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center text-primary cursor-pointer pointer-events-auto" title="Force Refresh">
+                                <span class="material-symbols-outlined text-sm">sync</span>
+                            </button>
+                        </p>
                         ${showLoadingBalance ? `
                         <div class="flex items-center gap-3 py-1.5 animate-pulse">
                             <span class="material-symbols-outlined text-primary text-xl animate-spin">sync</span>
