@@ -4102,8 +4102,8 @@ function renderBacktestView() {
                     </div>
                     
                     ${bt.result.chart_url ? `
-                        <div class="relative w-full aspect-[16/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center mb-2">
-                            <img src="${bt.result.chart_url}" class="w-full h-full object-cover" alt="Equity Curve" />
+                        <div class="relative w-full aspect-[12/10] bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center mb-2">
+                            <img src="${bt.result.chart_url}" class="w-full h-full object-contain" alt="Equity Curve" />
                         </div>
                     ` : ''}
                     
