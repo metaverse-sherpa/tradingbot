@@ -2162,85 +2162,6 @@ def share_card():
     else:
         return jsonify({"error": "Failed to generate card image"}), 500
 
-def ensure_stock_cache_up_to_date(symbol, open_ts=0):
-    try:
-        import sqlite3
-        from datetime import datetime, timedelta
-        
-        # Check latest date in DB
-        latest_date = None
-        conn = sqlite3.connect("data/stock_daily_cache.db")
-        c = conn.cursor()
-        c.execute("SELECT MAX(date) FROM StockDailyData WHERE symbol = ?", (symbol,))
-        row = c.fetchone()
-        conn.close()
-        if row and row[0]:
-            latest_date = row[0]
-            
-        # Determine if we need to refresh
-        need_refresh = False
-        today_str = datetime.today().strftime('%Y-%m-%d')
-        
-        if not latest_date:
-            need_refresh = True
-        else:
-            # If latest date in cache is older than 3 days, it might be stale
-            latest_dt = datetime.strptime(latest_date, "%Y-%m-%d")
-            if (datetime.today() - latest_dt).days > 3:
-                need_refresh = True
-                
-            # If trade opened after our latest cached bar, we definitely need a refresh
-            if open_ts > 0:
-                # Normalize open_ts to milliseconds if it was passed in seconds
-                norm_ts = open_ts * 1000 if (open_ts > 0 and open_ts < 10**11) else open_ts
-                entry_date = pd.to_datetime(norm_ts, unit='ms').strftime('%Y-%m-%d')
-                if entry_date > latest_date:
-                    need_refresh = True
-                    
-        if need_refresh:
-            # Run the refresh asynchronously in a background thread so the HTTP request doesn't block!
-            def bg_refresh():
-                try:
-                    print(f"Background stock cache refresh started for {symbol} (latest: {latest_date}).")
-                    sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
-                    sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
-                    if sys_key and sys_sec:
-                        if latest_date:
-                            start_str = latest_date
-                        else:
-                            start_str = (datetime.today() - timedelta(days=120)).strftime('%Y-%m-%d')
-                            
-                        end_str = (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')
-                        
-                        url = "https://data.alpaca.markets/v2/stocks/bars"
-                        params = {
-                            "symbols": symbol,
-                            "timeframe": "1Day",
-                            "start": start_str,
-                            "end": end_str,
-                            "adjustment": "all",
-                            "limit": 500,
-                            "feed": "iex"
-                        }
-                        headers = {
-                            "APCA-API-KEY-ID": sys_key,
-                            "APCA-API-SECRET-KEY": sys_sec
-                        }
-                        resp = requests.get(url, params=params, headers=headers, timeout=10)
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            bars = data.get('bars', {}).get(symbol, [])
-                            if bars:
-                                import stock_data_cache_daily
-                                stock_data_cache_daily.save_to_db(symbol, bars)
-                                print(f"Successfully updated cache background for {symbol} with {len(bars)} new daily bars.")
-                except Exception as bg_err:
-                    print(f"Error in background stock cache refresh for {symbol}: {bg_err}")
-
-            threading.Thread(target=bg_refresh, daemon=True).start()
-    except Exception as e:
-        print(f"Error checking stock cache for {symbol}: {e}")
-
 @trades_bp.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
     symbol = request.args.get("symbol")
@@ -2275,8 +2196,6 @@ def get_trade_chart():
         df_chart = None
         if trade_type == "stock":
             timeframe = "1D"
-            # Ensure local cache database is up to date before querying
-            ensure_stock_cache_up_to_date(symbol, open_ts)
             try:
                 conn = sqlite3.connect("data/stock_daily_cache.db")
                 df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))

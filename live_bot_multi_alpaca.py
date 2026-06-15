@@ -100,6 +100,29 @@ def update_stock_daily_cache():
             from datetime import timedelta
             start_date = (datetime.today() - timedelta(days=120)).strftime('%Y-%m-%d')
             
+        # Helper to check if the date is already up to date
+        def is_date_up_to_date(latest_date_str):
+            if not latest_date_str:
+                return False
+            try:
+                latest_dt = datetime.strptime(latest_date_str, "%Y-%m-%d").date()
+                today = datetime.today().date()
+                diff_days = (today - latest_dt).days
+                if diff_days <= 1:
+                    return True
+                today_weekday = datetime.today().weekday()
+                if today_weekday == 6 and diff_days <= 2: # Sunday, latest is Friday/Saturday
+                    return True
+                if today_weekday == 0 and diff_days <= 3: # Monday, latest is Friday/Saturday/Sunday
+                    return True
+                return False
+            except Exception:
+                return False
+
+        if is_date_up_to_date(start_date):
+            logger.info(f"Cache for {ticker} is already up to date ({start_date}). Skipping.")
+            continue
+            
         logger.info(f"Fetching {ticker} daily bars from {start_date} to {today_str}...")
         data = stock_data_cache_daily.fetch_daily_data(ticker, ALPACA_API_KEY, ALPACA_API_SECRET, start_date=start_date, end_date=today_str)
         if data:
