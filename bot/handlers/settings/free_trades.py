@@ -118,7 +118,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                 df_chart = None
                 try:
                     from bot.handlers.trading import fetch_alpaca_daily_bars_async
-                    df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=30)
+                    df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=120)
                     if df_chart is not None and not df_chart.empty:
                         if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
                             df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
@@ -133,7 +133,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                         conn.close()
                         if not df_chart.empty:
                             df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
-                            df_chart = df_chart.tail(30).copy()
+                            df_chart = df_chart.copy()
                         else:
                             df_chart = None
                     except Exception as stock_db_err:

@@ -984,7 +984,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 
                             df_daily = None
                             try:
-                                df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=30)
+                                df_daily = await fetch_alpaca_daily_bars_async(user, sym, limit=120)
                                 if df_daily is not None and not df_daily.empty:
                                     if hasattr(df_daily['timestamp'].dt, 'tz') and df_daily['timestamp'].dt.tz is not None:
                                         df_daily['timestamp'] = df_daily['timestamp'].dt.tz_localize(None)
@@ -1000,7 +1000,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     conn.close()
                                     if not df_daily.empty:
                                         df_daily['timestamp'] = pd.to_datetime(df_daily['date']).astype('datetime64[ms]').astype('int64')
-                                        df_daily = df_daily.tail(30).copy()
+                                        df_daily = df_daily.copy()
                                     else:
                                         df_daily = None
                                 except Exception as stock_db_err:

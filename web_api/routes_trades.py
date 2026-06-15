@@ -2202,7 +2202,7 @@ def get_trade_chart():
                 conn.close()
                 if not df_chart.empty:
                     df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
-                    df_chart = df_chart.tail(30).copy()
+                    df_chart = df_chart.copy()
                 else:
                     df_chart = None
             except Exception as e:

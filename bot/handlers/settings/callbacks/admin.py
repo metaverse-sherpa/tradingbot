@@ -337,7 +337,7 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
                             conn.close()
                             if not df_chart.empty:
                                 df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
-                                df_chart = df_chart.tail(30).copy()
+                                df_chart = df_chart.copy()
                             else:
                                 df_chart = None
                         except Exception as stock_db_err:
