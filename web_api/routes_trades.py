@@ -2195,17 +2195,14 @@ def get_trade_chart():
     try:
         import charting
         import live_bot_multi
-        print(f"[CHARTING PROFILE] Imports took {time.time() - t_start:.4f}s", flush=True)
         
         df_chart = None
-        t_db = time.time()
         if trade_type == "stock":
             timeframe = "1D"
             try:
                 conn = sqlite3.connect("data/stock_daily_cache.db")
                 df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
                 conn.close()
-                print(f"[CHARTING PROFILE] Stock DB query took {time.time() - t_db:.4f}s. Row count: {len(df_chart) if df_chart is not None else 0}", flush=True)
                 if not df_chart.empty:
                     df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
                     df_chart = df_chart.copy()
@@ -2223,7 +2220,6 @@ def get_trade_chart():
                     f"https://api.binance.us/api/v3/klines?symbol={clean_sym}&interval=15m&limit=100"
                 ]
                 klines_data = None
-                t_binance = time.time()
                 for url in endpoints:
                     try:
                         resp = requests.get(url, timeout=3)
@@ -2232,7 +2228,6 @@ def get_trade_chart():
                             break
                     except Exception:
                         continue
-                print(f"[CHARTING PROFILE] Binance API fetch took {time.time() - t_binance:.4f}s", flush=True)
                 
                 if klines_data:
                     ohlcv = []
@@ -2248,7 +2243,6 @@ def get_trade_chart():
                     df_chart = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
                 else:
                     # Fallback to CCXT Blofin
-                    t_ccxt = time.time()
                     mdm = live_bot_multi.MarketDataManager()
                     mdm.exchange.timeout = 3000
                     loop = asyncio.new_event_loop()
@@ -2258,11 +2252,9 @@ def get_trade_chart():
                     finally:
                         loop.run_until_complete(mdm.close())
                     loop.close()
-                    print(f"[CHARTING PROFILE] CCXT Blofin fetch took {time.time() - t_ccxt:.4f}s", flush=True)
             except Exception as e:
                 print(f"Error fetching OHLCV: {e}", flush=True)
 
-        t_gen = time.time()
         if df_chart is None or df_chart.empty:
             dates = pd.date_range(end=pd.Timestamp.now(), periods=30, freq='D' if trade_type == "stock" else '15T')
             df_chart = pd.DataFrame({
@@ -2285,8 +2277,6 @@ def get_trade_chart():
             timeframe=timeframe,
             current_price=current_price
         )
-        print(f"[CHARTING PROFILE] Chart generation took {time.time() - t_gen:.4f}s", flush=True)
-        print(f"[CHARTING PROFILE] Total endpoint execution time: {time.time() - t_start:.4f}s", flush=True)
         
         return send_file(chart_file, mimetype='image/png')
     except Exception as e:
