@@ -2196,68 +2196,17 @@ def get_trade_chart():
         df_chart = None
         if trade_type == "stock":
             timeframe = "1D"
-            # Try to fetch live daily bars from Alpaca first to bypass the stale DB cache
             try:
-                sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
-                sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
-                if sys_key and sys_sec:
-                    # Fetch from 120 days ago to covers all trade history
-                    from datetime import datetime, timedelta
-                    end_dt = datetime.now() + timedelta(days=1)
-                    start_dt = end_dt - timedelta(days=120)
-                    start_str = start_dt.strftime("%Y-%m-%d")
-                    end_str = end_dt.strftime("%Y-%m-%d")
-                    
-                    url = "https://data.alpaca.markets/v2/stocks/bars"
-                    params = {
-                        "symbols": symbol,
-                        "timeframe": "1Day",
-                        "start": start_str,
-                        "end": end_str,
-                        "adjustment": "all",
-                        "limit": 500,
-                        "feed": "iex"
-                    }
-                    headers = {
-                        "APCA-API-KEY-ID": sys_key,
-                        "APCA-API-SECRET-KEY": sys_sec
-                    }
-                    resp = requests.get(url, params=params, headers=headers, timeout=10)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        bars = data.get('bars', {}).get(symbol, [])
-                        if bars:
-                            ohlcv = []
-                            for b in bars:
-                                date_str = b['t'].split('T')[0]
-                                ts = int(pd.to_datetime(date_str).timestamp() * 1000)
-                                ohlcv.append({
-                                    'timestamp': ts,
-                                    'open': float(b['o']),
-                                    'high': float(b['h']),
-                                    'low': float(b['l']),
-                                    'close': float(b['c']),
-                                    'volume': float(b['v']),
-                                    'date': date_str
-                                })
-                            df_chart = pd.DataFrame(ohlcv)
-                            print(f"Successfully fetched {len(df_chart)} daily bars for {symbol} from Alpaca API.")
+                conn = sqlite3.connect("data/stock_daily_cache.db")
+                df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
+                conn.close()
+                if not df_chart.empty:
+                    df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
+                    df_chart = df_chart.copy()
+                else:
+                    df_chart = None
             except Exception as e:
-                print(f"Error fetching live Alpaca daily bars for {symbol}: {e}")
-
-            # Fallback to local DB daily cache if Alpaca API is unavailable or failed
-            if df_chart is None or df_chart.empty:
-                try:
-                    conn = sqlite3.connect("data/stock_daily_cache.db")
-                    df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
-                    conn.close()
-                    if not df_chart.empty:
-                        df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
-                        df_chart = df_chart.copy()
-                    else:
-                        df_chart = None
-                except Exception as e:
-                    print(f"Error fetching from stock daily cache: {e}")
+                print(f"Error fetching from stock daily cache: {e}")
         else:
             timeframe = "15M"
             try:

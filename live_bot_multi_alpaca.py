@@ -61,14 +61,46 @@ def update_stock_daily_cache():
     import stock_data_cache_daily
     stock_data_cache_daily.init_db()
     
-    # We fetch the last 10 days of daily prices to make sure we don't miss anything (e.g. over weekends or holidays)
     today_str = datetime.today().strftime('%Y-%m-%d')
-    from datetime import timedelta
-    start_date = (datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
     
-    logger.info(f"Updating stock daily cache from {start_date} to {today_str}...")
+    # Gather all stock symbols to update
+    tickers = set(stock_data_cache_daily.SYMBOLS)
+    try:
+        conn_user = sqlite3.connect(USER_DB_PATH)
+        c_user = conn_user.cursor()
+        c_user.execute("SELECT DISTINCT symbol FROM AlpacaActiveTrades WHERE status = 'open'")
+        for r in c_user.fetchall():
+            if r[0] and "/" not in r[0] and ":" not in r[0]:
+                tickers.add(r[0])
+        c_user.execute("SELECT DISTINCT symbol FROM TheoreticalTrades WHERE status = 'open'")
+        for r in c_user.fetchall():
+            if r[0] and "/" not in r[0] and ":" not in r[0]:
+                tickers.add(r[0])
+        conn_user.close()
+    except Exception as e:
+        logger.error(f"Error gathering active trade symbols for cache update: {e}")
+        
+    logger.info(f"Updating stock daily cache for {len(tickers)} symbols up to {today_str}...")
     
-    for ticker in stock_data_cache_daily.SYMBOLS:
+    for ticker in sorted(list(tickers)):
+        # Dynamic lookback: check the latest date in DB
+        start_date = None
+        try:
+            conn_stock = sqlite3.connect(STOCK_DB_PATH)
+            c_stock = conn_stock.cursor()
+            c_stock.execute("SELECT MAX(date) FROM StockDailyData WHERE symbol = ?", (ticker,))
+            row = c_stock.fetchone()
+            conn_stock.close()
+            if row and row[0]:
+                start_date = row[0]
+        except Exception as e:
+            logger.error(f"Error querying latest date for {ticker}: {e}")
+            
+        if not start_date:
+            from datetime import timedelta
+            start_date = (datetime.today() - timedelta(days=120)).strftime('%Y-%m-%d')
+            
+        logger.info(f"Fetching {ticker} daily bars from {start_date} to {today_str}...")
         data = stock_data_cache_daily.fetch_daily_data(ticker, ALPACA_API_KEY, ALPACA_API_SECRET, start_date=start_date, end_date=today_str)
         if data:
             stock_data_cache_daily.save_to_db(ticker, data)
