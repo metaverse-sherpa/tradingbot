@@ -2198,42 +2198,48 @@ def ensure_stock_cache_up_to_date(symbol, open_ts=0):
                     need_refresh = True
                     
         if need_refresh:
-            print(f"Stock cache for {symbol} is stale (latest: {latest_date}). Refreshing from Alpaca...")
-            sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
-            sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
-            if sys_key and sys_sec:
-                # Fetch from 120 days ago (or latest_date) to today
-                if latest_date:
-                    start_str = latest_date
-                else:
-                    start_str = (datetime.today() - timedelta(days=120)).strftime('%Y-%m-%d')
-                    
-                end_str = (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')
-                
-                url = "https://data.alpaca.markets/v2/stocks/bars"
-                params = {
-                    "symbols": symbol,
-                    "timeframe": "1Day",
-                    "start": start_str,
-                    "end": end_str,
-                    "adjustment": "all",
-                    "limit": 500,
-                    "feed": "iex"
-                }
-                headers = {
-                    "APCA-API-KEY-ID": sys_key,
-                    "APCA-API-SECRET-KEY": sys_sec
-                }
-                resp = requests.get(url, params=params, headers=headers, timeout=10)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    bars = data.get('bars', {}).get(symbol, [])
-                    if bars:
-                        import stock_data_cache_daily
-                        stock_data_cache_daily.save_to_db(symbol, bars)
-                        print(f"Successfully updated cache for {symbol} with {len(bars)} new daily bars.")
+            # Run the refresh asynchronously in a background thread so the HTTP request doesn't block!
+            def bg_refresh():
+                try:
+                    print(f"Background stock cache refresh started for {symbol} (latest: {latest_date}).")
+                    sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
+                    sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
+                    if sys_key and sys_sec:
+                        if latest_date:
+                            start_str = latest_date
+                        else:
+                            start_str = (datetime.today() - timedelta(days=120)).strftime('%Y-%m-%d')
+                            
+                        end_str = (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+                        
+                        url = "https://data.alpaca.markets/v2/stocks/bars"
+                        params = {
+                            "symbols": symbol,
+                            "timeframe": "1Day",
+                            "start": start_str,
+                            "end": end_str,
+                            "adjustment": "all",
+                            "limit": 500,
+                            "feed": "iex"
+                        }
+                        headers = {
+                            "APCA-API-KEY-ID": sys_key,
+                            "APCA-API-SECRET-KEY": sys_sec
+                        }
+                        resp = requests.get(url, params=params, headers=headers, timeout=10)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            bars = data.get('bars', {}).get(symbol, [])
+                            if bars:
+                                import stock_data_cache_daily
+                                stock_data_cache_daily.save_to_db(symbol, bars)
+                                print(f"Successfully updated cache background for {symbol} with {len(bars)} new daily bars.")
+                except Exception as bg_err:
+                    print(f"Error in background stock cache refresh for {symbol}: {bg_err}")
+
+            threading.Thread(target=bg_refresh, daemon=True).start()
     except Exception as e:
-        print(f"Error ensuring stock cache up to date for {symbol}: {e}")
+        print(f"Error checking stock cache for {symbol}: {e}")
 
 @trades_bp.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
