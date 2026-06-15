@@ -264,7 +264,9 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
 
     # Calculate ROE
     roe = ((current - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - current) / entry * 100)
-    from bot.config import is_stock, CRYPTO_LEVERAGE
+    # Local definitions to bypass bot.config import which triggers slow GCP Secret Manager lookups
+    is_stock = lambda s: str(s).upper() and "/" not in str(s).upper() and ":" not in str(s).upper() and "USDT" not in str(s).upper()
+    CRYPTO_LEVERAGE = 20.0
     if not is_stock(symbol):
         roe *= CRYPTO_LEVERAGE
     color_neon = (0, 255, 150, 255) if roe >= 0 else (255, 50, 50, 255)

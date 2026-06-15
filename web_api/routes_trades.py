@@ -17,7 +17,10 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import database
 import utils_gcp
 import media_gen
-from bot.config import is_stock
+def is_stock(symbol):
+    """Determines if a symbol is a stock ticker."""
+    symbol_str = str(symbol).upper()
+    return symbol_str and "/" not in symbol_str and ":" not in symbol_str and "USDT" not in symbol_str
 from web_api.auth import require_auth
 from web_api.cache import RESPONSE_CACHE, RESPONSE_CACHE_LOCK, CACHE_TTL_SECONDS
 
@@ -2162,17 +2165,47 @@ def get_trade_chart():
         else:
             timeframe = "15M"
             try:
-                mdm = live_bot_multi.MarketDataManager()
-                mdm.exchange.timeout = 3000  # Set strict 3s timeout to prevent VPS hanging on network block
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, "15m"))
-                finally:
-                    loop.run_until_complete(mdm.close())
-                loop.close()
+                # Sourcing OHLCV from Binance public API is fast (less than 1s) and avoids CCXT overhead
+                clean_sym = symbol.split(":")[0].replace("/", "")
+                endpoints = [
+                    f"https://api.binance.com/api/v3/klines?symbol={clean_sym}&interval=15m&limit=100",
+                    f"https://api.binance.us/api/v3/klines?symbol={clean_sym}&interval=15m&limit=100"
+                ]
+                klines_data = None
+                for url in endpoints:
+                    try:
+                        resp = requests.get(url, timeout=3)
+                        if resp.status_code == 200:
+                            klines_data = resp.json()
+                            break
+                    except Exception:
+                        continue
+                
+                if klines_data:
+                    ohlcv = []
+                    for item in klines_data:
+                        ohlcv.append([
+                            int(item[0]),
+                            float(item[1]),
+                            float(item[2]),
+                            float(item[3]),
+                            float(item[4]),
+                            float(item[5])
+                        ])
+                    df_chart = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+                else:
+                    # Fallback to CCXT Blofin
+                    mdm = live_bot_multi.MarketDataManager()
+                    mdm.exchange.timeout = 3000
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, "15m"))
+                    finally:
+                        loop.run_until_complete(mdm.close())
+                    loop.close()
             except Exception as e:
-                print(f"Error fetching CCXT OHLCV: {e}")
+                print(f"Error fetching OHLCV: {e}")
 
         if df_chart is None or df_chart.empty:
             dates = pd.date_range(end=pd.Timestamp.now(), periods=60, freq='D' if trade_type == "stock" else '15T')
