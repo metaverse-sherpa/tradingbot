@@ -336,8 +336,8 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
                             df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
                             conn.close()
                             if not df_chart.empty:
-                                df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype(int) // 10**6
-                                df_chart = df_chart.tail(60).copy()
+                                df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
+                                df_chart = df_chart.tail(30).copy()
                             else:
                                 df_chart = None
                         except Exception as stock_db_err:

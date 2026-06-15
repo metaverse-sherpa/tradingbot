@@ -2201,8 +2201,8 @@ def get_trade_chart():
                 df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
                 conn.close()
                 if not df_chart.empty:
-                    df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype(int) // 10**6
-                    df_chart = df_chart.tail(60).copy()
+                    df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
+                    df_chart = df_chart.tail(30).copy()
                 else:
                     df_chart = None
             except Exception as e:
@@ -2253,14 +2253,14 @@ def get_trade_chart():
                 print(f"Error fetching OHLCV: {e}")
 
         if df_chart is None or df_chart.empty:
-            dates = pd.date_range(end=pd.Timestamp.now(), periods=60, freq='D' if trade_type == "stock" else '15T')
+            dates = pd.date_range(end=pd.Timestamp.now(), periods=30, freq='D' if trade_type == "stock" else '15T')
             df_chart = pd.DataFrame({
-                'timestamp': dates.astype(int) // 10**6,
-                'open': [entry] * 60,
-                'high': [entry * 1.01] * 60,
-                'low': [entry * 0.99] * 60,
-                'close': [entry] * 60,
-                'volume': [1000] * 60
+                'timestamp': dates.astype('datetime64[ms]').astype('int64'),
+                'open': [entry] * 30,
+                'high': [entry * 1.01] * 30,
+                'low': [entry * 0.99] * 30,
+                'close': [entry] * 30,
+                'volume': [1000] * 30
             })
 
         chart_file = charting.generate_trade_chart(
