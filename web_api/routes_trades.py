@@ -1510,15 +1510,29 @@ def _update_active_signals_cache():
             for sym in stock_syms:
                 if sym not in prices:
                     try:
-                        with sqlite3.connect("data/stock_daily_cache.db") as conn2:
-                            c2 = conn2.cursor()
-                            c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
-                            row = c2.fetchone()
-                            if row: prices[sym] = float(row[0])
-                            else: prices[sym] = 0.0
-                    except Exception as db_err:
-                        print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
-                        prices[sym] = 0.0
+                        import yfinance as yf
+                        ticker = yf.Ticker(sym)
+                        info = ticker.fast_info
+                        if 'lastPrice' in info and info['lastPrice'] is not None and not np.isnan(info['lastPrice']):
+                            prices[sym] = float(info['lastPrice'])
+                        else:
+                            hist = ticker.history(period="1d")
+                            if not hist.empty:
+                                prices[sym] = float(hist['Close'].iloc[-1])
+                    except Exception as yf_err:
+                        print(f"yfinance fallback failed for {sym}: {yf_err}")
+                    
+                    if sym not in prices:
+                        try:
+                            with sqlite3.connect("data/stock_daily_cache.db") as conn2:
+                                c2 = conn2.cursor()
+                                c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                                row = c2.fetchone()
+                                if row: prices[sym] = float(row[0])
+                                else: prices[sym] = 0.0
+                        except Exception as db_err:
+                            print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
+                            prices[sym] = 0.0
 
             remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
             if remaining_crypto and mdm:
