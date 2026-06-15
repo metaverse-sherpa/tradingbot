@@ -1442,6 +1442,16 @@ def _update_active_signals_cache():
             import aiohttp
             stock_syms = [sig.get("symbol", "") for sig in sigs if not ("/" in sig.get("symbol", ""))]
             crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
+            def has_cache(sym):
+                try:
+                    with sqlite3.connect("data/stock_daily_cache.db") as conn:
+                        c = conn.cursor()
+                        c.execute("SELECT 1 FROM StockDailyData WHERE symbol = ? LIMIT 1", (sym,))
+                        return c.fetchone() is not None
+                except Exception:
+                    return False
+
+            uncached_stocks = [s for s in stock_syms if not has_cache(s)]
             prices = {}
 
             async with aiohttp.ClientSession() as session:
@@ -1450,8 +1460,8 @@ def _update_active_signals_cache():
                 async def fetch_alpaca():
                     if not stock_syms or not sys_user.get("alpaca_api_key"):
                         return
-                    if not is_us_market_open():
-                        print("[MARKET CLOSED] Skipping live Alpaca stock snapshot fetching.")
+                    if not is_us_market_open() and not uncached_stocks:
+                        print("[MARKET CLOSED] Skipping live Alpaca stock snapshot fetching (all symbols cached).")
                         return
                     try:
                         sym_str = ",".join(stock_syms)
@@ -1529,7 +1539,7 @@ def _update_active_signals_cache():
 
             for sym in stock_syms:
                 if sym not in prices:
-                    if is_us_market_open():
+                    if is_us_market_open() or not has_cache(sym):
                         try:
                             import yfinance as yf
                             ticker = yf.Ticker(sym)
