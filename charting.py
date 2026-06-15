@@ -27,18 +27,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     if df.index.tz is not None:
         df.index = df.index.tz_localize(None)
 
-    # Dynamic slicing based on open_ts for daily charts (1D)
-    if timeframe == "1D" and open_ts > 0:
-        entry_time = pd.to_datetime(open_ts, unit='ms').tz_localize(None)
-        bars_after_entry = (df.index >= entry_time).sum()
-        if bars_after_entry > 0:
-            limit_bars = bars_after_entry + 2
-            limit_bars = min(len(df), max(7, limit_bars))
-            df = df.tail(limit_bars).copy()
-        else:
-            df = df.tail(30).copy()
-    else:
-        df = df.tail(30).copy()
+    df = df.tail(30).copy()
 
     # Incorporate live price into the chart
     if current_price > 0:
