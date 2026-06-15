@@ -326,7 +326,8 @@ let STATE = {
     is_loading_signals: false,
     is_loading_active_signals: true,
     is_loading_dashboard: false,
-    is_loading_balance: false,
+    is_loading_crypto_balance: false,
+    is_loading_stock_balance: false,
     history_expanded_id: null,
     free_history_expanded_id: null,
     profile_menu_open: false,
@@ -883,13 +884,15 @@ async function handleRoute() {
     // Determine view route
     if (hash === '#/dashboard') {
         STATE.current_view = 'dashboard';
-        STATE.is_loading_balance = true;
+        STATE.is_loading_crypto_balance = true;
+        STATE.is_loading_stock_balance = true;
         
         // 1. Render immediately using cached/default state for a lightning fast load
         renderView();
         
         // 2. Fetch ALL data (including live balance) in the background asynchronously
-        const statsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats') : Promise.resolve(null);
+        const cryptoStatsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats?segment=crypto') : Promise.resolve(null);
+        const stockStatsPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/stats?segment=stock') : Promise.resolve(null);
         const freeStatsPromise = apiRequest('/stats/free');
         const balHistoryPromise = (STATE.user && STATE.user.is_premium) ? apiRequest('/user/balance-history') : Promise.resolve(null);
 
@@ -899,16 +902,29 @@ async function handleRoute() {
             }
         };
 
-        apiRequest('/user/balance').then(bal => {
+        // Fetch Crypto balance
+        apiRequest('/user/balance?segment=crypto').then(bal => {
             if (bal) {
                 STATE.crypto_balance = bal.crypto_balance;
-                STATE.stock_balance = bal.stock_balance;
-                STATE.total_balance = bal.total_balance;
+                STATE.total_balance = STATE.crypto_balance + STATE.stock_balance;
             }
-            STATE.is_loading_balance = false;
+            STATE.is_loading_crypto_balance = false;
             updateViewIfOnDashboard();
         }).catch(err => {
-            STATE.is_loading_balance = false;
+            STATE.is_loading_crypto_balance = false;
+            updateViewIfOnDashboard();
+        });
+
+        // Fetch Stock balance
+        apiRequest('/user/balance?segment=stock').then(bal => {
+            if (bal) {
+                STATE.stock_balance = bal.stock_balance;
+                STATE.total_balance = STATE.crypto_balance + STATE.stock_balance;
+            }
+            STATE.is_loading_stock_balance = false;
+            updateViewIfOnDashboard();
+        }).catch(err => {
+            STATE.is_loading_stock_balance = false;
             updateViewIfOnDashboard();
         });
 
@@ -958,16 +974,38 @@ async function handleRoute() {
             updateViewIfOnDashboard();
         });
 
-        apiRequest('/trades/open').then(open => {
+        // Fetch Crypto open trades
+        apiRequest('/trades/open?segment=crypto').then(open => {
             if (open) {
-                STATE.open_trades = open;
+                STATE.open_trades = STATE.open_trades.filter(t => t.type !== 'crypto').concat(open);
                 updateViewIfOnDashboard();
             }
         }).catch(err => {});
 
-        statsPromise.then(stats => {
-            if (stats) {
-                STATE.stats = stats;
+        // Fetch Stock open trades
+        apiRequest('/trades/open?segment=stock').then(open => {
+            if (open) {
+                STATE.open_trades = STATE.open_trades.filter(t => t.type !== 'stock').concat(open);
+                updateViewIfOnDashboard();
+            }
+        }).catch(err => {});
+
+        // Fetch Crypto stats
+        cryptoStatsPromise.then(stats => {
+            if (stats && stats.crypto) {
+                if (!STATE.stats) STATE.stats = {};
+                STATE.stats.crypto = stats.crypto;
+                STATE.stats.active_crypto_strategy = stats.active_crypto_strategy;
+                updateViewIfOnDashboard();
+            }
+        }).catch(err => {});
+
+        // Fetch Stock stats
+        stockStatsPromise.then(stats => {
+            if (stats && stats.stock) {
+                if (!STATE.stats) STATE.stats = {};
+                STATE.stats.stock = stats.stock;
+                STATE.stats.active_stock_strategy = stats.active_stock_strategy;
                 updateViewIfOnDashboard();
             }
         }).catch(err => {});
@@ -1973,7 +2011,7 @@ function renderBalanceChartWidget(type) {
     const endStr = new Date(maxX * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-    const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
+    const shouldBlurDollars = (isCrypto ? STATE.is_loading_crypto_balance : STATE.is_loading_stock_balance) || isPrivacyOn;
     const privacyStyle = shouldBlurDollars ? 'style="filter: blur(14px); transition: filter 0.2s ease;"' : '';
     const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
     
@@ -2175,7 +2213,7 @@ function renderDashboardView() {
         </a>
     `;
     const isPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
-    const shouldBlurDollars = STATE.is_loading_balance || isPrivacyOn;
+    const shouldBlurDollars = STATE.is_loading_crypto_balance || STATE.is_loading_stock_balance || isPrivacyOn;
     
     const privacyStyle = shouldBlurDollars ? 'style="filter: blur(14px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
     const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
@@ -2187,16 +2225,13 @@ function renderDashboardView() {
         const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
         const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
 
-        let showLoadingBalance = false;
-        if (isPremium) {
-            if (hasLinkedCrypto && hasLinkedStock) {
-                showLoadingBalance = (STATE.crypto_balance === 0 || STATE.stock_balance === 0);
-            } else if (isCryptoType && hasLinkedCrypto) {
-                showLoadingBalance = (STATE.crypto_balance === 0);
-            } else if (!isCryptoType && hasLinkedStock) {
-                showLoadingBalance = (STATE.stock_balance === 0);
-            }
-        }
+        const showLoadingBalance = isCryptoType ? STATE.is_loading_crypto_balance : STATE.is_loading_stock_balance;
+
+        const colIsPrivacyOn = STATE.user ? (STATE.user.hide_dollars !== false) : true;
+        const colShouldBlurDollars = showLoadingBalance || colIsPrivacyOn;
+        const colPrivacyStyle = colShouldBlurDollars ? 'style="filter: blur(14px); transition: filter 0.2s ease;"' : 'style="transition: filter 0.2s ease;"';
+        const colPrivacyClass = colShouldBlurDollars ? 'privacy-blur' : '';
+        const colPrivacyHoverHandlers = colShouldBlurDollars ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(14px)')"` : '';
 
         const typeStats = (STATE.stats && (isCryptoType ? STATE.stats.crypto : STATE.stats.stock)) || { cumulative_pnl: 0, win_rate: 0, overall_pnl: 0, overall_pnl_pct: 0 };
         const typeStrategy = STATE.user ? (isCryptoType ? (STATE.user.active_crypto_strategy || 'Valkyrie Elite Scalper') : (STATE.user.active_stock_strategy || 'None')) : (isCryptoType ? 'Valkyrie Elite Scalper' : 'None');
@@ -2241,7 +2276,7 @@ function renderDashboardView() {
                 </h2>
                 
                 <!-- Balance Card -->
-                <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${privacyHoverHandlers}>
+                <section class="glass-card cyan-glow rounded-xl p-card-padding relative overflow-hidden cursor-pointer" ${colPrivacyHoverHandlers}>
                     <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
                     <div class="relative z-10 pointer-events-none">
                         <p class="font-label-md text-label-md text-on-surface-variant mb-1">${isCryptoType ? 'Crypto Equity' : 'Stock Equity'}</p>
@@ -2252,10 +2287,10 @@ function renderDashboardView() {
                         </div>
                         ` : `
                         <div class="flex items-baseline gap-3">
-                            <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${privacyClass}" ${privacyStyle}>$${(typeBalance || 0).toFixed(2)}</h1>
+                            <h1 class="font-display-lg text-display-lg text-on-surface drop-shadow-[0_0_12px_rgba(168,232,255,0.15)] ${colPrivacyClass}" ${colPrivacyStyle}>$${(typeBalance || 0).toFixed(2)}</h1>
                             <div class="${typePnlVal >= 0 ? 'text-tertiary' : 'text-error'} flex items-baseline gap-1">
                                 <span class="font-headline-sm text-headline-sm">${typePnlVal >= 0 ? '+' : ''}${typePnlPct.toFixed(2)}%</span>
-                                <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${privacyClass}" ${privacyStyle}>${typePnlVal >= 0 ? '+' : '-'}$${Math.abs(typePnlVal).toFixed(2)}</span>)</span>
+                                <span class="font-label-md text-label-md text-on-surface-variant font-normal">(<span class="${colPrivacyClass}" ${colPrivacyStyle}>${typePnlVal >= 0 ? '+' : '-'}$${Math.abs(typePnlVal).toFixed(2)}</span>)</span>
                             </div>
                         </div>
                         `}

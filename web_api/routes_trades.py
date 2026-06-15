@@ -110,10 +110,11 @@ def profile():
 def get_balance():
     user = g.user
     user_id = user["id"]
+    segment = request.args.get("segment") # 'crypto' or 'stock'
     
     # Check cache
     now = time.time()
-    cache_key = ("balance", user_id)
+    cache_key = ("balance", user_id, segment)
     with RESPONSE_CACHE_LOCK:
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
@@ -131,7 +132,7 @@ def get_balance():
     crypto_exchange_id = (tg_user or {}).get("exchange_id") or user.get("exchange_id", "blofin")
     
     # 1. Query live Crypto balance (CCXT)
-    if crypto_api_key and crypto_api_secret:
+    if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         try:
             import ccxt
             default_type = "swap"
@@ -172,7 +173,7 @@ def get_balance():
             type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
             print(f"Error fetching crypto balance for {crypto_exchange_id}{type_desc}: {e}")
             balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
-    else:
+    elif not segment or segment == 'crypto':
         balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
             
     # 2. Query live Stock balance (Alpaca)
@@ -180,7 +181,7 @@ def get_balance():
     alpaca_key = (tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key")
     alpaca_secret = (tg_user or {}).get("alpaca_api_secret") or user.get("alpaca_api_secret")
     
-    if alpaca_key and alpaca_secret:
+    if (not segment or segment == 'stock') and alpaca_key and alpaca_secret:
         try:
             alpaca_user = tg_user or user
             res = database.make_alpaca_request(alpaca_user, "GET", "/v2/account")
@@ -189,11 +190,24 @@ def get_balance():
             print(f"Error fetching stock balance: {e}")
             balance_stock = 0.0
             
-    response_data = {
-        "crypto_balance": balance_crypto,
-        "stock_balance": balance_stock,
-        "total_balance": balance_crypto + balance_stock
-    }
+    if segment == 'crypto':
+        response_data = {
+            "crypto_balance": balance_crypto,
+            "stock_balance": 0.0,
+            "total_balance": balance_crypto
+        }
+    elif segment == 'stock':
+        response_data = {
+            "crypto_balance": 0.0,
+            "stock_balance": balance_stock,
+            "total_balance": balance_stock
+        }
+    else:
+        response_data = {
+            "crypto_balance": balance_crypto,
+            "stock_balance": balance_stock,
+            "total_balance": balance_crypto + balance_stock
+        }
     
     with RESPONSE_CACHE_LOCK:
         RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, response_data)
@@ -205,10 +219,11 @@ def get_balance():
 def get_stats():
     user = g.user
     user_id = user["id"]
+    segment = request.args.get("segment") # 'crypto' or 'stock'
     
     # Check cache
     now = time.time()
-    cache_key = ("stats", user_id)
+    cache_key = ("stats", user_id, segment)
     with RESPONSE_CACHE_LOCK:
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
@@ -237,7 +252,7 @@ def get_stats():
     crypto_api_password = tg_user.get("api_password")
     crypto_exchange_id = tg_user.get("exchange_id", "blofin")
     
-    if crypto_api_key and crypto_api_secret:
+    if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         try:
             import ccxt
             default_type = "swap"
@@ -279,14 +294,14 @@ def get_stats():
     stock_api_key = tg_user.get("alpaca_api_key")
     stock_api_secret = tg_user.get("alpaca_api_secret")
     
-    if stock_api_key and stock_api_secret:
+    if (not segment or segment == 'stock') and stock_api_key and stock_api_secret:
         try:
             acc = database.make_alpaca_request(tg_user, "GET", "/v2/account")
             if acc:
                 stock_equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
                 
             # Use the user's configured starting equity if set. Otherwise, query Alpaca's portfolio history.
-            stock_start_equity = tg_user.get("alpaca_start_equity")
+            stock_start_equity = tg_user.get("alpaca_start_equity") or user.get("alpaca_start_equity")
             if not stock_start_equity:
                 try:
                     portfolio_hist = database.make_alpaca_request(tg_user, "GET", "/v2/account/portfolio/history", params={"period": "all", "timeframe": "1D"})
@@ -300,6 +315,18 @@ def get_stats():
                 # Fallback to current equity or 10k if history query failed/returned zero
                 if not stock_start_equity or stock_start_equity <= 0:
                     stock_start_equity = stock_equity or 10000.0
+                
+                # Save it to the database so we never hit Alpaca's slow history endpoint again
+                if stock_start_equity and stock_start_equity > 0:
+                    try:
+                        with database.db_session() as conn:
+                            c = conn.cursor()
+                            if tg_user.get("telegram_chat_id"):
+                                c.execute("UPDATE Users SET alpaca_start_equity = ? WHERE telegram_chat_id = ?", (stock_start_equity, tg_user["telegram_chat_id"]))
+                            c.execute("UPDATE WebUsers SET alpaca_start_equity = ? WHERE id = ?", (stock_start_equity, user_id))
+                            conn.commit()
+                    except Exception as db_save_err:
+                        print(f"Error saving alpaca_start_equity: {db_save_err}")
                 
             positions = database.make_alpaca_request(tg_user, "GET", "/v2/positions")
             if isinstance(positions, list):
@@ -332,7 +359,7 @@ def get_stats():
     stock_overall_pnl_pct = round((stock_overall_pnl / stock_start_equity) * 100, 2) if stock_start_equity > 0 else 0.0
     
     # If not retrieved directly from Alpaca API, fall back to AlpacaActiveTrades table
-    if stock_wins == 0 and stock_losses == 0:
+    if (not segment or segment == 'stock') and stock_wins == 0 and stock_losses == 0:
         if tg_user.get("telegram_chat_id"):
             trade_chat_id = int(tg_user["telegram_chat_id"])
         else:
@@ -352,7 +379,7 @@ def get_stats():
     stock_total_trades = stock_wins + stock_losses
     
     # If still 0, fallback to computing win rate from the latest history cache (filtering for stock symbols only)
-    if stock_total_trades == 0:
+    if (not segment or segment == 'stock') and stock_total_trades == 0:
         raw_cache = tg_user.get("history_cache") or user.get("history_cache")
         if raw_cache:
             try:
@@ -396,6 +423,12 @@ def get_stats():
         "active_stock_strategy": tg_user.get("active_stock_strategy") or "Sherpa Velocity Pullback"
     }
     
+    # Filter response if segment is specified
+    if segment == 'crypto':
+        response_data.pop("stock", None)
+    elif segment == 'stock':
+        response_data.pop("crypto", None)
+        
     with RESPONSE_CACHE_LOCK:
         RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, response_data)
         
@@ -406,10 +439,11 @@ def get_stats():
 def get_open_trades():
     user = g.user
     user_id = user["id"]
+    segment = request.args.get("segment") # 'crypto' or 'stock'
     
     # Check cache
     now = time.time()
-    cache_key = ("open_trades", user_id)
+    cache_key = ("open_trades", user_id, segment)
     with RESPONSE_CACHE_LOCK:
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
@@ -438,10 +472,27 @@ def get_open_trades():
     alpaca_key = merged_user.get("alpaca_api_key")
     alpaca_secret = merged_user.get("alpaca_api_secret")
     
-    if alpaca_key and alpaca_secret:
+    if (not segment or segment == 'stock') and alpaca_key and alpaca_secret:
         try:
             positions = database.make_alpaca_request(merged_user, "GET", "/v2/positions")
             if isinstance(positions, list):
+                # Fetch recent closed orders once to resolve open_time for positions where we don't have local DB records
+                closed_orders_map = {}
+                try:
+                    recent_orders = database.make_alpaca_request(
+                        merged_user,
+                        "GET",
+                        "/v2/orders",
+                        params={"status": "closed", "limit": 50}
+                    )
+                    if isinstance(recent_orders, list):
+                        for o in recent_orders:
+                            sym = o.get("symbol")
+                            if sym and sym not in closed_orders_map:
+                                closed_orders_map[sym] = o
+                except Exception as ord_err:
+                    print(f"Error fetching recent closed orders for open_time lookup: {ord_err}")
+
                 for p in positions:
                     tp_price = 0.0
                     sl_price = 0.0
@@ -467,27 +518,20 @@ def get_open_trades():
                         print(f"Alpaca DB lookup error: {db_err}")
 
                     if open_time == 0:
-                        try:
-                            # Fallback: Query Alpaca order history to get filled timestamp for this symbol
-                            symbol_orders = database.make_alpaca_request(
-                                merged_user, 
-                                "GET", 
-                                "/v2/orders", 
-                                params={"status": "closed", "limit": 1, "symbols": p.get("symbol")}
-                            )
-                            if isinstance(symbol_orders, list) and len(symbol_orders) > 0:
-                                o = symbol_orders[0]
-                                from datetime import datetime
-                                dt_str = str(o.get("filled_at", ""))
-                                if dt_str:
+                        o = closed_orders_map.get(p.get("symbol"))
+                        if o:
+                            from datetime import datetime
+                            dt_str = str(o.get("filled_at", ""))
+                            if dt_str:
+                                try:
+                                    z_fixed = dt_str.replace("Z", "+00:00")
+                                    open_time = int(datetime.fromisoformat(z_fixed).timestamp())
+                                except Exception:
                                     try:
-                                        z_fixed = dt_str.replace("Z", "+00:00")
-                                        open_time = int(datetime.fromisoformat(z_fixed).timestamp())
-                                    except Exception:
                                         cleaned = dt_str.split(".")[0].replace("Z", "").replace("T", " ")
                                         open_time = int(datetime.strptime(cleaned, "%Y-%m-%d %H:%M:%S").timestamp())
-                        except Exception as alpaca_order_err:
-                            print(f"Alpaca order lookup error for {p.get('symbol')}: {alpaca_order_err}")
+                                    except Exception:
+                                        pass
 
                     open_positions.append({
                         "id": p.get("asset_id", f"alpaca-{p.get('symbol')}"),
@@ -535,7 +579,7 @@ def get_open_trades():
     crypto_api_password = merged_user.get("api_password") or ""
     crypto_exchange_id = merged_user.get("exchange_id", "blofin")
     
-    if crypto_api_key and crypto_api_secret:
+    if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         try:
             import ccxt
             default_type = "swap"

@@ -573,7 +573,8 @@ def init_db():
                 last_audit_stats TEXT,
                 avatar_url TEXT,
                 created_at INTEGER,
-                referral_reward_triggered BOOLEAN DEFAULT 0
+                referral_reward_triggered BOOLEAN DEFAULT 0,
+                alpaca_start_equity REAL
             )''')
 
         if "PortfolioBalanceHistory" not in existing_tables:
@@ -599,7 +600,8 @@ def init_db():
             "browser_notifications": "INTEGER DEFAULT 1",
             "public_key": "TEXT",
             "encrypted_private_key": "TEXT",
-            "bingx_futures_type": "TEXT DEFAULT 'standard'"
+            "bingx_futures_type": "TEXT DEFAULT 'standard'",
+            "alpaca_start_equity": "REAL"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:
