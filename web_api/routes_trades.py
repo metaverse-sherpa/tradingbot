@@ -1437,7 +1437,7 @@ def _update_active_signals_cache():
                             "APCA-API-KEY-ID": sys_user.get("alpaca_api_key"),
                             "APCA-API-SECRET-KEY": sys_user.get("alpaca_api_secret")
                         }
-                        async with session.get(url, headers=headers, timeout=5) as resp:
+                        async with session.get(url, headers=headers, timeout=10) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
                                 for sym in stock_syms:
@@ -1707,7 +1707,7 @@ def _update_free_stats_cache():
                 if alpaca_key and alpaca_secret:
                     headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
                     sym_str = ",".join(stock_syms)
-                    resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
+                    resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=10)
                     if resp.status_code == 200:
                         for sym, snapshot in resp.json().items():
                             live_prices[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
