@@ -12,6 +12,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STOCK_DB_PATH = os.path.join(ROOT_DIR, "data", "stock_daily_cache.db")
+
 from flask import Blueprint, request, jsonify, make_response, g, send_file
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import database
@@ -1103,7 +1106,7 @@ def repair_stale_alpaca_trades():
                 exit_price = t["entry_price"]
                 try:
                     import sqlite3
-                    conn2 = sqlite3.connect("data/stock_daily_cache.db")
+                    conn2 = sqlite3.connect(STOCK_DB_PATH)
                     c2 = conn2.cursor()
                     c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
                     row = c2.fetchone()
@@ -1444,7 +1447,7 @@ def _update_active_signals_cache():
             crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
             def has_cache(sym):
                 try:
-                    with sqlite3.connect("data/stock_daily_cache.db") as conn:
+                    with sqlite3.connect(STOCK_DB_PATH) as conn:
                         c = conn.cursor()
                         c.execute("SELECT 1 FROM StockDailyData WHERE symbol = ? LIMIT 1", (sym,))
                         return c.fetchone() is not None
@@ -1555,7 +1558,7 @@ def _update_active_signals_cache():
                     
                     if sym not in prices:
                         try:
-                            with sqlite3.connect("data/stock_daily_cache.db") as conn2:
+                            with sqlite3.connect(STOCK_DB_PATH) as conn2:
                                 c2 = conn2.cursor()
                                 c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
                                 row = c2.fetchone()
@@ -1765,7 +1768,7 @@ def _update_free_stats_cache():
             for sym in stock_syms:
                 if sym not in live_prices:
                     try:
-                        with sqlite3.connect("data/stock_daily_cache.db") as conn2:
+                        with sqlite3.connect(STOCK_DB_PATH) as conn2:
                             c2 = conn2.cursor()
                             c2.execute("SELECT close FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
                             row = c2.fetchone()
@@ -2200,7 +2203,7 @@ def get_trade_chart():
         if trade_type == "stock":
             timeframe = "1D"
             try:
-                conn = sqlite3.connect("data/stock_daily_cache.db")
+                conn = sqlite3.connect(STOCK_DB_PATH)
                 df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
                 conn.close()
                 if not df_chart.empty:
