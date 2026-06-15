@@ -18,6 +18,10 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     """
     Generates a high-contrast Neon chart where TP/SL/Entry lines only start from open_ts.
     """
+    # Normalize open_ts to milliseconds if it was passed in seconds
+    if open_ts > 0 and open_ts < 10**11:
+        open_ts = open_ts * 1000
+
     df = df.copy()
     df.index = pd.to_datetime(df['timestamp'], unit='ms')
     if df.index.tz is not None:
