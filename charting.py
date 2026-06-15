@@ -168,7 +168,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         addplot=ap,
         volume=False,
         figratio=(16,10),
-        figscale=1.3,
+        figscale=0.9,
         returnfig=True
     )
     
@@ -176,15 +176,15 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         valid_areas = [fb for fb in fill_areas if fb is not None]
         if valid_areas:
             kwargs['fill_between'] = valid_areas
-
+ 
     fig, axlist = mpf.plot(df, **kwargs)
              
     # Save final figure
-    fig.savefig(filepath, dpi=100, bbox_inches='tight')
+    fig.savefig(filepath, dpi=80, bbox_inches='tight')
     
     # CRITICAL: Explicitly close the figure to release memory!
     plt.close(fig)
-
+ 
     # --- 4. Premium Visual Assembly ---
     try:
         import media_gen
@@ -197,7 +197,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         # Scale progress box to match chart width
         scale = chart_img.width / prog_img.width
         new_h = int(prog_img.height * scale)
-        prog_img = prog_img.resize((chart_img.width, new_h), Image.Resampling.LANCZOS)
+        prog_img = prog_img.resize((chart_img.width, new_h), Image.Resampling.BILINEAR)
         
         # Combine vertically
         combined = Image.new("RGBA", (chart_img.width, chart_img.height + prog_img.height), (18, 18, 18, 255))

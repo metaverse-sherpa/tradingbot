@@ -13,7 +13,11 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(BASE_DIR, "images", "metaverse-bot-logo.png")
 
+_font_cache = {}
+
 def find_brand_font(size):
+    if size in _font_cache:
+        return _font_cache[size]
     font_paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
@@ -21,10 +25,15 @@ def find_brand_font(size):
     ]
     for path in font_paths:
         try:
-            return ImageFont.truetype(path, size)
+            font = ImageFont.truetype(path, size)
+            _font_cache[size] = font
+            return font
         except Exception:
             continue
-    return ImageFont.load_default()
+    default_font = ImageFont.load_default()
+    _font_cache[size] = default_font
+    return default_font
+
 
 
 def add_qr_code(base_img, link, size=180):
