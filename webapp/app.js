@@ -2179,6 +2179,143 @@ function renderDashboardView() {
     `;
 
     if (!isPremium) {
+        const active_signals = STATE.active_signals || [];
+        const cryptoSignals = active_signals.filter(s => s.symbol && s.symbol.includes('/'));
+        const stockSignals = active_signals.filter(s => s.symbol && !s.symbol.includes('/'));
+        const cryptoCount = cryptoSignals.length;
+        const stockCount = stockSignals.length;
+
+        // Tabs visibility logic: if no crypto, only show stocks, and vice-versa
+        let showCryptoTab = cryptoCount > 0;
+        let showStockTab = stockCount > 0;
+        if (cryptoCount === 0 && stockCount === 0) {
+            showCryptoTab = true;
+            showStockTab = true;
+        }
+
+        let isCrypto = STATE.dashboard_tab === 'crypto';
+        if (isCrypto && !showCryptoTab && showStockTab) {
+            isCrypto = false;
+        } else if (!isCrypto && !showStockTab && showCryptoTab) {
+            isCrypto = true;
+        }
+
+        const sortedCrypto = [...cryptoSignals].sort((a, b) => {
+            if (STATE.active_signals_sort_by === 'date') {
+                return (b.open_time || 0) - (a.open_time || 0);
+            } else {
+                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+            }
+        });
+
+        const sortedStock = [...stockSignals].sort((a, b) => {
+            if (STATE.active_signals_sort_by === 'date') {
+                return (b.open_time || 0) - (a.open_time || 0);
+            } else {
+                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+            }
+        });
+
+        const cryptoHtml = sortedCrypto.length === 0 ? `
+            <div class="text-center py-8">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-5xl mb-3">hourglass_empty</span>
+                <p class="font-body-md text-on-surface font-semibold">No active crypto signals</p>
+            </div>
+        ` : sortedCrypto.map(s => renderSignalCard(s)).join('');
+
+        const stockHtml = sortedStock.length === 0 ? `
+            <div class="text-center py-8">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-5xl mb-3">hourglass_empty</span>
+                <p class="font-body-md text-on-surface font-semibold">No active stock signals</p>
+            </div>
+        ` : sortedStock.map(s => renderSignalCard(s)).join('');
+
+        const shimmerHtml = `
+            <div class="flex flex-col gap-4 animate-fade-in">
+                <!-- Shimmer Card 1 -->
+                <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="h-6 w-32 bg-white/10 rounded-full animate-pulse"></div>
+                        <div class="h-6 w-20 bg-primary/20 rounded-full animate-pulse"></div>
+                    </div>
+                    <div class="h-4 w-40 bg-white/5 rounded-full mb-6 animate-pulse"></div>
+                    <div class="flex justify-between items-center pt-4 border-t border-white/5">
+                        <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                        <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div class="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)] -translate-x-full animate-shimmer" style="animation: shimmer 1.5s infinite;"></div>
+                </div>
+            </div>
+        `;
+
+        let contentHtml = '';
+        if (STATE.is_loading_active_signals && active_signals.length === 0) {
+            contentHtml = shimmerHtml;
+        } else if (active_signals.length === 0) {
+            contentHtml = `
+                <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
+                    ${getFreeStatsHtml()}
+                </div>
+            `;
+        } else {
+            if (showCryptoTab && showStockTab) {
+                contentHtml = `
+                    <!-- Mobile Tab Bar -->
+                    <div class="glass-card rounded-full flex border border-white/10 p-1 w-full max-w-[500px] mx-auto relative overflow-hidden z-10 md:hidden mb-4">
+                        <button onclick="setDashboardTab('crypto')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                            Crypto (${cryptoCount})
+                        </button>
+                        <button onclick="setDashboardTab('stock')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
+                            Stocks (${stockCount})
+                        </button>
+                    </div>
+
+                    <!-- Mobile List (Single Column) -->
+                    <div class="space-y-stack-gap md:hidden animate-fade-in">
+                        ${isCrypto ? cryptoHtml : stockHtml}
+                    </div>
+
+                    <!-- Desktop View (Two Columns) -->
+                    <div class="hidden md:grid md:grid-cols-2 md:gap-6 animate-fade-in">
+                        <!-- Crypto Column -->
+                        <div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                                <span>🪙</span> Crypto (${cryptoCount})
+                            </h3>
+                            <div class="space-y-stack-gap">
+                                ${cryptoHtml}
+                            </div>
+                        </div>
+                        <!-- Stocks Column -->
+                        <div>
+                            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                                <span>🦙</span> Stocks (${stockCount})
+                            </h3>
+                            <div class="space-y-stack-gap">
+                                ${stockHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const singleHtml = showCryptoTab ? cryptoHtml : stockHtml;
+                const singleCount = showCryptoTab ? cryptoCount : stockCount;
+                const singleLabel = showCryptoTab ? 'Crypto' : 'Stocks';
+                const singleIcon = showCryptoTab ? '🪙' : '🦙';
+                
+                contentHtml = `
+                    <div class="w-full max-w-[600px] mx-auto space-y-4 animate-fade-in">
+                        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                            <span>${singleIcon}</span> ${singleLabel} (${singleCount})
+                        </h3>
+                        <div class="space-y-stack-gap">
+                            ${singleHtml}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         return `
             ${renderHeader()}
             <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto">
@@ -2196,50 +2333,7 @@ function renderDashboardView() {
                 </div>
                 ` : ''}
                 
-                <div class="space-y-stack-gap">
-                    ${STATE.is_loading_active_signals && STATE.active_signals.length === 0 ? `
-                        <div class="flex flex-col gap-4 animate-fade-in">
-                            <!-- Shimmer Card 1 -->
-                            <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20">
-                                <div class="flex justify-between items-center mb-3">
-                                    <div class="h-6 w-32 bg-white/10 rounded-full animate-pulse"></div>
-                                    <div class="h-6 w-20 bg-primary/20 rounded-full animate-pulse"></div>
-                                </div>
-                                <div class="h-4 w-40 bg-white/5 rounded-full mb-6 animate-pulse"></div>
-                                <div class="flex justify-between items-center pt-4 border-t border-white/5">
-                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
-                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
-                                </div>
-                                <div class="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)] -translate-x-full animate-shimmer" style="animation: shimmer 1.5s infinite;"></div>
-                            </div>
-                            <!-- Shimmer Card 2 -->
-                            <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20 opacity-60">
-                                <div class="flex justify-between items-center mb-3">
-                                    <div class="h-6 w-28 bg-white/10 rounded-full animate-pulse"></div>
-                                    <div class="h-6 w-24 bg-primary/20 rounded-full animate-pulse"></div>
-                                </div>
-                                <div class="h-4 w-48 bg-white/5 rounded-full mb-6 animate-pulse"></div>
-                                <div class="flex justify-between items-center pt-4 border-t border-white/5">
-                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
-                                    <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
-                                </div>
-                            </div>
-                        </div>
-                    ` : (() => {
-                        const sorted = [...STATE.active_signals].sort((a, b) => {
-                            if (STATE.active_signals_sort_by === 'date') {
-                                return (b.open_time || 0) - (a.open_time || 0);
-                            } else {
-                                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
-                            }
-                        });
-                        return sorted.length === 0 ? `
-                            <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
-                                ${getFreeStatsHtml()}
-                            </div>
-                        ` : sorted.map(s => renderSignalCard(s)).join('');
-                    })()}
-                </div>
+                ${contentHtml}
             </main>
         `;
     }
