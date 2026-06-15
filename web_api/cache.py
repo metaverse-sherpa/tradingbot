@@ -24,9 +24,9 @@ class SqliteSharedCache:
             print(f"Error initializing SharedResponseCache: {e}")
 
     def _serialize_key(self, key):
-        # key is a tuple: (cache_type, user_id)
+        # key is a tuple: (cache_type, user_id, optional_segment)
         if isinstance(key, tuple):
-            return f"{key[0]}:{key[1]}"
+            return ":".join(str(x) for x in key)
         return str(key)
 
     def __contains__(self, key):
