@@ -3018,6 +3018,7 @@ function renderTradesView() {
             </div>
             ` : ''}
 
+            ${(cryptoCount > 0 && stockCount > 0) || (cryptoCount === 0 && stockCount === 0) ? `
             <!-- Crypto vs Stocks Segmented Controller (Mobile Only) -->
             <div class="glass-card rounded-full flex border border-white/10 p-1 w-full relative overflow-hidden z-10 md:hidden">
                 <button onclick="setDashboardTab('crypto')" class="flex-1 py-1.5 text-center rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant/60 hover:text-on-surface'}">
@@ -3032,10 +3033,20 @@ function renderTradesView() {
             <div class="space-y-stack-gap md:hidden">
                 ${isCrypto ? cryptoHtml : stockHtml}
             </div>
+            ` : `
+            <!-- Mobile View (Single List - One Category Only) -->
+            <div class="space-y-stack-gap md:hidden">
+                <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
+                    ${cryptoCount > 0 ? `<span>🪙</span> Crypto (${cryptoCount})` : `<span>🦙</span> Stocks (${stockCount})`}
+                </h3>
+                ${cryptoCount > 0 ? cryptoHtml : stockHtml}
+            </div>
+            `}
             
-            <!-- Desktop View (Two Columns) -->
-            <div class="hidden md:grid md:grid-cols-2 md:gap-6">
+            <!-- Desktop View -->
+            <div class="hidden md:grid ${(cryptoCount > 0 && stockCount > 0) || (cryptoCount === 0 && stockCount === 0) ? 'md:grid-cols-2' : 'md:grid-cols-1'} md:gap-6">
                 <!-- Crypto Column -->
+                ${cryptoCount > 0 || (cryptoCount === 0 && stockCount === 0) ? `
                 <div>
                     <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
                         <span>🪙</span> Crypto (${cryptoCount})
@@ -3044,7 +3055,9 @@ function renderTradesView() {
                         ${cryptoHtml}
                     </div>
                 </div>
+                ` : ''}
                 <!-- Stocks Column -->
+                ${stockCount > 0 || (cryptoCount === 0 && stockCount === 0) ? `
                 <div>
                     <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
                         <span>🦙</span> Stocks (${stockCount})
@@ -3053,6 +3066,7 @@ function renderTradesView() {
                         ${stockHtml}
                     </div>
                 </div>
+                ` : ''}
             </div>
             
             ${tradesMode === 'active' && STATE.open_trades.length > 0 ? `
