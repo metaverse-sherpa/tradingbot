@@ -25,6 +25,8 @@ bcrypt
 google-auth
 httpx
 gunicorn
+psycopg2-binary
+
 
 # Optional (Install from git if needed in future to bypass PyPI resolution limitations):
 # pandas-ta @ git+https://github.com/twopirllc/pandas-ta.git

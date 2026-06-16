@@ -1,76 +1,5 @@
 [
     {
-        "id": "run_1781596579",
-        "timestamp": 1781596579.6278882,
-        "duration": 76.97,
-        "status": "completed",
-        "success_count": 50,
-        "failure_count": 0,
-        "latencies_count": 300,
-        "errors": [],
-        "screenshots_count": 300,
-        "peak_cpu": 100.0,
-        "peak_memory": 65.67
-    },
-    {
-        "id": "run_1781596738",
-        "timestamp": 1781596738.111229,
-        "duration": 513.15,
-        "status": "completed",
-        "success_count": 197,
-        "failure_count": 3,
-        "latencies_count": 1182,
-        "errors": [
-            {
-                "timestamp": 1781596965.6816351,
-                "worker_id": 110,
-                "path": "/#/register",
-                "error": "Page.wait_for_function: Timeout 15000ms exceeded."
-            },
-            {
-                "timestamp": 1781596965.736107,
-                "worker_id": 111,
-                "path": "/#/register",
-                "error": "Page.wait_for_function: Timeout 15000ms exceeded."
-            },
-            {
-                "timestamp": 1781596965.7637708,
-                "worker_id": 108,
-                "path": "/#/register",
-                "error": "Page.wait_for_function: Timeout 15000ms exceeded."
-            }
-        ],
-        "screenshots_count": 1182,
-        "peak_cpu": 60.0,
-        "peak_memory": 62.79
-    },
-    {
-        "id": "run_1781598183",
-        "timestamp": 1781598183.709793,
-        "duration": 354.08,
-        "status": "completed",
-        "success_count": 200,
-        "failure_count": 0,
-        "latencies_count": 1200,
-        "errors": [],
-        "screenshots_count": 1200,
-        "peak_cpu": 100.0,
-        "peak_memory": 61.88
-    },
-    {
-        "id": "run_1781598620",
-        "timestamp": 1781598620.774822,
-        "duration": 472.5,
-        "status": "completed",
-        "success_count": 200,
-        "failure_count": 0,
-        "latencies_count": 1200,
-        "errors": [],
-        "screenshots_count": 1200,
-        "peak_cpu": 100.0,
-        "peak_memory": 58.85
-    },
-    {
         "id": "run_1781599576",
         "timestamp": 1781599576.0955148,
         "duration": 450.76,
@@ -1008,5 +937,57 @@
         "screenshots_count": 80,
         "peak_cpu": 32.8,
         "peak_memory": 65.49
+    },
+    {
+        "id": "run_1781603083",
+        "timestamp": 1781603083.039999,
+        "duration": 363.14,
+        "status": "completed",
+        "success_count": 200,
+        "failure_count": 0,
+        "latencies_count": 1200,
+        "errors": [],
+        "screenshots_count": 1200,
+        "peak_cpu": 200.0,
+        "peak_memory": 69.69
+    },
+    {
+        "id": "run_1781603759",
+        "timestamp": 1781603759.066345,
+        "duration": 619.69,
+        "status": "idle",
+        "success_count": 154,
+        "failure_count": 0,
+        "latencies_count": 941,
+        "errors": [],
+        "screenshots_count": 934,
+        "peak_cpu": 74.6,
+        "peak_memory": 75.05
+    },
+    {
+        "id": "run_1781603759",
+        "timestamp": 1781603759.066345,
+        "duration": 619.69,
+        "status": "idle",
+        "success_count": 154,
+        "failure_count": 0,
+        "latencies_count": 941,
+        "errors": [],
+        "screenshots_count": 934,
+        "peak_cpu": 74.6,
+        "peak_memory": 75.05
+    },
+    {
+        "id": "run_1781604659",
+        "timestamp": 1781604659.992633,
+        "duration": 293.33,
+        "status": "completed",
+        "success_count": 200,
+        "failure_count": 0,
+        "latencies_count": 1200,
+        "errors": [],
+        "screenshots_count": 1200,
+        "peak_cpu": 200.0,
+        "peak_memory": 63.25
     }
 ]

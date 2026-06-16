@@ -40,20 +40,12 @@ cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
 from contextlib import contextmanager
 
+from db_adapter import db_session_adapter
+
 @contextmanager
 def db_session():
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    try:
-        conn.execute("PRAGMA busy_timeout=30000;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        yield conn
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
+    with db_session_adapter(DB_PATH, sqlite_timeout=30.0) as session:
+        yield session
 
 def get_exchange_client(user):
     """
