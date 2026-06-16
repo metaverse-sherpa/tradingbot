@@ -17,168 +17,50 @@ if not DATABASE_URL:
     print("Error: DATABASE_URL environment variable is not set in .env")
     sys.exit(1)
 
-TABLE_SCHEMAS = {
-    "Users": """
-        CREATE TABLE IF NOT EXISTS Users (
-            telegram_chat_id BIGINT PRIMARY KEY,
-            blofin_api_key TEXT,
-            blofin_api_secret TEXT,
-            blofin_api_password TEXT,
-            exchange_id TEXT DEFAULT 'blofin',
-            starting_equity REAL,
-            is_active SMALLINT DEFAULT 0,
-            total_wins INTEGER DEFAULT 0,
-            total_losses INTEGER DEFAULT 0,
-            total_trades_opened INTEGER DEFAULT 0,
-            cumulative_pnl REAL DEFAULT 0.0,
-            last_fetch_timestamp BIGINT DEFAULT 0,
-            strategy TEXT DEFAULT 'Valkyrie Elite Scalper',
-            source_wallet TEXT,
-            stock_risk_pct REAL DEFAULT 2.0,
-            alpaca_start_equity REAL,
-            hide_dollars SMALLINT DEFAULT 0,
-            risk_pct REAL DEFAULT 1.0,
-            enabled_symbols TEXT,
-            referred_by BIGINT,
-            premium_expiry BIGINT DEFAULT 0,
-            referral_count INTEGER DEFAULT 0,
-            has_open_positions SMALLINT DEFAULT 0,
-            history_cache TEXT,
-            undercover_mode SMALLINT DEFAULT 0,
-            last_audit_stats TEXT,
-            referral_credits REAL DEFAULT 0.0,
-            full_name TEXT,
-            username TEXT,
-            is_admin SMALLINT DEFAULT 0,
-            custom_equity_type TEXT DEFAULT 'all',
-            custom_equity_value REAL,
-            alpaca_api_key TEXT,
-            alpaca_api_secret TEXT,
-            alpaca_endpoint TEXT,
-            active_crypto_strategy TEXT DEFAULT 'Valkyrie Elite Scalper',
-            active_stock_strategy TEXT DEFAULT 'None',
-            premium_referrals INTEGER DEFAULT 0,
-            premium_expired_notified SMALLINT DEFAULT 0,
-            had_premium_before SMALLINT DEFAULT 0,
-            referral_reward_triggered SMALLINT DEFAULT 0,
-            bingx_futures_type TEXT DEFAULT 'standard'
-        );
-    """,
-    "WebUsers": """
-        CREATE TABLE IF NOT EXISTS WebUsers (
-            id SERIAL PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT,
-            google_id TEXT UNIQUE,
-            full_name TEXT,
-            avatar_url TEXT,
-            telegram_chat_id BIGINT,
-            exchange_id TEXT DEFAULT 'blofin',
-            api_key TEXT,
-            api_secret TEXT,
-            api_password TEXT,
-            alpaca_api_key TEXT,
-            alpaca_api_secret TEXT,
-            alpaca_endpoint TEXT,
-            is_active SMALLINT DEFAULT 0,
-            risk_pct REAL DEFAULT 1.0,
-            stock_risk_pct REAL DEFAULT 2.0,
-            enabled_symbols TEXT,
-            hide_dollars SMALLINT DEFAULT 0,
-            custom_equity_type TEXT DEFAULT 'all',
-            custom_equity_value REAL,
-            active_crypto_strategy TEXT DEFAULT 'Valkyrie Elite Scalper',
-            active_stock_strategy TEXT DEFAULT 'None',
-            source_wallet TEXT,
-            premium_expiry BIGINT DEFAULT 0,
-            referral_credits REAL DEFAULT 0.0,
-            referred_by INTEGER,
-            referral_count INTEGER DEFAULT 0,
-            total_wins INTEGER DEFAULT 0,
-            total_losses INTEGER DEFAULT 0,
-            cumulative_pnl REAL DEFAULT 0.0,
-            has_open_positions SMALLINT DEFAULT 0,
-            history_cache TEXT,
-            last_audit_stats TEXT,
-            created_at BIGINT,
-            reset_token TEXT,
-            reset_token_expiry BIGINT,
-            email_notifications SMALLINT DEFAULT 1,
-            email_frequency TEXT DEFAULT 'realtime',
-            browser_notifications SMALLINT DEFAULT 1,
-            public_key TEXT,
-            encrypted_private_key TEXT,
-            bingx_futures_type TEXT DEFAULT 'standard'
-        );
-    """,
-    "TheoreticalTrades": """
-        CREATE TABLE IF NOT EXISTS TheoreticalTrades (
-            id SERIAL PRIMARY KEY,
-            symbol TEXT,
-            strategy TEXT,
-            side TEXT,
-            entry_price REAL,
-            tp_price REAL,
-            sl_price REAL,
-            open_time BIGINT,
-            close_time BIGINT,
-            status TEXT,
-            position_size REAL,
-            pnl_raw REAL,
-            pnl_pct REAL,
-            pnl_usdt REAL
-        );
-    """,
-    "AlpacaActiveTrades": """
-        CREATE TABLE IF NOT EXISTS AlpacaActiveTrades (
-            id SERIAL PRIMARY KEY,
-            telegram_chat_id BIGINT,
-            symbol TEXT,
-            qty REAL,
-            entry_price REAL,
-            tp_price REAL,
-            sl_price REAL,
-            close_time BIGINT,
-            close_price REAL,
-            pnl_raw REAL,
-            pnl_pct REAL,
-            status TEXT,
-            web_user_id INTEGER
-        );
-    """,
-    "PortfolioBalanceHistory": """
-        CREATE TABLE IF NOT EXISTS PortfolioBalanceHistory (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            timestamp BIGINT,
-            encrypted_crypto_balance TEXT,
-            encrypted_stock_balance TEXT
-        );
-    """,
-    "Config": """
-        CREATE TABLE IF NOT EXISTS Config (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        );
-    """,
-    "GiftCodes": """
-        CREATE TABLE IF NOT EXISTS GiftCodes (
-            code TEXT PRIMARY KEY,
-            target_chat_id BIGINT,
-            target_username TEXT,
-            expiry_days INTEGER DEFAULT 30,
-            is_used SMALLINT DEFAULT 0,
-            created_at BIGINT
-        );
-    """,
-    "SharedResponseCache": """
-        CREATE TABLE IF NOT EXISTS SharedResponseCache (
-            cache_key TEXT PRIMARY KEY,
-            expiry REAL,
-            data TEXT
-        );
-    """
-}
+TABLES_TO_MIGRATE = [
+    "Users",
+    "WebUsers",
+    "TheoreticalTrades",
+    "AlpacaActiveTrades",
+    "PortfolioBalanceHistory",
+    "Config",
+    "GiftCodes",
+    "SharedResponseCache"
+]
+
+def generate_ddl_for_table(lite_cursor, table_name):
+    lite_cursor.execute(f"PRAGMA table_info({table_name})")
+    columns_info = lite_cursor.fetchall()
+    
+    col_defs = []
+    has_serial_id = False
+    
+    for col in columns_info:
+        name = col['name']
+        ctype = col['type'].upper()
+        is_pk = bool(col['pk'])
+        
+        # Determine PG type
+        pg_type = "TEXT"
+        if "INT" in ctype:
+            if name.lower() == "id" and is_pk:
+                pg_type = "SERIAL PRIMARY KEY"
+                has_serial_id = True
+            else:
+                pg_type = "BIGINT"
+        elif "REAL" in ctype or "FLOA" in ctype or "DOUB" in ctype or "NUM" in ctype:
+            pg_type = "DOUBLE PRECISION"
+        elif "BOOL" in ctype:
+            pg_type = "SMALLINT"
+            
+        # Add primary key constraint if not already covered by SERIAL PRIMARY KEY
+        if is_pk and not has_serial_id:
+            pg_type += " PRIMARY KEY"
+            
+        col_defs.append(f"{name} {pg_type}")
+        
+    ddl = f"CREATE TABLE IF NOT EXISTS {table_name} (\n    " + ",\n    ".join(col_defs) + "\n);"
+    return ddl, has_serial_id
 
 def migrate():
     print(f"Connecting to SQLite: {SQLITE_DB_PATH} ...")
@@ -191,19 +73,22 @@ def migrate():
     pg_cursor = pg_conn.cursor()
 
     # Drop existing tables to start clean if executing a migration reset
-    # (Optional: can comment this out if only migrating schemas without dropping)
-    # For a safe migration, we drop constraints first
     print("Dropping existing tables in Postgres (if any)...")
-    for table in TABLE_SCHEMAS.keys():
+    for table in TABLES_TO_MIGRATE:
         pg_cursor.execute(f"DROP TABLE IF EXISTS {table} CASCADE;")
 
-    # Recreate tables with correct schemas
-    print("Recreating clean table structures in Postgres...")
-    for table, ddl in TABLE_SCHEMAS.items():
+    # Recreate tables dynamically matching SQLite schema exactly
+    print("Analyzing SQLite schemas and creating tables in Postgres...")
+    serial_tables = []
+    for table in TABLES_TO_MIGRATE:
+        ddl, has_serial_id = generate_ddl_for_table(lite_cursor, table)
+        print(f"Executing DDL for '{table}':\n{ddl}\n")
         pg_cursor.execute(ddl)
+        if has_serial_id:
+            serial_tables.append(table)
 
     # Perform table data transfer
-    for table in TABLE_SCHEMAS.keys():
+    for table in TABLES_TO_MIGRATE:
         print(f"Migrating table '{table}'...")
         # Get data from SQLite
         lite_cursor.execute(f"SELECT * FROM {table}")
@@ -229,7 +114,7 @@ def migrate():
         print(f"  Successfully migrated {len(rows)} rows into Postgres '{table}'.")
 
         # Reset identity sequences for SERIAL primary keys
-        if table in ["WebUsers", "TheoreticalTrades", "AlpacaActiveTrades", "PortfolioBalanceHistory"]:
+        if table in serial_tables:
             print(f"  Resetting sequence for table '{table}'...")
             pg_cursor.execute(f"SELECT setval(pg_get_serial_sequence('{table.lower()}', 'id'), COALESCE(max(id), 1)) FROM {table};")
 
