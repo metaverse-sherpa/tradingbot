@@ -168,7 +168,8 @@ def run_load_generator_subprocess(config):
                         "timestamp": data.get("timestamp"),
                         "worker_id": details.get("worker_id"),
                         "path": details.get("path", "unknown"),
-                        "error": details.get("error")
+                        "error": details.get("error"),
+                        "console": details.get("console", "")
                     })
                 elif evt_type == "latency":
                     test_state["latencies"].append({
@@ -185,7 +186,8 @@ def run_load_generator_subprocess(config):
                         "step": details.get("step", "error"),
                         "path": details.get("path"),
                         "url": f"/static/{relative_path}",
-                        "is_error": evt_type == "screenshot_error"
+                        "is_error": evt_type == "screenshot_error",
+                        "console": details.get("console", "")
                     })
             except Exception:
                 pass

@@ -67,6 +67,10 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
             )
             page = await context.new_page()
 
+            console_logs = []
+            page.on("console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text}"))
+            page.on("pageerror", lambda err: console_logs.append(f"[pageerror] {err}"))
+
             log_event("worker_start", {"worker_id": worker_id, "email": email, "is_premium": is_premium})
 
             current_path = "unknown"
@@ -142,10 +146,10 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                 error_screenshot_path = os.path.join(screenshots_dir, f"error_worker_{worker_id}_{int(time.time())}.png")
                 try:
                     await page.screenshot(path=error_screenshot_path)
-                    log_event("screenshot_error", {"worker_id": worker_id, "path": current_path, "file": error_screenshot_path})
+                    log_event("screenshot_error", {"worker_id": worker_id, "path": current_path, "file": error_screenshot_path, "console": "\n".join(console_logs)})
                 except Exception:
                     pass
-                log_event("worker_failure", {"worker_id": worker_id, "error": str(e), "path": current_path})
+                log_event("worker_failure", {"worker_id": worker_id, "error": str(e), "path": current_path, "console": "\n".join(console_logs)})
             finally:
                 await context.close()
                 await browser.close()
