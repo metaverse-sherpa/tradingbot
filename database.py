@@ -788,13 +788,13 @@ def get_all_active_users():
         c = conn.cursor()
         
         # 1. Fetch active users from Users (Telegram)
-        c.execute('SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND blofin_api_key IS NOT NULL AND blofin_api_key != ""')
+        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND blofin_api_key IS NOT NULL AND blofin_api_key != ''")
         tg_chat_ids = [row[0] for row in c.fetchall()]
         active_users = [get_user(cid) for cid in tg_chat_ids]
         
         # 2. Fetch active users from WebUsers (Web-only or not synced)
         try:
-            c.execute('SELECT * FROM WebUsers WHERE is_active = 1 AND api_key IS NOT NULL AND api_key != ""')
+            c.execute("SELECT * FROM WebUsers WHERE is_active = 1 AND api_key IS NOT NULL AND api_key != ''")
             web_rows = c.fetchall()
             for r in web_rows:
                 web_user = dict(r)
