@@ -1,706 +1,5 @@
 [
     {
-        "id": "run_1781599576",
-        "timestamp": 1781599576.0955148,
-        "duration": 450.76,
-        "status": "completed",
-        "success_count": 181,
-        "failure_count": 19,
-        "latencies_count": 1086,
-        "errors": [
-            {
-                "timestamp": 1781599644.252079,
-                "worker_id": 37,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found"
-            },
-            {
-                "timestamp": 1781599644.2549078,
-                "worker_id": 38,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found"
-            },
-            {
-                "timestamp": 1781599644.28071,
-                "worker_id": 35,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found"
-            },
-            {
-                "timestamp": 1781599659.6363661,
-                "worker_id": 20,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599671.597167,
-                "worker_id": 32,
-                "path": "/#/register",
-                "error": "Page.reload: Timeout 30000ms exceeded.\nCall log:\n  - waiting for navigation until \"domcontentloaded\"\n    - navigated to \"https://bot.metaversesherpa.io/#/dashboard\"\n"
-            },
-            {
-                "timestamp": 1781599674.004138,
-                "worker_id": 36,
-                "path": "/#/register",
-                "error": "Page.reload: Timeout 30000ms exceeded.\nCall log:\n  - waiting for navigation until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599675.057621,
-                "worker_id": 39,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599675.134455,
-                "worker_id": 40,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599704.684128,
-                "worker_id": 43,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599704.686252,
-                "worker_id": 41,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599704.687416,
-                "worker_id": 42,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599719.9198341,
-                "worker_id": 44,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599731.882373,
-                "worker_id": 45,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599733.5755,
-                "worker_id": 47,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599733.5761569,
-                "worker_id": 48,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599733.591469,
-                "worker_id": 46,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599735.110775,
-                "worker_id": 49,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599735.111135,
-                "worker_id": 50,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            },
-            {
-                "timestamp": 1781599735.1121001,
-                "worker_id": 51,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
-            }
-        ],
-        "screenshots_count": 1095,
-        "peak_cpu": 100.0,
-        "peak_memory": 76.18
-    },
-    {
-        "id": "run_1781600912",
-        "timestamp": 1781600912.1995342,
-        "duration": 264.16,
-        "status": "idle",
-        "success_count": 56,
-        "failure_count": 21,
-        "latencies_count": 342,
-        "errors": [
-            {
-                "timestamp": 1781600962.058513,
-                "worker_id": 14,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600973.555824,
-                "worker_id": 8,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.048204,
-                "worker_id": 15,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.094192,
-                "worker_id": 17,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.134326,
-                "worker_id": 13,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.211079,
-                "worker_id": 16,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601011.692887,
-                "worker_id": 12,
-                "path": "/#/register",
-                "error": "Page.reload: Timeout 30000ms exceeded.\nCall log:\n  - waiting for navigation until \"domcontentloaded\"\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781601013.1153312,
-                "worker_id": 18,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601013.227065,
-                "worker_id": 19,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601013.7896252,
-                "worker_id": 20,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601022.446479,
-                "worker_id": 21,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601033.936314,
-                "worker_id": 22,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.444443,
-                "worker_id": 23,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.465546,
-                "worker_id": 24,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.47196,
-                "worker_id": 25,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.57042,
-                "worker_id": 26,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.543359,
-                "worker_id": 27,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.5438368,
-                "worker_id": 28,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.544204,
-                "worker_id": 30,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.5505762,
-                "worker_id": 31,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.587428,
-                "worker_id": 29,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            }
-        ],
-        "screenshots_count": 351,
-        "peak_cpu": 185.8,
-        "peak_memory": 74.03
-    },
-    {
-        "id": "run_1781600912",
-        "timestamp": 1781600912.1995342,
-        "duration": 264.16,
-        "status": "idle",
-        "success_count": 56,
-        "failure_count": 21,
-        "latencies_count": 342,
-        "errors": [
-            {
-                "timestamp": 1781600962.058513,
-                "worker_id": 14,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600973.555824,
-                "worker_id": 8,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.048204,
-                "worker_id": 15,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.094192,
-                "worker_id": 17,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.134326,
-                "worker_id": 13,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781600982.211079,
-                "worker_id": 16,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601011.692887,
-                "worker_id": 12,
-                "path": "/#/register",
-                "error": "Page.reload: Timeout 30000ms exceeded.\nCall log:\n  - waiting for navigation until \"domcontentloaded\"\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781601013.1153312,
-                "worker_id": 18,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601013.227065,
-                "worker_id": 19,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601013.7896252,
-                "worker_id": 20,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601022.446479,
-                "worker_id": 21,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601033.936314,
-                "worker_id": 22,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.444443,
-                "worker_id": 23,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.465546,
-                "worker_id": 24,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.47196,
-                "worker_id": 25,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601042.57042,
-                "worker_id": 26,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.543359,
-                "worker_id": 27,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.5438368,
-                "worker_id": 28,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.544204,
-                "worker_id": 30,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.5505762,
-                "worker_id": 31,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781601059.587428,
-                "worker_id": 29,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n",
-                "console": ""
-            }
-        ],
-        "screenshots_count": 351,
-        "peak_cpu": 185.8,
-        "peak_memory": 74.03
-    },
-    {
-        "id": "run_1781601208",
-        "timestamp": 1781601208.9643679,
-        "duration": 588.34,
-        "status": "completed",
-        "success_count": 200,
-        "failure_count": 0,
-        "latencies_count": 1200,
-        "errors": [],
-        "screenshots_count": 1200,
-        "peak_cpu": 200.0,
-        "peak_memory": 69.2
-    },
-    {
-        "id": "run_1781602543",
-        "timestamp": 1781602543.891596,
-        "duration": 182.49,
-        "status": "idle",
-        "success_count": 8,
-        "failure_count": 32,
-        "latencies_count": 48,
-        "errors": [
-            {
-                "timestamp": 1781602605.199873,
-                "worker_id": 8,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602605.4160671,
-                "worker_id": 10,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602605.4642618,
-                "worker_id": 9,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602605.733187,
-                "worker_id": 13,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602605.748209,
-                "worker_id": 14,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602605.905208,
-                "worker_id": 12,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602606.044254,
-                "worker_id": 15,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602608.5529249,
-                "worker_id": 11,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602637.1512918,
-                "worker_id": 16,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602637.41795,
-                "worker_id": 17,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602637.418533,
-                "worker_id": 18,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602637.698497,
-                "worker_id": 19,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602637.904948,
-                "worker_id": 20,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602637.954262,
-                "worker_id": 21,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602637.963131,
-                "worker_id": 22,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602640.468013,
-                "worker_id": 23,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602669.1666281,
-                "worker_id": 24,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602669.5487108,
-                "worker_id": 26,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602669.552442,
-                "worker_id": 25,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602669.948925,
-                "worker_id": 27,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602669.964067,
-                "worker_id": 30,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602669.980809,
-                "worker_id": 29,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602669.995589,
-                "worker_id": 28,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602672.515718,
-                "worker_id": 31,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602701.217658,
-                "worker_id": 32,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602702.101873,
-                "worker_id": 33,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602702.104508,
-                "worker_id": 36,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602703.450306,
-                "worker_id": 34,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602704.148742,
-                "worker_id": 38,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602704.934748,
-                "worker_id": 35,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602704.953045,
-                "worker_id": 39,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781602705.078083,
-                "worker_id": 37,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            }
-        ],
-        "screenshots_count": 80,
-        "peak_cpu": 32.8,
-        "peak_memory": 65.49
-    },
-    {
         "id": "run_1781602543",
         "timestamp": 1781602543.891596,
         "duration": 182.49,
@@ -989,5 +288,436 @@
         "screenshots_count": 1200,
         "peak_cpu": 200.0,
         "peak_memory": 63.25
+    },
+    {
+        "id": "run_1781616348",
+        "timestamp": 1781616348.730708,
+        "duration": 143.56,
+        "status": "idle",
+        "success_count": 0,
+        "failure_count": 26,
+        "latencies_count": 0,
+        "errors": [
+            {
+                "timestamp": 1781616392.5401878,
+                "worker_id": 1,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616392.7038,
+                "worker_id": 3,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616392.718924,
+                "worker_id": 6,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616392.819106,
+                "worker_id": 7,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616393.182473,
+                "worker_id": 4,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616393.1839511,
+                "worker_id": 0,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616393.761013,
+                "worker_id": 5,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616395.720435,
+                "worker_id": 2,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616424.855514,
+                "worker_id": 9,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616424.8731399,
+                "worker_id": 10,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616424.951627,
+                "worker_id": 8,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.070091,
+                "worker_id": 11,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.3018,
+                "worker_id": 13,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.448828,
+                "worker_id": 12,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.710338,
+                "worker_id": 14,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616427.801814,
+                "worker_id": 15,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.2391071,
+                "worker_id": 17,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.240088,
+                "worker_id": 19,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.240681,
+                "worker_id": 18,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.241101,
+                "worker_id": 16,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.521727,
+                "worker_id": 22,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616459.030827,
+                "worker_id": 20,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616459.226485,
+                "worker_id": 21,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616459.810433,
+                "worker_id": 23,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616491.740101,
+                "worker_id": 29,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616491.75486,
+                "worker_id": 31,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            }
+        ],
+        "screenshots_count": 26,
+        "peak_cpu": 57.4,
+        "peak_memory": 72.53
+    },
+    {
+        "id": "run_1781616348",
+        "timestamp": 1781616348.730708,
+        "duration": 143.56,
+        "status": "idle",
+        "success_count": 0,
+        "failure_count": 26,
+        "latencies_count": 0,
+        "errors": [
+            {
+                "timestamp": 1781616392.5401878,
+                "worker_id": 1,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616392.7038,
+                "worker_id": 3,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616392.718924,
+                "worker_id": 6,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616392.819106,
+                "worker_id": 7,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616393.182473,
+                "worker_id": 4,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616393.1839511,
+                "worker_id": 0,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616393.761013,
+                "worker_id": 5,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616395.720435,
+                "worker_id": 2,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616424.855514,
+                "worker_id": 9,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616424.8731399,
+                "worker_id": 10,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616424.951627,
+                "worker_id": 8,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.070091,
+                "worker_id": 11,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.3018,
+                "worker_id": 13,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.448828,
+                "worker_id": 12,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616425.710338,
+                "worker_id": 14,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616427.801814,
+                "worker_id": 15,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.2391071,
+                "worker_id": 17,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.240088,
+                "worker_id": 19,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.240681,
+                "worker_id": 18,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.241101,
+                "worker_id": 16,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616458.521727,
+                "worker_id": 22,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616459.030827,
+                "worker_id": 20,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616459.226485,
+                "worker_id": 21,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616459.810433,
+                "worker_id": 23,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616491.740101,
+                "worker_id": 29,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            },
+            {
+                "timestamp": 1781616491.75486,
+                "worker_id": 31,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": ""
+            }
+        ],
+        "screenshots_count": 26,
+        "peak_cpu": 57.4,
+        "peak_memory": 72.53
+    },
+    {
+        "id": "run_1781624881",
+        "timestamp": 1781624881.347192,
+        "duration": 18.21,
+        "status": "idle",
+        "success_count": 8,
+        "failure_count": 0,
+        "latencies_count": 48,
+        "errors": [],
+        "screenshots_count": 48,
+        "peak_cpu": 44.4,
+        "peak_memory": 67.31
+    },
+    {
+        "id": "run_1781624881",
+        "timestamp": 1781624881.347192,
+        "duration": 18.21,
+        "status": "idle",
+        "success_count": 8,
+        "failure_count": 0,
+        "latencies_count": 48,
+        "errors": [],
+        "screenshots_count": 48,
+        "peak_cpu": 44.4,
+        "peak_memory": 67.31
+    },
+    {
+        "id": "run_1781625029",
+        "timestamp": 1781625029.209585,
+        "duration": 260.48,
+        "status": "completed",
+        "success_count": 200,
+        "failure_count": 0,
+        "latencies_count": 1200,
+        "errors": [],
+        "screenshots_count": 1200,
+        "peak_cpu": 200.0,
+        "peak_memory": 65.89
     }
 ]
