@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Metaverse Sherpa | Performance Load Tester</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0c0f1a;
+            --surface-color: rgba(22, 26, 43, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #3cd7ff;
+            --secondary: #ffdb3c;
+            --success: #00e676;
+            --error: #ff3d71;
+            --text-color: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-section h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-section span {
+            color: var(--primary);
+            font-size: 32px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #888;
+        }
+
+        .status-running .status-dot {
+            background-color: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        .status-completed .status-dot {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .status-idle .status-dot {
+            background-color: #888;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--surface-color);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(60, 215, 255, 0.2);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-value {
+            font-weight: 600;
+            font-size: 14px;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            filter: brightness(1.1);
+            box-shadow: 0 0 12px rgba(60, 215, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: #fff;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: #fff;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .routes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .route-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .gallery-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.02);
+            border-color: var(--primary);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        .gallery-info {
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        .gallery-info div {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #adbac7;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-error {
+            color: var(--error);
+        }
+
+        .log-info {
+            color: var(--primary);
+        }
+
+        /* Lightbox overlay */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+            box-shadow: 0 0 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-section">
+                <span class="material-symbols-outlined">analytics</span>
+                <div>
+                    <h1>Performance Load Tester</h1>
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Metaverse Sherpa Telemetry</div>
+                </div>
+            </div>
+            <div class="status-badge" id="status-container">
+                <div class="status-dot"></div>
+                <span id="status-text">Idle</span>
+            </div>
+        </header>
+
+        <div class="grid-layout">
+            <!-- Left Side: Config -->
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">tune</span>
+                        Test Profile Configuration
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Target URL</label>
+                        <input class="form-control" id="target-url" type="url" value="https://bot.metaversesherpa.io"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Virtual Users (Concurrancy)</label>
+                        <div class="slider-container">
+                            <input class="form-control" id="concurrency" max="50" min="1" step="1" type="range" value="5"/>
+                            <span class="slider-value" id="concurrency-val">5</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ramp-Up Duration (seconds)</label>
+                        <div class="slider-container">
+                            <input class="form-control" id="ramp-up" max="60" min="0" step="5" type="range" value="10"/>
+                            <span class="slider-value" id="ramp-up-val">10</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Test Duration (seconds)</label>
+                        <div class="slider-container">
+                            <input class="form-control" id="duration" max="300" min="10" step="10" type="range" value="60"/>
+                            <span class="slider-value" id="duration-val">60</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Premium User Ratio</label>
+                        <div class="slider-container">
+                            <input class="form-control" id="premium-ratio" max="1" min="0" step="0.1" type="range" value="0.2"/>
+                            <span class="slider-value" id="premium-ratio-val">20%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">route</span>
+                        Navigation Paths
+                    </div>
+                    
+                    <div class="routes-list" id="routes-container">
+                        <!-- Rendered by JS -->
+                    </div>
+
+                    <div class="form-group" style="margin-top: 12px; display: flex; gap: 8px;">
+                        <input class="form-control" id="new-path" placeholder="/#/stats" type="text"/>
+                        <button class="btn btn-secondary" onclick="addRoute()" style="width: auto; padding: 8px 12px;">Add</button>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 16px;">
+                        <button class="btn btn-primary" id="start-btn" onclick="startTest()">
+                            <span class="material-symbols-outlined">play_arrow</span> Start Simulation
+                        </button>
+                        <button class="btn btn-danger" id="stop-btn" onclick="stopTest()" style="display: none; margin-top: 8px;">
+                            <span class="material-symbols-outlined">stop</span> Stop Simulation
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">history</span>
+                        Analysis Run History
+                    </div>
+                    <div id="history-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; font-size: 12px;">
+                        <!-- History runs -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Charts & Logs -->
+            <div class="main-content">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Active Users</div>
+                        <div class="metric-value" id="metric-active">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Pass / Fail</div>
+                        <div class="metric-value" id="metric-pass-fail"><span style="color: var(--success)">0</span> / <span style="color: var(--error)">0</span></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Min Response</div>
+                        <div class="metric-value" id="metric-latency-min">0ms</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Response</div>
+                        <div class="metric-value" id="metric-latency-avg">0ms</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Max Response</div>
+                        <div class="metric-value" id="metric-latency-max">0ms</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Peak VM CPU</div>
+                        <div class="metric-value" id="metric-cpu">0%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Peak VM RAM</div>
+                        <div class="metric-value" id="metric-memory">0%</div>
+                    </div>
+                </div>
+
+
+                <div class="card">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">monitoring</span>
+                        Performance & Resource Scaling Timeline
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="telemetry-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">table_chart</span>
+                        Route Performance Breakdown
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px;">
+                                <th style="padding: 10px 8px;">Route Path</th>
+                                <th style="padding: 10px 8px; text-align: center;">Requests</th>
+                                <th style="padding: 10px 8px; text-align: right;">Min Load Time</th>
+                                <th style="padding: 10px 8px; text-align: right;">Avg Load Time</th>
+                                <th style="padding: 10px 8px; text-align: right;">Max Load Time</th>
+                                <th style="padding: 10px 8px; text-align: center; width: 80px;">Errors</th>
+                            </tr>
+                        </thead>
+                        <tbody id="route-performance-tbody">
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:12px; color:var(--text-muted)">No latency data yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+
+                <div class="card">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">screenshot</span>
+                        UI Rendering Gallery under Load
+                    </div>
+                    <div class="gallery-grid" id="gallery-container">
+                        <!-- Screenshots -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">terminal</span>
+                        Execution Event Logs
+                    </div>
+                    <div class="log-container" id="log-container">
+                        <!-- Logs -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox for screenshots -->
+    <div class="lightbox" id="lightbox" onclick="this.style.display='none'">
+        <img id="lightbox-img" src=""/>
+    </div>
+
+    <script>
+        let currentRoutes = [
+            {"path": "/#/register", "action": "navigate", "screenshot": true},
+            {"path": "/#/dashboard", "action": "navigate", "screenshot": true},
+            {"path": "/#/signals", "action": "navigate", "screenshot": true}
+        ];
+
+        let telemetryChart = null;
+        let pollInterval = null;
+
+        // Sliders binding
+        document.getElementById('concurrency').addEventListener('input', (e) => {
+            document.getElementById('concurrency-val').innerText = e.target.value;
+        });
+        document.getElementById('ramp-up').addEventListener('input', (e) => {
+            document.getElementById('ramp-up-val').innerText = e.target.value;
+        });
+        document.getElementById('duration').addEventListener('input', (e) => {
+            document.getElementById('duration-val').innerText = e.target.value;
+        });
+        document.getElementById('premium-ratio').addEventListener('input', (e) => {
+            document.getElementById('premium-ratio-val').innerText = Math.round(e.target.value * 100) + '%';
+        });
+
+        // Initialize Route Renderer
+        function renderRoutes() {
+            const container = document.getElementById('routes-container');
+            container.innerHTML = '';
+            currentRoutes.forEach((route, index) => {
+                const item = document.createElement('div');
+                item.className = 'route-item';
+                
+                // Form Autofill Warning indicators
+                let label = route.path;
+                let infoBadge = '';
+                if (route.path.includes('register')) {
+                    infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Registration</span>`;
+                } else if (route.path.includes('login')) {
+                    infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Login</span>`;
+                }
+
+                item.innerHTML = `
+                    <span class="material-symbols-outlined" style="color:var(--text-muted); font-size:18px;">link</span>
+                    <span style="font-size:13px; flex-grow:1; overflow:hidden; text-overflow:ellipsis">${label}${infoBadge}</span>
+                    <label style="display:flex; align-items:center; gap:4px; font-size:10px; cursor:pointer;">
+                        <input type="checkbox" ${route.screenshot ? 'checked' : ''} onchange="toggleScreenshot(${index})"> Camera
+                    </label>
+                    <span class="material-symbols-outlined" onclick="removeRoute(${index})" style="color:var(--error); font-size:18px; cursor:pointer; margin-left:6px;">delete</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function toggleScreenshot(index) {
+            currentRoutes[index].screenshot = !currentRoutes[index].screenshot;
+        }
+
+        function removeRoute(index) {
+            currentRoutes.splice(index, 1);
+            renderRoutes();
+            saveConfig();
+        }
+
+        function addRoute() {
+            const input = document.getElementById('new-path');
+            const path = input.value.trim();
+            if (path) {
+                currentRoutes.push({
+                    "path": path,
+                    "action": "navigate",
+                    "screenshot": true
+                });
+                input.value = '';
+                renderRoutes();
+                saveConfig();
+            }
+        }
+
+        // Save current UI config to Flask
+        async function saveConfig() {
+            const config = {
+                target_url: document.getElementById('target-url').value,
+                concurrency: parseInt(document.getElementById('concurrency').value),
+                duration: parseInt(document.getElementById('duration').value) || 60,
+                ramp_up: parseInt(document.getElementById('ramp-up').value),
+                premium_ratio: parseFloat(document.getElementById('premium-ratio').value),
+                routes: currentRoutes
+            };
+
+            await fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            });
+        }
+
+        // Fetch config from server on startup
+        async function loadConfig() {
+            const res = await fetch('/api/config');
+            const config = await res.json();
+            
+            document.getElementById('target-url').value = config.target_url;
+            document.getElementById('concurrency').value = config.concurrency;
+            document.getElementById('concurrency-val').innerText = config.concurrency;
+            
+            document.getElementById('ramp-up').value = config.ramp_up;
+            document.getElementById('ramp-up-val').innerText = config.ramp_up;
+            
+            document.getElementById('duration').value = config.duration || 60;
+            document.getElementById('duration-val').innerText = config.duration || 60;
+            
+            document.getElementById('premium-ratio').value = config.premium_ratio;
+            document.getElementById('premium-ratio-val').innerText = Math.round(config.premium_ratio * 100) + '%';
+            
+            currentRoutes = config.routes || [];
+            renderRoutes();
+        }
+
+        // Initialize Chart.js Graph
+        function initChart() {
+            const ctx = document.getElementById('telemetry-chart').getContext('2d');
+            telemetryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Active Users',
+                            data: [],
+                            borderColor: '#3cd7ff',
+                            backgroundColor: 'rgba(60, 215, 255, 0.1)',
+                            yAxisID: 'y-users',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Latency (s)',
+                            data: [],
+                            borderColor: '#ffdb3c',
+                            backgroundColor: 'transparent',
+                            yAxisID: 'y-latency',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'VM CPU (%)',
+                            data: [],
+                            borderColor: '#00e676',
+                            backgroundColor: 'transparent',
+                            yAxisID: 'y-percentage',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'VM Memory (%)',
+                            data: [],
+                            borderColor: '#ff3d71',
+                            backgroundColor: 'transparent',
+                            yAxisID: 'y-percentage',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: 'rgba(255,255,255,0.6)' }
+                        },
+                        'y-users': {
+                            position: 'left',
+                            title: { display: true, text: 'Active Users', color: '#3cd7ff' },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#3cd7ff' }
+                        },
+                        'y-latency': {
+                            position: 'right',
+                            title: { display: true, text: 'Latency (seconds)', color: '#ffdb3c' },
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#ffdb3c' }
+                        },
+                        'y-percentage': {
+                            position: 'right',
+                            title: { display: true, text: 'GCP Resource %', color: '#00e676' },
+                            grid: { drawOnChartArea: false },
+                            min: 0,
+                            max: 100,
+                            ticks: { color: '#00e676' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#fff' } }
+                    }
+                }
+            });
+        }
+
+        async function startTest() {
+            await saveConfig();
+            
+            // Start the test
+            const res = await fetch('/api/start', { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').style.display = 'inline-flex';
+            
+            // Start polling
+            pollInterval = setInterval(pollStatus, 2000);
+            
+            logMessage('info', 'Simulation started. Ramping up Playwright workers...');
+        }
+
+        async function stopTest() {
+            await fetch('/api/stop', { method: 'POST' });
+            logMessage('info', 'Simulation manual cancel request sent.');
+        }
+
+        function logMessage(type, message) {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timeStr = new Date().toLocaleTimeString();
+            entry.innerText = `[${timeStr}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function pollStatus() {
+            const res = await fetch('/api/status');
+            const state = await res.json();
+
+            // Update Header Status Badge
+            const statusContainer = document.getElementById('status-container');
+            statusContainer.className = `status-badge status-${state.status}`;
+            document.getElementById('status-text').innerText = state.status.toUpperCase();
+
+            // Update Metrics
+            document.getElementById('metric-active').innerText = state.active_workers;
+            document.getElementById('metric-pass-fail').innerHTML = `
+                <span style="color: var(--success)">${state.success_count}</span> / 
+                <span style="color: var(--error)">${state.failure_count}</span>
+            `;
+            
+            // Compute Min, Avg, Max latency
+            if (state.latencies.length > 0) {
+                const lats = state.latencies.map(l => l.latency);
+                const min = Math.min(...lats);
+                const max = Math.max(...lats);
+                const total = lats.reduce((acc, curr) => acc + curr, 0);
+                const avg = total / lats.length;
+                
+                document.getElementById('metric-latency-min').innerText = `${Math.round(min * 1000)}ms`;
+                document.getElementById('metric-latency-avg').innerText = `${Math.round(avg * 1000)}ms`;
+                document.getElementById('metric-latency-max').innerText = `${Math.round(max * 1000)}ms`;
+                
+                updateRouteBreakdown(state.latencies, state.errors);
+            } else {
+                document.getElementById('metric-latency-min').innerText = `0ms`;
+                document.getElementById('metric-latency-avg').innerText = `0ms`;
+                document.getElementById('metric-latency-max').innerText = `0ms`;
+                document.getElementById('route-performance-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:12px; color:var(--text-muted)">No latency data yet</td></tr>';
+            }
+
+            // Update Telemetry Chart
+            updateChartData(state);
+
+            // Update Gallery
+            updateGallery(state.screenshots);
+
+            // Print errors to log console
+            if (state.errors.length > 0) {
+                const container = document.getElementById('log-container');
+                container.innerHTML = '';
+                state.errors.forEach(err => {
+                    logMessage('error', `Worker ${err.worker_id}: ${err.error}`);
+                });
+            }
+
+            // Handle completion/error state
+            if (state.status === 'completed' || state.status === 'error' || state.status === 'idle') {
+                clearInterval(pollInterval);
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('stop-btn').style.display = 'none';
+                
+                if (state.status === 'completed') {
+                    logMessage('info', 'Simulation run completed successfully!');
+                } else if (state.status === 'error') {
+                    logMessage('error', 'Simulation run exited with errors.');
+                }
+                loadHistory(); // Reload historical runs list
+            }
+        }
+
+        function updateChartData(state) {
+            if (!telemetryChart) return;
+
+            // Generate time series points relative to test start_time
+            const start = state.start_time;
+            const labels = [];
+            const userPoints = [];
+            const latencyPoints = [];
+            const cpuPoints = [];
+            const memPoints = [];
+
+            // Group latency metrics by 2-second buckets
+            const maxDuration = Math.ceil((state.end_time || Date.now() / 1000) - start);
+            
+            // Check peak CPU
+            let peakCPU = 0;
+            if (state.gcp_metrics.cpu.length > 0) {
+                peakCPU = Math.max(...state.gcp_metrics.cpu.map(p => p.value));
+            }
+            document.getElementById('metric-cpu').innerText = `${peakCPU.toFixed(1)}%`;
+
+            // Check peak Memory
+            let peakMem = 0;
+            if (state.gcp_metrics.memory.length > 0) {
+                peakMem = Math.max(...state.gcp_metrics.memory.map(p => p.value));
+            }
+            document.getElementById('metric-memory').innerText = `${peakMem.toFixed(1)}%`;
+
+
+            for (let t = 0; t <= maxDuration; t += 2) {
+                labels.push(`${t}s`);
+                
+                // Active users estimation during ramp-up
+                let active = 0;
+                if (state.status === 'running') {
+                    active = state.active_workers;
+                } else if (state.status === 'completed') {
+                    active = 0;
+                }
+                userPoints.push(active);
+
+                // Latency inside this interval
+                const intervalLatencies = state.latencies.filter(l => {
+                    const diff = l.timestamp - start;
+                    return diff >= t - 1 && diff <= t + 1;
+                });
+                if (intervalLatencies.length > 0) {
+                    const avg = intervalLatencies.reduce((acc, curr) => acc + curr.latency, 0) / intervalLatencies.length;
+                    latencyPoints.push(avg);
+                } else {
+                    latencyPoints.push(null); // Keep continuity or null
+                }
+
+                // Match VM CPU
+                const matchedCpu = state.gcp_metrics.cpu.find(p => Math.abs(p.timestamp - (start + t)) < 15);
+                cpuPoints.push(matchedCpu ? matchedCpu.value : null);
+
+                // Match VM Mem
+                const matchedMem = state.gcp_metrics.memory.find(p => Math.abs(p.timestamp - (start + t)) < 15);
+                memPoints.push(matchedMem ? matchedMem.value : null);
+            }
+
+            telemetryChart.data.labels = labels;
+            telemetryChart.data.datasets[0].data = userPoints;
+            telemetryChart.data.datasets[1].data = latencyPoints;
+            telemetryChart.data.datasets[2].data = cpuPoints;
+            telemetryChart.data.datasets[3].data = memPoints;
+            telemetryChart.update('none'); // Update without animation for performance
+        }
+
+        function updateGallery(screenshots) {
+            const container = document.getElementById('gallery-container');
+            
+            // Check if items changed length to prevent re-rendering identical items
+            if (container.children.length === screenshots.length) return;
+
+            container.innerHTML = '';
+            screenshots.forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+                item.onclick = () => {
+                    document.getElementById('lightbox-img').src = s.url;
+                    document.getElementById('lightbox').style.display = 'flex';
+                };
+                
+                item.innerHTML = `
+                    <img src="${s.url}" alt="Screenshot Worker ${s.worker_id}"/>
+                    <div class="gallery-info">
+                        <div style="font-weight: 700;">Worker #${s.worker_id}</div>
+                        <div style="color: var(--primary);">${s.path}</div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateRouteBreakdown(latencies, errors) {
+            // Group by route path
+            const groups = {};
+            latencies.forEach(l => {
+                if (!groups[l.path]) {
+                    groups[l.path] = [];
+                }
+                groups[l.path].push(l.latency);
+            });
+            
+            // Group errors by path
+            const errorCounts = {};
+            (errors || []).forEach(err => {
+                const path = err.path || "unknown";
+                errorCounts[path] = (errorCounts[path] || 0) + 1;
+            });
+            
+            const tbody = document.getElementById('route-performance-tbody');
+            tbody.innerHTML = '';
+            
+            Object.keys(groups).forEach(path => {
+                const lats = groups[path];
+                const min = Math.min(...lats);
+                const max = Math.max(...lats);
+                const total = lats.reduce((acc, curr) => acc + curr, 0);
+                const avg = total / lats.length;
+                const errs = errorCounts[path] || 0;
+                
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.04)';
+                tr.innerHTML = `
+                    <td style="padding: 10px 8px; color: var(--primary); font-family: monospace;">${path}</td>
+                    <td style="padding: 10px 8px; text-align: center; font-weight: 600;">${lats.length}</td>
+                    <td style="padding: 10px 8px; text-align: right; color: var(--success);">${Math.round(min * 1000)}ms</td>
+                    <td style="padding: 10px 8px; text-align: right; color: var(--secondary); font-weight: 600;">${Math.round(avg * 1000)}ms</td>
+                    <td style="padding: 10px 8px; text-align: right; color: var(--error);">${Math.round(max * 1000)}ms</td>
+                    <td style="padding: 10px 8px; text-align: center; color: ${errs > 0 ? 'var(--error)' : 'var(--text-muted)'}; font-weight: bold;">${errs}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function loadHistory() {
+            const res = await fetch('/api/history');
+            const history = await res.json();
+            const container = document.getElementById('history-container');
+            container.innerHTML = '';
+            
+            if (history.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 12px 0;">No previous runs</div>';
+                return;
+            }
+            
+            // Sort history descending by timestamp
+            history.sort((a, b) => b.timestamp - a.timestamp);
+            
+            history.forEach(run => {
+                const date = new Date(run.timestamp * 1000).toLocaleString();
+                const item = document.createElement('div');
+                item.style.background = 'rgba(0, 0, 0, 0.2)';
+                item.style.padding = '8px 10px';
+                item.style.borderRadius = '8px';
+                item.style.border = '1px solid var(--border-color)';
+                item.style.marginBottom = '6px';
+                
+                item.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; font-weight: 600; margin-bottom: 2px;">
+                        <span>Run #${run.id.split('_')[1].substring(4)}</span>
+                        <span style="color: ${run.status === 'completed' ? 'var(--success)' : 'var(--error)'}">${run.status.toUpperCase()}</span>
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 10px;">
+                        ${date}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size: 10px; margin-top: 4px; color: var(--primary);">
+                        <span>VUs: ${run.success_count + run.failure_count} (${run.success_count} S | ${run.failure_count} F)</span>
+                        <span>CPU: ${run.peak_cpu.toFixed(1)}%</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        window.onload = async () => {
+            initChart();
+            await loadConfig();
+            await loadHistory();
+        };
+
+    </script>
+</body>
+</html>
