@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+import utils_gcp
+
+DATABASE_URL = utils_gcp.get_secret("DATABASE_URL")
 USE_POSTGRES = bool(DATABASE_URL and (DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://")))
 
 # Postgres Pool & Adapters Initialization

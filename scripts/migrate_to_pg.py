@@ -10,11 +10,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 load_dotenv()
 
+import utils_gcp
+
 SQLITE_DB_PATH = "data/bot_users.db"
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = utils_gcp.get_secret("DATABASE_URL")
 
 if not DATABASE_URL:
-    print("Error: DATABASE_URL environment variable is not set in .env")
+    print("Error: DATABASE_URL environment variable/secret is not set")
     sys.exit(1)
 
 TABLES_TO_MIGRATE = [
