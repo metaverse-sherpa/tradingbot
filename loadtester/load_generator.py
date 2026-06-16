@@ -82,7 +82,7 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                         start_time = time.time()
                         
                         if path == "/#/register" or path == "/register":
-                            await page.goto(full_url)
+                            await page.goto(full_url, wait_until="domcontentloaded")
                             await page.wait_for_selector("#reg-email", timeout=10000)
                             
                             await page.fill("#reg-name", name)
@@ -91,23 +91,31 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                             await page.fill("#reg-password-confirm", password)
                             
                             await page.click("form#register-form button[type='submit']")
-                            await page.wait_for_function("() => window.location.hash.includes('dashboard') || localStorage.getItem('session_token') !== null", timeout=15000)
+                            try:
+                                await page.wait_for_function("() => window.location.hash.includes('dashboard') || localStorage.getItem('session_token') !== null", timeout=30000)
+                            except Exception as e:
+                                error_text = await page.evaluate("() => { const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
+                                raise Exception(f"Registration Timeout exceeded. UI Error context: {error_text}")
                             
                             if is_premium:
                                 promote_to_premium(email)
-                                await page.reload()
+                                await page.reload(wait_until="domcontentloaded")
                                 await page.wait_for_timeout(1000)
                         
                         elif path == "/#/login" or path == "/login":
-                            await page.goto(full_url)
+                            await page.goto(full_url, wait_until="domcontentloaded")
                             await page.wait_for_selector("#login-email", timeout=10000)
                             await page.fill("#login-email", email)
                             await page.fill("#login-password", password)
                             await page.click("form#login-form button[type='submit']")
-                            await page.wait_for_function("() => window.location.hash.includes('dashboard')", timeout=15000)
+                            try:
+                                await page.wait_for_function("() => window.location.hash.includes('dashboard')", timeout=30000)
+                            except Exception as e:
+                                error_text = await page.evaluate("() => { const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
+                                raise Exception(f"Login Timeout exceeded. UI Error context: {error_text}")
                         
                         else:
-                            await page.goto(full_url)
+                            await page.goto(full_url, wait_until="domcontentloaded")
                             await page.wait_for_selector("#app", timeout=15000)
                         
                         latency = time.time() - start_time
@@ -131,6 +139,12 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
 
                 log_event("worker_success", {"worker_id": worker_id})
             except Exception as e:
+                error_screenshot_path = os.path.join(screenshots_dir, f"error_worker_{worker_id}_{int(time.time())}.png")
+                try:
+                    await page.screenshot(path=error_screenshot_path)
+                    log_event("screenshot_error", {"worker_id": worker_id, "path": current_path, "file": error_screenshot_path})
+                except Exception:
+                    pass
                 log_event("worker_failure", {"worker_id": worker_id, "error": str(e), "path": current_path})
             finally:
                 await context.close()
@@ -170,9 +184,8 @@ async def main():
         "premium_ratio": premium_ratio
     })
 
-    # Limit active browsers running in parallel to prevent Mac CPU overloading (default to max 4 concurrent browsers)
-    # Scale based on concurrency but cap at 4 to protect local Mac performance
-    max_active_browsers = min(4, concurrency)
+    # Allow customizable concurrency throttle for active browsers running in parallel to prevent Mac CPU overloading
+    max_active_browsers = int(config.get("max_active_browsers", 4))
     semaphore = asyncio.Semaphore(max_active_browsers)
 
     tasks = []

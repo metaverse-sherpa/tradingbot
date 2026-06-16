@@ -337,6 +337,24 @@
             color: var(--primary);
         }
 
+        .log-copy-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .log-copy-btn:hover {
+            background: rgba(60, 215, 255, 0.15);
+            color: #ffffff;
+        }
+
         /* Lightbox overlay */
         .lightbox {
             display: none;
@@ -397,10 +415,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Virtual Users (Concurrancy)</label>
+                        <label>Virtual Users (Concurrency)</label>
                         <div class="slider-container">
-                            <input class="form-control" id="concurrency" max="50" min="1" step="1" type="range" value="5"/>
+                            <input class="form-control" id="concurrency" max="500" min="1" step="1" type="range" value="5"/>
                             <span class="slider-value" id="concurrency-val">5</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Max Concurrent Browsers (Local Mac CPU Cap)</label>
+                        <div class="slider-container">
+                            <input class="form-control" id="max-browsers" max="24" min="1" step="1" type="range" value="4"/>
+                            <span class="slider-value" id="max-browsers-val">4</span>
                         </div>
                     </div>
 
@@ -545,9 +571,14 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-title">
-                        <span class="material-symbols-outlined">terminal</span>
-                        Execution Event Logs
+                    <div class="card-title" style="justify-content: space-between; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined">terminal</span>
+                            Execution Event Logs
+                        </div>
+                        <button class="log-copy-btn" id="copy-logs-btn" onclick="copyEventLogs()" title="Copy Event Logs">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">content_copy</span>
+                        </button>
                     </div>
                     <div class="log-container" id="log-container">
                         <!-- Logs -->
@@ -571,10 +602,15 @@
 
         let telemetryChart = null;
         let pollInterval = null;
+        let currentScreenshots = [];
+        let showingErrorsOnly = false;
 
         // Sliders binding
         document.getElementById('concurrency').addEventListener('input', (e) => {
             document.getElementById('concurrency-val').innerText = e.target.value;
+        });
+        document.getElementById('max-browsers').addEventListener('input', (e) => {
+            document.getElementById('max-browsers-val').innerText = e.target.value;
         });
         document.getElementById('ramp-up').addEventListener('input', (e) => {
             document.getElementById('ramp-up-val').innerText = e.target.value;
@@ -648,6 +684,7 @@
                 duration: parseInt(document.getElementById('duration').value) || 60,
                 ramp_up: parseInt(document.getElementById('ramp-up').value),
                 premium_ratio: parseFloat(document.getElementById('premium-ratio').value),
+                max_active_browsers: parseInt(document.getElementById('max-browsers').value),
                 routes: currentRoutes
             };
 
@@ -666,6 +703,9 @@
             document.getElementById('target-url').value = config.target_url;
             document.getElementById('concurrency').value = config.concurrency;
             document.getElementById('concurrency-val').innerText = config.concurrency;
+            
+            document.getElementById('max-browsers').value = config.max_active_browsers || 4;
+            document.getElementById('max-browsers-val').innerText = config.max_active_browsers || 4;
             
             document.getElementById('ramp-up').value = config.ramp_up;
             document.getElementById('ramp-up-val').innerText = config.ramp_up;
@@ -747,7 +787,6 @@
                             title: { display: true, text: 'GCP Resource %', color: '#00e676' },
                             grid: { drawOnChartArea: false },
                             min: 0,
-                            max: 100,
                             ticks: { color: '#00e676' }
                         }
                     },
@@ -794,6 +833,29 @@
             container.scrollTop = container.scrollHeight;
         }
 
+        function copyEventLogs() {
+            const container = document.getElementById('log-container');
+            const btn = document.getElementById('copy-logs-btn');
+            const icon = btn.querySelector('.material-symbols-outlined');
+            
+            // Extract log entries as text
+            const logsText = container.innerText;
+            
+            navigator.clipboard.writeText(logsText).then(() => {
+                // Visual feedback: green checkmark
+                icon.innerText = 'check';
+                btn.style.color = 'var(--success)';
+                btn.title = 'Copied!';
+                setTimeout(() => {
+                    icon.innerText = 'content_copy';
+                    btn.style.color = 'var(--primary)';
+                    btn.title = 'Copy Event Logs';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy logs:', err);
+            });
+        }
+
         async function pollStatus() {
             const res = await fetch('/api/status');
             const state = await res.json();
@@ -807,7 +869,7 @@
             document.getElementById('metric-active').innerText = state.active_workers;
             document.getElementById('metric-pass-fail').innerHTML = `
                 <span style="color: var(--success)">${state.success_count}</span> / 
-                <span style="color: var(--error)">${state.failure_count}</span>
+                <span style="color: var(--error); cursor: pointer; text-decoration: underline;" onclick="filterGalleryErrors()" title="View Error Screenshots">${state.failure_count}</span>
             `;
             
             // Compute Min, Avg, Max latency
@@ -931,15 +993,37 @@
         }
 
         function updateGallery(screenshots) {
+            currentScreenshots = screenshots;
+            renderGallery();
+        }
+
+        function filterGalleryErrors() {
+            showingErrorsOnly = !showingErrorsOnly;
+            renderGallery();
+        }
+
+        function renderGallery() {
             const container = document.getElementById('gallery-container');
             
-            // Check if items changed length to prevent re-rendering identical items
-            if (container.children.length === screenshots.length) return;
+            // Filter screenshots
+            const displayScreenshots = showingErrorsOnly 
+                ? currentScreenshots.filter(s => s.is_error)
+                : currentScreenshots;
 
             container.innerHTML = '';
-            screenshots.forEach(s => {
+            
+            if (displayScreenshots.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; color: var(--text-muted);">No screenshots to display.</div>';
+                return;
+            }
+
+            displayScreenshots.forEach(s => {
                 const item = document.createElement('div');
                 item.className = 'gallery-item';
+                if (s.is_error) {
+                    item.style.border = '2px solid var(--error)';
+                }
+                
                 item.onclick = () => {
                     document.getElementById('lightbox-img').src = s.url;
                     document.getElementById('lightbox').style.display = 'flex';
@@ -948,7 +1032,7 @@
                 item.innerHTML = `
                     <img src="${s.url}" alt="Screenshot Worker ${s.worker_id}"/>
                     <div class="gallery-info">
-                        <div style="font-weight: 700;">Worker #${s.worker_id}</div>
+                        <div style="font-weight: 700; ${s.is_error ? 'color: var(--error);' : ''}">Worker #${s.worker_id}</div>
                         <div style="color: var(--primary);">${s.path}</div>
                     </div>
                 `;

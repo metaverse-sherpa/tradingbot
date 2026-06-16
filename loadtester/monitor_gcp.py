@@ -9,10 +9,9 @@ def get_vm_realtime_metrics():
     Queries the VM via SSH for real-time CPU and Memory utilization.
     Returns a tuple: (cpu_utilization_pct, memory_utilization_pct)
     """
-    # top -bn1 extracts CPU usage; free extracts memory percentage
     cmd = (
         "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=2 johngiles@35.208.90.255 "
-        "\"top -bn1 | grep 'Cpu(s)' | awk '{print \\$2 + \\$4}'; free | grep Mem | awk '{print (\\$3/\\$2)*100}'\""
+        "\"CORES=\\$(nproc); top -bn1 | grep 'Cpu(s)' | awk -v cores=\\$CORES '{print (\\$2 + \\$4) * cores}'; free | grep Mem | awk '{print (\\$3/\\$2)*100}'\""
     )
     try:
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=3)

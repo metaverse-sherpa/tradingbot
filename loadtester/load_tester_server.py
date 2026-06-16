@@ -25,6 +25,7 @@ DEFAULT_CONFIG = {
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
+    "max_active_browsers": 4,
     "routes": [
         {"path": "/#/register", "action": "navigate", "screenshot": True},
         {"path": "/#/dashboard", "action": "navigate", "screenshot": True},
@@ -176,14 +177,15 @@ def run_load_generator_subprocess(config):
                         "path": details.get("path"),
                         "latency": details.get("latency")
                     })
-                elif evt_type == "screenshot":
+                elif evt_type in ("screenshot", "screenshot_error"):
                     filepath = details.get("file", "")
                     relative_path = filepath.split("static/")[-1] if "static/" in filepath else filepath
                     test_state["screenshots"].append({
                         "worker_id": details.get("worker_id"),
-                        "step": details.get("step"),
+                        "step": details.get("step", "error"),
                         "path": details.get("path"),
-                        "url": f"/static/{relative_path}"
+                        "url": f"/static/{relative_path}",
+                        "is_error": evt_type == "screenshot_error"
                     })
             except Exception:
                 pass

@@ -1,0 +1,176 @@
+[
+    {
+        "id": "run_1781594588",
+        "timestamp": 1781594588.287349,
+        "duration": 82.02,
+        "status": "completed",
+        "success_count": 16,
+        "failure_count": 4,
+        "latencies_count": 96,
+        "errors": [
+            {
+                "timestamp": 1781594618.882585,
+                "worker_id": 0,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
+            },
+            {
+                "timestamp": 1781594619.174878,
+                "worker_id": 1,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
+            },
+            {
+                "timestamp": 1781594619.7535691,
+                "worker_id": 2,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
+            },
+            {
+                "timestamp": 1781594620.270598,
+                "worker_id": 3,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
+            }
+        ],
+        "screenshots_count": 96,
+        "peak_cpu": 35.5,
+        "peak_memory": 73.9
+    },
+    {
+        "id": "run_1781594840",
+        "timestamp": 1781594840.884651,
+        "duration": 32.38,
+        "status": "completed",
+        "success_count": 20,
+        "failure_count": 0,
+        "latencies_count": 120,
+        "errors": [],
+        "screenshots_count": 120,
+        "peak_cpu": 67.7,
+        "peak_memory": 65.24
+    },
+    {
+        "id": "run_1781594901",
+        "timestamp": 1781594901.0680761,
+        "duration": 66.74,
+        "status": "completed",
+        "success_count": 50,
+        "failure_count": 0,
+        "latencies_count": 300,
+        "errors": [],
+        "screenshots_count": 300,
+        "peak_cpu": 61.3,
+        "peak_memory": 75.79
+    },
+    {
+        "id": "run_1781595550",
+        "timestamp": 1781595550.614218,
+        "duration": 67.71,
+        "status": "completed",
+        "success_count": 50,
+        "failure_count": 0,
+        "latencies_count": 300,
+        "errors": [],
+        "screenshots_count": 300,
+        "peak_cpu": 54.5,
+        "peak_memory": 67.12
+    },
+    {
+        "id": "run_1781596221",
+        "timestamp": 1781596221.014571,
+        "duration": 26.16,
+        "status": "idle",
+        "success_count": 2,
+        "failure_count": 0,
+        "latencies_count": 34,
+        "errors": [],
+        "screenshots_count": 29,
+        "peak_cpu": 3.1,
+        "peak_memory": 65.45
+    },
+    {
+        "id": "run_1781596221",
+        "timestamp": 1781596221.014571,
+        "duration": 26.16,
+        "status": "idle",
+        "success_count": 2,
+        "failure_count": 0,
+        "latencies_count": 34,
+        "errors": [],
+        "screenshots_count": 29,
+        "peak_cpu": 3.1,
+        "peak_memory": 65.45
+    },
+    {
+        "id": "run_1781596579",
+        "timestamp": 1781596579.6278882,
+        "duration": 76.97,
+        "status": "completed",
+        "success_count": 50,
+        "failure_count": 0,
+        "latencies_count": 300,
+        "errors": [],
+        "screenshots_count": 300,
+        "peak_cpu": 100.0,
+        "peak_memory": 65.67
+    },
+    {
+        "id": "run_1781596738",
+        "timestamp": 1781596738.111229,
+        "duration": 513.15,
+        "status": "completed",
+        "success_count": 197,
+        "failure_count": 3,
+        "latencies_count": 1182,
+        "errors": [
+            {
+                "timestamp": 1781596965.6816351,
+                "worker_id": 110,
+                "path": "/#/register",
+                "error": "Page.wait_for_function: Timeout 15000ms exceeded."
+            },
+            {
+                "timestamp": 1781596965.736107,
+                "worker_id": 111,
+                "path": "/#/register",
+                "error": "Page.wait_for_function: Timeout 15000ms exceeded."
+            },
+            {
+                "timestamp": 1781596965.7637708,
+                "worker_id": 108,
+                "path": "/#/register",
+                "error": "Page.wait_for_function: Timeout 15000ms exceeded."
+            }
+        ],
+        "screenshots_count": 1182,
+        "peak_cpu": 60.0,
+        "peak_memory": 62.79
+    },
+    {
+        "id": "run_1781598183",
+        "timestamp": 1781598183.709793,
+        "duration": 354.08,
+        "status": "completed",
+        "success_count": 200,
+        "failure_count": 0,
+        "latencies_count": 1200,
+        "errors": [],
+        "screenshots_count": 1200,
+        "peak_cpu": 100.0,
+        "peak_memory": 61.88
+    },
+    {
+        "id": "run_1781598620",
+        "timestamp": 1781598620.774822,
+        "duration": 472.5,
+        "status": "completed",
+        "success_count": 200,
+        "failure_count": 0,
+        "latencies_count": 1200,
+        "errors": [],
+        "screenshots_count": 1200,
+        "peak_cpu": 100.0,
+        "peak_memory": 58.85
+    }
+]

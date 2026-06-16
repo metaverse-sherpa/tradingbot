@@ -13,7 +13,7 @@ JWT_SECRET = utils_gcp.get_secret("JWT_SECRET") or "default-fallback-jwt-secret-
 GOOGLE_CLIENT_ID = utils_gcp.get_secret("GOOGLE_CLIENT_ID") or ""
 
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
+    salt = bcrypt.gensalt(rounds=10)
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def check_password(password: str, hashed: str) -> bool:

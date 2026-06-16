@@ -1,9 +1,10 @@
 {
     "target_url": "https://bot.metaversesherpa.io",
-    "concurrency": 50,
+    "concurrency": 200,
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
+    "max_active_browsers": 8,
     "routes": [
         {
             "action": "navigate",
