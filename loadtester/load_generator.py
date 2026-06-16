@@ -136,6 +136,12 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                         log_event("worker_step", {"worker_id": worker_id, "step": idx, "action": "wait", "duration": duration})
                         await page.wait_for_timeout(int(duration * 1000))
 
+                    elif action == "wait_for_selector":
+                        selector = route.get("selector", "")
+                        timeout = int(route.get("timeout", 30000))
+                        log_event("worker_step", {"worker_id": worker_id, "step": idx, "action": "wait_for_selector", "selector": selector})
+                        await page.wait_for_selector(selector, timeout=timeout)
+
                     if route.get("screenshot", False) or idx == len(routes) - 1:
                         screenshot_path = os.path.join(screenshots_dir, f"worker_{worker_id}_step_{idx}_{int(time.time())}.png")
                         await page.screenshot(path=screenshot_path)
