@@ -166,7 +166,7 @@ Use the following commands to manage the production services on your VPS.
 *   **Web API (Flask backend)**: Managed in a persistent `screen` session:
     ```bash
     screen -S webapp -X quit 2>/dev/null
-    screen -dmS webapp bash -c "source venv/bin/activate && python3 server.py"
+    screen -dmS webapp bash -c "source venv/bin/activate && gunicorn --workers 4 --worker-class gevent --bind 0.0.0.0:5001 server:app"
     ```
 
 ### Monitor Console Logs
@@ -187,7 +187,7 @@ git pull
 # Run service restart commands after pulling changes
 sudo systemctl restart tradingbot
 screen -S webapp -X quit 2>/dev/null
-screen -dmS webapp bash -c "source venv/bin/activate && python3 server.py"
+screen -dmS webapp bash -c "source venv/bin/activate && gunicorn --workers 4 --worker-class gevent --bind 0.0.0.0:5001 server:app"
 ```
 
 ---
