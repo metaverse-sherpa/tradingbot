@@ -90,8 +90,8 @@ def profile():
     now = int(time.time())
     tg_user = _get_telegram_user(user)
     
-    web_premium_expiry = user.get("premium_expiry", 0)
-    bot_premium_expiry = tg_user.get("premium_expiry", 0) if tg_user else 0
+    web_premium_expiry = user.get("premium_expiry") or 0
+    bot_premium_expiry = (tg_user.get("premium_expiry") or 0) if tg_user else 0
     max_expiry = max(web_premium_expiry, bot_premium_expiry)
     
     super_admin_id = utils_gcp.get_secret("SUPER_ADMIN_ID")
@@ -2297,8 +2297,8 @@ def manual_trade():
     now = int(time.time())
     tg_user = _get_telegram_user(user)
     
-    web_premium_expiry = user.get("premium_expiry", 0)
-    bot_premium_expiry = tg_user.get("premium_expiry", 0) if tg_user else 0
+    web_premium_expiry = user.get("premium_expiry") or 0
+    bot_premium_expiry = (tg_user.get("premium_expiry") or 0) if tg_user else 0
     max_expiry = max(web_premium_expiry, bot_premium_expiry)
     
     is_super_admin = False
