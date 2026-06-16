@@ -1,43 +1,5 @@
 [
     {
-        "id": "run_1781594588",
-        "timestamp": 1781594588.287349,
-        "duration": 82.02,
-        "status": "completed",
-        "success_count": 16,
-        "failure_count": 4,
-        "latencies_count": 96,
-        "errors": [
-            {
-                "timestamp": 1781594618.882585,
-                "worker_id": 0,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
-            },
-            {
-                "timestamp": 1781594619.174878,
-                "worker_id": 1,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
-            },
-            {
-                "timestamp": 1781594619.7535691,
-                "worker_id": 2,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
-            },
-            {
-                "timestamp": 1781594620.270598,
-                "worker_id": 3,
-                "path": "/#/register",
-                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"load\"\n"
-            }
-        ],
-        "screenshots_count": 96,
-        "peak_cpu": 35.5,
-        "peak_memory": 73.9
-    },
-    {
         "id": "run_1781594840",
         "timestamp": 1781594840.884651,
         "duration": 32.38,
@@ -172,5 +134,133 @@
         "screenshots_count": 1200,
         "peak_cpu": 100.0,
         "peak_memory": 58.85
+    },
+    {
+        "id": "run_1781599576",
+        "timestamp": 1781599576.0955148,
+        "duration": 450.76,
+        "status": "completed",
+        "success_count": 181,
+        "failure_count": 19,
+        "latencies_count": 1086,
+        "errors": [
+            {
+                "timestamp": 1781599644.252079,
+                "worker_id": 37,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found"
+            },
+            {
+                "timestamp": 1781599644.2549078,
+                "worker_id": 38,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found"
+            },
+            {
+                "timestamp": 1781599644.28071,
+                "worker_id": 35,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found"
+            },
+            {
+                "timestamp": 1781599659.6363661,
+                "worker_id": 20,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599671.597167,
+                "worker_id": 32,
+                "path": "/#/register",
+                "error": "Page.reload: Timeout 30000ms exceeded.\nCall log:\n  - waiting for navigation until \"domcontentloaded\"\n    - navigated to \"https://bot.metaversesherpa.io/#/dashboard\"\n"
+            },
+            {
+                "timestamp": 1781599674.004138,
+                "worker_id": 36,
+                "path": "/#/register",
+                "error": "Page.reload: Timeout 30000ms exceeded.\nCall log:\n  - waiting for navigation until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599675.057621,
+                "worker_id": 39,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599675.134455,
+                "worker_id": 40,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599704.684128,
+                "worker_id": 43,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599704.686252,
+                "worker_id": 41,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599704.687416,
+                "worker_id": 42,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599719.9198341,
+                "worker_id": 44,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599731.882373,
+                "worker_id": 45,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599733.5755,
+                "worker_id": 47,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599733.5761569,
+                "worker_id": 48,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599733.591469,
+                "worker_id": 46,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599735.110775,
+                "worker_id": 49,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599735.111135,
+                "worker_id": 50,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            },
+            {
+                "timestamp": 1781599735.1121001,
+                "worker_id": 51,
+                "path": "/#/register",
+                "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://bot.metaversesherpa.io/#/register\", waiting until \"domcontentloaded\"\n"
+            }
+        ],
+        "screenshots_count": 1095,
+        "peak_cpu": 100.0,
+        "peak_memory": 76.18
     }
 ]

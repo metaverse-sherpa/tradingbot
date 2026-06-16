@@ -10,11 +10,11 @@ def get_vm_realtime_metrics():
     Returns a tuple: (cpu_utilization_pct, memory_utilization_pct)
     """
     cmd = (
-        "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=2 johngiles@35.208.90.255 "
-        "\"CORES=\\$(nproc); top -bn1 | grep 'Cpu(s)' | awk -v cores=\\$CORES '{print (\\$2 + \\$4) * cores}'; free | grep Mem | awk '{print (\\$3/\\$2)*100}'\""
+        "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 johngiles@35.208.90.255 "
+        "\"CORES=\\$(nproc); top -bn2 -d 0.5 | grep 'Cpu(s)' | tail -n 1 | awk -F'[ :,]+' -v cores=\\$CORES '{print (\\$2 + \\$4) * cores}'; free | grep Mem | awk '{print (\\$3/\\$2)*100}'\""
     )
     try:
-        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=3)
+        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
         if res.returncode == 0:
             lines = res.stdout.strip().split('\n')
             if len(lines) >= 2:
