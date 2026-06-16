@@ -1221,9 +1221,10 @@ def run_backtest():
         if not strategy_trades:
             return jsonify({"error": f"No baseline trades found for strategy {strategy}."}), 400
             
+        from datetime import datetime
         for t in strategy_trades:
-            t["entry_dt"] = pd.to_datetime(t["entry_date"])
-            t["exit_dt"] = pd.to_datetime(t["exit_date"])
+            t["entry_dt"] = datetime.fromisoformat(t["entry_date"])
+            t["exit_dt"] = datetime.fromisoformat(t["exit_date"])
             
         strategy_trades.sort(key=lambda x: x["entry_dt"])
         
