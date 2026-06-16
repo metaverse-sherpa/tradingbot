@@ -31,7 +31,7 @@ TABLE_SCHEMAS = {
             total_losses INTEGER DEFAULT 0,
             total_trades_opened INTEGER DEFAULT 0,
             cumulative_pnl REAL DEFAULT 0.0,
-            last_fetch_timestamp INTEGER DEFAULT 0,
+            last_fetch_timestamp BIGINT DEFAULT 0,
             strategy TEXT DEFAULT 'Valkyrie Elite Scalper',
             source_wallet TEXT,
             stock_risk_pct REAL DEFAULT 2.0,
