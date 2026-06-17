@@ -18,19 +18,20 @@ def log_event(event_type, details):
 
 # Helper to promote a user to premium via SSH database update on VPS
 def promote_to_premium(email):
+    # Update premium status in the new live PostgreSQL database instead of the old SQLite file
     cmd = (
         f"ssh -o StrictHostKeyChecking=no johngiles@35.208.90.255 "
-        f"\"sqlite3 /Users/johngiles/projects/tradingbot/data/bot_users.db "
-        f"\\\"UPDATE WebUsers SET premium_expiry = {int(time.time()) + 864000} WHERE email = '{email}';\\\"\""
+        f"\"PGPASSWORD=0018c695559ba14b172d08308b45c071 psql -U sherpa_admin -d sherpa_prod -h 127.0.0.1 "
+        f"-c \\\"UPDATE webusers SET premium_expiry = {int(time.time()) + 864000} WHERE email = '{email}';\\\"\""
     )
     try:
-        log_event("info", f"Attempting to promote {email} to premium via SSH...")
+        log_event("info", f"Attempting to promote {email} to premium via PostgreSQL SSH...")
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
         if res.returncode == 0:
-            log_event("info", f"Successfully promoted {email} to premium.")
+            log_event("info", f"Successfully promoted {email} to premium in Postgres.")
             return True
         else:
-            log_event("error", f"Failed to promote {email}. SSH error: {res.stderr.strip()}")
+            log_event("error", f"Failed to promote {email}. PostgreSQL/SSH error: {res.stderr.strip()}")
             return False
     except Exception as e:
         log_event("error", f"Exception promoting user: {e}")
@@ -128,19 +129,29 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                     elif action == "click":
                         selector = route.get("selector", "")
                         log_event("worker_step", {"worker_id": worker_id, "step": idx, "action": "click", "selector": selector})
+                        start_time = time.time()
                         await page.click(selector)
                         await page.wait_for_timeout(500)
+                        latency = time.time() - start_time
+                        # Record latency under the action type + selector
+                        log_event("latency", {"worker_id": worker_id, "path": f"Click: {selector}", "latency": latency})
 
                     elif action == "wait":
                         duration = float(route.get("duration", 1))
                         log_event("worker_step", {"worker_id": worker_id, "step": idx, "action": "wait", "duration": duration})
+                        start_time = time.time()
                         await page.wait_for_timeout(int(duration * 1000))
+                        latency = time.time() - start_time
+                        log_event("latency", {"worker_id": worker_id, "path": f"Wait: {duration}s", "latency": latency})
 
                     elif action == "wait_for_selector":
                         selector = route.get("selector", "")
                         timeout = int(route.get("timeout", 30000))
                         log_event("worker_step", {"worker_id": worker_id, "step": idx, "action": "wait_for_selector", "selector": selector})
+                        start_time = time.time()
                         await page.wait_for_selector(selector, timeout=timeout)
+                        latency = time.time() - start_time
+                        log_event("latency", {"worker_id": worker_id, "path": f"Wait for selector: {selector}", "latency": latency})
 
                     if route.get("screenshot", False) or idx == len(routes) - 1:
                         screenshot_path = os.path.join(screenshots_dir, f"worker_{worker_id}_step_{idx}_{int(time.time())}.png")
@@ -202,7 +213,8 @@ async def main():
     step_delay = ramp_up / max(concurrency - 1, 1)
 
     for i in range(concurrency):
-        is_premium = (random.random() < premium_ratio)
+        # Force all simulated load test accounts to premium to test charts and backtests
+        is_premium = True
         
         async def delayed_launch(wid, prem):
             if wid > 0 and step_delay > 0:

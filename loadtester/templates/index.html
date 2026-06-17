@@ -630,28 +630,48 @@
                 const item = document.createElement('div');
                 item.className = 'route-item';
                 
-                // Form Autofill Warning indicators
                 let label = route.path || '';
                 let infoBadge = '';
                 let icon = 'link';
 
+                // Human-friendly mapping for default selectors/actions
                 if (route.path) {
                     if (route.path.includes('register')) {
-                        infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Registration</span>`;
+                        label = 'Register Free Account';
+                        infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill</span>`;
                     } else if (route.path.includes('login')) {
-                        infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Login</span>`;
+                        label = 'Login Account';
+                        infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill</span>`;
+                    } else if (route.path.includes('dashboard')) {
+                        label = 'Go to Dashboard';
+                    } else if (route.path.includes('stats')) {
+                        label = 'Go to Statistics';
                     }
                 } else if (route.action === 'click') {
                     icon = 'ads_click';
-                    label = `Click: ${route.selector}`;
-                    infoBadge = `<span style="font-size:9px; background:var(--secondary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Click Element</span>`;
+                    if (route.selector.includes('nth=0')) {
+                        label = 'Expand 1st Active Signal Chart';
+                    } else if (route.selector.includes('Valkyrie')) {
+                        label = 'Run "Valkyrie Elite Scalper" Backtest';
+                    } else if (route.selector.includes('Velocity')) {
+                        label = 'Run "Sherpa Velocity Pullback" Backtest';
+                    } else {
+                        label = `Click: ${route.selector}`;
+                    }
+                    infoBadge = `<span style="font-size:9px; background:var(--secondary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Interactive</span>`;
                 } else if (route.action === 'wait_for_selector') {
                     icon = 'hourglass_empty';
-                    label = `Wait for: ${route.selector}`;
-                    infoBadge = `<span style="font-size:9px; background:var(--success); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Sync Wait</span>`;
+                    if (route.selector.includes('Signal Chart')) {
+                        label = 'Wait for Signal Chart to Render';
+                    } else if (route.selector.includes('Equity Curve')) {
+                        label = 'Wait for Backtest Chart to Generate';
+                    } else {
+                        label = `Wait for: ${route.selector}`;
+                    }
+                    infoBadge = `<span style="font-size:9px; background:var(--success); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Processing</span>`;
                 } else if (route.action === 'wait') {
                     icon = 'timer';
-                    label = `Wait: ${route.duration}s`;
+                    label = `Pause: ${route.duration}s`;
                 }
 
                 item.innerHTML = `
@@ -1068,6 +1088,23 @@
             });
         }
 
+        function getFriendlyName(path) {
+            if (path.includes('register')) return 'Register Free Account';
+            if (path.includes('dashboard')) return 'Go to Dashboard';
+            if (path.includes('stats')) return 'Go to Statistics';
+            if (path.includes('Click:')) {
+                if (path.includes('nth=0')) return 'Expand 1st Active Signal Chart';
+                if (path.includes('Valkyrie')) return 'Run "Valkyrie Elite Scalper" Backtest';
+                if (path.includes('Velocity')) return 'Run "Sherpa Velocity Pullback" Backtest';
+            }
+            if (path.includes('Wait for selector:')) {
+                if (path.includes('Signal Chart')) return 'Wait for Signal Chart to Render';
+                if (path.includes('Equity Curve')) return 'Wait for Backtest Chart to Generate';
+            }
+            if (path.includes('Wait:')) return 'Pause: ' + path.split('Wait:')[1];
+            return path;
+        }
+
         function updateRouteBreakdown(latencies, errors) {
             // Group by route path
             const groups = {};
@@ -1096,10 +1133,12 @@
                 const avg = total / lats.length;
                 const errs = errorCounts[path] || 0;
                 
+                const friendlyName = getFriendlyName(path);
+                
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.04)';
                 tr.innerHTML = `
-                    <td style="padding: 10px 8px; color: var(--primary); font-family: monospace;">${path}</td>
+                    <td style="padding: 10px 8px; color: var(--primary); font-family: monospace;">${friendlyName}</td>
                     <td style="padding: 10px 8px; text-align: center; font-weight: 600;">${lats.length}</td>
                     <td style="padding: 10px 8px; text-align: right; color: var(--success);">${Math.round(min * 1000)}ms</td>
                     <td style="padding: 10px 8px; text-align: right; color: var(--secondary); font-weight: 600;">${Math.round(avg * 1000)}ms</td>

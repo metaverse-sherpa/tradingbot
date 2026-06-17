@@ -1,10 +1,10 @@
 {
     "target_url": "https://bot.metaversesherpa.io",
-    "concurrency": 200,
+    "concurrency": 1,
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
-    "max_active_browsers": 8,
+    "max_active_browsers": 1,
     "routes": [
         {
             "action": "navigate",
@@ -17,9 +17,15 @@
             "screenshot": true
         },
         {
-            "action": "navigate",
-            "path": "/#/signals",
-            "screenshot": true
+            "action": "click",
+            "screenshot": true,
+            "selector": ".glass-card:has(h4) >> nth=0"
+        },
+        {
+            "action": "wait_for_selector",
+            "screenshot": true,
+            "selector": "img[alt='Signal Chart']",
+            "timeout": 45000
         },
         {
             "action": "navigate",
@@ -27,14 +33,31 @@
             "screenshot": true
         },
         {
-            "action": "navigate",
-            "path": "/#/settings",
-            "screenshot": true
+            "action": "click",
+            "screenshot": true,
+            "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')"
+        },
+        {
+            "action": "wait_for_selector",
+            "screenshot": true,
+            "selector": "img[alt='Equity Curve']",
+            "timeout": 60000
         },
         {
             "action": "navigate",
-            "path": "/#/backtest",
+            "path": "/#/stats",
             "screenshot": true
+        },
+        {
+            "action": "click",
+            "screenshot": true,
+            "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')"
+        },
+        {
+            "action": "wait_for_selector",
+            "screenshot": true,
+            "selector": "img[alt='Equity Curve']",
+            "timeout": 60000
         }
     ]
 }
