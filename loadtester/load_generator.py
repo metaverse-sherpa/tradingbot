@@ -82,8 +82,19 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                         continue
 
                     path = route.get("path", "")
-                    current_path = path
                     action = route.get("action", "navigate")
+                    
+                    if action == "navigate":
+                        current_path = path
+                    elif action == "click":
+                        current_path = f"Click: {route.get('selector', '')}"
+                    elif action == "wait_for_selector":
+                        current_path = f"Wait for selector: {route.get('selector', '')}"
+                    elif action == "wait":
+                        current_path = f"Wait: {route.get('duration', 1)}s"
+                    else:
+                        current_path = path or action
+                        
                     full_url = f"{target_url.rstrip('/')}{path}"
                     
                     if action == "navigate":

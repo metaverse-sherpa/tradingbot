@@ -1123,6 +1123,22 @@
         function updateRouteBreakdown(latencies, errors) {
             // Group by route path
             const groups = {};
+            
+            // Initialize groups with all active routes in current config so they always display
+            currentRoutes.forEach(route => {
+                if (route.disabled) return;
+                let pathKey = "";
+                if (route.action === "navigate") pathKey = route.path;
+                else if (route.action === "click") pathKey = `Click: ${route.selector}`;
+                else if (route.action === "wait_for_selector") pathKey = `Wait for selector: ${route.selector}`;
+                else if (route.action === "wait") pathKey = `Wait: ${route.duration}s`;
+                else pathKey = route.path || route.action;
+                
+                if (pathKey) {
+                    groups[pathKey] = [];
+                }
+            });
+
             latencies.forEach(l => {
                 if (!groups[l.path]) {
                     groups[l.path] = [];
@@ -1142,10 +1158,15 @@
             
             Object.keys(groups).forEach(path => {
                 const lats = groups[path];
-                const min = Math.min(...lats);
-                const max = Math.max(...lats);
-                const total = lats.reduce((acc, curr) => acc + curr, 0);
-                const avg = total / lats.length;
+                let min = 0;
+                let max = 0;
+                let avg = 0;
+                if (lats.length > 0) {
+                    min = Math.min(...lats);
+                    max = Math.max(...lats);
+                    const total = lats.reduce((acc, curr) => acc + curr, 0);
+                    avg = total / lats.length;
+                }
                 const errs = errorCounts[path] || 0;
                 
                 const friendlyName = getFriendlyName(path);
@@ -1155,12 +1176,32 @@
                 tr.innerHTML = `
                     <td style="padding: 10px 8px; color: var(--primary); font-family: monospace;">${friendlyName}</td>
                     <td style="padding: 10px 8px; text-align: center; font-weight: 600;">${lats.length}</td>
-                    <td style="padding: 10px 8px; text-align: right; color: var(--success);">${Math.round(min * 1000)}ms</td>
-                    <td style="padding: 10px 8px; text-align: right; color: var(--secondary); font-weight: 600;">${Math.round(avg * 1000)}ms</td>
-                    <td style="padding: 10px 8px; text-align: right; color: var(--error);">${Math.round(max * 1000)}ms</td>
+                    <td style="padding: 10px 8px; text-align: right; color: var(--success);">${lats.length > 0 ? Math.round(min * 1000) + 'ms' : '-'}</td>
+                    <td style="padding: 10px 8px; text-align: right; color: var(--secondary); font-weight: 600;">${lats.length > 0 ? Math.round(avg * 1000) + 'ms' : '-'}</td>
+                    <td style="padding: 10px 8px; text-align: right; color: var(--error);">${lats.length > 0 ? Math.round(max * 1000) + 'ms' : '-'}</td>
                     <td style="padding: 10px 8px; text-align: center; color: ${errs > 0 ? 'var(--error)' : 'var(--text-muted)'}; font-weight: bold;">${errs}</td>
                 `;
                 tbody.appendChild(tr);
+            });
+
+            // Also display any errors that fell outside of defined routes (e.g. unknown startup errors)
+            Object.keys(errorCounts).forEach(path => {
+                if (groups[path] === undefined) {
+                    const errs = errorCounts[path];
+                    const friendlyName = getFriendlyName(path);
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.04)';
+                    tr.style.background = 'rgba(239, 68, 68, 0.05)';
+                    tr.innerHTML = `
+                        <td style="padding: 10px 8px; color: var(--error); font-family: monospace;">${friendlyName}</td>
+                        <td style="padding: 10px 8px; text-align: center; font-weight: 600;">0</td>
+                        <td style="padding: 10px 8px; text-align: right; color: var(--text-muted);">-</td>
+                        <td style="padding: 10px 8px; text-align: right; color: var(--text-muted); font-weight: 600;">-</td>
+                        <td style="padding: 10px 8px; text-align: right; color: var(--text-muted);">-</td>
+                        <td style="padding: 10px 8px; text-align: center; color: var(--error); font-weight: bold;">${errs}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
             });
         }
 

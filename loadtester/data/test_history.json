@@ -1,83 +1,5 @@
 [
     {
-        "id": "run_1781689295",
-        "timestamp": 1781689295.9661388,
-        "duration": 798.33,
-        "status": "idle",
-        "success_count": 166,
-        "failure_count": 0,
-        "latencies_count": 666,
-        "errors": [],
-        "screenshots_count": 666,
-        "peak_cpu": 187.6,
-        "peak_memory": 68.95
-    },
-    {
-        "id": "run_1781691080",
-        "timestamp": 1781691080.400574,
-        "duration": 28.07,
-        "status": "completed",
-        "success_count": 8,
-        "failure_count": 0,
-        "latencies_count": 32,
-        "errors": [],
-        "screenshots_count": 32,
-        "peak_cpu": 52.0,
-        "peak_memory": 69.22
-    },
-    {
-        "id": "run_1781691354",
-        "timestamp": 1781691354.570394,
-        "duration": 260.82,
-        "status": "idle",
-        "success_count": 64,
-        "failure_count": 0,
-        "latencies_count": 256,
-        "errors": [],
-        "screenshots_count": 256,
-        "peak_cpu": 73.2,
-        "peak_memory": 69.22
-    },
-    {
-        "id": "run_1781691354",
-        "timestamp": 1781691354.570394,
-        "duration": 260.82,
-        "status": "idle",
-        "success_count": 64,
-        "failure_count": 0,
-        "latencies_count": 256,
-        "errors": [],
-        "screenshots_count": 256,
-        "peak_cpu": 73.2,
-        "peak_memory": 69.22
-    },
-    {
-        "id": "run_1781691637",
-        "timestamp": 1781691637.063647,
-        "duration": 40.18,
-        "status": "idle",
-        "success_count": 8,
-        "failure_count": 0,
-        "latencies_count": 32,
-        "errors": [],
-        "screenshots_count": 32,
-        "peak_cpu": 60.0,
-        "peak_memory": 67.66
-    },
-    {
-        "id": "run_1781691637",
-        "timestamp": 1781691637.063647,
-        "duration": 40.18,
-        "status": "idle",
-        "success_count": 8,
-        "failure_count": 0,
-        "latencies_count": 32,
-        "errors": [],
-        "screenshots_count": 32,
-        "peak_cpu": 60.0,
-        "peak_memory": 67.66
-    },
-    {
         "id": "run_1781691685",
         "timestamp": 1781691685.127887,
         "duration": 88.81,
@@ -314,5 +236,759 @@
         "screenshots_count": 105,
         "peak_cpu": 46.0,
         "peak_memory": 71.36
+    },
+    {
+        "id": "run_1781692827",
+        "timestamp": 1781692827.462465,
+        "duration": 430.41,
+        "status": "idle",
+        "success_count": 23,
+        "failure_count": 46,
+        "latencies_count": 148,
+        "errors": [
+            {
+                "timestamp": 1781692861.138558,
+                "worker_id": 3,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692861.506739,
+                "worker_id": 0,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692893.2068732,
+                "worker_id": 7,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692913.7915368,
+                "worker_id": 10,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692925.456557,
+                "worker_id": 12,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692925.8354821,
+                "worker_id": 13,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781693018.652262,
+                "worker_id": 25,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693021.183856,
+                "worker_id": 26,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693022.1815119,
+                "worker_id": 27,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693022.884423,
+                "worker_id": 28,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693030.668685,
+                "worker_id": 29,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693033.0332491,
+                "worker_id": 30,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693034.430617,
+                "worker_id": 31,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693035.3038878,
+                "worker_id": 32,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693042.284081,
+                "worker_id": 33,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693044.71707,
+                "worker_id": 34,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693046.1346262,
+                "worker_id": 35,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693047.1683059,
+                "worker_id": 36,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693054.718699,
+                "worker_id": 37,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693056.797902,
+                "worker_id": 38,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693058.1839318,
+                "worker_id": 39,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693059.7505531,
+                "worker_id": 40,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693066.7353332,
+                "worker_id": 41,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693068.464664,
+                "worker_id": 42,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693070.76354,
+                "worker_id": 43,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693072.030785,
+                "worker_id": 44,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693078.382556,
+                "worker_id": 45,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693080.5483031,
+                "worker_id": 46,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693083.732726,
+                "worker_id": 47,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693084.6659951,
+                "worker_id": 48,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693091.665369,
+                "worker_id": 49,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693093.432479,
+                "worker_id": 50,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693096.183784,
+                "worker_id": 51,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693097.118397,
+                "worker_id": 52,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693104.336114,
+                "worker_id": 53,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693105.648677,
+                "worker_id": 54,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693108.268279,
+                "worker_id": 55,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693109.0517519,
+                "worker_id": 56,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693121.8752131,
+                "worker_id": 58,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693121.8758662,
+                "worker_id": 57,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693153.093243,
+                "worker_id": 59,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693153.559684,
+                "worker_id": 60,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693167.313996,
+                "worker_id": 61,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693167.331017,
+                "worker_id": 62,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693198.4648478,
+                "worker_id": 63,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693198.8927622,
+                "worker_id": 64,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            }
+        ],
+        "screenshots_count": 194,
+        "peak_cpu": 200.0,
+        "peak_memory": 74.42
+    },
+    {
+        "id": "run_1781692827",
+        "timestamp": 1781692827.462465,
+        "duration": 430.41,
+        "status": "idle",
+        "success_count": 23,
+        "failure_count": 46,
+        "latencies_count": 148,
+        "errors": [
+            {
+                "timestamp": 1781692861.138558,
+                "worker_id": 3,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692861.506739,
+                "worker_id": 0,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692893.2068732,
+                "worker_id": 7,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692913.7915368,
+                "worker_id": 10,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692925.456557,
+                "worker_id": 12,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692925.8354821,
+                "worker_id": 13,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781693018.652262,
+                "worker_id": 25,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693021.183856,
+                "worker_id": 26,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693022.1815119,
+                "worker_id": 27,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693022.884423,
+                "worker_id": 28,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693030.668685,
+                "worker_id": 29,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693033.0332491,
+                "worker_id": 30,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693034.430617,
+                "worker_id": 31,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693035.3038878,
+                "worker_id": 32,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693042.284081,
+                "worker_id": 33,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693044.71707,
+                "worker_id": 34,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693046.1346262,
+                "worker_id": 35,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693047.1683059,
+                "worker_id": 36,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693054.718699,
+                "worker_id": 37,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693056.797902,
+                "worker_id": 38,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693058.1839318,
+                "worker_id": 39,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693059.7505531,
+                "worker_id": 40,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693066.7353332,
+                "worker_id": 41,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693068.464664,
+                "worker_id": 42,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693070.76354,
+                "worker_id": 43,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693072.030785,
+                "worker_id": 44,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693078.382556,
+                "worker_id": 45,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693080.5483031,
+                "worker_id": 46,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693083.732726,
+                "worker_id": 47,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693084.6659951,
+                "worker_id": 48,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693091.665369,
+                "worker_id": 49,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693093.432479,
+                "worker_id": 50,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693096.183784,
+                "worker_id": 51,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693097.118397,
+                "worker_id": 52,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693104.336114,
+                "worker_id": 53,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693105.648677,
+                "worker_id": 54,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693108.268279,
+                "worker_id": 55,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693109.0517519,
+                "worker_id": 56,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693121.8752131,
+                "worker_id": 58,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693121.8758662,
+                "worker_id": 57,
+                "path": "/#/register",
+                "error": "Page.wait_for_selector: Timeout 10000ms exceeded.\nCall log:\n  - waiting for locator(\"#reg-email\") to be visible\n",
+                "console": "[pageerror] Unexpected identifier 'window'"
+            },
+            {
+                "timestamp": 1781693153.093243,
+                "worker_id": 59,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693153.559684,
+                "worker_id": 60,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693167.313996,
+                "worker_id": 61,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693167.331017,
+                "worker_id": 62,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693198.4648478,
+                "worker_id": 63,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693198.8927622,
+                "worker_id": 64,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            }
+        ],
+        "screenshots_count": 194,
+        "peak_cpu": 200.0,
+        "peak_memory": 74.42
+    },
+    {
+        "id": "run_1781693263",
+        "timestamp": 1781693263.821536,
+        "duration": 36.21,
+        "status": "idle",
+        "success_count": 0,
+        "failure_count": 0,
+        "latencies_count": 15,
+        "errors": [],
+        "screenshots_count": 15,
+        "peak_cpu": 186.8,
+        "peak_memory": 69.43
+    },
+    {
+        "id": "run_1781693263",
+        "timestamp": 1781693263.821536,
+        "duration": 36.21,
+        "status": "idle",
+        "success_count": 0,
+        "failure_count": 0,
+        "latencies_count": 15,
+        "errors": [],
+        "screenshots_count": 15,
+        "peak_cpu": 186.8,
+        "peak_memory": 69.43
+    },
+    {
+        "id": "run_1781693309",
+        "timestamp": 1781693309.82136,
+        "duration": 369.38,
+        "status": "idle",
+        "success_count": 34,
+        "failure_count": 2,
+        "latencies_count": 183,
+        "errors": [
+            {
+                "timestamp": 1781693441.3786108,
+                "worker_id": 12,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693451.536033,
+                "worker_id": 13,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            }
+        ],
+        "screenshots_count": 185,
+        "peak_cpu": 200.0,
+        "peak_memory": 76.67
+    },
+    {
+        "id": "run_1781693309",
+        "timestamp": 1781693309.82136,
+        "duration": 369.38,
+        "status": "idle",
+        "success_count": 34,
+        "failure_count": 2,
+        "latencies_count": 183,
+        "errors": [
+            {
+                "timestamp": 1781693441.3786108,
+                "worker_id": 12,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            },
+            {
+                "timestamp": 1781693451.536033,
+                "worker_id": 13,
+                "path": "",
+                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
+                "console": ""
+            }
+        ],
+        "screenshots_count": 185,
+        "peak_cpu": 200.0,
+        "peak_memory": 76.67
     }
 ]

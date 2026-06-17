@@ -18,9 +18,9 @@
         },
         {
             "action": "click",
+            "disabled": true,
             "screenshot": true,
-            "selector": ".glass-card:has(h4) >> nth=0",
-            "disabled": true
+            "selector": ".glass-card:has(h4) >> nth=0"
         },
         {
             "action": "wait_for_selector",
