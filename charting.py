@@ -177,10 +177,13 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         if valid_areas:
             kwargs['fill_between'] = valid_areas
  
+    import io
     fig, axlist = mpf.plot(df, **kwargs)
              
-    # Save final figure
-    fig.savefig(filepath, dpi=80, bbox_inches='tight')
+    # Save final figure to in-memory buffer first to avoid intermediate disk write
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=80, bbox_inches='tight')
+    buf.seek(0)
     
     # CRITICAL: Explicitly close the figure to release memory!
     plt.close(fig)
@@ -191,7 +194,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         progress_box = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, current_price if current_price > 0 else df['close'].iloc[-1], width=1024)
         
         from PIL import Image
-        chart_img = Image.open(filepath).convert("RGBA")
+        chart_img = Image.open(buf).convert("RGBA")
         prog_img = Image.open(progress_box).convert("RGBA")
         
         # Scale progress box to match chart width

@@ -2166,6 +2166,11 @@ def share_card():
     else:
         return jsonify({"error": "Failed to generate card image"}), 500
 
+CHART_MEM_CACHE = {}
+CHART_MEM_CACHE_LOCK = threading.Lock()
+CHART_CACHE_TTL_SECONDS = 300  # 5 minutes
+CHART_MAX_CACHE_SIZE = 200
+
 @trades_bp.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
     symbol = request.args.get("symbol")
@@ -2184,16 +2189,25 @@ def get_trade_chart():
     if not symbol:
         return "Symbol required", 400
 
-    clean_sym = symbol.replace("/", "_").replace(":", "_")
-    import hashlib
-    # Bucket by a 15-minute time window to prevent redundant redraws on every price change.
-    time_bucket = int(time.time() // 900)
-    params_str = f"{symbol}_{entry}_{tp}_{sl}_{side}_{time_bucket}"
-    h = hashlib.md5(params_str.encode('utf-8')).hexdigest()
-    filepath = os.path.join(os.getcwd(), "pnl_cards", f"chart_{clean_sym}_{h}.png")
+    # Bucket current price to 1% intervals of entry price to maximize cache hits
+    price_pct_bucket = round(current_price / entry, 2) if entry > 0 else 1.0
     
-    if os.path.exists(filepath) and (time.time() - os.path.getmtime(filepath) < 900):
-        return send_file(filepath, mimetype='image/png')
+    # Time-bucket to 5-minute intervals
+    time_bucket = int(time.time() // 300)
+    
+    cache_key = f"{symbol}_{entry}_{tp}_{sl}_{side}_{price_pct_bucket}_{time_bucket}"
+    
+    with CHART_MEM_CACHE_LOCK:
+        cached = CHART_MEM_CACHE.get(cache_key)
+        if cached:
+            cached_ts, png_bytes = cached
+            if time.time() - cached_ts < CHART_CACHE_TTL_SECONDS:
+                import io
+                return send_file(
+                    io.BytesIO(png_bytes),
+                    mimetype='image/png',
+                    as_attachment=False
+                )
 
     t_start = time.time()
     try:
@@ -2282,7 +2296,28 @@ def get_trade_chart():
             current_price=current_price
         )
         
-        return send_file(chart_file, mimetype='image/png')
+        # Read the generated chart image bytes
+        with open(chart_file, 'rb') as f:
+            png_bytes = f.read()
+            
+        # Save to memory cache and enforce cleanup/size-bounding
+        with CHART_MEM_CACHE_LOCK:
+            CHART_MEM_CACHE[cache_key] = (time.time(), png_bytes)
+            
+            # 1. Evict expired entries
+            now = time.time()
+            expired_keys = [k for k, v in CHART_MEM_CACHE.items() if now - v[0] > CHART_CACHE_TTL_SECONDS]
+            for k in expired_keys:
+                CHART_MEM_CACHE.pop(k, None)
+                
+            # 2. Bound the cache size (evict oldest inserted)
+            if len(CHART_MEM_CACHE) > CHART_MAX_CACHE_SIZE:
+                oldest_keys = list(CHART_MEM_CACHE.keys())[:len(CHART_MEM_CACHE) - CHART_MAX_CACHE_SIZE]
+                for k in oldest_keys:
+                    CHART_MEM_CACHE.pop(k, None)
+                    
+        import io
+        return send_file(io.BytesIO(png_bytes), mimetype='image/png')
     except Exception as e:
         print(f"Error generating chart endpoint: {e}", flush=True)
         return f"Error: {str(e)}", 500

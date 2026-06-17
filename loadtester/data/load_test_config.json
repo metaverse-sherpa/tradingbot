@@ -25,24 +25,7 @@
             "action": "wait_for_selector",
             "screenshot": true,
             "selector": "img[alt='Signal Chart']",
-            "timeout": 45000
-        },
-        {
-            "action": "navigate",
-            "path": "/#/stats",
-            "screenshot": true
-        },
-        {
-            "action": "click",
-            "screenshot": true,
-            "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')",
-            "disabled": true
-        },
-        {
-            "action": "wait_for_selector",
-            "screenshot": true,
-            "selector": "img[alt='Equity Curve']",
-            "timeout": 60000,
+            "timeout": 45000,
             "disabled": true
         },
         {
@@ -52,16 +35,35 @@
         },
         {
             "action": "click",
+            "disabled": true,
             "screenshot": true,
-            "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')",
-            "disabled": true
+            "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')"
         },
         {
             "action": "wait_for_selector",
+            "disabled": true,
             "screenshot": true,
             "selector": "img[alt='Equity Curve']",
-            "timeout": 60000,
+            "timeout": 60000
+        },
+        {
+            "action": "navigate",
+            "path": "/#/stats",
+            "screenshot": true,
             "disabled": true
+        },
+        {
+            "action": "click",
+            "disabled": true,
+            "screenshot": true,
+            "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')"
+        },
+        {
+            "action": "wait_for_selector",
+            "disabled": true,
+            "screenshot": true,
+            "selector": "img[alt='Equity Curve']",
+            "timeout": 60000
         }
     ]
 }

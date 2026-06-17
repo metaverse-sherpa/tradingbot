@@ -1,47 +1,5 @@
 [
     {
-        "id": "run_1781680998",
-        "timestamp": 1781680998.728601,
-        "duration": 50.14,
-        "status": "completed",
-        "success_count": 0,
-        "failure_count": 1,
-        "latencies_count": 3,
-        "errors": [
-            {
-                "timestamp": 1781681048.814764,
-                "worker_id": 0,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair."
-            }
-        ],
-        "screenshots_count": 4,
-        "peak_cpu": 85.2,
-        "peak_memory": 58.71
-    },
-    {
-        "id": "run_1781681059",
-        "timestamp": 1781681059.029185,
-        "duration": 49.01,
-        "status": "completed",
-        "success_count": 0,
-        "failure_count": 1,
-        "latencies_count": 3,
-        "errors": [
-            {
-                "timestamp": 1781681107.996164,
-                "worker_id": 0,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair."
-            }
-        ],
-        "screenshots_count": 4,
-        "peak_cpu": 26.0,
-        "peak_memory": 59.15
-    },
-    {
         "id": "run_1781681321",
         "timestamp": 1781681321.076051,
         "duration": 53.6,
@@ -870,5 +828,31 @@
         "screenshots_count": 548,
         "peak_cpu": 187.4,
         "peak_memory": 74.56
+    },
+    {
+        "id": "run_1781689295",
+        "timestamp": 1781689295.9661388,
+        "duration": 798.33,
+        "status": "idle",
+        "success_count": 166,
+        "failure_count": 0,
+        "latencies_count": 666,
+        "errors": [],
+        "screenshots_count": 666,
+        "peak_cpu": 187.6,
+        "peak_memory": 68.95
+    },
+    {
+        "id": "run_1781689295",
+        "timestamp": 1781689295.9661388,
+        "duration": 798.33,
+        "status": "idle",
+        "success_count": 166,
+        "failure_count": 0,
+        "latencies_count": 666,
+        "errors": [],
+        "screenshots_count": 666,
+        "peak_cpu": 187.6,
+        "peak_memory": 68.95
     }
 ]
