@@ -27,8 +27,15 @@ SYMBOLS = [
     "XOM", "CVX", "COP"
 ]
 
+_cached_stock_data = None
+
 def load_data_from_db():
-    """Loads all daily stock data from the local database."""
+    """Loads all daily stock data from the local database (cached in-memory)."""
+    global _cached_stock_data
+    if _cached_stock_data is not None:
+        # Return deep copy of the dictionary of DataFrames to avoid mutation between requests
+        return {k: v.copy() for k, v in _cached_stock_data.items()}
+        
     import stock_data_cache_daily
     stock_data_cache_daily.init_db()
     
@@ -54,7 +61,8 @@ def load_data_from_db():
         # Ensure sorting
         sym_df.sort_index(inplace=True)
         data_dict[sym] = sym_df
-    return data_dict
+    _cached_stock_data = data_dict
+    return {k: v.copy() for k, v in _cached_stock_data.items()}
 
 # 🕵️ Technical Indicator Calculators
 def calculate_indicators(df, strategy_name, params):

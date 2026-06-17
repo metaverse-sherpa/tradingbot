@@ -1350,7 +1350,7 @@ def run_backtest():
         from matplotlib.figure import Figure
         import matplotlib.gridspec as gridspec
         
-        fig = Figure(figsize=(12, 10), facecolor="#0B0E14")
+        fig = Figure(figsize=(8, 6.5), facecolor="#0B0E14")
         gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
         ax1 = fig.add_subplot(gs[0])
         ax2 = fig.add_subplot(gs[1])
@@ -1392,12 +1392,16 @@ def run_backtest():
                           arrowprops=dict(arrowstyle='->', color='red'))
                           
         fig.patch.set_facecolor("#0B0E14")
+        import io
+        import base64
+
         fig.tight_layout()
         
-        os.makedirs("results", exist_ok=True)
-        chart_name = f"audit_{user_id}_{int(time.time())}.png"
-        chart_path = os.path.join("results", chart_name)
-        fig.savefig(chart_path, dpi=150, facecolor="#0B0E14")
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=95, facecolor="#0B0E14")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+        chart_data_uri = f"data:image/png;base64,{img_base64}"
         
         max_dd = round(abs(df_dd["drawdown"].min()), 1) if not df_dd.empty else 0.0
 
@@ -1410,7 +1414,7 @@ def run_backtest():
                 "net_pnl": final_equity - capital,
                 "profit_factor": round(sharpe, 2),
                 "max_drawdown": max_dd,
-                "chart_url": f"/api/charts/{chart_name}",
+                "chart_url": chart_data_uri,
                 "risk_pct": risk_pct,
                 "capital": capital
             }

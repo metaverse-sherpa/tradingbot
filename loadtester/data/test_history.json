@@ -1,145 +1,5 @@
 [
     {
-        "id": "run_1781691685",
-        "timestamp": 1781691685.127887,
-        "duration": 88.81,
-        "status": "idle",
-        "success_count": 10,
-        "failure_count": 8,
-        "latencies_count": 62,
-        "errors": [
-            {
-                "timestamp": 1781691718.508013,
-                "worker_id": 1,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691718.5108,
-                "worker_id": 5,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691743.841797,
-                "worker_id": 9,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691743.89278,
-                "worker_id": 10,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691767.502304,
-                "worker_id": 7,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
-            },
-            {
-                "timestamp": 1781691768.10348,
-                "worker_id": 2,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
-            },
-            {
-                "timestamp": 1781691768.1249259,
-                "worker_id": 0,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
-            },
-            {
-                "timestamp": 1781691768.437751,
-                "worker_id": 15,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 70,
-        "peak_cpu": 75.2,
-        "peak_memory": 72.03
-    },
-    {
-        "id": "run_1781691685",
-        "timestamp": 1781691685.127887,
-        "duration": 88.81,
-        "status": "idle",
-        "success_count": 10,
-        "failure_count": 8,
-        "latencies_count": 62,
-        "errors": [
-            {
-                "timestamp": 1781691718.508013,
-                "worker_id": 1,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691718.5108,
-                "worker_id": 5,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691743.841797,
-                "worker_id": 9,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691743.89278,
-                "worker_id": 10,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781691767.502304,
-                "worker_id": 7,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
-            },
-            {
-                "timestamp": 1781691768.10348,
-                "worker_id": 2,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
-            },
-            {
-                "timestamp": 1781691768.1249259,
-                "worker_id": 0,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
-            },
-            {
-                "timestamp": 1781691768.437751,
-                "worker_id": 15,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 70,
-        "peak_cpu": 75.2,
-        "peak_memory": 72.03
-    },
-    {
         "id": "run_1781692571",
         "timestamp": 1781692571.544217,
         "duration": 95.59,
@@ -990,5 +850,31 @@
         "screenshots_count": 185,
         "peak_cpu": 200.0,
         "peak_memory": 76.67
+    },
+    {
+        "id": "run_1781694016",
+        "timestamp": 1781694016.459478,
+        "duration": 274.19,
+        "status": "idle",
+        "success_count": 39,
+        "failure_count": 0,
+        "latencies_count": 202,
+        "errors": [],
+        "screenshots_count": 202,
+        "peak_cpu": 200.0,
+        "peak_memory": 71.43
+    },
+    {
+        "id": "run_1781694016",
+        "timestamp": 1781694016.459478,
+        "duration": 274.19,
+        "status": "idle",
+        "success_count": 39,
+        "failure_count": 0,
+        "latencies_count": 202,
+        "errors": [],
+        "screenshots_count": 202,
+        "peak_cpu": 200.0,
+        "peak_memory": 71.43
     }
 ]
