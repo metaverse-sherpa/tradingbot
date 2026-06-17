@@ -95,7 +95,7 @@ def migrate_users():
     google_records = []
     for u in google_users:
         uid = f"google_{u['google_id']}"
-        provider_info = auth.UserImportProvider(
+        provider_info = auth.UserProvider(
             uid=u['google_id'],
             provider_id='google.com',
             email=u['email']
