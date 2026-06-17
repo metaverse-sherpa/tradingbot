@@ -26,6 +26,17 @@ if USE_POSTGRES:
             dsn=DATABASE_URL
         )
         print("Database Adapter: Initialized PostgreSQL connection pool successfully.")
+
+        try:
+            from psycopg2.extensions import register_adapter, AsIs
+            import numpy as np
+            register_adapter(np.float64, lambda val: AsIs(val))
+            register_adapter(np.float32, lambda val: AsIs(val))
+            register_adapter(np.int64, lambda val: AsIs(val))
+            register_adapter(np.int32, lambda val: AsIs(val))
+            print("Database Adapter: Registered NumPy type adapters for PostgreSQL.")
+        except Exception as adapter_err:
+            print(f"Database Adapter: Non-critical warning registering NumPy adapters: {adapter_err}")
     except ImportError:
         print("Database Adapter Error: psycopg2 is not installed. Please install psycopg2-binary.")
         USE_POSTGRES = False
@@ -93,18 +104,59 @@ def translate_query(sql):
     return sql
 
 
+def sanitize_params(params):
+    if params is None:
+        return None
+    try:
+        import numpy as np
+        has_numpy = True
+    except ImportError:
+        has_numpy = False
+
+    def convert_val(v):
+        if has_numpy:
+            if isinstance(v, (np.float64, np.float32)):
+                return float(v)
+            if isinstance(v, (np.int64, np.int32, np.int16, np.int8)):
+                return int(v)
+            if isinstance(v, np.bool_):
+                return bool(v)
+        # Fallback check by type name for safety
+        tname = type(v).__name__
+        if 'float' in tname and tname != 'float':
+            try:
+                return float(v)
+            except:
+                pass
+        if 'int' in tname and tname != 'int':
+            try:
+                return int(v)
+            except:
+                pass
+        return v
+
+    if isinstance(params, tuple):
+        return tuple(convert_val(x) for x in params)
+    elif isinstance(params, list):
+        return [convert_val(x) for x in params]
+    elif isinstance(params, dict):
+        return {k: convert_val(v) for k, v in params.items()}
+    return params
+
+
 class PgCursorAdapter:
     def __init__(self, raw_cursor):
         self._cursor = raw_cursor
 
     def execute(self, sql, params=None):
         translated_sql = translate_query(sql)
-        # Convert params tuples to lists if psycopg2 complains, but tuples are fine
-        return self._cursor.execute(translated_sql, params)
+        sanitized_params = sanitize_params(params)
+        return self._cursor.execute(translated_sql, sanitized_params)
 
     def executemany(self, sql, seq_of_params):
         translated_sql = translate_query(sql)
-        return self._cursor.executemany(translated_sql, seq_of_params)
+        sanitized_seq = [sanitize_params(p) for p in seq_of_params]
+        return self._cursor.executemany(translated_sql, sanitized_seq)
 
     def fetchone(self):
         row = self._cursor.fetchone()

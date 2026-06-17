@@ -1,6 +1,6 @@
 {
     "target_url": "https://bot.metaversesherpa.io",
-    "concurrency": 200,
+    "concurrency": 8,
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
@@ -23,10 +23,10 @@
         },
         {
             "action": "wait_for_selector",
+            "disabled": true,
             "screenshot": true,
             "selector": "img[alt='Signal Chart']",
-            "timeout": 45000,
-            "disabled": true
+            "timeout": 45000
         },
         {
             "action": "navigate",
@@ -48,9 +48,9 @@
         },
         {
             "action": "navigate",
+            "disabled": true,
             "path": "/#/stats",
-            "screenshot": true,
-            "disabled": true
+            "screenshot": true
         },
         {
             "action": "click",

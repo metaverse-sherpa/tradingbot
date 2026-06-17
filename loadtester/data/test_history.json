@@ -1,26 +1,5 @@
 [
     {
-        "id": "run_1781681321",
-        "timestamp": 1781681321.076051,
-        "duration": 53.6,
-        "status": "completed",
-        "success_count": 0,
-        "failure_count": 1,
-        "latencies_count": 3,
-        "errors": [
-            {
-                "timestamp": 1781681374.6269,
-                "worker_id": 0,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            }
-        ],
-        "screenshots_count": 4,
-        "peak_cpu": 24.0,
-        "peak_memory": 57.95
-    },
-    {
         "id": "run_1781681482",
         "timestamp": 1781681482.380262,
         "duration": 27.23,
@@ -854,5 +833,18 @@
         "screenshots_count": 666,
         "peak_cpu": 187.6,
         "peak_memory": 68.95
+    },
+    {
+        "id": "run_1781691080",
+        "timestamp": 1781691080.400574,
+        "duration": 28.07,
+        "status": "completed",
+        "success_count": 8,
+        "failure_count": 0,
+        "latencies_count": 32,
+        "errors": [],
+        "screenshots_count": 32,
+        "peak_cpu": 52.0,
+        "peak_memory": 69.22
     }
 ]
