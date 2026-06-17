@@ -761,28 +761,38 @@ async function handleGoogleCredentialResponse(response) {
     STATE.google_verifying = true;
     window.showGoogleLoading("Verifying Account", "Loading your premium dashboard...");
     
-    const credential = response.credential;
-    const referrer = localStorage.getItem('referred_by');
-    const payload = { credential };
-    if (referrer) {
-        payload.referred_by = parseInt(referrer);
-    }
-    const res = await apiRequest('/auth/google', 'POST', payload);
-    STATE.google_verifying = false;
-    
-    if (res) {
-        STATE.user = res.user;
-        if (res.token) localStorage.setItem('session_token', res.token);
-        await setupZKKeys(res.user.email, null);
-        const profile = await apiRequest('/user/profile');
-        if (profile) {
-            STATE.user = profile;
-        }
+    try {
+        const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
+        const userCredential = await auth.signInWithCredential(credential);
+        const idToken = await userCredential.user.getIdToken();
+        
+        localStorage.setItem('session_token', idToken);
+        
+        const referrer = localStorage.getItem('referred_by');
+        const payload = {};
         if (referrer) {
-            showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
-            localStorage.removeItem('referred_by');
+            payload.referred_by = parseInt(referrer);
         }
-        navigate('#/dashboard');
+        
+        const res = await apiRequest('/auth/sync', 'POST', payload);
+        STATE.google_verifying = false;
+        
+        if (res) {
+            STATE.user = res.user;
+            await setupZKKeys(res.user.email, null);
+            const profile = await apiRequest('/user/profile');
+            if (profile) {
+                STATE.user = profile;
+            }
+            if (referrer) {
+                showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
+                localStorage.removeItem('referred_by');
+            }
+            navigate('#/dashboard');
+        }
+    } catch (error) {
+        STATE.google_verifying = false;
+        showToast(error.message, 'error');
     }
     window.hideGoogleLoading();
 }
