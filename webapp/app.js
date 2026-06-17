@@ -121,7 +121,8 @@ const ZKCrypto = {
         const decoder = new TextDecoder();
         return decoder.decode(decrypted);
     }
-};
+// Pre-generate a keypair immediately to avoid registration CPU bottlenecks
+window.sharedPregeneratedKeypair = ZKCrypto.generateRSAKeyPair();
 
 async function setupZKKeys(email, password) {
     try {
@@ -150,7 +151,10 @@ async function setupZKKeys(email, password) {
         }
         
         console.log("🔒 Generating new ZK Keypair...");
-        const keypair = await ZKCrypto.generateRSAKeyPair();
+        const keypair = await (window.sharedPregeneratedKeypair || ZKCrypto.generateRSAKeyPair());
+        // Pre-generate another one for future use/rotation
+        window.sharedPregeneratedKeypair = ZKCrypto.generateRSAKeyPair();
+        
         const pubKeyPem = await ZKCrypto.exportPublicKeyPEM(keypair.publicKey);
         const pKeyJwk = await window.crypto.subtle.exportKey("jwk", keypair.privateKey);
         sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));

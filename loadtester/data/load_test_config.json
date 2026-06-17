@@ -1,10 +1,10 @@
 {
     "target_url": "https://bot.metaversesherpa.io",
-    "concurrency": 8,
+    "concurrency": 100,
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
-    "max_active_browsers": 8,
+    "max_active_browsers": 4,
     "routes": [
         {
             "action": "navigate",
@@ -19,7 +19,8 @@
         {
             "action": "click",
             "screenshot": true,
-            "selector": ".glass-card:has(h4) >> nth=0"
+            "selector": ".glass-card:has(h4) >> nth=0",
+            "disabled": true
         },
         {
             "action": "wait_for_selector",
@@ -35,13 +36,13 @@
         },
         {
             "action": "click",
-            "disabled": true,
+            "disabled": false,
             "screenshot": true,
             "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')"
         },
         {
             "action": "wait_for_selector",
-            "disabled": true,
+            "disabled": false,
             "screenshot": true,
             "selector": "img[alt='Equity Curve']",
             "timeout": 60000

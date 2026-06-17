@@ -1,827 +1,5 @@
 [
     {
-        "id": "run_1781681482",
-        "timestamp": 1781681482.380262,
-        "duration": 27.23,
-        "status": "completed",
-        "success_count": 1,
-        "failure_count": 0,
-        "latencies_count": 10,
-        "errors": [],
-        "screenshots_count": 10,
-        "peak_cpu": 93.2,
-        "peak_memory": 66.43
-    },
-    {
-        "id": "run_1781681765",
-        "timestamp": 1781681765.91255,
-        "duration": 505.34,
-        "status": "idle",
-        "success_count": 15,
-        "failure_count": 32,
-        "latencies_count": 310,
-        "errors": [
-            {
-                "timestamp": 1781681846.012404,
-                "worker_id": 2,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    86 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681846.249502,
-                "worker_id": 5,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681846.258173,
-                "worker_id": 6,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681916.261007,
-                "worker_id": 13,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681916.2991738,
-                "worker_id": 14,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681917.319177,
-                "worker_id": 15,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681936.175887,
-                "worker_id": 17,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681956.8675468,
-                "worker_id": 19,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681956.925597,
-                "worker_id": 20,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681957.239097,
-                "worker_id": 18,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681983.6851149,
-                "worker_id": 21,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681983.764587,
-                "worker_id": 22,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    92 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682026.2544131,
-                "worker_id": 27,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682049.5485,
-                "worker_id": 24,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682070.727832,
-                "worker_id": 29,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682093.1873238,
-                "worker_id": 28,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682098.697897,
-                "worker_id": 31,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682103.608331,
-                "worker_id": 26,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682130.678431,
-                "worker_id": 34,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682131.482391,
-                "worker_id": 33,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682147.21036,
-                "worker_id": 35,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781682147.3347461,
-                "worker_id": 30,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682177.4466,
-                "worker_id": 37,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682177.637695,
-                "worker_id": 36,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682181.728852,
-                "worker_id": 38,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682194.5489972,
-                "worker_id": 39,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682195.391389,
-                "worker_id": 40,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682210.445705,
-                "worker_id": 41,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682225.599742,
-                "worker_id": 43,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682240.8412101,
-                "worker_id": 45,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682240.93349,
-                "worker_id": 44,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682270.8048892,
-                "worker_id": 49,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            }
-        ],
-        "screenshots_count": 341,
-        "peak_cpu": 200.0,
-        "peak_memory": 76.99
-    },
-    {
-        "id": "run_1781681765",
-        "timestamp": 1781681765.91255,
-        "duration": 505.34,
-        "status": "idle",
-        "success_count": 15,
-        "failure_count": 32,
-        "latencies_count": 310,
-        "errors": [
-            {
-                "timestamp": 1781681846.012404,
-                "worker_id": 2,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    86 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681846.249502,
-                "worker_id": 5,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681846.258173,
-                "worker_id": 6,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681916.261007,
-                "worker_id": 13,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681916.2991738,
-                "worker_id": 14,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681917.319177,
-                "worker_id": 15,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681936.175887,
-                "worker_id": 17,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681956.8675468,
-                "worker_id": 19,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681956.925597,
-                "worker_id": 20,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681957.239097,
-                "worker_id": 18,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681983.6851149,
-                "worker_id": 21,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781681983.764587,
-                "worker_id": 22,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    92 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682026.2544131,
-                "worker_id": 27,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682049.5485,
-                "worker_id": 24,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682070.727832,
-                "worker_id": 29,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682093.1873238,
-                "worker_id": 28,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682098.697897,
-                "worker_id": 31,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682103.608331,
-                "worker_id": 26,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682130.678431,
-                "worker_id": 34,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682131.482391,
-                "worker_id": 33,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682147.21036,
-                "worker_id": 35,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781682147.3347461,
-                "worker_id": 30,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 504 (Gateway Time-out)"
-            },
-            {
-                "timestamp": 1781682177.4466,
-                "worker_id": 37,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682177.637695,
-                "worker_id": 36,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682181.728852,
-                "worker_id": 38,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682194.5489972,
-                "worker_id": 39,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682195.391389,
-                "worker_id": 40,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682210.445705,
-                "worker_id": 41,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682225.599742,
-                "worker_id": 43,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682240.8412101,
-                "worker_id": 45,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682240.93349,
-                "worker_id": 44,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682270.8048892,
-                "worker_id": 49,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            }
-        ],
-        "screenshots_count": 341,
-        "peak_cpu": 200.0,
-        "peak_memory": 76.99
-    },
-    {
-        "id": "run_1781682730",
-        "timestamp": 1781682730.624057,
-        "duration": 8.55,
-        "status": "idle",
-        "success_count": 0,
-        "failure_count": 0,
-        "latencies_count": 0,
-        "errors": [],
-        "screenshots_count": 0,
-        "peak_cpu": 0.0,
-        "peak_memory": 0.0
-    },
-    {
-        "id": "run_1781682730",
-        "timestamp": 1781682730.624057,
-        "duration": 8.55,
-        "status": "idle",
-        "success_count": 0,
-        "failure_count": 0,
-        "latencies_count": 0,
-        "errors": [],
-        "screenshots_count": 0,
-        "peak_cpu": 16.0,
-        "peak_memory": 67.55
-    },
-    {
-        "id": "run_1781682750",
-        "timestamp": 1781682750.8569531,
-        "duration": 541.07,
-        "status": "idle",
-        "success_count": 77,
-        "failure_count": 19,
-        "latencies_count": 531,
-        "errors": [
-            {
-                "timestamp": 1781682928.38859,
-                "worker_id": 28,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    91 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682928.3992078,
-                "worker_id": 25,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682987.445196,
-                "worker_id": 48,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.491232,
-                "worker_id": 60,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.721689,
-                "worker_id": 61,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.920757,
-                "worker_id": 63,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.953899,
-                "worker_id": 59,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683137.7865658,
-                "worker_id": 73,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    85 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: net::ERR_CONTENT_LENGTH_MISMATCH"
-            },
-            {
-                "timestamp": 1781683169.29843,
-                "worker_id": 78,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683169.3786619,
-                "worker_id": 75,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683182.033918,
-                "worker_id": 81,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683206.2891881,
-                "worker_id": 84,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683215.0706859,
-                "worker_id": 85,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683221.501903,
-                "worker_id": 86,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683224.589674,
-                "worker_id": 87,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683242.52228,
-                "worker_id": 90,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683242.859175,
-                "worker_id": 88,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683248.512063,
-                "worker_id": 94,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781683249.907954,
-                "worker_id": 95,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            }
-        ],
-        "screenshots_count": 548,
-        "peak_cpu": 187.4,
-        "peak_memory": 74.56
-    },
-    {
-        "id": "run_1781682750",
-        "timestamp": 1781682750.8569531,
-        "duration": 541.07,
-        "status": "idle",
-        "success_count": 77,
-        "failure_count": 19,
-        "latencies_count": 531,
-        "errors": [
-            {
-                "timestamp": 1781682928.38859,
-                "worker_id": 28,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    91 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682928.3992078,
-                "worker_id": 25,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781682987.445196,
-                "worker_id": 48,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.491232,
-                "worker_id": 60,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.721689,
-                "worker_id": 61,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.920757,
-                "worker_id": 63,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683082.953899,
-                "worker_id": 59,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683137.7865658,
-                "worker_id": 73,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n    85 \u00d7 locator resolved to hidden <img alt=\"Signal Chart\" class=\"w-full h-auto block hidden\" src=\"/api/trades/chart?symbol=ANET&entry=154.22&tp=198.67999999999998&sl=126.43250000000002&side=LONG&open_ts=1780925493&type=stock&current_price=168.08\" onload=\"const l = document.getElementById('chart-loading-sig-55'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-55'); if(s)s.remove(); this.classList.remove('hidden');\"/>\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: net::ERR_CONTENT_LENGTH_MISMATCH"
-            },
-            {
-                "timestamp": 1781683169.29843,
-                "worker_id": 78,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683169.3786619,
-                "worker_id": 75,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683182.033918,
-                "worker_id": 81,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683206.2891881,
-                "worker_id": 84,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683215.0706859,
-                "worker_id": 85,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683221.501903,
-                "worker_id": 86,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683224.589674,
-                "worker_id": 87,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683242.52228,
-                "worker_id": 90,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683242.859175,
-                "worker_id": 88,
-                "path": "",
-                "error": "Page.wait_for_selector: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Signal Chart']\") to be visible\n",
-                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage."
-            },
-            {
-                "timestamp": 1781683248.512063,
-                "worker_id": 94,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            },
-            {
-                "timestamp": 1781683249.907954,
-                "worker_id": 95,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": ""
-            }
-        ],
-        "screenshots_count": 548,
-        "peak_cpu": 187.4,
-        "peak_memory": 74.56
-    },
-    {
-        "id": "run_1781689295",
-        "timestamp": 1781689295.9661388,
-        "duration": 798.33,
-        "status": "idle",
-        "success_count": 166,
-        "failure_count": 0,
-        "latencies_count": 666,
-        "errors": [],
-        "screenshots_count": 666,
-        "peak_cpu": 187.6,
-        "peak_memory": 68.95
-    },
-    {
         "id": "run_1781689295",
         "timestamp": 1781689295.9661388,
         "duration": 798.33,
@@ -846,5 +24,295 @@
         "screenshots_count": 32,
         "peak_cpu": 52.0,
         "peak_memory": 69.22
+    },
+    {
+        "id": "run_1781691354",
+        "timestamp": 1781691354.570394,
+        "duration": 260.82,
+        "status": "idle",
+        "success_count": 64,
+        "failure_count": 0,
+        "latencies_count": 256,
+        "errors": [],
+        "screenshots_count": 256,
+        "peak_cpu": 73.2,
+        "peak_memory": 69.22
+    },
+    {
+        "id": "run_1781691354",
+        "timestamp": 1781691354.570394,
+        "duration": 260.82,
+        "status": "idle",
+        "success_count": 64,
+        "failure_count": 0,
+        "latencies_count": 256,
+        "errors": [],
+        "screenshots_count": 256,
+        "peak_cpu": 73.2,
+        "peak_memory": 69.22
+    },
+    {
+        "id": "run_1781691637",
+        "timestamp": 1781691637.063647,
+        "duration": 40.18,
+        "status": "idle",
+        "success_count": 8,
+        "failure_count": 0,
+        "latencies_count": 32,
+        "errors": [],
+        "screenshots_count": 32,
+        "peak_cpu": 60.0,
+        "peak_memory": 67.66
+    },
+    {
+        "id": "run_1781691637",
+        "timestamp": 1781691637.063647,
+        "duration": 40.18,
+        "status": "idle",
+        "success_count": 8,
+        "failure_count": 0,
+        "latencies_count": 32,
+        "errors": [],
+        "screenshots_count": 32,
+        "peak_cpu": 60.0,
+        "peak_memory": 67.66
+    },
+    {
+        "id": "run_1781691685",
+        "timestamp": 1781691685.127887,
+        "duration": 88.81,
+        "status": "idle",
+        "success_count": 10,
+        "failure_count": 8,
+        "latencies_count": 62,
+        "errors": [
+            {
+                "timestamp": 1781691718.508013,
+                "worker_id": 1,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691718.5108,
+                "worker_id": 5,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691743.841797,
+                "worker_id": 9,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691743.89278,
+                "worker_id": 10,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691767.502304,
+                "worker_id": 7,
+                "path": "",
+                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
+                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
+            },
+            {
+                "timestamp": 1781691768.10348,
+                "worker_id": 2,
+                "path": "",
+                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
+                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
+            },
+            {
+                "timestamp": 1781691768.1249259,
+                "worker_id": 0,
+                "path": "",
+                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
+                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
+            },
+            {
+                "timestamp": 1781691768.437751,
+                "worker_id": 15,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            }
+        ],
+        "screenshots_count": 70,
+        "peak_cpu": 75.2,
+        "peak_memory": 72.03
+    },
+    {
+        "id": "run_1781691685",
+        "timestamp": 1781691685.127887,
+        "duration": 88.81,
+        "status": "idle",
+        "success_count": 10,
+        "failure_count": 8,
+        "latencies_count": 62,
+        "errors": [
+            {
+                "timestamp": 1781691718.508013,
+                "worker_id": 1,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691718.5108,
+                "worker_id": 5,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691743.841797,
+                "worker_id": 9,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691743.89278,
+                "worker_id": 10,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781691767.502304,
+                "worker_id": 7,
+                "path": "",
+                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
+                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
+            },
+            {
+                "timestamp": 1781691768.10348,
+                "worker_id": 2,
+                "path": "",
+                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
+                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
+            },
+            {
+                "timestamp": 1781691768.1249259,
+                "worker_id": 0,
+                "path": "",
+                "error": "Page.wait_for_selector: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"img[alt='Equity Curve']\") to be visible\n",
+                "console": "[log] \ud83d\udd12 Generating new ZK Keypair...\n[log] \ud83d\udd12 Generated and registered new ZK keypair.\n[log] \ud83d\udd12 Restored ZK private key from sessionStorage.\n[error] Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)"
+            },
+            {
+                "timestamp": 1781691768.437751,
+                "worker_id": 15,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            }
+        ],
+        "screenshots_count": 70,
+        "peak_cpu": 75.2,
+        "peak_memory": 72.03
+    },
+    {
+        "id": "run_1781692571",
+        "timestamp": 1781692571.544217,
+        "duration": 95.59,
+        "status": "idle",
+        "success_count": 20,
+        "failure_count": 5,
+        "latencies_count": 100,
+        "errors": [
+            {
+                "timestamp": 1781692607.713805,
+                "worker_id": 2,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692607.7147992,
+                "worker_id": 4,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692607.768001,
+                "worker_id": 0,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692632.451021,
+                "worker_id": 12,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692644.563185,
+                "worker_id": 14,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            }
+        ],
+        "screenshots_count": 105,
+        "peak_cpu": 44.0,
+        "peak_memory": 71.36
+    },
+    {
+        "id": "run_1781692571",
+        "timestamp": 1781692571.544217,
+        "duration": 95.59,
+        "status": "idle",
+        "success_count": 20,
+        "failure_count": 5,
+        "latencies_count": 100,
+        "errors": [
+            {
+                "timestamp": 1781692607.713805,
+                "worker_id": 2,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692607.7147992,
+                "worker_id": 4,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692607.768001,
+                "worker_id": 0,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692632.451021,
+                "worker_id": 12,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            },
+            {
+                "timestamp": 1781692644.563185,
+                "worker_id": 14,
+                "path": "/#/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
+            }
+        ],
+        "screenshots_count": 105,
+        "peak_cpu": 46.0,
+        "peak_memory": 71.36
     }
 ]
