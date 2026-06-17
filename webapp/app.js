@@ -121,6 +121,7 @@ const ZKCrypto = {
         const decoder = new TextDecoder();
         return decoder.decode(decrypted);
     }
+};
 // Pre-generate a keypair immediately to avoid registration CPU bottlenecks
 window.sharedPregeneratedKeypair = ZKCrypto.generateRSAKeyPair();
 
