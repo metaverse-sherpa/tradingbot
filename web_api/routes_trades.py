@@ -1347,7 +1347,16 @@ def run_backtest():
                 sharpe = 0.0
             max_dd = round(abs(df_dd["drawdown"].min()), 1) if not df_dd.empty else 0.0
             
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]}, facecolor="#0B0E14")
+        from matplotlib.figure import Figure
+        import matplotlib.gridspec as gridspec
+        
+        fig = Figure(figsize=(12, 10), facecolor="#0B0E14")
+        gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
+        ax1 = fig.add_subplot(gs[0])
+        ax2 = fig.add_subplot(gs[1])
+        
+        ax1.set_facecolor("#0B0E14")
+        ax2.set_facecolor("#0B0E14")
         
         theme_color = "#00E5FF" if strategy == "Sherpa Velocity Pullback" else "cyan"
         ax1.plot(df_eq.index, df_eq["equity"], color=theme_color, linewidth=2)
@@ -1355,7 +1364,6 @@ def run_backtest():
         ax1.set_title(f"Sherpa {title_years} Audit: {user_id}", color="white", fontsize=16, fontweight="bold", pad=15)
         ax1.tick_params(colors="white")
         ax1.grid(True, color="#3a4b5c", alpha=0.3, linestyle=":")
-        ax1.set_facecolor("#0B0E14")
         
         ax1.text(0.02, 0.9, f"Sharpe: {sharpe:.2f}", transform=ax1.transAxes, color=theme_color, fontweight='bold', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor=theme_color))
         ax1.text(0.02, 0.05, f"Start: ${capital:,.2f}", transform=ax1.transAxes, color='white', fontweight='bold', bbox=dict(facecolor='#0B0E14', alpha=0.8, edgecolor='white'))
@@ -1384,13 +1392,12 @@ def run_backtest():
                           arrowprops=dict(arrowstyle='->', color='red'))
                           
         fig.patch.set_facecolor("#0B0E14")
-        plt.tight_layout()
+        fig.tight_layout()
         
         os.makedirs("results", exist_ok=True)
         chart_name = f"audit_{user_id}_{int(time.time())}.png"
         chart_path = os.path.join("results", chart_name)
-        plt.savefig(chart_path, dpi=150, facecolor="#0B0E14")
-        plt.close()
+        fig.savefig(chart_path, dpi=150, facecolor="#0B0E14")
         
         max_dd = round(abs(df_dd["drawdown"].min()), 1) if not df_dd.empty else 0.0
 
