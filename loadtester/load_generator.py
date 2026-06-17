@@ -77,6 +77,10 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
             current_path = "unknown"
             try:
                 for idx, route in enumerate(routes):
+                    if route.get("disabled", False):
+                        log_event("worker_step", {"worker_id": worker_id, "step": idx, "action": "skip", "path": route.get("path", "")})
+                        continue
+
                     path = route.get("path", "")
                     current_path = path
                     action = route.get("action", "navigate")

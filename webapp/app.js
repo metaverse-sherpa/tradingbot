@@ -5114,22 +5114,45 @@ function renderHelpView() {
 }
 
 // ----------------- Event Handlers & Forms -----------------
+const firebaseConfig = {
+  apiKey: "AIzaSyC5_-c02iid6jrfyzwaMok4O63FP4885LY",
+  authDomain: "tradingbot-bf028.firebaseapp.com",
+  projectId: "tradingbot-bf028",
+  storageBucket: "tradingbot-bf028.firebasestorage.app",
+  messagingSenderId: "1030598184996",
+  appId: "1:1030598184996:web:a6038b9ca7d80a19b348b1",
+  measurementId: "G-VDWMF4K1KV"
+};
+
+// Initialize Firebase compat
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+
 async function handleEmailLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     
-    const res = await apiRequest('/auth/login', 'POST', { email, password });
-    if (res) {
-        STATE.user = res.user;
-        if (res.token) localStorage.setItem('session_token', res.token);
-        await setupZKKeys(email, password);
+    try {
+        // Sign in via Firebase Auth
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const idToken = await userCredential.user.getIdToken();
+        
+        // Save the Firebase ID token locally as our session token
+        localStorage.setItem('session_token', idToken);
+        
+        // Sync profile with backend (passes token in require_auth implicitly next)
         const profile = await apiRequest('/user/profile');
         if (profile) {
             STATE.user = profile;
         }
+        await setupZKKeys(email, password);
         showToast("Welcome back, Sherpa trader!");
         navigate('#/dashboard');
+    } catch (error) {
+        showToast(error.message, "error");
     }
 }
 
@@ -5137,49 +5160,18 @@ async function handleForgotPassword(e) {
     e.preventDefault();
     const email = document.getElementById('forgot-email').value;
     
-    const res = await apiRequest('/auth/forgot-password', 'POST', { email });
-    if (res) {
-        if (res.is_google_auth) {
-            showToast(res.message, "warning");
-            setLandingAuthMode('login');
-            // Allow a small delay for UI to render the login form before triggering Google popup
-            setTimeout(() => {
-                triggerGoogleLogin();
-            }, 100);
-        } else {
-            showToast(res.message || "Password reset link sent to your email.");
-            setLandingAuthMode('login');
-        }
+    try {
+        await auth.sendPasswordResetEmail(email);
+        showToast("Password reset link sent to your email.");
+        setLandingAuthMode('login');
+    } catch (error) {
+        showToast("Error sending reset email: " + error.message, "error");
     }
 }
 
 window.handleResetPasswordSubmit = async function(e) {
     e.preventDefault();
-    const password = document.getElementById('reset-password').value;
-    const passwordConfirm = document.getElementById('reset-password-confirm').value;
-    
-    if (password !== passwordConfirm) {
-        showToast("Passwords do not match", "error");
-        return;
-    }
-    
-    if (!STATE.reset_token) {
-        showToast("Missing or invalid reset token. Please click the link in your email again.", "error");
-        return;
-    }
-    
-    try {
-        await apiRequest('/auth/reset-password', 'POST', {
-            token: STATE.reset_token,
-            password: password
-        });
-        showToast("Password updated successfully! Please sign in with your new password.", "success");
-        STATE.reset_token = null;
-        setLandingAuthMode('login');
-        navigate('#/login');
-    } catch (error) {
-        showToast("Error updating password: " + error.message, "error");
-    }
+    showToast("Please use the link sent to your email to reset your password.", "warning");
 }
 
 async function handleEmailRegister(e) {
@@ -5189,26 +5181,40 @@ async function handleEmailRegister(e) {
     const password = document.getElementById('reg-password').value;
     
     const refCode = getQueryParam('ref') || localStorage.getItem('referred_by');
-    const payload = { full_name: name, email, password };
-    if (refCode) {
-        payload.referred_by = parseInt(refCode);
-    }
     
-    const res = await apiRequest('/auth/register', 'POST', payload);
-    if (res) {
-        STATE.user = res.user;
-        if (res.token) localStorage.setItem('session_token', res.token);
-        await setupZKKeys(email, password);
-        const profile = await apiRequest('/user/profile');
-        if (profile) {
-            STATE.user = profile;
-        }
-        showToast("Account successfully registered!");
+    try {
+        // Register in Firebase Auth
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        await userCredential.user.updateProfile({ displayName: name });
+        const idToken = await userCredential.user.getIdToken();
+        
+        // Store token
+        localStorage.setItem('session_token', idToken);
+        
+        // Sync profile and referrals in Postgres
+        const payload = { full_name: name };
         if (refCode) {
-            showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
-            localStorage.removeItem('referred_by');
+            payload.referred_by = parseInt(refCode);
         }
-        navigate('#/dashboard');
+        
+        // Create user placeholder in local database
+        const res = await apiRequest('/auth/sync', 'POST', payload);
+        if (res) {
+            STATE.user = res.user;
+            await setupZKKeys(email, password);
+            const profile = await apiRequest('/user/profile');
+            if (profile) {
+                STATE.user = profile;
+            }
+            showToast("Account successfully registered!");
+            if (refCode) {
+                showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
+                localStorage.removeItem('referred_by');
+            }
+            navigate('#/dashboard');
+        }
+    } catch (error) {
+        showToast(error.message, "error");
     }
 }
 
@@ -5225,6 +5231,7 @@ async function triggerGoogleLogin() {
 
 async function handleLogout() {
     try {
+        await auth.signOut();
         await apiRequest('/auth/logout', 'POST');
     } catch (e) {}
     localStorage.removeItem('session_token');

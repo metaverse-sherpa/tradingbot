@@ -11,7 +11,7 @@ def get_vm_realtime_metrics():
     """
     cmd = (
         "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 johngiles@35.208.90.255 "
-        "\"CORES=\\$(nproc); top -bn2 -d 0.5 | grep 'Cpu(s)' | tail -n 1 | awk -F'[ :,]+' -v cores=\\$CORES '{print (\\$2 + \\$4) * cores}'; free | grep Mem | awk '{print (\\$3/\\$2)*100}'\""
+        "\"top -bn2 -d 0.5 | grep 'Cpu(s)' | tail -n 1 | awk -F'[ :,]+' '{print \$2 + \$4}'; free | grep Mem | awk '{print (\\$3/\\$2)*100}'\""
     )
     try:
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)

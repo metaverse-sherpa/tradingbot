@@ -1,10 +1,10 @@
 {
     "target_url": "https://bot.metaversesherpa.io",
-    "concurrency": 1,
+    "concurrency": 200,
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
-    "max_active_browsers": 1,
+    "max_active_browsers": 8,
     "routes": [
         {
             "action": "navigate",
@@ -35,13 +35,15 @@
         {
             "action": "click",
             "screenshot": true,
-            "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')"
+            "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')",
+            "disabled": true
         },
         {
             "action": "wait_for_selector",
             "screenshot": true,
             "selector": "img[alt='Equity Curve']",
-            "timeout": 60000
+            "timeout": 60000,
+            "disabled": true
         },
         {
             "action": "navigate",
@@ -51,13 +53,15 @@
         {
             "action": "click",
             "screenshot": true,
-            "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')"
+            "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')",
+            "disabled": true
         },
         {
             "action": "wait_for_selector",
             "screenshot": true,
             "selector": "img[alt='Equity Curve']",
-            "timeout": 60000
+            "timeout": 60000,
+            "disabled": true
         }
     ]
 }

@@ -1,61 +1,23 @@
 import os
 from functools import wraps
-import jwt
-import datetime
-import bcrypt
+import time
+import database
 from flask import request, jsonify, g
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-from web_api.db_web import get_web_user_by_id
+from web_api.db_web import get_web_user_by_email, get_web_user_by_id
 import utils_gcp
 
-JWT_SECRET = utils_gcp.get_secret("JWT_SECRET") or "default-fallback-jwt-secret-key-1234567"
-GOOGLE_CLIENT_ID = utils_gcp.get_secret("GOOGLE_CLIENT_ID") or ""
+# Initialize Firebase Admin SDK
+import firebase_admin
+from firebase_admin import credentials, auth as firebase_auth
 
-def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt(rounds=10)
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
-
-def check_password(password: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-    except Exception:
-        return False
-
-def generate_token(user_id: int) -> str:
-    payload = {
-        'sub': str(user_id),
-        'iat': datetime.datetime.utcnow(),
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-
-def verify_token(token: str) -> int:
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-        return int(payload['sub'])
-    except Exception as e:
-        # print(f"[AUTH DEBUG] verify_token EXCEPTION: {type(e).__name__}: {e}")
-        return None
-
-import time
-
-def verify_google_token(token: str) -> dict:
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            # Verify the ID token against Google's OAuth2 endpoints
-            id_info = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-            # Check issuer
-            if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-                raise ValueError('Wrong issuer.')
-            return id_info
-        except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(0.5)
-                continue
-            print(f"Google Token Verification Error: {e}")
-            return None
+cred_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "firebase-adminsdk.json")
+if not firebase_admin._apps:
+    if os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    else:
+        # Fallback to default credentials inside GCP environment
+        firebase_admin.initialize_app()
 
 def require_auth(f):
     @wraps(f)
@@ -71,14 +33,35 @@ def require_auth(f):
         if not token:
             return jsonify({"error": "Authentication required"}), 401
             
-        user_id = verify_token(token)
-        if not user_id:
+        try:
+            # Symmetrically verify the Firebase ID Token
+            decoded_token = firebase_auth.verify_id_token(token)
+            email = decoded_token.get("email")
+            uid = decoded_token.get("uid")
+            
+            if not email:
+                return jsonify({"error": "Invalid token: Email missing"}), 401
+                
+            # Fetch user from PostgreSQL
+            user = get_web_user_by_email(email)
+            if not user:
+                # Dynamically provision user record locally in PostgreSQL if they exist in Firebase but not in DB
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    created_at = int(time.time())
+                    full_name = decoded_token.get("name") or email.split("@")[0]
+                    c.execute('''
+                        INSERT INTO WebUsers (email, google_id, full_name, created_at, is_active)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (email.strip().lower(), uid, full_name, created_at, 1))
+                    conn.commit()
+                user = get_web_user_by_email(email)
+                
+            g.user = user
+        except Exception as e:
+            print(f"[AUTH ERROR] Firebase verify_id_token failed: {e}")
             return jsonify({"error": "Invalid or expired session"}), 401
             
-        user = get_web_user_by_id(user_id)
-        if not user:
-            return jsonify({"error": "User not found"}), 401
-            
-        g.user = user
         return f(*args, **kwargs)
     return decorated
+

@@ -72,3 +72,5 @@ csv/cache_WIF_15m.csv
 csv/cache_XRP_15m.csv
 csv/cache_ZEC_15m.csv
 loadtester/data/test_history.json
+
+firebase-adminsdk.json

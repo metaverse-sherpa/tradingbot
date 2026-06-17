@@ -629,6 +629,9 @@
             currentRoutes.forEach((route, index) => {
                 const item = document.createElement('div');
                 item.className = 'route-item';
+                if (route.disabled) {
+                    item.style.opacity = '0.4';
+                }
                 
                 let label = route.path || '';
                 let infoBadge = '';
@@ -677,17 +680,29 @@
                 item.innerHTML = `
                     <span class="material-symbols-outlined" style="color:var(--text-muted); font-size:18px;">${icon}</span>
                     <span style="font-size:13px; flex-grow:1; overflow:hidden; text-overflow:ellipsis" title="${label}">${label}${infoBadge}</span>
-                    <label style="display:flex; align-items:center; gap:4px; font-size:10px; cursor:pointer;">
-                        <input type="checkbox" ${route.screenshot ? 'checked' : ''} onchange="toggleScreenshot(${index})"> Camera
-                    </label>
-                    <span class="material-symbols-outlined" onclick="removeRoute(${index})" style="color:var(--error); font-size:18px; cursor:pointer; margin-left:6px;">delete</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="display:flex; align-items:center; gap:4px; font-size:10px; cursor:pointer;" title="Disable/Enable this step">
+                            <input type="checkbox" ${!route.disabled ? 'checked' : ''} onchange="toggleRouteActive(${index})"> Active
+                        </label>
+                        <label style="display:flex; align-items:center; gap:4px; font-size:10px; cursor:pointer;" title="Capture screenshot at this step">
+                            <input type="checkbox" ${route.screenshot ? 'checked' : ''} onchange="toggleScreenshot(${index})"> Camera
+                        </label>
+                        <span class="material-symbols-outlined" onclick="removeRoute(${index})" style="color:var(--error); font-size:18px; cursor:pointer; margin-left:2px;">delete</span>
+                    </div>
                 `;
                 container.appendChild(item);
             });
         }
 
+        function toggleRouteActive(index) {
+            currentRoutes[index].disabled = !currentRoutes[index].disabled;
+            renderRoutes();
+            saveConfig();
+        }
+
         function toggleScreenshot(index) {
             currentRoutes[index].screenshot = !currentRoutes[index].screenshot;
+            saveConfig();
         }
 
         function removeRoute(index) {
