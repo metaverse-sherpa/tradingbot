@@ -631,17 +631,32 @@
                 item.className = 'route-item';
                 
                 // Form Autofill Warning indicators
-                let label = route.path;
+                let label = route.path || '';
                 let infoBadge = '';
-                if (route.path.includes('register')) {
-                    infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Registration</span>`;
-                } else if (route.path.includes('login')) {
-                    infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Login</span>`;
+                let icon = 'link';
+
+                if (route.path) {
+                    if (route.path.includes('register')) {
+                        infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Registration</span>`;
+                    } else if (route.path.includes('login')) {
+                        infoBadge = `<span style="font-size:9px; background:var(--primary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Autofill Login</span>`;
+                    }
+                } else if (route.action === 'click') {
+                    icon = 'ads_click';
+                    label = `Click: ${route.selector}`;
+                    infoBadge = `<span style="font-size:9px; background:var(--secondary); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Click Element</span>`;
+                } else if (route.action === 'wait_for_selector') {
+                    icon = 'hourglass_empty';
+                    label = `Wait for: ${route.selector}`;
+                    infoBadge = `<span style="font-size:9px; background:var(--success); color:#000; padding:2px 4px; border-radius:4px; margin-left:4px; font-weight:700">Sync Wait</span>`;
+                } else if (route.action === 'wait') {
+                    icon = 'timer';
+                    label = `Wait: ${route.duration}s`;
                 }
 
                 item.innerHTML = `
-                    <span class="material-symbols-outlined" style="color:var(--text-muted); font-size:18px;">link</span>
-                    <span style="font-size:13px; flex-grow:1; overflow:hidden; text-overflow:ellipsis">${label}${infoBadge}</span>
+                    <span class="material-symbols-outlined" style="color:var(--text-muted); font-size:18px;">${icon}</span>
+                    <span style="font-size:13px; flex-grow:1; overflow:hidden; text-overflow:ellipsis" title="${label}">${label}${infoBadge}</span>
                     <label style="display:flex; align-items:center; gap:4px; font-size:10px; cursor:pointer;">
                         <input type="checkbox" ${route.screenshot ? 'checked' : ''} onchange="toggleScreenshot(${index})"> Camera
                     </label>
