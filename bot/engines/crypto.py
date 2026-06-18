@@ -406,7 +406,8 @@ async def signal_engine(application):
                                         
                                         bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
                                         balance = await user_ex.fetch_balance(params=bal_params)
-                                        actual_equity = float(balance.get("USDT", {}).get("total", 0) or balance.get("USDT", {}).get("free", 0) or 0.0)
+                                        asset = 'USDC' if ex_id == 'coinbase' else 'USDT'
+                                        actual_equity = float(balance.get(asset, {}).get("total", 0) or balance.get(asset, {}).get("free", 0) or 0.0)
                                         
                                         # Custom Capital Allocation Override
                                         eq_type = user.get('custom_equity_type', 'all')

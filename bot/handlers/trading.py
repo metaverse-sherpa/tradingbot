@@ -1232,8 +1232,11 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }) as user_ex:
                 bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
                 balance = await user_ex.fetch_balance(params=bal_params)
-                usdt_bal = balance.get("USDT", {})
-                free = float(usdt_bal.get("free") or usdt_bal.get("total") or balance.get("free", {}).get("USDT") or balance.get("total", {}).get("USDT") or 0.0)
+                asset = 'USDC' if ex_id == 'coinbase' else 'USDT'
+                asset_bal = balance.get(asset, {})
+                if not isinstance(asset_bal, dict):
+                    asset_bal = {}
+                free = float(asset_bal.get("free") or asset_bal.get("total") or balance.get("free", {}).get(asset) or balance.get("total", {}).get(asset) or 0.0)
                 
                 # True Equity Calculation
                 total_value = free
@@ -1249,7 +1252,8 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 crypto_details = {
                     "exchange": ex_id.upper(),
                     "free": free,
-                    "total": total_value
+                    "total": total_value,
+                    "currency": "USDC" if ex_id == "coinbase" else "USDT"
                 }
         except Exception as e:
             logger.error(f"Crypto balance check failed for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
@@ -1282,10 +1286,11 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if crypto_details:
         free_str = escape_md_v2(f"{crypto_details['free']:,.2f}")
         total_str = escape_md_v2(f"{crypto_details['total']:,.2f}")
+        currency_str = escape_md_v2(crypto_details['currency'])
         msg_parts.append(
             f"🪙 *Crypto Account \\({crypto_details['exchange']}\\)*\n"
-            f"• Available Cash: ||*${free_str}*|| USDT\n"
-            f"• Total Value: ||*${total_str}*|| USDT\n"
+            f"• Available Cash: ||*${free_str}*|| {currency_str}\n"
+            f"• Total Value: ||*${total_str}*|| {currency_str}\n"
         )
         
     if stock_details:
