@@ -400,7 +400,7 @@ async def signal_engine(application):
                                     async with ex_class({
                                         "apiKey": user['api_key'],
                                         "secret": user['api_secret'],
-                                        "password": user['api_password'],
+                                        **({"password": user['api_password']} if user['api_password'] else {}),
                                         "options": {"defaultType": default_type},
                                     }) as user_ex:
                                         

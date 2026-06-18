@@ -328,7 +328,7 @@ async def diagnose_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with ex_class({
                 "apiKey": user_data['api_key'],
                 "secret": user_data['api_secret'],
-                "password": user_data['api_password'] or "",
+                **({"password": user_data['api_password'] or ""} if user_data['api_password'] or "" else {}),
                 "options": {"defaultType": default_type},
                 "timeout": 8000
             }) as user_ex:

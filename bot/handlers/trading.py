@@ -475,7 +475,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
-                "password": user['api_password'],
+                **({"password": user['api_password']} if user['api_password'] else {}),
                 "options": {"defaultType": default_type},
             }) as user_ex:
                 
@@ -658,7 +658,7 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
-                "password": user['api_password'],
+                **({"password": user['api_password']} if user['api_password'] else {}),
                 "options": {"defaultType": default_type},
             }) as user_ex:
                 await user_ex.load_markets()
@@ -1077,7 +1077,7 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with ex_class({
                 "apiKey": user['api_key'],
                 "secret": user['api_secret'],
-                "password": user['api_password'],
+                **({"password": user['api_password']} if user['api_password'] else {}),
                 "options": {"defaultType": default_type},
             }) as user_ex:
                 await user_ex.load_markets()
@@ -1227,7 +1227,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with ex_class({
                 "apiKey": user_data['api_key'],
                 "secret": user_data['api_secret'],
-                "password": user_data['api_password'],
+                **({"password": user_data['api_password']} if user_data['api_password'] else {}),
                 "options": {"defaultType": default_type},
             }) as user_ex:
                 bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
@@ -1555,7 +1555,7 @@ async def close_single_position(chat_id, sym):
         async with ex_class({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
-            "password": user['api_password'],
+            **({"password": user['api_password']} if user['api_password'] else {}),
             "options": {"defaultType": default_type},
         }) as user_ex:
             # Fetch the specific position
@@ -1886,7 +1886,7 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
         exchange = ex_class({
             "apiKey": user['api_key'],
             "secret": user['api_secret'],
-            "password": user['api_password'],
+            **({"password": user['api_password']} if user['api_password'] else {}),
             "options": {"defaultType": default_type},
             "enableRateLimit": True,
         })

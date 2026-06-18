@@ -185,7 +185,7 @@ def get_balance():
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
-                "password": crypto_api_password,
+                **({"password": crypto_api_password} if crypto_api_password else {}),
                 "options": {"defaultType": default_type},
                 "enableRateLimit": False,
                 "timeout": 4000,
@@ -315,7 +315,7 @@ def get_stats():
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
-                "password": crypto_api_password or "",
+                **({"password": crypto_api_password or ""} if crypto_api_password or "" else {}),
                 "options": {"defaultType": default_type},
                 "enableRateLimit": False,
                 "timeout": 4000
@@ -664,7 +664,7 @@ def get_open_trades():
             config = {
                 "apiKey": crypto_api_key,
                 "secret": crypto_api_secret,
-                "password": crypto_api_password,
+                **({"password": crypto_api_password} if crypto_api_password else {}),
                 "options": {"defaultType": default_type},
                 "enableRateLimit": False,
                 "timeout": 4000,
@@ -815,7 +815,7 @@ def get_trades_history():
                 config = {
                     "apiKey": crypto_api_key,
                     "secret": crypto_api_secret,
-                    "password": crypto_api_password,
+                    **({"password": crypto_api_password} if crypto_api_password else {}),
                     "options": {"defaultType": default_type},
                     "enableRateLimit": True,
                     "timeout": 5000,
@@ -2054,7 +2054,7 @@ def share_card():
                         config = {
                             "apiKey": crypto_api_key,
                             "secret": crypto_api_secret,
-                            "password": crypto_api_password or "",
+                            **({"password": crypto_api_password or ""} if crypto_api_password or "" else {}),
                             "options": {"defaultType": default_type},
                             "timeout": 3000
                         }

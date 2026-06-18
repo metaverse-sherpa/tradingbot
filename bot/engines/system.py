@@ -220,7 +220,7 @@ async def email_summary_engine(application):
                                     config = {
                                         "apiKey": crypto_api_key,
                                         "secret": crypto_api_secret,
-                                        "password": crypto_api_password or "",
+                                        **({"password": crypto_api_password or ""} if crypto_api_password or "" else {}),
                                         "options": {"defaultType": default_type},
                                         "timeout": 3000
                                     }
