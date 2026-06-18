@@ -75,6 +75,16 @@ def _get_telegram_user(web_user):
             print(f"Could not load Telegram user {tg_id}: {e}")
     return None
 
+def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
+    if exchange_id == 'coinbase':
+        cb_sandbox = None
+        if tg_user:
+            cb_sandbox = tg_user.get("coinbase_sandbox")
+        if cb_sandbox is None and web_user:
+            cb_sandbox = web_user.get("coinbase_sandbox")
+        if cb_sandbox is None or cb_sandbox in (1, True, '1', 'true', 'True'):
+            client.set_sandbox_mode(True)
+
 @trades_bp.route('/api/user/profile', methods=['GET'])
 @require_auth
 def profile():
@@ -181,6 +191,7 @@ def get_balance():
                 "timeout": 4000,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
+            _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
             try:
                 futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
@@ -300,6 +311,7 @@ def get_stats():
                 "timeout": 4000
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
+            _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
             try:
                 open_count = 0
                 unrealized = 0.0
@@ -648,6 +660,7 @@ def get_open_trades():
                 "timeout": 4000,
             }
             client = getattr(ccxt, crypto_exchange_id)(config)
+            _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, merged_user, merged_user)
             try:
                 positions = client.fetch_positions()
                 for pos in positions:
@@ -800,6 +813,7 @@ def get_trades_history():
                 
                 async def fetch_my_trades_async():
                     client = getattr(ccxt_async, crypto_exchange_id)(config)
+                    _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
                     try:
                         await client.load_markets()
                         
@@ -2035,6 +2049,7 @@ def share_card():
                             "timeout": 3000
                         }
                         client = getattr(ccxt, crypto_exchange_id)(config)
+                        _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
                         try:
                             positions = client.fetch_positions()
                             for p in positions:

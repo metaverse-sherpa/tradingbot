@@ -3858,6 +3858,10 @@ function renderSettingsView() {
                         <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
                         <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://api.alpaca.markets" type="text" value="https://api.alpaca.markets"/>
                     </div>
+                    <div id="coinbase-sandbox-field-container" class="flex items-center gap-2 p-2 bg-surface-container-low border border-white/10 rounded-lg hidden">
+                        <input id="coinbase-sandbox" type="checkbox" checked class="w-4 h-4 rounded border-white/10 accent-primary cursor-pointer"/>
+                        <label for="coinbase-sandbox" class="text-xs text-on-surface cursor-pointer select-none">Use Sandbox Environment (default: true)</label>
+                    </div>
                     <div class="flex gap-3">
                         <button type="submit" class="flex-1 h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
                             Save Keys
@@ -5376,12 +5380,15 @@ async function handleExchangeSetup(e) {
         });
     } else {
         const pwd = document.getElementById('api-password').value;
+        const cbSandboxEl = document.getElementById('coinbase-sandbox');
+        const cbSandbox = cbSandboxEl ? cbSandboxEl.checked : true;
         res = await apiRequest('/settings/exchange', 'POST', {
             exchange_id: exId,
             api_key: key,
             api_secret: secret,
             api_password: pwd,
-            bingx_futures_type: 'perpetual'
+            bingx_futures_type: 'perpetual',
+            coinbase_sandbox: cbSandbox
         });
     }
     
@@ -5500,6 +5507,15 @@ window.toggleExchangeFields = function() {
             bingxDiv.classList.add('hidden');
         }
     }
+    
+    const cbSandboxDiv = document.getElementById('coinbase-sandbox-field-container');
+    if (cbSandboxDiv) {
+        if (exId === 'coinbase') {
+            cbSandboxDiv.classList.remove('hidden');
+        } else {
+            cbSandboxDiv.classList.add('hidden');
+        }
+    }
 };
 
 window.editExchange = function(type) {
@@ -5527,6 +5543,10 @@ window.editExchange = function(type) {
                 if (keyInput) keyInput.value = STATE.user.api_key || '';
                 if (secretInput) secretInput.value = STATE.user.api_secret || '';
                 if (passInput) passInput.value = STATE.user.api_password || '';
+                const cbSandboxInput = document.getElementById('coinbase-sandbox');
+                if (cbSandboxInput) {
+                    cbSandboxInput.checked = (STATE.user.coinbase_sandbox !== undefined) ? STATE.user.coinbase_sandbox : true;
+                }
             } else {
                 if (keyInput) keyInput.value = STATE.user.alpaca_api_key || '';
                 if (secretInput) secretInput.value = STATE.user.alpaca_api_secret || '';

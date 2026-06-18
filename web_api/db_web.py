@@ -72,14 +72,15 @@ def create_web_user_google(email, google_id, full_name=None, referred_by=None, a
             
         return user_id
 
-def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password, bingx_futures_type='standard'):
+def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password, bingx_futures_type='standard', coinbase_sandbox=True):
+    cb_sb_val = 1 if coinbase_sandbox else 0
     with db_session() as conn:
         c = conn.cursor()
         c.execute('''
             UPDATE WebUsers
-            SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?, bingx_futures_type = ?
+            SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?
             WHERE id = ?
-        ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', user_id))
+        ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', cb_sb_val, user_id))
         
         # Sync to Telegram bot if linked
         c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
@@ -88,11 +89,11 @@ def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password
             try:
                 c.execute('''
                     UPDATE Users
-                    SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?, bingx_futures_type = ?
+                    SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?
                     WHERE telegram_chat_id = ?
-                ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', row[0]))
+                ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', cb_sb_val, row[0]))
             except Exception as e:
-                print(f"Telegram sync error for bingx_futures_type: {e}")
+                print(f"Telegram sync error for exchange keys / sandbox: {e}")
     update_web_user_status(user_id, 1)
 
 def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):

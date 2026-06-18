@@ -32,13 +32,14 @@ def settings_exchange():
     api_secret = data.get("api_secret", "").strip()
     api_password = data.get("api_password", "").strip()
     bingx_futures_type = data.get("bingx_futures_type", "perpetual").strip()
+    coinbase_sandbox = data.get("coinbase_sandbox", True)
     if exchange_id == "bingx":
         bingx_futures_type = "perpetual"
     
     if not api_key or not api_secret:
         return jsonify({"error": "API Key and Secret are required"}), 400
         
-    update_web_user_keys(g.user["id"], exchange_id, api_key, api_secret, api_password, bingx_futures_type)
+    update_web_user_keys(g.user["id"], exchange_id, api_key, api_secret, api_password, bingx_futures_type, coinbase_sandbox=coinbase_sandbox)
     return jsonify({"message": f"{exchange_id.upper()} exchange keys saved successfully"}), 200
 
 @settings_bp.route('/api/settings/alpaca', methods=['POST'])

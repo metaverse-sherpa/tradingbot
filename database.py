@@ -62,6 +62,10 @@ def get_exchange_client(user):
         "enableRateLimit": True,
     }
     client = getattr(ccxt, ex_id)(config)
+    if ex_id == 'coinbase':
+        sandbox = user.get('coinbase_sandbox')
+        if sandbox is None or sandbox in (1, True, '1', 'true', 'True'):
+            client.set_sandbox_mode(True)
     return client
 
 def normalize_symbol(symbol, exchange_id):
@@ -399,7 +403,8 @@ def init_db():
             ("premium_expired_notified", "BOOLEAN DEFAULT 0"),
             ("had_premium_before", "BOOLEAN DEFAULT 0"),
             ("referral_reward_triggered", "BOOLEAN DEFAULT 0"),
-            ("bingx_futures_type", "TEXT DEFAULT 'standard'")
+            ("bingx_futures_type", "TEXT DEFAULT 'standard'"),
+            ("coinbase_sandbox", "INTEGER DEFAULT 1")
         ]
         for col_name, col_def in cols:
             if col_name not in existing_cols:
@@ -616,7 +621,8 @@ def init_db():
             "public_key": "TEXT",
             "encrypted_private_key": "TEXT",
             "bingx_futures_type": "TEXT DEFAULT 'standard'",
-            "alpaca_start_equity": "REAL"
+            "alpaca_start_equity": "REAL",
+            "coinbase_sandbox": "INTEGER DEFAULT 1"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:
@@ -714,7 +720,8 @@ def get_user(chat_id):
             "premium_expired_notified": bool(row_dict.get('premium_expired_notified')),
             "had_premium_before": bool(row_dict.get('had_premium_before')),
             "referral_reward_triggered": bool(row_dict.get('referral_reward_triggered')),
-            "bingx_futures_type": row_dict.get('bingx_futures_type') or 'perpetual'
+            "bingx_futures_type": row_dict.get('bingx_futures_type') or 'perpetual',
+            "coinbase_sandbox": row_dict.get('coinbase_sandbox') if row_dict.get('coinbase_sandbox') is not None else 1
         }
     return None
 
@@ -803,7 +810,8 @@ def get_user_from_web_row(row):
         "premium_expired_notified": False,
         "had_premium_before": False,
         "referral_reward_triggered": bool(row.get('referral_reward_triggered')),
-        "bingx_futures_type": row.get('bingx_futures_type') or 'perpetual'
+        "bingx_futures_type": row.get('bingx_futures_type') or 'perpetual',
+        "coinbase_sandbox": row.get('coinbase_sandbox') if row.get('coinbase_sandbox') is not None else 1
     }
 
 def get_all_active_users():
