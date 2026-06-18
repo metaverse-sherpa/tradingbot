@@ -82,8 +82,12 @@ def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
             cb_sandbox = tg_user.get("coinbase_sandbox")
         if cb_sandbox is None and web_user:
             cb_sandbox = web_user.get("coinbase_sandbox")
-        if cb_sandbox is None or cb_sandbox in (1, True, '1', 'true', 'True'):
+        # Only enable sandbox if EXPLICITLY set to true — never default to sandbox
+        if cb_sandbox in (1, True, '1', 'true', 'True'):
             client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
+            print(f"[COINBASE] Using SANDBOX endpoint for user")
+        else:
+            print(f"[COINBASE] Using PRODUCTION endpoint for user (sandbox={cb_sandbox})")
 
 @trades_bp.route('/api/user/profile', methods=['GET'])
 @require_auth

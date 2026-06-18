@@ -202,3 +202,52 @@ def delete_alpaca():
     delete_web_user_alpaca_keys(g.user["id"])
     return jsonify({"message": "Alpaca Stock API keys deleted successfully"}), 200
 
+@settings_bp.route('/api/settings/test-connection', methods=['GET'])
+@require_auth
+def test_connection():
+    """Test the user's saved exchange credentials and return detailed status."""
+    user = g.user
+    segment = request.args.get('segment', 'crypto')  # 'crypto' or 'stock'
+
+    if segment == 'crypto':
+        api_key = user.get('api_key')
+        api_secret = user.get('api_secret')
+        api_password = user.get('api_password') or ''
+        exchange_id = user.get('exchange_id', 'blofin')
+
+        if not api_key or not api_secret:
+            return jsonify({'success': False, 'error': 'No crypto API keys saved'}), 200
+
+        try:
+            import ccxt
+            from web_api.routes_trades import _set_coinbase_sandbox_if_needed
+            config = {
+                'apiKey': api_key,
+                'secret': api_secret,
+                **({'password': api_password} if api_password else {}),
+                'enableRateLimit': False,
+                'timeout': 8000,
+            }
+            client = getattr(ccxt, exchange_id)(config)
+            _set_coinbase_sandbox_if_needed(client, exchange_id, None, user)
+            bal = client.fetch_balance()
+            client.close()
+            return jsonify({'success': True, 'exchange': exchange_id, 'endpoint': client.urls.get('api', {}).get('rest', '')}), 200
+        except Exception as e:
+            err = str(e)
+            print(f'[TEST-CONNECTION] {exchange_id} error: {err}')
+            return jsonify({'success': False, 'exchange': exchange_id, 'error': err[:300]}), 200
+
+    elif segment == 'stock':
+        import database
+        alpaca_key = user.get('alpaca_api_key')
+        alpaca_secret = user.get('alpaca_api_secret')
+        if not alpaca_key or not alpaca_secret:
+            return jsonify({'success': False, 'error': 'No Alpaca API keys saved'}), 200
+        try:
+            res = database.make_alpaca_request(user, 'GET', '/v2/account')
+            return jsonify({'success': True, 'portfolio_value': res.get('portfolio_value')}), 200
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)[:300]}), 200
+
+    return jsonify({'error': 'Invalid segment'}), 400

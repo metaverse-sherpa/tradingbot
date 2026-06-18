@@ -3740,9 +3740,14 @@ function renderSettingsView() {
                                 <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
                                     🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''} ${STATE.crypto_auth_success ? '<span title="Successfully Authenticated" class="cursor-help">✅</span>' : ''}</span>
                                 </span>
-                                <button onclick="deleteExchange('crypto')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                    <span class="material-symbols-outlined text-[14px]">delete</span>Delete
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="testExchangeConnection('crypto', this)" class="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                        <span class="material-symbols-outlined text-[14px]">wifi_tethering</span>Test
+                                    </button>
+                                    <button onclick="deleteExchange('crypto')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                        <span class="material-symbols-outlined text-[14px]">delete</span>Delete
+                                    </button>
+                                </div>
                             </div>
                             <div class="space-y-2 text-xs">
                                 <div class="flex justify-between items-center gap-2">
@@ -5599,6 +5604,30 @@ window.deleteExchange = function(type) {
             console.error(err);
             alert(`Error: ${err.message || err}`);
         });
+    }
+};
+
+window.testExchangeConnection = async function(segment, btn) {
+    const origLabel = btn.innerHTML;
+    btn.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">refresh</span>Testing...';
+    btn.disabled = true;
+    try {
+        const result = await apiRequest(`/settings/test-connection?segment=${segment}`);
+        if (result && result.success) {
+            showToast(`✅ ${(segment === 'crypto' ? result.exchange : 'Alpaca')} connection successful!`);
+            if (segment === 'crypto') STATE.crypto_auth_success = true;
+            if (segment === 'stock') STATE.stock_auth_success = true;
+            renderView();
+        } else {
+            const errMsg = (result && result.error) || 'Unknown error';
+            showToast(`❌ Connection failed: ${errMsg}`, 'error');
+            console.error('[Test Connection]', errMsg);
+        }
+    } catch (e) {
+        showToast(`❌ Connection test error: ${e.message || e}`, 'error');
+    } finally {
+        btn.innerHTML = origLabel;
+        btn.disabled = false;
     }
 };
 
