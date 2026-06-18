@@ -83,7 +83,7 @@ def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
         if cb_sandbox is None and web_user:
             cb_sandbox = web_user.get("coinbase_sandbox")
         if cb_sandbox is None or cb_sandbox in (1, True, '1', 'true', 'True'):
-            client.set_sandbox_mode(True)
+            client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
 
 @trades_bp.route('/api/user/profile', methods=['GET'])
 @require_auth

@@ -65,7 +65,7 @@ def get_exchange_client(user):
     if ex_id == 'coinbase':
         sandbox = user.get('coinbase_sandbox')
         if sandbox is None or sandbox in (1, True, '1', 'true', 'True'):
-            client.set_sandbox_mode(True)
+            client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
     return client
 
 def normalize_symbol(symbol, exchange_id):
