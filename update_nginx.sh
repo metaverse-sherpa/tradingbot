@@ -25,6 +25,7 @@ server {
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
 
+# Redirect all requests matching the domain to HTTPS
 server {
     if ($host = bot.metaversesherpa.io) {
         return 301 https://$host$request_uri;
@@ -34,5 +35,19 @@ server {
     server_name bot.metaversesherpa.io;
     return 404; # managed by Certbot
 }
+
+# Catch-all default server block to redirect IP address or other domain requests to HTTPS
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    return 301 https://bot.metaversesherpa.io$request_uri;
+}
 INNER_EOF
+
+# Remove default site to prevent default_server port 80 conflict
+sudo rm -f /etc/nginx/sites-enabled/default
+# Ensure our config is properly linked in sites-enabled
+sudo ln -sf /etc/nginx/sites-available/bot.metaversesherpa.io /etc/nginx/sites-enabled/
+# Restart nginx service
 sudo systemctl restart nginx
