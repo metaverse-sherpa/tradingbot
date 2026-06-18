@@ -196,11 +196,20 @@ def get_balance():
                 futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
-                asset = 'USDC' if crypto_exchange_id == 'coinbase' else 'USDT'
-                asset_bal = bal.get(asset, {})
-                if not isinstance(asset_bal, dict):
-                    asset_bal = {}
-                free_asset = float(asset_bal.get('free') or asset_bal.get('total') or bal.get('free', {}).get(asset) or bal.get('total', {}).get(asset) or 0.0)
+                if crypto_exchange_id == 'coinbase':
+                    usd_bal = bal.get('USD', {})
+                    usdc_bal = bal.get('USDC', {})
+                    if not isinstance(usd_bal, dict): usd_bal = {}
+                    if not isinstance(usdc_bal, dict): usdc_bal = {}
+                    free_usd = float(usd_bal.get('free') or usd_bal.get('total') or bal.get('free', {}).get('USD') or bal.get('total', {}).get('USD') or 0.0)
+                    free_usdc = float(usdc_bal.get('free') or usdc_bal.get('total') or bal.get('free', {}).get('USDC') or bal.get('total', {}).get('USDC') or 0.0)
+                    free_asset = free_usd + free_usdc
+                else:
+                    asset = 'USDT'
+                    asset_bal = bal.get(asset, {})
+                    if not isinstance(asset_bal, dict):
+                        asset_bal = {}
+                    free_asset = float(asset_bal.get('free') or asset_bal.get('total') or bal.get('free', {}).get(asset) or bal.get('total', {}).get(asset) or 0.0)
                 
                 total_equity = free_asset
                 try:

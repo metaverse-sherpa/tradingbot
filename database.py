@@ -750,23 +750,23 @@ def get_user_from_web_row(row):
     api_key = None
     if row.get('api_key'):
         try: api_key = decrypt(row['api_key'])
-        except: pass
+        except: api_key = row['api_key']
     api_secret = None
     if row.get('api_secret'):
         try: api_secret = decrypt(row['api_secret'])
-        except: pass
+        except: api_secret = row['api_secret']
     api_password = None
     if row.get('api_password'):
         try: api_password = decrypt(row['api_password'])
-        except: pass
+        except: api_password = row['api_password']
     alpaca_api_key = None
     if row.get('alpaca_api_key'):
         try: alpaca_api_key = decrypt(row['alpaca_api_key'])
-        except: pass
+        except: alpaca_api_key = row['alpaca_api_key']
     alpaca_api_secret = None
     if row.get('alpaca_api_secret'):
         try: alpaca_api_secret = decrypt(row['alpaca_api_secret'])
-        except: pass
+        except: alpaca_api_secret = row['alpaca_api_secret']
         
     return {
         "api_key": api_key,

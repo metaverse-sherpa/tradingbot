@@ -54,8 +54,15 @@ async def sync_engine(application):
                                 
                                 bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
                                 balance = await user_ex.fetch_balance(params=bal_params)
-                                asset = 'USDC' if ex_id == 'coinbase' else 'USDT'
-                                equity = float(balance.get(asset, {}).get("total", 0) or balance.get(asset, {}).get("free", 0) or 0.0)
+                                if ex_id == 'coinbase':
+                                    usd_bal = balance.get('USD', {})
+                                    usdc_bal = balance.get('USDC', {})
+                                    if not isinstance(usd_bal, dict): usd_bal = {}
+                                    if not isinstance(usdc_bal, dict): usdc_bal = {}
+                                    equity = float(usd_bal.get("total") or usd_bal.get("free") or balance.get("free", {}).get("USD") or balance.get("total", {}).get("USD") or 0.0) + float(usdc_bal.get("total") or usdc_bal.get("free") or balance.get("free", {}).get("USDC") or balance.get("total", {}).get("USDC") or 0.0)
+                                else:
+                                    asset = 'USDT'
+                                    equity = float(balance.get(asset, {}).get("total", 0) or balance.get(asset, {}).get("free", 0) or 0.0)
                                 await database.update_user_stats_from_engine(chat_id, equity, user_ex, application, web_user_id=web_user_id)
                         except Exception as e:
                             logger.error(f"Sync error for user {chat_id or f'web_{web_user_id}'} on exchange {ex_id} ({futures_type} futures): {e}")

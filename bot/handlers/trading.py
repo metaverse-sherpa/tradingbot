@@ -1232,11 +1232,22 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }) as user_ex:
                 bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
                 balance = await user_ex.fetch_balance(params=bal_params)
-                asset = 'USDC' if ex_id == 'coinbase' else 'USDT'
-                asset_bal = balance.get(asset, {})
-                if not isinstance(asset_bal, dict):
-                    asset_bal = {}
-                free = float(asset_bal.get("free") or asset_bal.get("total") or balance.get("free", {}).get(asset) or balance.get("total", {}).get(asset) or 0.0)
+                if ex_id == 'coinbase':
+                    usd_bal = balance.get('USD', {})
+                    usdc_bal = balance.get('USDC', {})
+                    if not isinstance(usd_bal, dict): usd_bal = {}
+                    if not isinstance(usdc_bal, dict): usdc_bal = {}
+                    free_usd = float(usd_bal.get('free') or usd_bal.get('total') or balance.get('free', {}).get('USD') or balance.get('total', {}).get('USD') or 0.0)
+                    free_usdc = float(usdc_bal.get('free') or usdc_bal.get('total') or balance.get('free', {}).get('USDC') or balance.get('total', {}).get('USDC') or 0.0)
+                    free = free_usd + free_usdc
+                    currency = "USD/USDC"
+                else:
+                    asset = 'USDT'
+                    asset_bal = balance.get(asset, {})
+                    if not isinstance(asset_bal, dict):
+                        asset_bal = {}
+                    free = float(asset_bal.get("free") or asset_bal.get("total") or balance.get("free", {}).get(asset) or balance.get("total", {}).get(asset) or 0.0)
+                    currency = "USDT"
                 
                 # True Equity Calculation
                 total_value = free
@@ -1253,7 +1264,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "exchange": ex_id.upper(),
                     "free": free,
                     "total": total_value,
-                    "currency": "USDC" if ex_id == "coinbase" else "USDT"
+                    "currency": currency
                 }
         except Exception as e:
             logger.error(f"Crypto balance check failed for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
