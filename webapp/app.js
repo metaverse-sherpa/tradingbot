@@ -3720,8 +3720,7 @@ function renderSettingsView() {
                 `}
             </section>
 
-                    <!-- Connected Exchanges Summary -->
-            ${isPremium && (hasLinkedCrypto || hasLinkedStock) ? `
+            ${isPremium ? `
             <section class="glass-card rounded-xl p-card-padding border border-white/10 animate-fade-in">
                 <details class="group" ${window.innerWidth >= 1024 ? 'open' : ''}>
                     <summary class="font-body-lg text-body-lg font-bold text-on-surface flex justify-between items-center cursor-pointer list-none [&::-webkit-details-marker]:hidden select-none">
@@ -3731,72 +3730,139 @@ function renderSettingsView() {
                         <span class="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 text-on-surface-variant">expand_more</span>
                     </summary>
                     <div class="space-y-4 mt-4">
-                    ${hasLinkedCrypto ? `
-                    <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
-                        <div class="flex justify-between items-center">
-                            <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
-                                🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''}</span>
-                            </span>
-                            <button onclick="deleteExchange('crypto')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                <span class="material-symbols-outlined text-[14px]">delete</span>Delete
-                            </button>
+                        ${hasLinkedCrypto ? `
+                        <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
+                                    🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''}</span>
+                                </span>
+                                <button onclick="deleteExchange('crypto')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                    <span class="material-symbols-outlined text-[14px]">delete</span>Delete
+                                </button>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-on-surface-variant">API Key:</span>
+                                    <div class="flex items-center gap-2">
+                                        <input type="password" value="${user.api_key || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-on-surface-variant">API Secret:</span>
+                                    <div class="flex items-center gap-2">
+                                        <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
+                                    </div>
+                                </div>
+                                ${user.has_exchange_keys ? `
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-on-surface-variant">Passphrase:</span>
+                                    <div class="flex items-center gap-2">
+                                        <input type="password" value="${user.api_password || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </form>
+                        ` : ''}
+                        
+                        ${hasLinkedStock ? `
+                        <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
+                                    🦙 Stocks: <span class="text-primary font-mono">Alpaca</span>
+                                </span>
+                                <button onclick="deleteExchange('stock')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                    <span class="material-symbols-outlined text-[14px]">delete</span>Delete
+                                </button>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-on-surface-variant">API Key:</span>
+                                    <div class="flex items-center gap-2">
+                                        <input type="password" value="${user.alpaca_api_key || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-on-surface-variant">API Secret:</span>
+                                    <div class="flex items-center gap-2">
+                                        <input type="password" value="${user.alpaca_api_secret || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="text-on-surface-variant">Endpoint URL:</span>
+                                    <span class="text-on-surface font-mono text-xs">${user.alpaca_endpoint || 'https://api.alpaca.markets'}</span>
+                                </div>
+                            </div>
+                        </form>
+                        ` : ''}
+
+                        ${!hasLinkedCrypto && !hasLinkedStock ? `
+                        <div class="bg-surface-container-low p-4 rounded-xl border border-white/5 text-xs text-on-surface-variant leading-relaxed">
+                            No exchanges connected. Connect your Crypto Exchange or Alpaca Stocks API credentials below to unlock autonomous copy-trading.
                         </div>
-                        <div class="space-y-2 text-xs">
-                            <div class="flex justify-between items-center gap-2">
-                                <span class="text-on-surface-variant">API Key:</span>
-                                <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_key || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-key-display"/>
+                        ` : ''}
+
+                        <!-- Connect Exchange Wizard Form (if both are not connected) -->
+                        ${(!hasLinkedCrypto || !hasLinkedStock) ? `
+                        <div id="exchange-wizard-container" class="pt-4 border-t border-white/10 space-y-4 animate-fade-in">
+                            <h4 class="font-body-md text-body-md font-bold text-on-surface">
+                                🔌 Connect ${(!hasLinkedCrypto && !hasLinkedStock) ? 'Exchange' : (hasLinkedCrypto ? 'Stocks Platform' : 'Crypto Exchange')}
+                            </h4>
+                            <div class="space-y-2">
+                                <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
+                                <div class="relative">
+                                    <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all animate-none appearance-none cursor-pointer" onchange="toggleExchangeFields()">
+                                        ${!hasLinkedCrypto ? `
+                                        <option value="blofin">Blofin</option>
+                                        <option value="binance">Binance</option>
+                                        <option value="mexc">MEXC</option>
+                                        <option value="bitget">Bitget</option>
+                                        <option value="bingx">BingX</option>
+                                        <option value="coinbase">Coinbase Advanced</option>
+                                        ` : ''}
+                                        ${!hasLinkedStock ? `
+                                        <option value="alpaca">Alpaca Stocks</option>
+                                        ` : ''}
+                                    </select>
+                                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-xl">expand_more</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex justify-between items-center gap-2">
-                                <span class="text-on-surface-variant">API Secret:</span>
-                                <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
+                            <form onsubmit="handleExchangeSetup(event)" class="space-y-3" autocomplete="off">
+                                <div class="space-y-1">
+                                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Key</label>
+                                    <input id="api-key" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Key" type="text" required/>
                                 </div>
-                            </div>
-                            ${user.has_exchange_keys ? `
-                            <div class="flex justify-between items-center gap-2">
-                                <span class="text-on-surface-variant">Passphrase:</span>
-                                <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.api_password || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-pass-display"/>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Secret</label>
+                                    <input id="api-secret" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Secret" type="password" required/>
                                 </div>
-                            </div>
-                            ` : ''}
+                                <div id="pwd-field-container" class="space-y-1">
+                                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Passphrase</label>
+                                    <input id="api-password" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
+                                </div>
+                                <div id="bingx-futures-field-container" class="p-3 bg-primary/10 rounded-lg border border-primary/20 text-xs text-on-surface-variant space-y-1 hidden">
+                                    <span class="font-bold text-primary flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-sm">info</span> BingX Requirement
+                                    </span>
+                                    <p>Metaverse Sherpa connects to BingX using <strong>Perpetual Futures</strong>. Please make sure your API key has <strong>Read</strong> and <strong>Perpetual Futures Trading</strong> permissions enabled, and your funds are in your Perpetual Futures account.</p>
+                                </div>
+                                <div id="endpoint-field-container" class="space-y-1 hidden">
+                                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
+                                    <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://api.alpaca.markets" type="text" value="https://api.alpaca.markets"/>
+                                </div>
+                                <div id="coinbase-sandbox-field-container" class="flex items-center gap-2 p-2 bg-surface-container-low border border-white/10 rounded-lg hidden">
+                                    <input id="coinbase-sandbox" type="checkbox" checked class="w-4 h-4 rounded border-white/10 accent-primary cursor-pointer"/>
+                                    <label for="coinbase-sandbox" class="text-xs text-on-surface cursor-pointer select-none">Use Sandbox Environment (default: true)</label>
+                                </div>
+                                <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
+                                    Save Keys
+                                </button>
+                            </form>
                         </div>
-                    </form>
-                    ` : ''}
-                    
-                    ${hasLinkedStock ? `
-                    <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
-                        <div class="flex justify-between items-center">
-                            <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
-                                🦙 Stocks: <span class="text-primary font-mono">Alpaca</span>
-                            </span>
-                            <button onclick="deleteExchange('stock')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                <span class="material-symbols-outlined text-[14px]">delete</span>Delete
-                            </button>
-                        </div>
-                        <div class="space-y-2 text-xs">
-                            <div class="flex justify-between items-center gap-2">
-                                <span class="text-on-surface-variant">API Key:</span>
-                                <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.alpaca_api_key || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-key-display"/>
-                                </div>
-                            </div>
-                            <div class="flex justify-between items-center gap-2">
-                                <span class="text-on-surface-variant">API Secret:</span>
-                                <div class="flex items-center gap-2">
-                                    <input type="password" value="${user.alpaca_api_secret || (user.has_alpaca_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="stock-secret-display"/>
-                                </div>
-                            </div>
-                            <div class="flex justify-between items-center gap-2">
-                                <span class="text-on-surface-variant">Endpoint URL:</span>
-                                <span class="text-on-surface font-mono text-xs">${user.alpaca_endpoint || 'https://api.alpaca.markets'}</span>
-                            </div>
-                        </div>
-                    </form>
-                    ` : ''}
-                </div>
+                        ` : ''}
+                    </div>
                 </details>
             </section>
             ` : ''}
@@ -3814,65 +3880,6 @@ function renderSettingsView() {
                 </button>
             </section>
             ` : ''}
-                    <!-- Connect Exchange Wizard (Premium Only) -->
-            ${isPremium && (!hasLinkedCrypto || !hasLinkedStock || STATE.editing_exchange) ? `
-            <section id="exchange-wizard-section" class="glass-card rounded-xl p-card-padding space-y-4 border border-white/10 animate-fade-in">
-                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🔌 ${STATE.editing_exchange ? 'Edit Connected Exchange' : 'Connect Exchange'}</h3>
-                <div class="space-y-2">
-                    <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
-                    <div class="relative">
-                        <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all animate-none appearance-none cursor-pointer" onchange="toggleExchangeFields()">
-                            <option value="blofin">Blofin</option>
-                            <option value="binance">Binance</option>
-                            <option value="mexc">MEXC</option>
-                            <option value="bitget">Bitget</option>
-                            <option value="bingx">BingX</option>
-                            <option value="coinbase">Coinbase Advanced</option>
-                            <option value="alpaca">Alpaca Stocks</option>
-                        </select>
-                        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
-                            <span class="material-symbols-outlined text-xl">expand_more</span>
-                        </div>
-                    </div>
-                </div>
-                <form onsubmit="handleExchangeSetup(event)" class="space-y-3" autocomplete="off">
-                    <div class="space-y-1">
-                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Key</label>
-                        <input id="api-key" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Key" type="text" required/>
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">API Secret</label>
-                        <input id="api-secret" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="API Secret" type="password" required/>
-                    </div>
-                    <div id="pwd-field-container" class="space-y-1">
-                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Passphrase</label>
-                        <input id="api-password" autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="Passphrase" type="password"/>
-                    </div>
-                    <div id="bingx-futures-field-container" class="p-3 bg-primary/10 rounded-lg border border-primary/20 text-xs text-on-surface-variant space-y-1 hidden">
-                        <span class="font-bold text-primary flex items-center gap-1">
-                            <span class="material-symbols-outlined text-sm">info</span> BingX Requirement
-                        </span>
-                        <p>Metaverse Sherpa connects to BingX using <strong>Perpetual Futures</strong>. Please make sure your API key has <strong>Read</strong> and <strong>Perpetual Futures Trading</strong> permissions enabled, and your funds are in your Perpetual Futures account.</p>
-                    </div>
-                    <div id="endpoint-field-container" class="space-y-1 hidden">
-                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
-                        <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://api.alpaca.markets" type="text" value="https://api.alpaca.markets"/>
-                    </div>
-                    <div id="coinbase-sandbox-field-container" class="flex items-center gap-2 p-2 bg-surface-container-low border border-white/10 rounded-lg hidden">
-                        <input id="coinbase-sandbox" type="checkbox" checked class="w-4 h-4 rounded border-white/10 accent-primary cursor-pointer"/>
-                        <label for="coinbase-sandbox" class="text-xs text-on-surface cursor-pointer select-none">Use Sandbox Environment (default: true)</label>
-                    </div>
-                    <div class="flex gap-3">
-                        <button type="submit" class="flex-1 h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
-                            Save Keys
-                        </button>
-                        ${STATE.editing_exchange ? `
-                        <button type="button" onclick="STATE.editing_exchange = null; renderView();" class="flex-1 h-11 bg-white/5 border border-white/10 text-on-surface font-label-md text-label-md font-bold rounded-lg hover:bg-white/10 transition-all mt-2 cursor-pointer">
-                            Cancel
-                        </button>
-                        ` : ''}
-                    </div>
-                </form>
             </section>
             ` : ''}
                     <!-- Telegram Sync -->
@@ -5855,6 +5862,11 @@ function bindEvents() {
             card.style.transform = 'scale(1)';
         });
     });
+
+    // Automatically trigger toggleExchangeFields if the settings panel is rendered and exchange-id exists
+    if (STATE.current_view === 'settings' && document.getElementById('exchange-id')) {
+        window.toggleExchangeFields();
+    }
 }
 
 // ----------------- Deployment Alert Notifier -----------------
