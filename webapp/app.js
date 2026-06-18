@@ -3814,8 +3814,7 @@ function renderSettingsView() {
                             </h4>
                             <div class="space-y-2">
                                 <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
-                                <div class="relative">
-                                    <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg pl-4 pr-10 cyan-glow-focus transition-all animate-none appearance-none cursor-pointer" onchange="toggleExchangeFields()">
+                                <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none cursor-pointer" onchange="toggleExchangeFields()">
                                         ${!hasLinkedCrypto ? `
                                         <option value="blofin">Blofin</option>
                                         <option value="binance">Binance</option>
@@ -3828,10 +3827,6 @@ function renderSettingsView() {
                                         <option value="alpaca">Alpaca Stocks</option>
                                         ` : ''}
                                     </select>
-                                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
-                                        <span class="material-symbols-outlined text-xl">expand_more</span>
-                                    </div>
-                                </div>
                             </div>
                             <form onsubmit="handleExchangeSetup(event)" class="space-y-3" autocomplete="off">
                                 <div class="space-y-1">
