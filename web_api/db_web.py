@@ -89,12 +89,72 @@ def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password
             try:
                 c.execute('''
                     UPDATE Users
-                    SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?
+                    SET exchange_id = ?, blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?
                     WHERE telegram_chat_id = ?
                 ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', cb_sb_val, row[0]))
             except Exception as e:
                 print(f"Telegram sync error for exchange keys / sandbox: {e}")
     update_web_user_status(user_id, 1)
+
+def delete_web_user_keys(user_id):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT telegram_chat_id, alpaca_api_key FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        
+        has_alpaca = False
+        tg_chat_id = None
+        if row:
+            tg_chat_id = row[0]
+            has_alpaca = bool(row[1])
+            
+        is_active = 1 if has_alpaca else 0
+        
+        c.execute('''
+            UPDATE WebUsers
+            SET api_key = NULL, api_secret = NULL, api_password = NULL, exchange_id = 'blofin', is_active = ?
+            WHERE id = ?
+        ''', (is_active, user_id))
+        
+        if tg_chat_id:
+            try:
+                c.execute('''
+                    UPDATE Users
+                    SET blofin_api_key = NULL, blofin_api_secret = NULL, blofin_api_password = NULL, exchange_id = 'blofin', is_active = ?
+                    WHERE telegram_chat_id = ?
+                ''', (is_active, tg_chat_id))
+            except Exception as e:
+                print(f"Telegram sync error for delete exchange keys: {e}")
+
+def delete_web_user_alpaca_keys(user_id):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT telegram_chat_id, api_key FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        
+        has_crypto = False
+        tg_chat_id = None
+        if row:
+            tg_chat_id = row[0]
+            has_crypto = bool(row[1])
+            
+        is_active = 1 if has_crypto else 0
+        
+        c.execute('''
+            UPDATE WebUsers
+            SET alpaca_api_key = NULL, alpaca_api_secret = NULL, alpaca_endpoint = NULL, is_active = ?
+            WHERE id = ?
+        ''', (is_active, user_id))
+        
+        if tg_chat_id:
+            try:
+                c.execute('''
+                    UPDATE Users
+                    SET alpaca_api_key = NULL, alpaca_api_secret = NULL, alpaca_endpoint = NULL, is_active = ?
+                    WHERE telegram_chat_id = ?
+                ''', (is_active, tg_chat_id))
+            except Exception as e:
+                print(f"Telegram sync error for delete alpaca keys: {e}")
 
 def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
     with db_session() as conn:

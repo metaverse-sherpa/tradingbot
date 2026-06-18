@@ -3737,8 +3737,8 @@ function renderSettingsView() {
                             <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
                                 🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''}</span>
                             </span>
-                            <button onclick="editExchange('crypto')" class="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                <span class="material-symbols-outlined text-[14px]">edit</span>Edit
+                            <button onclick="deleteExchange('crypto')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-[14px]">delete</span>Delete
                             </button>
                         </div>
                         <div class="space-y-2 text-xs">
@@ -3772,8 +3772,8 @@ function renderSettingsView() {
                             <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
                                 🦙 Stocks: <span class="text-primary font-mono">Alpaca</span>
                             </span>
-                            <button onclick="editExchange('stock')" class="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                                <span class="material-symbols-outlined text-[14px]">edit</span>Edit
+                            <button onclick="deleteExchange('stock')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-[14px]">delete</span>Delete
                             </button>
                         </div>
                         <div class="space-y-2 text-xs">
@@ -5560,6 +5560,33 @@ window.editExchange = function(type) {
             }
         }
     }, 50);
+};
+
+window.deleteExchange = function(type) {
+    const isCrypto = type === 'crypto';
+    const message = isCrypto 
+        ? "🚨 WARNING: This will permanently delete your Crypto API credentials and deactivate automated copy-trading for crypto. Are you sure?"
+        : "🚨 WARNING: This will permanently delete your Alpaca Stock API credentials and deactivate automated copy-trading for stocks. Are you sure?";
+        
+    if (confirm(message)) {
+        const endpoint = isCrypto ? '/settings/exchange' : '/settings/alpaca';
+        apiRequest(endpoint, 'DELETE')
+        .then(data => {
+            showToast(data.message || "Credentials deleted successfully!");
+            // Reload user profile and refresh view
+            return apiRequest('/user/profile');
+        })
+        .then(profile => {
+            if (profile) {
+                STATE.user = profile;
+                renderView();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert(`Error: ${err.message || err}`);
+        });
+    }
 };
 
 window.toggleDisplayVisibility = function(inputId, iconEl) {

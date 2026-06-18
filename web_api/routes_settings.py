@@ -8,7 +8,9 @@ from web_api.db_web import (
     update_web_user_telegram,
     update_web_user_symbols,
     update_web_user_status,
-    update_web_user_strategy
+    update_web_user_strategy,
+    delete_web_user_keys,
+    delete_web_user_alpaca_keys
 )
 
 settings_bp = Blueprint('settings', __name__)
@@ -187,3 +189,16 @@ def get_balance_history():
             "encrypted_stock_balance": r[2]
         })
     return jsonify(history), 200
+
+@settings_bp.route('/api/settings/exchange', methods=['DELETE'])
+@require_auth
+def delete_exchange():
+    delete_web_user_keys(g.user["id"])
+    return jsonify({"message": "Exchange API keys deleted successfully"}), 200
+
+@settings_bp.route('/api/settings/alpaca', methods=['DELETE'])
+@require_auth
+def delete_alpaca():
+    delete_web_user_alpaca_keys(g.user["id"])
+    return jsonify({"message": "Alpaca Stock API keys deleted successfully"}), 200
+
