@@ -76,6 +76,26 @@ def normalize_symbol(symbol, exchange_id):
 
     # Exchange-specific symbol mapping tables
     MAPPINGS = {
+        'coinbase': {
+            'BTC/USDT:USDT': 'BTC/USDC:USDC',
+            'BTC/USDT': 'BTC/USDC:USDC',
+            'ETH/USDT:USDT': 'ETH/USDC:USDC',
+            'ETH/USDT': 'ETH/USDC:USDC',
+            'SOL/USDT:USDT': 'SOL/USDC:USDC',
+            'SOL/USDT': 'SOL/USDC:USDC',
+            'ADA/USDT:USDT': 'ADA/USDC:USDC',
+            'ADA/USDT': 'ADA/USDC:USDC',
+            'DOGE/USDT:USDT': 'DOGE/USDC:USDC',
+            'DOGE/USDT': 'DOGE/USDC:USDC',
+            'LINK/USDT:USDT': 'LINK/USDC:USDC',
+            'LINK/USDT': 'LINK/USDC:USDC',
+            'DOT/USDT:USDT': 'DOT/USDC:USDC',
+            'DOT/USDT': 'DOT/USDC:USDC',
+            'SHIB/USDT:USDT': '1000SHIB/USDC:USDC',
+            'SHIB/USDT': '1000SHIB/USDC:USDC',
+            'PEPE/USDT:USDT': '1000PEPE/USDC:USDC',
+            'PEPE/USDT': '1000PEPE/USDC:USDC',
+        },
         'bingx': {
             'TON/USDT:USDT': 'TONCOIN/USDT:USDT',
             'TON/USDT': 'TONCOIN/USDT:USDT',
@@ -208,7 +228,9 @@ def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
     Returns the unified CCXT parameters for balance fetching
     representing the correct futures/swap trading account.
     """
-    if exchange_id == 'bingx':
+    if exchange_id == 'coinbase':
+        return {"type": "swap"}     # Perpetual swaps settled in USDC
+    elif exchange_id == 'bingx':
         return {"type": "swap"}     # USDT-M Perpetual Account
     elif exchange_id == 'bitget':
         return {"type": "swap"}     # USDT perpetual swaps (usdt_futures)
@@ -217,6 +239,7 @@ def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
     elif exchange_id == 'binance':
         return {"type": "future"}   # USDⓈ-M Futures (UMFUTURE)
     return {"type": "futures"}      # Fallback (e.g. Blofin)
+
 
 
 

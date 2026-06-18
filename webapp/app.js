@@ -3827,6 +3827,7 @@ function renderSettingsView() {
                             <option value="mexc">MEXC</option>
                             <option value="bitget">Bitget</option>
                             <option value="bingx">BingX</option>
+                            <option value="coinbase">Coinbase Advanced</option>
                             <option value="alpaca">Alpaca Stocks</option>
                         </select>
                         <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">

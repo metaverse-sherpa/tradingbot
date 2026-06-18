@@ -212,24 +212,24 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
                 log.warning("⚠️ Skipping %s: current price %.4f is already at or below fixed TP %.4f", symbol, lp, tp)
                 return None
             
-        # Determine the maximum safe leverage that keeps the Stop Loss above/below liquidation price
-        trade_leverage = LEVERAGE
+        max_possible_leverage = 10 if exchange.id == 'coinbase' else LEVERAGE
+        trade_leverage = max_possible_leverage
         if signal["side"] == "buy":
             # For Long: sl > lp * (1 - 1/Lev + 0.025)  =>  Lev < 1 / (1.025 - sl/lp)
             denom = 1.025 - (sl / lp)
             if denom > 0:
-                trade_leverage = min(LEVERAGE, int(1.0 / denom))
+                trade_leverage = min(max_possible_leverage, int(1.0 / denom))
         else:
             # For Short: sl < lp * (1 + 1/Lev - 0.025)  =>  Lev < 1 / (sl/lp - 0.975)
             denom = (sl / lp) - 0.975
             if denom > 0:
-                trade_leverage = min(LEVERAGE, int(1.0 / denom))
+                trade_leverage = min(max_possible_leverage, int(1.0 / denom))
         
         # Ensure leverage is at least 1x
         trade_leverage = max(1, trade_leverage)
         
-        if trade_leverage < LEVERAGE:
-            log.info("ℹ️ Dynamic Leverage adjustment for %s: reduced from %dx to %dx to protect SL (%.4f)", symbol, LEVERAGE, trade_leverage, sl)
+        if trade_leverage < (10 if exchange.id == 'coinbase' else LEVERAGE):
+            log.info("ℹ️ Dynamic Leverage adjustment for %s: reduced from %dx to %dx to protect SL (%.4f)", symbol, (10 if exchange.id == 'coinbase' else LEVERAGE), trade_leverage, sl)
 
         contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
@@ -246,17 +246,26 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
             max_market = 999999999.0 # Safe fallback
             
         max_leverage_size = (equity * trade_leverage) / (lp * contract_size)
-        size = round(min(float(raw_size), float(max_market), float(max_leverage_size)), 3)
+        size = min(float(raw_size), float(max_market), float(max_leverage_size))
+        
+        # Format the size using the exchange's unified precision format
+        try:
+            size_str = exchange.amount_to_precision(symbol, size)
+            size = float(size_str)
+        except Exception:
+            size = round(size, 3)
+            
         if size <= 0: return None
 
         # 🛡️ DYNAMIC LEVERAGE SYNC
-        try:
-            params = {}
-            if exchange.id == 'bingx':
-                params['side'] = 'LONG' if signal["side"] == 'buy' else 'SHORT'
-            await exchange.set_leverage(trade_leverage, symbol, params=params)
-        except Exception as le:
-            log.warning("⚠️ Leverage set failed for %s: %s. Continuing with caution.", symbol, le)
+        if exchange.has.get('setLeverage', False):
+            try:
+                params = {}
+                if exchange.id == 'bingx':
+                    params['side'] = 'LONG' if signal["side"] == 'buy' else 'SHORT'
+                await exchange.set_leverage(trade_leverage, symbol, params=params)
+            except Exception as le:
+                log.warning("⚠️ Leverage set failed for %s: %s. Continuing with caution.", symbol, le)
 
         # Risk Check: Liquidation vs Stop Loss
         # Institutional Buffer: Entry * (1 - 1/Lev + 2.5% Safety Margin)
@@ -278,16 +287,22 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         # Integrated exchanges like Blofin
         limit_price = lp * 1.01 if signal["side"] == "buy" else lp * 0.99
         order_side = "buy" if signal["side"] == "buy" else "sell"
-        params = {
-            "marginMode": "isolated", 
-            "positionSide": "net", 
-            "stopLoss": {"triggerPrice": sl}, 
-            "takeProfit": {"triggerPrice": tp}
-        }
-        if exchange.id == 'bitget':
-            params['tdMode'] = 'isolated' # Bitget specific override
-        elif exchange.id == 'bingx':
-            params['positionSide'] = 'LONG' if signal["side"] == "buy" else 'SHORT'
+        if exchange.id == 'coinbase':
+            params = {
+                "stopLossPrice": sl,
+                "takeProfitPrice": tp
+            }
+        else:
+            params = {
+                "marginMode": "isolated", 
+                "positionSide": "net", 
+                "stopLoss": {"triggerPrice": sl}, 
+                "takeProfit": {"triggerPrice": tp}
+            }
+            if exchange.id == 'bitget':
+                params['tdMode'] = 'isolated' # Bitget specific override
+            elif exchange.id == 'bingx':
+                params['positionSide'] = 'LONG' if signal["side"] == "buy" else 'SHORT'
             
         await exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
             
