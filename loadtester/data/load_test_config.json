@@ -49,22 +49,27 @@
         },
         {
             "action": "navigate",
-            "disabled": true,
+            "disabled": false,
             "path": "/#/stats",
             "screenshot": true
         },
         {
             "action": "click",
-            "disabled": true,
+            "disabled": false,
             "screenshot": true,
             "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')"
         },
         {
             "action": "wait_for_selector",
-            "disabled": true,
+            "disabled": false,
             "screenshot": true,
             "selector": "img[alt='Equity Curve']",
             "timeout": 60000
+        },
+        {
+            "path": "/#/settings",
+            "action": "navigate",
+            "screenshot": true
         }
     ]
 }

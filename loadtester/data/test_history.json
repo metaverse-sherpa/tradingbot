@@ -45,55 +45,6 @@
             }
         ],
         "screenshots_count": 105,
-        "peak_cpu": 44.0,
-        "peak_memory": 71.36
-    },
-    {
-        "id": "run_1781692571",
-        "timestamp": 1781692571.544217,
-        "duration": 95.59,
-        "status": "idle",
-        "success_count": 20,
-        "failure_count": 5,
-        "latencies_count": 100,
-        "errors": [
-            {
-                "timestamp": 1781692607.713805,
-                "worker_id": 2,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781692607.7147992,
-                "worker_id": 4,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781692607.768001,
-                "worker_id": 0,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781692632.451021,
-                "worker_id": 12,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1781692644.563185,
-                "worker_id": 14,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 105,
         "peak_cpu": 46.0,
         "peak_memory": 71.36
     },
@@ -876,5 +827,18 @@
         "screenshots_count": 202,
         "peak_cpu": 200.0,
         "peak_memory": 71.43
+    },
+    {
+        "id": "run_1781694724",
+        "timestamp": 1781694724.491044,
+        "duration": 1215.34,
+        "status": "completed",
+        "success_count": 100,
+        "failure_count": 0,
+        "latencies_count": 900,
+        "errors": [],
+        "screenshots_count": 900,
+        "peak_cpu": 200.0,
+        "peak_memory": 72.4
     }
 ]

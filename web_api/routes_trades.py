@@ -185,7 +185,10 @@ def get_balance():
                 futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
-                free_usdt = float(bal.get('USDT', {}).get('free', 0.0) or bal.get('free', {}).get('USDT', 0.0) or 0.0)
+                usdt_bal = bal.get('USDT', {})
+                if not isinstance(usdt_bal, dict):
+                    usdt_bal = {}
+                free_usdt = float(usdt_bal.get('free') or usdt_bal.get('total') or bal.get('free', {}).get('USDT') or bal.get('total', {}).get('USDT') or 0.0)
                 
                 total_equity = free_usdt
                 try:

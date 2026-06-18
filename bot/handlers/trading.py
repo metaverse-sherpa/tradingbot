@@ -1232,7 +1232,8 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }) as user_ex:
                 bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
                 balance = await user_ex.fetch_balance(params=bal_params)
-                free = float(balance.get("USDT", {}).get("free", 0))
+                usdt_bal = balance.get("USDT", {})
+                free = float(usdt_bal.get("free") or usdt_bal.get("total") or balance.get("free", {}).get("USDT") or balance.get("total", {}).get("USDT") or 0.0)
                 
                 # True Equity Calculation
                 total_value = free
