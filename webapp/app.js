@@ -1045,10 +1045,12 @@ async function handleRoute() {
         apiRequest('/user/balance?segment=crypto').then(bal => {
             if (bal) {
                 STATE.crypto_balance = bal.crypto_balance;
+                STATE.crypto_auth_success = bal.crypto_auth_success;
                 STATE.total_balance = STATE.crypto_balance + STATE.stock_balance;
             }
             STATE.is_loading_crypto_balance = false;
             updateViewIfOnDashboard();
+            if (window.location.hash.includes('#/settings')) renderView();
         }).catch(err => {
             STATE.is_loading_crypto_balance = false;
             updateViewIfOnDashboard();
@@ -1058,10 +1060,12 @@ async function handleRoute() {
         apiRequest('/user/balance?segment=stock').then(bal => {
             if (bal) {
                 STATE.stock_balance = bal.stock_balance;
+                STATE.stock_auth_success = bal.stock_auth_success;
                 STATE.total_balance = STATE.crypto_balance + STATE.stock_balance;
             }
             STATE.is_loading_stock_balance = false;
             updateViewIfOnDashboard();
+            if (window.location.hash.includes('#/settings')) renderView();
         }).catch(err => {
             STATE.is_loading_stock_balance = false;
             updateViewIfOnDashboard();
@@ -3734,7 +3738,7 @@ function renderSettingsView() {
                         <form class="bg-surface-container-low p-4 rounded-xl border border-white/5 space-y-3" onsubmit="event.preventDefault()">
                             <div class="flex justify-between items-center">
                                 <span class="font-bold text-sm text-on-surface flex items-center gap-1.5">
-                                    🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''}</span>
+                                    🪙 Crypto: <span class="capitalize text-primary font-mono">${user.exchange_id || 'Blofin'}${user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''} ${STATE.crypto_auth_success ? '<span title="Successfully Authenticated" class="cursor-help">✅</span>' : ''}</span>
                                 </span>
                                 <button onclick="deleteExchange('crypto')" class="text-xs text-[#ef4444] font-bold hover:underline flex items-center gap-1 cursor-pointer">
                                     <span class="material-symbols-outlined text-[14px]">delete</span>Delete

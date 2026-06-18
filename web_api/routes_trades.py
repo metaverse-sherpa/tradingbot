@@ -220,7 +220,7 @@ def get_balance():
                         total_equity += (margin + upnl)
                 except Exception as pos_err:
                     print(f"Error fetching positions for balance: {pos_err}")
-                return total_equity
+                return (total_equity, True)
             finally:
                 try:
                     client.close()
@@ -228,9 +228,9 @@ def get_balance():
                     pass
 
         db_fallback = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
-        balance_crypto = run_with_timeout(fetch_crypto_balance, 6.0, db_fallback)
+        balance_crypto, crypto_auth_success = run_with_timeout(fetch_crypto_balance, 6.0, (db_fallback, False))
     elif not segment or segment == 'crypto':
-        balance_crypto = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
+        balance_crypto, crypto_auth_success = float((tg_user or {}).get("equity") or user.get("equity") or 0.0), False
             
     # 2. Query live Stock balance (Alpaca)
     # Use linked Telegram user's Alpaca keys if available
@@ -241,9 +241,9 @@ def get_balance():
         def fetch_stock_balance():
             alpaca_user = tg_user or user
             res = database.make_alpaca_request(alpaca_user, "GET", "/v2/account")
-            return float(res.get("portfolio_value", 0.0))
+            return (float(res.get("portfolio_value", 0.0)), True)
         
-        balance_stock = run_with_timeout(fetch_stock_balance, 6.0, 0.0)
+        balance_stock, stock_auth_success = run_with_timeout(fetch_stock_balance, 6.0, (0.0, False))
             
     if segment == 'crypto':
         response_data = {
