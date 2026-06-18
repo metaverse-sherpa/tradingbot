@@ -3880,8 +3880,7 @@ function renderSettingsView() {
                 </button>
             </section>
             ` : ''}
-            </section>
-            ` : ''}
+
                     <!-- Telegram Sync -->
             <section class="glass-card rounded-xl p-card-padding space-y-4">
                 <div class="flex justify-between items-center">
