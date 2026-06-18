@@ -5399,6 +5399,14 @@ async function handleExchangeSetup(e) {
     }
     
     if (res) {
+        if (STATE.user) {
+            if (exId === 'alpaca') {
+                STATE.user.has_alpaca_keys = true;
+            } else {
+                STATE.user.has_exchange_keys = true;
+                STATE.user.crypto_exchange_id = exId;
+            }
+        }
         showToast("Exchange keys saved successfully!");
         STATE.editing_exchange = null;
         handleRoute();
