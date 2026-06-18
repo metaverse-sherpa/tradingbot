@@ -3757,7 +3757,7 @@ function renderSettingsView() {
                                         <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
                                     </div>
                                 </div>
-                                ${user.has_exchange_keys ? `
+                                ${user.has_exchange_keys && user.exchange_id !== 'coinbase' ? `
                                 <div class="flex justify-between items-center gap-2">
                                     <span class="text-on-surface-variant">Passphrase:</span>
                                     <div class="flex items-center gap-2">
@@ -3851,9 +3851,9 @@ function renderSettingsView() {
                                     <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
                                     <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://api.alpaca.markets" type="text" value="https://api.alpaca.markets"/>
                                 </div>
-                                <div id="coinbase-sandbox-field-container" class="flex items-center gap-2 p-2 bg-surface-container-low border border-white/10 rounded-lg hidden">
-                                    <input id="coinbase-sandbox" type="checkbox" checked class="w-4 h-4 rounded border-white/10 accent-primary cursor-pointer"/>
-                                    <label for="coinbase-sandbox" class="text-xs text-on-surface cursor-pointer select-none">Use Sandbox Environment (default: true)</label>
+                                <div id="coinbase-sandbox-field-container" class="flex items-center gap-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg hidden">
+                                    <input id="coinbase-sandbox" type="checkbox" class="w-4 h-4 rounded border-white/10 accent-primary cursor-pointer"/>
+                                    <label for="coinbase-sandbox" class="text-xs text-amber-300 cursor-pointer select-none">⚠️ Use Sandbox/Testnet Environment (disable for live trading)</label>
                                 </div>
                                 <button type="submit" class="w-full h-11 bg-primary-container text-on-primary-container font-label-md text-label-md font-bold rounded-lg hover:brightness-110 transition-all mt-2 cursor-pointer">
                                     Save Keys
