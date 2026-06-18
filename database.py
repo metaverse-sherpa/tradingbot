@@ -233,7 +233,7 @@ def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
     representing the correct futures/swap trading account.
     """
     if exchange_id == 'coinbase':
-        return {"type": "swap"}     # Perpetual swaps settled in USDC
+        return {"type": "spot"}     # Use spot balance since Coinbase sweeps spot funds for margin automatically
     elif exchange_id == 'bingx':
         return {"type": "swap"}     # USDT-M Perpetual Account
     elif exchange_id == 'bitget':
