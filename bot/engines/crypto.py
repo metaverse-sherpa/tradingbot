@@ -467,7 +467,7 @@ async def signal_engine(application):
                                 except Exception as e:
                                     logger.error(f"Signal execution client/order error for user {chat_id or f'web_{web_user_id}'} on exchange {ex_id} ({futures_type} futures): {e}")
                             except Exception as e:
-                                logger.error(f"Signal execution outer error for user {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
+                                logger.error(f"Signal execution outer error for user {user.get('telegram_chat_id') or 'web_' + str(user.get('web_user_id', '?'))}: {e}")
  
                         await asyncio.gather(*(execute_user_signals(u) for u in users))
                 

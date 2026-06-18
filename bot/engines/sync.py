@@ -72,7 +72,7 @@ async def sync_engine(application):
                         # Stocks stats update logic can be minimal as Alpaca provides portfolio value directly
                         pass
                 except Exception as e:
-                    logger.error(f"General sync error for user {user.get('telegram_chat_id') or f'web_{user.get('web_user_id')}'}: {e}")
+                    logger.error(f"General sync error for user {user.get('telegram_chat_id') or 'web_' + str(user.get('web_user_id', '?'))}: {e}")
 
             await asyncio.gather(*(sync_user(u) for u in active_users))
             await asyncio.sleep(60)
