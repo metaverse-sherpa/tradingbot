@@ -130,27 +130,71 @@ async function setupZKKeys(email, password) {
         const keys = await apiRequest('/settings/zk-keys', 'GET');
         
         let passphrase = password;
-        if (!passphrase) {
-            passphrase = localStorage.getItem('zk_passphrase');
+        let aesKey = null;
+        
+        if (!passphrase && auth.currentUser) {
+            // Persistent Firebase UID is stable across devices
+            passphrase = auth.currentUser.uid;
+            aesKey = await ZKCrypto.deriveMasterKey(passphrase, email);
+            
+            if (keys && keys.public_key && keys.encrypted_private_key) {
+                try {
+                    // Test if we can decrypt with the UID-derived key
+                    const pKeyJwk = await ZKCrypto.decryptPrivateKey(keys.encrypted_private_key, aesKey);
+                    sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));
+                    STATE.rsa_private_key = await ZKCrypto.importPrivateKey(pKeyJwk);
+                    console.log("🔒 Decrypted and loaded ZK keys using Firebase UID.");
+                    return;
+                } catch (uidDecErr) {
+                    console.log("⚠️ Decryption with UID failed. Trying legacy localStorage passphrase...");
+                    const legacyPass = localStorage.getItem('zk_passphrase');
+                    if (legacyPass) {
+                        try {
+                            const legacyKey = await ZKCrypto.deriveMasterKey(legacyPass, email);
+                            const pKeyJwk = await ZKCrypto.decryptPrivateKey(keys.encrypted_private_key, legacyKey);
+                            
+                            // Re-encrypt the private key using the stable UID-derived key to migrate the user
+                            const newEncrypted = await ZKCrypto.encryptPrivateKey(pKeyJwk, aesKey);
+                            await apiRequest('/settings/zk-keys', 'POST', {
+                                public_key: keys.public_key,
+                                encrypted_private_key: newEncrypted
+                            });
+                            
+                            sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));
+                            STATE.rsa_private_key = await ZKCrypto.importPrivateKey(pKeyJwk);
+                            console.log("🔒 Decrypted legacy keys and migrated encryption to stable Firebase UID.");
+                            return;
+                        } catch (legacyDecErr) {
+                            console.error("Legacy decryption also failed:", legacyDecErr);
+                        }
+                    }
+                }
+            }
+        } else {
+            // Default password-based derivation (or random fallback if no user is signed in)
             if (!passphrase) {
-                passphrase = btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(24))));
-                localStorage.setItem('zk_passphrase', passphrase);
+                passphrase = localStorage.getItem('zk_passphrase');
+                if (!passphrase) {
+                    passphrase = btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(24))));
+                    localStorage.setItem('zk_passphrase', passphrase);
+                }
+            }
+            aesKey = await ZKCrypto.deriveMasterKey(passphrase, email);
+            
+            if (keys && keys.public_key && keys.encrypted_private_key) {
+                try {
+                    const pKeyJwk = await ZKCrypto.decryptPrivateKey(keys.encrypted_private_key, aesKey);
+                    sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));
+                    STATE.rsa_private_key = await ZKCrypto.importPrivateKey(pKeyJwk);
+                    console.log("🔒 Decrypted and loaded pre-existing ZK keys.");
+                    return;
+                } catch (decErr) {
+                    console.error("Could not decrypt pre-existing private key:", decErr);
+                }
             }
         }
-        let aesKey = await ZKCrypto.deriveMasterKey(passphrase, email);
         
-        if (keys && keys.public_key && keys.encrypted_private_key) {
-            try {
-                const pKeyJwk = await ZKCrypto.decryptPrivateKey(keys.encrypted_private_key, aesKey);
-                sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));
-                STATE.rsa_private_key = await ZKCrypto.importPrivateKey(pKeyJwk);
-                console.log("🔒 Decrypted and loaded pre-existing ZK keys.");
-                return;
-            } catch (decErr) {
-                console.error("Could not decrypt pre-existing private key:", decErr);
-            }
-        }
-        
+        // If we didn't return (decryption failed or no key exists), generate new keypair
         console.log("🔒 Generating new ZK Keypair...");
         const keypair = await (window.sharedPregeneratedKeypair || ZKCrypto.generateRSAKeyPair());
         // Pre-generate another one for future use/rotation
@@ -159,6 +203,14 @@ async function setupZKKeys(email, password) {
         const pubKeyPem = await ZKCrypto.exportPublicKeyPEM(keypair.publicKey);
         const pKeyJwk = await window.crypto.subtle.exportKey("jwk", keypair.privateKey);
         sessionStorage.setItem('zk_private_key_jwk', JSON.stringify(pKeyJwk));
+        
+        // Ensure we have an AES key derived (fallback to random if all else failed)
+        if (!aesKey) {
+            passphrase = passphrase || localStorage.getItem('zk_passphrase') || btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(24))));
+            localStorage.setItem('zk_passphrase', passphrase);
+            aesKey = await ZKCrypto.deriveMasterKey(passphrase, email);
+        }
+        
         const encryptedPrivKey = await ZKCrypto.encryptPrivateKey(pKeyJwk, aesKey);
         
         await apiRequest('/settings/zk-keys', 'POST', {
@@ -583,7 +635,15 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     };
     
     // Inject Bearer Token
-    const token = localStorage.getItem('session_token');
+    let token = localStorage.getItem('session_token');
+    if (window.auth && auth.currentUser) {
+        try {
+            token = await auth.currentUser.getIdToken();
+            localStorage.setItem('session_token', token);
+        } catch (e) {
+            console.error("Failed to refresh Firebase token in apiRequest:", e);
+        }
+    }
     if (token) {
         options.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -1355,7 +1415,12 @@ window.refreshSignals = function(showSpinner = false) {
 
 window.addEventListener('hashchange', handleRoute);
 window.addEventListener('load', () => {
-    handleRoute();
+    if (firebaseAuthInitialized) {
+        if (!initialRouteTriggered) {
+            initialRouteTriggered = true;
+            handleRoute();
+        }
+    }
     initParticles();
     // Prompt for Web Push Notification permissions on load
     if (window.Notification && Notification.permission === 'default') {
@@ -5144,6 +5209,30 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const auth = firebase.auth();
+
+let firebaseAuthInitialized = false;
+let initialRouteTriggered = false;
+
+auth.onIdTokenChanged(async (user) => {
+    if (user) {
+        try {
+            const idToken = await user.getIdToken();
+            localStorage.setItem('session_token', idToken);
+        } catch (e) {
+            console.error("Failed to store refreshed token:", e);
+        }
+    } else {
+        localStorage.removeItem('session_token');
+    }
+    
+    if (!firebaseAuthInitialized) {
+        firebaseAuthInitialized = true;
+        if (!initialRouteTriggered) {
+            initialRouteTriggered = true;
+            handleRoute();
+        }
+    }
+});
 
 async function handleEmailLogin(e) {
     e.preventDefault();
