@@ -2079,15 +2079,15 @@ def share_card():
                 # Fetch live crypto balance / unrealized if API key exists
                 crypto_unrealized = 0.0
                 if tg_user and tg_user.get("api_key"):
-        crypto_api_key = tg_user.get("api_key")
-        crypto_api_secret = tg_user.get("api_secret")
-        crypto_api_password = tg_user.get("api_password") or ""
-        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
-    else:
-        crypto_api_key = user.get("api_key")
-        crypto_api_secret = user.get("api_secret")
-        crypto_api_password = user.get("api_password") or ""
-        crypto_exchange_id = user.get("exchange_id", "blofin")
+                    crypto_api_key = tg_user.get("api_key")
+                    crypto_api_secret = tg_user.get("api_secret")
+                    crypto_api_password = tg_user.get("api_password") or ""
+                    crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+                else:
+                    crypto_api_key = user.get("api_key")
+                    crypto_api_secret = user.get("api_secret")
+                    crypto_api_password = user.get("api_password") or ""
+                    crypto_exchange_id = user.get("exchange_id", "blofin")
                 
                 realized_daily_pnl = 0.0
                 if crypto_api_key and crypto_api_secret:
