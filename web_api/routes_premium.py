@@ -254,8 +254,15 @@ def admin_logs():
         return jsonify({"error": "Invalid service"}), 400
 
     import subprocess
+    import re
     try:
-        logs = subprocess.check_output(['journalctl', '-u', service, '-n', '500', '--no-pager', '-o', 'cat']).decode('utf-8', errors='replace')
+        if service == 'tradingbot':
+            logs = subprocess.check_output(['journalctl', '-u', service, '-n', '500', '--no-pager', '-o', 'cat']).decode('utf-8', errors='replace')
+        else:
+            logs = subprocess.check_output(['journalctl', '-u', service, '-n', '500', '--no-pager']).decode('utf-8', errors='replace')
+            # Strip out ' cyber-sherpa-vps process: ' to just leave the timestamp and message
+            logs = re.sub(r' cyber-sherpa-vps [^:]+:\s*', ' - ', logs)
+            
         return jsonify({"logs": logs}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch logs: {str(e)}"}), 500
