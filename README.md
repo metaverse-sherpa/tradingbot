@@ -201,7 +201,6 @@ screen -S webapp -X quit 2>/dev/null
 screen -dmS webapp bash -c "source venv/bin/activate && gunicorn --workers 4 --worker-class gthread --threads 10 --bind 0.0.0.0:5001 server:app"
 ```
 
-
 ---
 
 ## ⚠️ Disclaimer
