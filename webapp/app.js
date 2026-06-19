@@ -1474,6 +1474,12 @@ function renderBottomNav() {
                 <span class="material-symbols-outlined">settings</span>
                 <span class="font-label-sm text-label-sm">Settings</span>
             </a>
+            ${(STATE.user && (STATE.user.is_admin || STATE.user.telegram_chat_id == 1567788633)) ? `
+            <a class="flex flex-col items-center justify-center ${STATE.current_view === 'logs' ? 'text-primary relative after:content-[\'\'] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full after:shadow-[0_0_8px_#3cd7ff]' : 'text-on-surface-variant/60 hover:text-primary'} transition-colors duration-200 ${disabledClass}" href="#/logs">
+                <span class="material-symbols-outlined">terminal</span>
+                <span class="font-label-sm text-label-sm">Logs</span>
+            </a>
+            ` : ''}
         </nav>
     `;
 }
@@ -1545,6 +1551,13 @@ function renderView() {
             break;
         case 'settings':
             html = renderSettingsView();
+            break;
+        case 'logs':
+            if (!(STATE.user && (STATE.user.is_admin || STATE.user.telegram_chat_id == 1567788633))) {
+                window.location.hash = '/';
+                return;
+            }
+            html = renderLogsView();
             break;
         case 'strategy':
             html = renderStrategyView();
@@ -4145,54 +4158,58 @@ function renderSettingsView() {
 
             </div>
 
-            ${isAdmin ? `
-            <section class="glass-card rounded-xl p-card-padding space-y-4 border border-[#ffdb3c]/30 gold-glow mt-section-gap w-full">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-body-lg text-body-lg font-bold text-[#ffdb3c] flex items-center gap-2">
-                        <span class="material-symbols-outlined">terminal</span> Server Logs
-                    </h3>
-                    <div class="text-xs text-on-surface-variant flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[16px]">search</span>
-                        <input type="text" id="admin-log-search" onkeyup="filterAdminLogs()" placeholder="Search logs..." class="bg-black/50 border border-white/10 rounded px-3 py-1.5 text-on-surface focus:outline-none focus:border-[#ffdb3c] transition-colors font-mono w-48 placeholder:text-white/20">
-                    </div>
-                </div>
-                <div class="flex flex-col lg:flex-row gap-4 w-full">
-                    <!-- Web Server -->
-                    <div class="flex-1 space-y-2 min-w-0">
-                        <div class="flex justify-between items-center">
-                            <h4 class="font-bold text-sm text-on-surface truncate">Web API</h4>
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                <button onclick="copyLogs('webapi')" title="Copy Visible Logs" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">content_copy</span></button>
-                                <button onclick="copyLogs('webapi', true)" title="Copy Restart/Reload Lines" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
-                                <button onclick="restartService('webapi')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
-                            </div>
-                        </div>
-                        <div class="bg-black border border-white/10 rounded-lg p-3 h-80 overflow-y-auto font-mono text-[10px] text-green-400 whitespace-pre-wrap leading-tight break-all" id="webapi-logs-container">
-                            Loading Web API logs...
-                        </div>
-                    </div>
-                    <!-- Trading Bot -->
-                    <div class="flex-1 space-y-2 min-w-0">
-                        <div class="flex justify-between items-center">
-                            <h4 class="font-bold text-sm text-on-surface truncate">Trading Bot</h4>
-                            <div class="flex items-center gap-1.5 shrink-0">
-                                <button onclick="copyLogs('tradingbot')" title="Copy Visible Logs" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">content_copy</span></button>
-                                <button onclick="copyLogs('tradingbot', true)" title="Copy Restart/Reload Lines" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
-                                <button onclick="restartService('tradingbot')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
-                            </div>
-                        </div>
-                        <div class="bg-black border border-white/10 rounded-lg p-3 h-80 overflow-y-auto font-mono text-[10px] text-primary whitespace-pre-wrap leading-tight break-all" id="tradingbot-logs-container">
-                            Loading Trading Bot logs...
-                        </div>
-                    </div>
-                </div>
-            </section>
-            ` : ''}
-
             <!-- Logout Link -->
             <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center cursor-pointer mt-section-gap">
                 Logout Session
             </button>
+        </main>
+    `;
+}
+
+function renderLogsView() {
+    return `
+        ${renderHeader()}
+        <main class="w-full pt-20 px-container-margin pb-24 max-w-[1200px] mx-auto min-h-screen flex flex-col">
+            <div class="flex justify-between items-center mb-4 shrink-0 glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow">
+                <h2 class="font-headline-sm text-headline-sm text-[#ffdb3c] flex items-center gap-2">
+                    <span class="material-symbols-outlined">terminal</span> Server Logs
+                </h2>
+                <div class="text-xs text-on-surface-variant flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">search</span>
+                    <input type="text" id="admin-log-search" onkeyup="filterAdminLogs()" placeholder="Search logs..." class="bg-black/50 border border-white/10 rounded px-3 py-1.5 text-on-surface focus:outline-none focus:border-[#ffdb3c] transition-colors font-mono w-48 placeholder:text-white/20">
+                </div>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-4 w-full">
+                <!-- Web Server -->
+                <div class="flex-1 flex flex-col min-w-0 glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow">
+                    <div class="flex justify-between items-center mb-3 shrink-0">
+                        <h4 class="font-bold text-sm text-on-surface truncate">Web API</h4>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="copyLogs('webapi')" title="Copy Visible Logs" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">content_copy</span></button>
+                            <button onclick="copyLogs('webapi', true)" title="Copy Restart/Reload Lines" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
+                            <button onclick="restartService('webapi')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
+                        </div>
+                    </div>
+                    <div class="bg-black border border-white/10 rounded-lg p-3 h-[75vh] overflow-auto font-mono text-[10px] text-green-400 whitespace-pre leading-tight" id="webapi-logs-container">
+                        Loading Web API logs...
+                    </div>
+                </div>
+                <!-- Trading Bot -->
+                <div class="flex-1 flex flex-col min-w-0 glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow">
+                    <div class="flex justify-between items-center mb-3 shrink-0">
+                        <h4 class="font-bold text-sm text-on-surface truncate">Trading Bot</h4>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="copyLogs('tradingbot')" title="Copy Visible Logs" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">content_copy</span></button>
+                            <button onclick="copyLogs('tradingbot', true)" title="Copy Restart/Reload Lines" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
+                            <button onclick="restartService('tradingbot')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
+                        </div>
+                    </div>
+                    <div class="bg-black border border-white/10 rounded-lg p-3 h-[75vh] overflow-auto font-mono text-[10px] text-primary whitespace-pre leading-tight" id="tradingbot-logs-container">
+                        Loading Trading Bot logs...
+                    </div>
+                </div>
+            </div>
         </main>
     `;
 }
