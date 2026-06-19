@@ -3827,7 +3827,6 @@ function renderSettingsView() {
                                         <option value="bitget">Bitget</option>
                                         <option value="bingx">BingX</option>
                                         <option value="coinbase">Coinbase Advanced (CDP keys)</option>
-                                        <option value="coinbaseexchange">Coinbase Exchange (legacy keys)</option>
                                         ` : ''}
                                         ${!hasLinkedStock ? `
                                         <option value="alpaca">Alpaca Stocks</option>
@@ -5510,7 +5509,7 @@ window.toggleExchangeFields = function() {
     const bingxDiv = document.getElementById('bingx-futures-field-container');
     
     if (pwdDiv) {
-        if (['blofin', 'bitget', 'coinbaseexchange'].includes(exId)) {
+        if (['blofin', 'bitget'].includes(exId)) {
             pwdDiv.classList.remove('hidden');
         } else {
             pwdDiv.classList.add('hidden');
@@ -5544,7 +5543,7 @@ window.toggleExchangeFields = function() {
     
     const cbSandboxDiv = document.getElementById('coinbase-sandbox-field-container');
     if (cbSandboxDiv) {
-        if (['coinbase', 'coinbaseexchange'].includes(exId)) {
+        if (exId === 'coinbase') {
             cbSandboxDiv.classList.remove('hidden');
         } else {
             cbSandboxDiv.classList.add('hidden');

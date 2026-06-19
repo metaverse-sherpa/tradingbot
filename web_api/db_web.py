@@ -193,7 +193,7 @@ def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity
             SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?,
                 email_notifications = ?, email_frequency = ?, browser_notifications = ?
             WHERE id = ?
-        ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, int(email_notifications), email_frequency, int(browser_notifications), user_id))
+        ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, int(bool(hide_dollars)), int(email_notifications), email_frequency, int(browser_notifications), user_id))
         
         # Sync to Telegram bot if linked
         c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
@@ -203,7 +203,7 @@ def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity
                 UPDATE Users
                 SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?
                 WHERE telegram_chat_id = ?
-            ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, row[0]))
+            ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, int(bool(hide_dollars)), row[0]))
 
 def update_web_user_symbols(user_id, symbols_str):
     with db_session() as conn:
