@@ -25,13 +25,26 @@ def _get_telegram_user(web_user):
             print(f"Could not load Telegram user {tg_id}: {e}")
     return None
 
+import re
+def _clean_pem(secret):
+    """Clean up PEM keys that might have been mangled by copy/paste or JSON formatting."""
+    if not secret:
+        return secret
+    secret = secret.replace('\\n', '\n')
+    match = re.search(r'-----BEGIN EC PRIVATE KEY-----(.*?)-----END EC PRIVATE KEY-----', secret, re.DOTALL)
+    if match:
+        body = match.group(1)
+        body = re.sub(r'\s+', '', body)
+        return f"-----BEGIN EC PRIVATE KEY-----\n{body}\n-----END EC PRIVATE KEY-----\n"
+    return secret
+
 @settings_bp.route('/api/settings/exchange', methods=['POST'])
 @require_auth
 def settings_exchange():
     data = request.json or {}
     exchange_id = data.get("exchange_id", "blofin").strip()
     api_key = data.get("api_key", "").strip()
-    api_secret = data.get("api_secret", "").strip()
+    api_secret = _clean_pem(data.get("api_secret", "").strip())
     api_password = data.get("api_password", "").strip()
     bingx_futures_type = data.get("bingx_futures_type", "perpetual").strip()
     coinbase_sandbox = data.get("coinbase_sandbox", True)
@@ -214,7 +227,7 @@ def test_connection():
         from web_api.routes_trades import _set_coinbase_sandbox_if_needed
 
         api_key = user.get('api_key')
-        api_secret = user.get('api_secret')
+        api_secret = _clean_pem(user.get('api_secret') or '')
         api_password = user.get('api_password') or ''
         exchange_id = user.get('exchange_id', 'blofin')
 
@@ -226,7 +239,7 @@ def test_connection():
                     tg_user = database.get_user(int(tg_chat_id))
                     if tg_user:
                         api_key = tg_user.get('api_key') or tg_user.get('blofin_api_key')
-                        api_secret = tg_user.get('api_secret') or tg_user.get('blofin_api_secret')
+                        api_secret = _clean_pem(tg_user.get('api_secret') or tg_user.get('blofin_api_secret') or '')
                         api_password = tg_user.get('api_password') or tg_user.get('blofin_api_password') or ''
                         exchange_id = tg_user.get('exchange_id', exchange_id)
                 except Exception as e:

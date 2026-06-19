@@ -3819,19 +3819,28 @@ function renderSettingsView() {
                             </h4>
                             <div class="space-y-2">
                                 <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
-                                <select id="exchange-id" class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none cursor-pointer" onchange="toggleExchangeFields()">
-                                        ${!hasLinkedCrypto ? `
-                                        <option value="blofin">Blofin</option>
-                                        <option value="binance">Binance</option>
-                                        <option value="mexc">MEXC</option>
-                                        <option value="bitget">Bitget</option>
-                                        <option value="bingx">BingX</option>
-                                        <option value="coinbase">Coinbase Advanced (CDP keys)</option>
-                                        ` : ''}
-                                        ${!hasLinkedStock ? `
-                                        <option value="alpaca">Alpaca Stocks</option>
-                                        ` : ''}
-                                    </select>
+                                <details class="relative w-full group" id="exchange-dropdown-details">
+                                    <summary class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                                        <span id="exchange-select-label">${!hasLinkedCrypto ? 'Blofin' : 'Alpaca Stocks'}</span>
+                                        <span class="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
+                                    </summary>
+                                    <div class="absolute top-full left-0 right-0 mt-1 bg-[#1A1D24] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                                        <div class="p-1 max-h-64 overflow-y-auto">
+                                            ${!hasLinkedCrypto ? `
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('blofin', 'Blofin')">Blofin</div>
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('binance', 'Binance')">Binance</div>
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('mexc', 'MEXC')">MEXC</div>
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('bitget', 'Bitget')">Bitget</div>
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('bingx', 'BingX')">BingX</div>
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('coinbase', 'Coinbase Advanced (CDP keys)')">Coinbase Advanced (CDP keys)</div>
+                                            ` : ''}
+                                            ${!hasLinkedStock ? `
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('alpaca', 'Alpaca Stocks')">Alpaca Stocks</div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </details>
+                                <input type="hidden" id="exchange-id" value="${!hasLinkedCrypto ? 'blofin' : 'alpaca'}">
                             </div>
                             <form onsubmit="handleExchangeSetup(event)" class="space-y-3" autocomplete="off">
                                 <div class="space-y-1">
@@ -5414,7 +5423,7 @@ async function handleExchangeSetup(e) {
                 STATE.user.has_alpaca_keys = true;
             } else {
                 STATE.user.has_exchange_keys = true;
-                STATE.user.crypto_exchange_id = exId;
+                STATE.user.exchange_id = exId;
             }
         }
         showToast("Exchange keys saved successfully!");
@@ -5502,6 +5511,18 @@ async function handleStrategyChange(type, strategyName) {
     }
 }
 
+window.selectExchange = function(val, label) {
+    const input = document.getElementById('exchange-id');
+    const labelEl = document.getElementById('exchange-select-label');
+    const details = document.getElementById('exchange-dropdown-details');
+    if (input && labelEl && details) {
+        input.value = val;
+        labelEl.innerText = label;
+        details.removeAttribute('open');
+        window.toggleExchangeFields();
+    }
+};
+
 window.toggleExchangeFields = function() {
     const exId = document.getElementById('exchange-id').value;
     const pwdDiv = document.getElementById('pwd-field-container');
@@ -5555,7 +5576,7 @@ window.editExchange = function(type) {
     STATE.editing_exchange = type;
     renderView();
     
-    // Select correct platform in select box and trigger change
+    // Select correct platform in custom select box and trigger toggle
     setTimeout(() => {
         const exchangeSelect = document.getElementById('exchange-id');
         if (exchangeSelect) {
