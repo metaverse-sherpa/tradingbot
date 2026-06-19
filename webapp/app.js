@@ -3824,7 +3824,7 @@ function renderSettingsView() {
                                         <span id="exchange-select-label">${!hasLinkedCrypto ? 'Blofin' : 'Alpaca Stocks'}</span>
                                         <span class="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
                                     </summary>
-                                    <div class="absolute top-full left-0 right-0 mt-1 bg-[#1A1D24] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                                    <div class="absolute top-full left-0 right-0 mt-1 bg-surface-container-high border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
                                         <div class="p-1 max-h-64 overflow-y-auto">
                                             ${!hasLinkedCrypto ? `
                                             <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('blofin', 'Blofin')">Blofin</div>
