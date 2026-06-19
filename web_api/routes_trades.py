@@ -233,7 +233,8 @@ def get_balance():
                         upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
                         total_equity += (margin + upnl)
                 except Exception as pos_err:
-                    print(f"Error fetching positions for balance: {pos_err}")
+                    if crypto_exchange_id != 'coinbase':
+                        print(f"Error fetching positions for balance: {pos_err}")
                 return (total_equity, True)
             finally:
                 try:
@@ -350,7 +351,10 @@ def get_stats():
             try:
                 open_count = 0
                 unrealized = 0.0
-                positions = client.fetch_positions()
+                try:
+                    positions = client.fetch_positions()
+                except Exception:
+                    positions = []
                 for p in positions:
                     contracts = float(p.get("contracts", 0) or 0)
                     if contracts != 0:
@@ -703,7 +707,10 @@ def get_open_trades():
             client = getattr(ccxt, crypto_exchange_id)(config)
             _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, merged_user, merged_user)
             try:
-                positions = client.fetch_positions()
+                try:
+                    positions = client.fetch_positions()
+                except Exception:
+                    positions = []
                 for pos in positions:
                     contracts = float(pos.get("contracts", 0.0) or 0.0)
                     if contracts != 0:
@@ -2104,7 +2111,10 @@ def share_card():
                         client = getattr(ccxt, crypto_exchange_id)(config)
                         _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
                         try:
-                            positions = client.fetch_positions()
+                            try:
+                                positions = client.fetch_positions()
+                            except Exception:
+                                positions = []
                             for p in positions:
                                 contracts = float(p.get("contracts", 0) or 0)
                                 if contracts != 0:
