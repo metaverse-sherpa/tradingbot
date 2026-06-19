@@ -3853,6 +3853,12 @@ function renderSettingsView() {
                                     </span>
                                     <p>Metaverse Sherpa connects to BingX using <strong>Perpetual Futures</strong>. Please make sure your API key has <strong>Read</strong> and <strong>Perpetual Futures Trading</strong> permissions enabled, and your funds are in your Perpetual Futures account.</p>
                                 </div>
+                                <div id="coinbase-advanced-field-container" class="p-3 bg-primary/10 rounded-lg border border-primary/20 text-xs text-on-surface-variant space-y-1 hidden">
+                                    <span class="font-bold text-primary flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-sm">info</span> Coinbase Advanced Key Format
+                                    </span>
+                                    <p>Your API Key must be the <strong>full resource name</strong> provided by Coinbase, formatted like: <code>organizations/{org_id}/apiKeys/{key_id}</code>. If you downloaded the JSON file, copy the full <code>name</code> property for the API Key.</p>
+                                </div>
                                 <div id="endpoint-field-container" class="space-y-1 hidden">
                                     <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Endpoint URL</label>
                                     <input id="alpaca-endpoint" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none" placeholder="https://api.alpaca.markets" type="text" value="https://api.alpaca.markets"/>
@@ -5516,6 +5522,15 @@ window.toggleExchangeFields = function() {
             endpointDiv.classList.remove('hidden');
         } else {
             endpointDiv.classList.add('hidden');
+        }
+    }
+    
+    const cbAdvDiv = document.getElementById('coinbase-advanced-field-container');
+    if (cbAdvDiv) {
+        if (exId === 'coinbase') {
+            cbAdvDiv.classList.remove('hidden');
+        } else {
+            cbAdvDiv.classList.add('hidden');
         }
     }
     
