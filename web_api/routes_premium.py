@@ -255,7 +255,7 @@ def admin_logs():
 
     import subprocess
     try:
-        logs = subprocess.check_output(['sudo', 'journalctl', '-u', service, '-n', '500', '--no-pager']).decode('utf-8', errors='replace')
+        logs = subprocess.check_output(['journalctl', '-u', service, '-n', '500', '--no-pager']).decode('utf-8', errors='replace')
         return jsonify({"logs": logs}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch logs: {str(e)}"}), 500
