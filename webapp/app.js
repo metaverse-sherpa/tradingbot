@@ -1267,6 +1267,10 @@ async function handleRoute() {
     } else if (hash === '#/help') {
         STATE.current_view = 'help';
     } else if (hash === '#/logs') {
+        if (!STATE.user || (!STATE.user.is_admin && STATE.user.telegram_chat_id !== 1567788633)) {
+            window.location.hash = '#/dashboard';
+            return;
+        }
         STATE.current_view = 'logs';
     }
     
