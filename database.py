@@ -248,9 +248,11 @@ def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
 
 
 def encrypt(data):
+    if not data: return data
     return cipher_suite.encrypt(data.encode()).decode()
 
 def decrypt(data):
+    if not data: return data
     return cipher_suite.decrypt(data.encode()).decode()
 
 def encrypt_with_public_key(public_key_pem: str, plaintext: str) -> str:

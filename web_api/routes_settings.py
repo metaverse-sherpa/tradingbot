@@ -22,7 +22,6 @@ def _get_telegram_user(web_user):
         try:
             return database.get_user(int(tg_id))
         except Exception as e:
-            print(f"Could not load Telegram user {tg_id}: {e}")
     return None
 
 import re
@@ -243,7 +242,6 @@ def test_connection():
                         api_password = tg_user.get('api_password') or tg_user.get('blofin_api_password') or ''
                         exchange_id = tg_user.get('exchange_id', exchange_id)
                 except Exception as e:
-                    print(f'[TEST-CONNECTION] Error fetching TG user: {e}')
 
         if not api_key or not api_secret:
             return jsonify({'success': False, 'error': 'No crypto API keys saved'}), 200
@@ -253,7 +251,6 @@ def test_connection():
         effective_exchange_id = exchange_id
         if exchange_id == 'coinbase' and len(api_key) < 60 and '-----BEGIN' not in api_secret:
             effective_exchange_id = 'coinbaseexchange'
-            print(f'[TEST-CONNECTION] Detected old Coinbase Pro credentials — using coinbaseexchange')
 
         diag = {
             'exchange': exchange_id,
@@ -265,7 +262,6 @@ def test_connection():
             'secret_first_40': (api_secret or '')[:40] + '...',
             'coinbase_sandbox': user.get('coinbase_sandbox'),
         }
-        print(f'[TEST-CONNECTION] Diagnostics: {diag}')
 
         try:
             import ccxt
@@ -278,7 +274,6 @@ def test_connection():
             }
             client = getattr(ccxt, effective_exchange_id)(config)
             _set_coinbase_sandbox_if_needed(client, exchange_id, None, user)
-            print(f'[TEST-CONNECTION] Using endpoint: {client.urls.get("api", {})}')
             bal = client.fetch_balance()
             try:
                 client.close()
@@ -290,7 +285,6 @@ def test_connection():
             return jsonify({'success': True, 'exchange': effective_exchange_id, 'diag': diag, 'note': note}), 200
         except Exception as e:
             err = str(e)
-            print(f'[TEST-CONNECTION] {effective_exchange_id} error: {err}')
             hint = None
             if exchange_id == 'coinbase' and '401' in err:
                 if '-----BEGIN' not in (api_secret or ''):

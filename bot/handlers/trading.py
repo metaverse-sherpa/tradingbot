@@ -500,19 +500,48 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await asyncio.gather(*(fetch_sym_pnl(sym) for sym in live_bot_multi.SYMBOLS))
                 
                 # Get Total Unrealized PnL from positions
+                total_margin = 0.0
                 try:
                     positions = await user_ex.fetch_positions()
-                    for p in positions:
-                        contracts = float(p.get("contracts", 0) or 0)
-                        if contracts != 0:
-                            open_positions_count += 1
-                            total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or 0)
-                except: pass
+                except Exception as pos_err:
+                    if ex_id != 'coinbase':
+                        logger.error(f"Error fetching positions for stats {ex_id}: {pos_err}")
+                    positions = []
+                
+                for p in positions:
+                    contracts = float(p.get("contracts", 0) or 0)
+                    if contracts != 0:
+                        open_positions_count += 1
+                        total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or p.get("info", {}).get("unrealizedPnl", 0) or 0)
+                        total_margin += float(p.get("initialMargin", 0) or p.get("margin", 0) or p.get("info", {}).get("margin", 0) or 0)
+                        
+                # Fetch True Live Equity
+                try:
+                    bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
+                    balance = await user_ex.fetch_balance(params=bal_params)
+                    if ex_id == 'coinbase':
+                        usd_bal = balance.get('USD', {})
+                        usdc_bal = balance.get('USDC', {})
+                        if not isinstance(usd_bal, dict): usd_bal = {}
+                        if not isinstance(usdc_bal, dict): usdc_bal = {}
+                        free_usd = float(usd_bal.get('free') or usd_bal.get('total') or balance.get('free', {}).get('USD') or balance.get('total', {}).get('USD') or 0.0)
+                        free_usdc = float(usdc_bal.get('free') or usdc_bal.get('total') or balance.get('free', {}).get('USDC') or balance.get('total', {}).get('USDC') or 0.0)
+                        free = free_usd + free_usdc
+                    else:
+                        asset = 'USDT'
+                        asset_bal = balance.get(asset, {})
+                        if not isinstance(asset_bal, dict): asset_bal = {}
+                        free = float(asset_bal.get("free") or asset_bal.get("total") or balance.get("free", {}).get(asset) or balance.get("total", {}).get(asset) or 0.0)
+                        
+                    live_equity = free + total_unrealized_pnl + total_margin
+                except Exception as e:
+                    logger.error(f"Error fetching live equity for stats {ex_id}: {e}")
+                    live_equity = float(user.get('equity') or 200.0)
                 
             wins = int(user.get('wins') or 0)
             losses = int(user.get('losses') or 0)
             cum_pnl_realized = float(user.get('cum_pnl') or 0.0)
-            equity = float(user.get('equity') or 200.0)
+            equity = live_equity
             
             overall_pnl_usdt = cum_pnl_realized + total_unrealized_pnl
             daily_pnl_usdt = realized_daily_pnl + total_unrealized_pnl

@@ -54,7 +54,6 @@ def run_with_timeout(func, timeout_sec, fallback):
         future = THREAD_POOL.submit(func)
         return future.result(timeout=timeout_sec)
     except Exception as e:
-        print(f"[TIMEOUT HELPER] Task failed, exceeded timeout ({timeout_sec}s), or threw error: {e}")
         return fallback
 
 # Module-level variable to prevent concurrent background updates for active signals
@@ -72,7 +71,6 @@ def _get_telegram_user(web_user):
         try:
             return database.get_user(int(tg_id))
         except Exception as e:
-            print(f"Could not load Telegram user {tg_id}: {e}")
     return None
 
 def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
@@ -86,9 +84,7 @@ def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
         if cb_sandbox in (1, True, '1', 'true', 'True'):
             if exchange_id == 'coinbase':
                 client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
-            print(f"[COINBASE] Using SANDBOX endpoint for user ({exchange_id})")
         else:
-            print(f"[COINBASE] Using PRODUCTION endpoint for user ({exchange_id}, sandbox={cb_sandbox})")
 
 @trades_bp.route('/api/user/profile', methods=['GET'])
 @require_auth
@@ -774,7 +770,6 @@ def get_trades_history():
     else:
         trade_chat_id = int(user["id"]) + 1000000000
     
-    print(f"[HISTORY] user_id={user.get('id')}, tg_user={'YES' if tg_user else 'NO'}, trade_chat_id={trade_chat_id}")
     
     history = []
     
@@ -789,34 +784,28 @@ def get_trades_history():
                 if row and row[0]:
                     raw_cache = row[0]
         except Exception as e:
-            print(f"[HISTORY] Error loading history_cache from WebUsers: {e}")
             
     if raw_cache:
         try:
             cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
-            print(f"[HISTORY] Parsed {len(cached)} trades from WebUsers history_cache")
             for tr in cached:
                 is_stk = is_stock(tr.get("symbol", ""))
                 tr["type"] = "stock" if is_stk else "crypto"
                 history.append(tr)
         except Exception as e:
-            print(f"[HISTORY] Error parsing WebUsers history_cache: {e}")
 
     # 2. Try the history_cache from the Telegram bot's Users table if empty
     if not history and tg_user:
         raw_cache_tg = tg_user.get("history_cache")
-        print(f"[HISTORY] tg_user history_cache type={type(raw_cache_tg).__name__}, truthy={bool(raw_cache_tg)}")
         
         if raw_cache_tg:
             try:
                 cached = json.loads(raw_cache_tg) if isinstance(raw_cache_tg, str) else raw_cache_tg
-                print(f"[HISTORY] Parsed {len(cached)} trades from tg_user history_cache")
                 for tr in cached:
                     is_stk = is_stock(tr.get("symbol", ""))
                     tr["type"] = "stock" if is_stk else "crypto"
                     history.append(tr)
             except Exception as e:
-                print(f"[HISTORY] Error parsing tg_user history_cache: {e}")
         
         # Fallback: query the DB directly
         if not history:
@@ -825,20 +814,16 @@ def get_trades_history():
                     c = conn.cursor()
                     c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (trade_chat_id,))
                     row = c.fetchone()
-                    print(f"[HISTORY] DB query result: row={bool(row)}, has_data={bool(row and row[0])}")
                     if row and row[0]:
                         cached = json.loads(row[0])
-                        print(f"[HISTORY] Parsed {len(cached)} trades from DB history_cache")
                         for tr in cached:
                             is_stk = is_stock(tr.get("symbol", ""))
                             tr["type"] = "stock" if is_stk else "crypto"
                             history.append(tr)
             except Exception as e:
-                print(f"[HISTORY] Error loading history_cache from DB: {e}")
         
     # Fallback: fetch directly from CCXT
     if not history:
-        print("[HISTORY] Cache empty or web-only premium, trying CCXT fallback...")
         if tg_user and tg_user.get("api_key"):
             crypto_api_key = tg_user.get("api_key")
             crypto_api_secret = tg_user.get("api_secret")
@@ -849,7 +834,6 @@ def get_trades_history():
             crypto_api_secret = user.get("api_secret")
             crypto_api_password = user.get("api_password") or ""
             crypto_exchange_id = user.get("exchange_id", "blofin")
-        print(f"[HISTORY] CCXT: exchange={crypto_exchange_id}, has_key={bool(crypto_api_key)}, has_secret={bool(crypto_api_secret)}")
         if crypto_api_key and crypto_api_secret:
             try:
                 import ccxt.async_support as ccxt_async
@@ -909,7 +893,6 @@ def get_trades_history():
                                     })
                                 return results
                             except Exception as e:
-                                print(f"[HISTORY] Error fetching {sym}: {e}")
                                 return []
                         
                         all_results = await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
@@ -922,7 +905,6 @@ def get_trades_history():
                 try:
                     ccxt_trades = loop.run_until_complete(fetch_my_trades_async())
                     history.extend(ccxt_trades)
-                    print(f"[HISTORY] Concurrently fetched {len(ccxt_trades)} crypto trades from exchange")
                     
                     if ccxt_trades:
                         try:
@@ -932,19 +914,15 @@ def get_trades_history():
                             else:
                                 database.set_history_cache(None, last_50, web_user_id=user.get('id'))
                         except Exception as cache_err:
-                            print(f"[HISTORY] Error saving history cache: {cache_err}")
                 finally:
                     loop.close()
             except Exception as e:
                 futures_type = (tg_user.get("bingx_futures_type") if tg_user else None) or user.get("bingx_futures_type", "standard")
                 type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
-                print(f"[HISTORY] CCXT fallback error for {crypto_exchange_id}{type_desc}: {e}")
             
     # 2. Fetch stock history
-    print(f"[HISTORY] Checking Alpaca trades for chat_id={trade_chat_id}")
     try:
         alpaca_history = database.get_closed_alpaca_trades_by_user(trade_chat_id, limit)
-        print(f"[HISTORY] Local Alpaca trades: {len(alpaca_history)}")
         
         # Merge credentials from WebUsers and Telegram Users to ensure we have correct keys & endpoint
         merged_user = {}
@@ -956,7 +934,6 @@ def get_trades_history():
                     merged_user[k] = v
                     
         if not alpaca_history and (merged_user.get("alpaca_api_key") and merged_user.get("alpaca_api_secret")):
-            print("[HISTORY] No local Alpaca trades, trying API fallback...")
             try:
                 orders = database.make_alpaca_request(merged_user, "GET", "/v2/orders", params={"status": "closed", "limit": 40})
                 if isinstance(orders, list):
@@ -985,7 +962,6 @@ def get_trades_history():
                                 "entry_price": entry
                             })
             except Exception as e:
-                print(f"[HISTORY] Alpaca API fallback error: {e}")
                         
         for tr in alpaca_history:
             if not any(h.get("symbol") == tr.get("symbol") and h.get("timestamp") == tr.get("close_timestamp", 0) for h in history):
@@ -996,12 +972,10 @@ def get_trades_history():
                 tr["timestamp"] = tr.get("close_timestamp", tr.get("close_time", 0))
                 history.append(tr)
     except Exception as e:
-        print(f"[HISTORY] Stock history error: {e}")
         
     # Sort history by timestamp descending
     history.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
     
-    print(f"[HISTORY] FINAL RETURN: {len(history)} trades")
     return jsonify(history), 200
 
 @trades_bp.route('/api/debug/history-check', methods=['GET'])
@@ -1547,7 +1521,6 @@ def _update_active_signals_cache():
                     if not stock_syms or not sys_user.get("alpaca_api_key"):
                         return
                     if not is_us_market_open() and not uncached_stocks:
-                        print("[MARKET CLOSED] Skipping live Alpaca stock snapshot fetching (all symbols cached).")
                         return
                     try:
                         sym_str = ",".join(stock_syms)
