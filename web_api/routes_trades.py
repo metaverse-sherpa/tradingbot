@@ -76,7 +76,7 @@ def _get_telegram_user(web_user):
     return None
 
 def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
-    if exchange_id == 'coinbase':
+    if exchange_id in ('coinbase', 'coinbaseexchange'):
         cb_sandbox = None
         if tg_user:
             cb_sandbox = tg_user.get("coinbase_sandbox")
@@ -84,10 +84,11 @@ def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
             cb_sandbox = web_user.get("coinbase_sandbox")
         # Only enable sandbox if EXPLICITLY set to true — never default to sandbox
         if cb_sandbox in (1, True, '1', 'true', 'True'):
-            client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
-            print(f"[COINBASE] Using SANDBOX endpoint for user")
+            if exchange_id == 'coinbase':
+                client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
+            print(f"[COINBASE] Using SANDBOX endpoint for user ({exchange_id})")
         else:
-            print(f"[COINBASE] Using PRODUCTION endpoint for user (sandbox={cb_sandbox})")
+            print(f"[COINBASE] Using PRODUCTION endpoint for user ({exchange_id}, sandbox={cb_sandbox})")
 
 @trades_bp.route('/api/user/profile', methods=['GET'])
 @require_auth

@@ -3762,7 +3762,7 @@ function renderSettingsView() {
                                         <input type="password" value="${user.api_secret || (user.has_exchange_keys ? '••••••••••••' : '')}" readonly autocomplete="off" data-lpignore="true" data-1p-ignore style="background: transparent !important; -webkit-text-fill-color: inherit;" class="bg-transparent text-right text-on-surface font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" id="crypto-secret-display"/>
                                     </div>
                                 </div>
-                                ${user.has_exchange_keys && user.exchange_id !== 'coinbase' ? `
+                                ${user.has_exchange_keys && !['coinbase'].includes(user.exchange_id) ? `
                                 <div class="flex justify-between items-center gap-2">
                                     <span class="text-on-surface-variant">Passphrase:</span>
                                     <div class="flex items-center gap-2">
@@ -3826,7 +3826,8 @@ function renderSettingsView() {
                                         <option value="mexc">MEXC</option>
                                         <option value="bitget">Bitget</option>
                                         <option value="bingx">BingX</option>
-                                        <option value="coinbase">Coinbase Advanced</option>
+                                        <option value="coinbase">Coinbase Advanced (CDP keys)</option>
+                                        <option value="coinbaseexchange">Coinbase Exchange (legacy keys)</option>
                                         ` : ''}
                                         ${!hasLinkedStock ? `
                                         <option value="alpaca">Alpaca Stocks</option>
@@ -5503,7 +5504,7 @@ window.toggleExchangeFields = function() {
     const bingxDiv = document.getElementById('bingx-futures-field-container');
     
     if (pwdDiv) {
-        if (['blofin', 'bitget'].includes(exId)) {
+        if (['blofin', 'bitget', 'coinbaseexchange'].includes(exId)) {
             pwdDiv.classList.remove('hidden');
         } else {
             pwdDiv.classList.add('hidden');
@@ -5528,7 +5529,7 @@ window.toggleExchangeFields = function() {
     
     const cbSandboxDiv = document.getElementById('coinbase-sandbox-field-container');
     if (cbSandboxDiv) {
-        if (exId === 'coinbase') {
+        if (['coinbase', 'coinbaseexchange'].includes(exId)) {
             cbSandboxDiv.classList.remove('hidden');
         } else {
             cbSandboxDiv.classList.add('hidden');
@@ -5615,12 +5616,15 @@ window.testExchangeConnection = async function(segment, btn) {
         const result = await apiRequest(`/settings/test-connection?segment=${segment}`);
         if (result && result.success) {
             showToast(`✅ ${(segment === 'crypto' ? result.exchange : 'Alpaca')} connection successful!`);
+            if (result.note) setTimeout(() => showToast(`ℹ️ ${result.note}`, 'info'), 1500);
             if (segment === 'crypto') STATE.crypto_auth_success = true;
             if (segment === 'stock') STATE.stock_auth_success = true;
             renderView();
         } else {
             const errMsg = (result && result.error) || 'Unknown error';
+            const hint = result && result.hint;
             showToast(`❌ Connection failed: ${errMsg}`, 'error');
+            if (hint) setTimeout(() => showToast(`💡 ${hint}`, 'info'), 1500);
             console.error('[Test Connection] Error:', errMsg);
             if (result && result.diag) console.error('[Test Connection] Diagnostics:', JSON.stringify(result.diag, null, 2));
         }

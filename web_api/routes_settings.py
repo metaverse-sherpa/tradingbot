@@ -210,17 +210,41 @@ def test_connection():
     segment = request.args.get('segment', 'crypto')  # 'crypto' or 'stock'
 
     if segment == 'crypto':
+        import database
+        from web_api.routes_trades import _set_coinbase_sandbox_if_needed
+
         api_key = user.get('api_key')
         api_secret = user.get('api_secret')
         api_password = user.get('api_password') or ''
         exchange_id = user.get('exchange_id', 'blofin')
 
+        # Fall back to linked Telegram user's keys if web user has none
+        if not api_key or not api_secret:
+            tg_chat_id = user.get('telegram_chat_id')
+            if tg_chat_id:
+                try:
+                    tg_user = database.get_user(int(tg_chat_id))
+                    if tg_user:
+                        api_key = tg_user.get('api_key') or tg_user.get('blofin_api_key')
+                        api_secret = tg_user.get('api_secret') or tg_user.get('blofin_api_secret')
+                        api_password = tg_user.get('api_password') or tg_user.get('blofin_api_password') or ''
+                        exchange_id = tg_user.get('exchange_id', exchange_id)
+                except Exception as e:
+                    print(f'[TEST-CONNECTION] Error fetching TG user: {e}')
+
         if not api_key or not api_secret:
             return jsonify({'success': False, 'error': 'No crypto API keys saved'}), 200
 
-        # Build diagnostic info
+        # Detect old Coinbase Pro keys (UUID key ~36 chars, base64 secret, no PEM header)
+        # and redirect to the correct CCXT class
+        effective_exchange_id = exchange_id
+        if exchange_id == 'coinbase' and len(api_key) < 60 and '-----BEGIN' not in api_secret:
+            effective_exchange_id = 'coinbaseexchange'
+            print(f'[TEST-CONNECTION] Detected old Coinbase Pro credentials — using coinbaseexchange')
+
         diag = {
             'exchange': exchange_id,
+            'effective_exchange': effective_exchange_id,
             'api_key_len': len(api_key) if api_key else 0,
             'api_secret_len': len(api_secret) if api_secret else 0,
             'secret_has_pem_header': '-----BEGIN' in (api_secret or ''),
@@ -232,7 +256,6 @@ def test_connection():
 
         try:
             import ccxt
-            from web_api.routes_trades import _set_coinbase_sandbox_if_needed
             config = {
                 'apiKey': api_key,
                 'secret': api_secret,
@@ -240,16 +263,29 @@ def test_connection():
                 'enableRateLimit': False,
                 'timeout': 8000,
             }
-            client = getattr(ccxt, exchange_id)(config)
+            client = getattr(ccxt, effective_exchange_id)(config)
             _set_coinbase_sandbox_if_needed(client, exchange_id, None, user)
             print(f'[TEST-CONNECTION] Using endpoint: {client.urls.get("api", {})}')
             bal = client.fetch_balance()
-            client.close()
-            return jsonify({'success': True, 'exchange': exchange_id, 'diag': diag}), 200
+            try:
+                client.close()
+            except Exception:
+                pass
+            note = None
+            if effective_exchange_id != exchange_id:
+                note = f'Your credentials look like old Coinbase Pro keys. In the exchange dropdown, try selecting "Coinbase Exchange" instead of "Coinbase Advanced".'
+            return jsonify({'success': True, 'exchange': effective_exchange_id, 'diag': diag, 'note': note}), 200
         except Exception as e:
             err = str(e)
-            print(f'[TEST-CONNECTION] {exchange_id} error: {err}')
-            return jsonify({'success': False, 'exchange': exchange_id, 'error': err[:500], 'diag': diag}), 200
+            print(f'[TEST-CONNECTION] {effective_exchange_id} error: {err}')
+            hint = None
+            if exchange_id == 'coinbase' and '401' in err:
+                if '-----BEGIN' not in (api_secret or ''):
+                    hint = 'Your API secret does not look like a CDP private key (missing PEM header). Coinbase Advanced requires new CDP API keys from https://portal.cdp.coinbase.com/. Old Coinbase Pro keys are not supported.'
+                else:
+                    hint = 'JWT auth failed. Ensure your CDP key has "View" permissions and your private key was copied in full including the -----BEGIN/END lines.'
+            return jsonify({'success': False, 'exchange': effective_exchange_id, 'error': err[:500], 'diag': diag, 'hint': hint}), 200
+
 
     elif segment == 'stock':
         import database
