@@ -5623,6 +5623,7 @@ window.testExchangeConnection = async function(segment, btn) {
             showToast(`❌ Connection failed: ${errMsg}`, 'error');
             console.error('[Test Connection] Error:', errMsg);
             if (result && result.diag) console.error('[Test Connection] Diagnostics:', JSON.stringify(result.diag, null, 2));
+        }
     } catch (e) {
         showToast(`❌ Connection test error: ${e.message || e}`, 'error');
     } finally {
