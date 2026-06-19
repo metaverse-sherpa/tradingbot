@@ -512,3 +512,47 @@ def get_users_for_email_alerts(frequency="realtime"):
         
     return processed_users
 
+def get_users_for_daily_processing():
+    """
+    Returns a list of WebUsers that require *any* daily processing:
+    1. needs_snapshot: Premium user who has connected at least one exchange.
+    2. wants_daily_email: User opted into daily summary emails.
+    """
+    from database import get_config, is_premium, get_user
+    emails_prem_only = get_config("emails_premium_only", "0") == "1"
+    
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT * FROM WebUsers')
+        rows = c.fetchall()
+        
+    users = [dict(r) for r in rows]
+    processed_users = []
+    
+    for u in users:
+        tg_id = u.get('telegram_chat_id')
+        u['is_premium_user'] = False
+        if tg_id:
+            tg_user = get_user(tg_id)
+            if tg_user and is_premium(tg_user):
+                u['is_premium_user'] = True
+                
+        # Determine if they want a daily email
+        wants_daily_email = u.get('email_notifications') == 1 and u.get('email_frequency') == 'daily'
+        if emails_prem_only and not u['is_premium_user']:
+            wants_daily_email = False
+            
+        u['wants_daily_email'] = wants_daily_email
+        
+        # Determine if they need a daily portfolio snapshot
+        has_crypto = bool(u.get('api_key') and u.get('api_secret'))
+        has_stock = bool(u.get('alpaca_api_key') and u.get('alpaca_api_secret'))
+        has_exchange = has_crypto or has_stock
+        
+        u['needs_snapshot'] = u['is_premium_user'] and has_exchange
+        
+        if u['needs_snapshot'] or u['wants_daily_email']:
+            processed_users.append(u)
+            
+    return processed_users
+

@@ -179,16 +179,16 @@ async def email_summary_engine(application):
                 s['target_tp_pct'] = tp
 
             # Dispatch to daily subscribers
-            from web_api.db_web import get_users_for_email_alerts
+            from web_api.db_web import get_users_for_daily_processing
             from web_api.email_service import send_alert_email, get_daily_summary_html
             
-            daily_users = get_users_for_email_alerts("daily")
+            daily_users = get_users_for_daily_processing()
             if daily_users:
                 subject = f"🏔️ Metaverse Sherpa Daily Signals Digest - {datetime.now(tz).strftime('%Y-%m-%d')}"
                 
                 for ru in daily_users:
-                    if not ru.get("email"):
-                        continue
+                    needs_snapshot = ru.get("needs_snapshot", False)
+                    wants_daily_email = ru.get("wants_daily_email", False)
                     
                     is_prem = ru.get("is_premium_user", False)
                     user_stats = {}
@@ -331,7 +331,7 @@ async def email_summary_engine(application):
                             
                             # Record daily balance history for premium user using ZK public key
                             pub_key = ru.get("public_key")
-                            if pub_key:
+                            if pub_key and needs_snapshot:
                                 encrypted_crypto = ""
                                 encrypted_stock = ""
                                 if crypto_linked:
@@ -355,9 +355,9 @@ async def email_summary_engine(application):
                                             c.execute("INSERT INTO PortfolioBalanceHistory (user_id, timestamp, encrypted_crypto_balance, encrypted_stock_balance) VALUES (?, ?, ?, ?)", (ru["id"], now_sec, encrypted_crypto, encrypted_stock))
                                 except Exception as db_err:
                                     logger.error(f"Error saving portfolio balance history: {db_err}")
-                    
-                    html_content = get_daily_summary_html(signals_opened, signals_closed, is_premium_user=is_prem, user_stats=user_stats)
-                    send_alert_email(ru["email"], subject, html_content)
+                    if wants_daily_email and ru.get("email"):
+                        html_content = get_daily_summary_html(signals_opened, signals_closed, is_premium_user=is_prem, user_stats=user_stats)
+                        send_alert_email(ru["email"], subject, html_content)
                 logger.info(f"✅ Daily summary emails dispatched to {len(daily_users)} subscribers.")
             
             # Sleep 60 seconds to prevent double firing on exact boundary
