@@ -6617,11 +6617,12 @@ window.renderAdminLogs = function(service) {
         // Highlight specific words
         escaped = escaped.replace(/(started|reloaded)/gi, '<b class="text-white font-black">$1</b>');
         
+        let content = escaped;
         if (lower.includes('restarted') || lower.includes('reloaded') || lower.includes('restart') || lower.includes('reload') || lower.includes('starting') || lower.includes('stopping') || lower.includes('started') || lower.includes('stopped')) {
-            return `<span class="bg-[#ff4444]/30 text-[#ff4444] px-1 rounded font-bold">${escaped}</span>`;
+            content = `<span class="bg-[#ff4444]/30 text-[#ff4444] px-1 rounded font-bold">${escaped}</span>`;
         }
-        return escaped;
-    }).join('\n');
+        return `<div class="hover:bg-white/10 cursor-pointer px-1 -mx-1 rounded transition-colors select-text" onclick="copyLogLine(this)" title="Click to copy line">${content}</div>`;
+    }).join('');
     
     container.innerHTML = highlighted;
     if (isScrolledToBottom) {
@@ -6643,6 +6644,19 @@ window.promptLogFilter = function(service) {
         renderView(); 
         window.renderAdminLogs(service); 
     }
+};
+
+window.copyLogLine = function(element) {
+    const selection = window.getSelection().toString();
+    if (selection) {
+        return; // User is highlighting text manually
+    }
+    const text = element.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        window.showToast("Line copied to clipboard!", 'success');
+    }).catch(err => {
+        window.showToast("Failed to copy line: " + err, 'error');
+    });
 };
 
 window.copyLogs = function(service) {
