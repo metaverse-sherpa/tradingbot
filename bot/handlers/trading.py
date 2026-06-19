@@ -509,10 +509,10 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or 0)
                 except: pass
                 
-            wins = user['wins']
-            losses = user['losses']
-            cum_pnl_realized = user.get('cum_pnl', 0.0)
-            equity = user.get('equity', 200.0)
+            wins = int(user.get('wins') or 0)
+            losses = int(user.get('losses') or 0)
+            cum_pnl_realized = float(user.get('cum_pnl') or 0.0)
+            equity = float(user.get('equity') or 200.0)
             
             overall_pnl_usdt = cum_pnl_realized + total_unrealized_pnl
             daily_pnl_usdt = realized_daily_pnl + total_unrealized_pnl
@@ -666,6 +666,8 @@ async def list_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 async def fetch_sym_history(sym):
                     try:
                         norm_sym = database.normalize_symbol(sym, user_ex.id)
+                        if norm_sym not in user_ex.markets:
+                            return
                         since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
                         trades = await user_ex.fetch_my_trades(norm_sym, since=since, limit=50)
                         
@@ -1082,7 +1084,13 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }) as user_ex:
                 await user_ex.load_markets()
                 
-                positions = await user_ex.fetch_positions()
+                try:
+                    positions = await user_ex.fetch_positions()
+                except Exception as pos_err:
+                    if ex_id != 'coinbase':
+                        logger.error(f"Error fetching positions for {ex_id}: {pos_err}")
+                    positions = []
+                    
                 active_crypto = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
                 
                 if active_crypto:

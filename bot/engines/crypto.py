@@ -433,7 +433,13 @@ async def signal_engine(application):
                                             if symbol.split("/")[0] not in user_enabled: continue
                                             
                                             norm_sym = database.normalize_symbol(symbol, user_ex.id)
-                                            pos = await user_ex.fetch_positions()
+                                            try:
+                                                pos = await user_ex.fetch_positions()
+                                            except Exception as pos_err:
+                                                if ex_id != 'coinbase':
+                                                    logger.error(f"Error fetching positions for {ex_id}: {pos_err}")
+                                                pos = []
+                                                
                                             if not any(p.get('symbol') == norm_sym and float(p.get("contracts", 0) or 0) != 0 for p in pos):
                                                 if live_bot_multi.DRY_RUN: continue
                                                     
