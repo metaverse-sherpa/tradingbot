@@ -4182,9 +4182,26 @@ function renderLogsView() {
                 </div>
             </div>
             
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; width: 100%;">
+            <style>
+                .logs-layout { display: flex; gap: 1rem; width: 100%; height: 100%; }
+                .log-panel { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+                .mobile-logs-tabs { display: none; }
+                
+                @media (max-width: 768px) {
+                    .mobile-logs-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; width: 100%; }
+                    .log-panel { display: none !important; }
+                    .log-panel.active-tab { display: flex !important; }
+                }
+            </style>
+            
+            <div class="mobile-logs-tabs">
+                <button onclick="window.setAdminLogsTab('webapi')" class="flex-1 py-2 text-sm font-bold rounded-lg border transition-colors ${window.adminLogsMobileTab !== 'tradingbot' ? 'bg-primary/20 text-primary border-primary' : 'bg-surface-container-high text-on-surface-variant border-white/10'}">Web API</button>
+                <button onclick="window.setAdminLogsTab('tradingbot')" class="flex-1 py-2 text-sm font-bold rounded-lg border transition-colors ${window.adminLogsMobileTab === 'tradingbot' ? 'bg-primary/20 text-primary border-primary' : 'bg-surface-container-high text-on-surface-variant border-white/10'}">Trading Bot</button>
+            </div>
+
+            <div class="logs-layout">
                 <!-- Web Server -->
-                <div style="flex: 1 1 400px; min-width: 0;" class="glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow flex flex-col">
+                <div class="log-panel glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow ${window.adminLogsMobileTab !== 'tradingbot' ? 'active-tab' : ''}">
                     <div class="flex justify-between items-center mb-3 shrink-0">
                         <h4 class="font-bold text-sm text-on-surface truncate">Web API</h4>
                         <div class="flex items-center gap-1.5 shrink-0">
@@ -4198,7 +4215,7 @@ function renderLogsView() {
                     </div>
                 </div>
                 <!-- Trading Bot -->
-                <div style="flex: 1 1 400px; min-width: 0;" class="glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow flex flex-col">
+                <div class="log-panel glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow ${window.adminLogsMobileTab === 'tradingbot' ? 'active-tab' : ''}">
                     <div class="flex justify-between items-center mb-3 shrink-0">
                         <h4 class="font-bold text-sm text-on-surface truncate">Trading Bot</h4>
                         <div class="flex items-center gap-1.5 shrink-0">
@@ -6615,6 +6632,11 @@ window.filterAdminLogs = function() {
     if (document.getElementById('tradingbot-logs-container')) window.renderAdminLogs('tradingbot');
 };
 
+window.setAdminLogsTab = function(tab) {
+    window.adminLogsMobileTab = tab;
+    renderView();
+};
+
 window.copyLogs = function(service, onlyRestarts = false) {
     const container = document.getElementById(`${service}-logs-container`);
     if (!container) return;
@@ -6659,11 +6681,18 @@ window.restartService = async function(service) {
 
 if (!window.adminLogsPollerInitialized) {
     setInterval(() => {
+        const isMobile = window.innerWidth <= 768;
+        const activeTab = window.adminLogsMobileTab || 'webapi';
+        
         if (document.getElementById('webapi-logs-container')) {
-            window.fetchAdminLogs('webapi');
+            if (!isMobile || activeTab === 'webapi') {
+                window.fetchAdminLogs('webapi');
+            }
         }
         if (document.getElementById('tradingbot-logs-container')) {
-            window.fetchAdminLogs('tradingbot');
+            if (!isMobile || activeTab === 'tradingbot') {
+                window.fetchAdminLogs('tradingbot');
+            }
         }
     }, 5000);
     window.adminLogsPollerInitialized = true;
