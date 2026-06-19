@@ -236,3 +236,53 @@ def admin_generate_gift():
     except Exception as e:
         print(f"Error generating admin gift: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
+@premium_bp.route('/api/admin/logs', methods=['GET'])
+@require_auth
+def admin_logs():
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    service = request.args.get("service")
+    if service not in ["tradingbot", "webapi"]:
+        return jsonify({"error": "Invalid service"}), 400
+
+    import subprocess
+    try:
+        logs = subprocess.check_output(['sudo', 'journalctl', '-u', service, '-n', '500', '--no-pager']).decode('utf-8', errors='replace')
+        return jsonify({"logs": logs}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch logs: {str(e)}"}), 500
+
+@premium_bp.route('/api/admin/restart', methods=['POST'])
+@require_auth
+def admin_restart():
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    service = data.get("service")
+    if service not in ["tradingbot", "webapi"]:
+        return jsonify({"error": "Invalid service"}), 400
+
+    import subprocess
+    try:
+        # We start the subprocess but we shouldn't wait if restarting webapi will kill our own request!
+        # Actually, if we are webapi, restarting ourself will drop the connection. 
+        # But we still trigger it.
+        subprocess.Popen(['sudo', 'systemctl', 'restart', service])
+        return jsonify({"message": f"{service} restart initiated"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to restart {service}: {str(e)}"}), 500

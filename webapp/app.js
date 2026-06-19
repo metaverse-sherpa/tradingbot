@@ -4140,6 +4140,37 @@ function renderSettingsView() {
                     </button>
                 </div>
             </section>
+            
+            <section class="glass-card rounded-xl p-card-padding space-y-4 border border-[#ffdb3c]/30 gold-glow mt-4">
+                <h3 class="font-body-lg text-body-lg font-bold text-[#ffdb3c] flex items-center gap-2">
+                    <span class="material-symbols-outlined">terminal</span> Server Admin Console
+                </h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Live server logs and service management.
+                </p>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <!-- Web Server -->
+                    <div class="flex-1 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-sm text-on-surface">Web API</h4>
+                            <button onclick="restartService('webapi')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
+                        </div>
+                        <div class="bg-black border border-white/10 rounded-lg p-3 h-80 overflow-y-auto font-mono text-[10px] text-green-400 whitespace-pre-wrap leading-tight" id="webapi-logs-container">
+                            Loading Web API logs...
+                        </div>
+                    </div>
+                    <!-- Trading Bot -->
+                    <div class="flex-1 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-sm text-on-surface">Trading Bot</h4>
+                            <button onclick="restartService('tradingbot')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
+                        </div>
+                        <div class="bg-black border border-white/10 rounded-lg p-3 h-80 overflow-y-auto font-mono text-[10px] text-primary whitespace-pre-wrap leading-tight" id="tradingbot-logs-container">
+                            Loading Trading Bot logs...
+                        </div>
+                    </div>
+                </div>
+            </section>
             ` : ''}
                 </div>
 
@@ -6493,3 +6524,43 @@ function showShareCardModal(title, cardApiUrl, refLink) {
     })();
 };
 
+window.fetchAdminLogs = async function(service) {
+    const container = document.getElementById(`${service}-logs-container`);
+    if (!container) return;
+    try {
+        const res = await apiRequest(`/admin/logs?service=${service}`, 'GET');
+        if (res && res.logs) {
+            const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
+            container.textContent = res.logs;
+            if (isScrolledToBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.restartService = async function(service) {
+    if (!confirm(`Are you sure you want to restart ${service}?`)) return;
+    try {
+        const res = await apiRequest('/admin/restart', 'POST', { service });
+        if (res && (res.message || res.error)) {
+            alert(res.message || res.error);
+        }
+    } catch (e) {
+        alert("Failed to restart service.");
+    }
+};
+
+if (!window.adminLogsPollerInitialized) {
+    setInterval(() => {
+        if (document.getElementById('webapi-logs-container')) {
+            window.fetchAdminLogs('webapi');
+        }
+        if (document.getElementById('tradingbot-logs-container')) {
+            window.fetchAdminLogs('tradingbot');
+        }
+    }, 5000);
+    window.adminLogsPollerInitialized = true;
+}
