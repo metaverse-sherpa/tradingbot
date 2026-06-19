@@ -47,7 +47,7 @@ def settings_exchange():
     api_secret = _clean_pem(data.get("api_secret", "").strip())
     api_password = data.get("api_password", "").strip()
     bingx_futures_type = data.get("bingx_futures_type", "perpetual").strip()
-    coinbase_sandbox = data.get("coinbase_sandbox", True)
+    coinbase_sandbox = data.get("coinbase_sandbox", False)
     if exchange_id == "bingx":
         bingx_futures_type = "perpetual"
     

@@ -90,7 +90,7 @@ def reconstruct_pem(flat_key):
             return f"{header}\n{wrapped_body}\n{footer}"
     return flat_key
 
-def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password, bingx_futures_type='standard', coinbase_sandbox=True):
+def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password, bingx_futures_type='standard', coinbase_sandbox=False):
     api_secret = reconstruct_pem(api_secret)
     cb_sb_val = 1 if coinbase_sandbox else 0
     with db_session() as conn:
@@ -269,7 +269,8 @@ def update_web_user_telegram(user_id, telegram_chat_id):
             c.execute('''
                 SELECT source_wallet, api_key, api_secret, api_password, exchange_id, 
                        alpaca_api_key, alpaca_api_secret, alpaca_endpoint,
-                       referral_count, referral_credits, premium_expiry, premium_referrals, referral_reward_triggered
+                       referral_count, referral_credits, premium_expiry, premium_referrals, referral_reward_triggered,
+                       coinbase_sandbox
                 FROM WebUsers WHERE id = ?
             ''', (user_id,))
             web_row = c.fetchone()
@@ -278,14 +279,15 @@ def update_web_user_telegram(user_id, telegram_chat_id):
             c.execute('''
                 SELECT source_wallet, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id,
                        alpaca_api_key, alpaca_api_secret, alpaca_endpoint,
-                       referral_count, referral_credits, premium_expiry, premium_referrals, referral_reward_triggered
+                       referral_count, referral_credits, premium_expiry, premium_referrals, referral_reward_triggered,
+                       coinbase_sandbox
                 FROM Users WHERE telegram_chat_id = ?
             ''', (telegram_chat_id,))
             bot_row = c.fetchone()
             
             if web_row and bot_row:
-                w_wallet, w_ak, w_as, w_ap, w_exc, w_alk, w_als, w_ale, w_ref_count, w_credits, w_expiry, w_premium_ref, w_reward_triggered = web_row
-                b_wallet, b_ak, b_as, b_ap, b_exc, b_alk, b_als, b_ale, b_ref_count, b_credits, b_expiry, b_premium_ref, b_reward_triggered = bot_row
+                w_wallet, w_ak, w_as, w_ap, w_exc, w_alk, w_als, w_ale, w_ref_count, w_credits, w_expiry, w_premium_ref, w_reward_triggered, w_cb = web_row
+                b_wallet, b_ak, b_as, b_ap, b_exc, b_alk, b_als, b_ale, b_ref_count, b_credits, b_expiry, b_premium_ref, b_reward_triggered, b_cb = bot_row
                 
                 # Merge logic: Web takes precedence if it exists, otherwise Bot
                 f_wallet = w_wallet or b_wallet
@@ -296,6 +298,9 @@ def update_web_user_telegram(user_id, telegram_chat_id):
                 f_alk = w_alk or b_alk
                 f_als = w_als or b_als
                 f_ale = w_ale or b_ale
+                
+                # Coinbase Sandbox is an integer 0 or 1. If web has a value, use it. If not, fallback to bot.
+                f_cb = w_cb if w_cb is not None else (b_cb if b_cb is not None else 0)
                 
                 # Referral / Premium Sync
                 f_ref_count = max(w_ref_count or 0, b_ref_count or 0)
@@ -310,10 +315,10 @@ def update_web_user_telegram(user_id, telegram_chat_id):
                     SET source_wallet = ?, api_key = ?, api_secret = ?, api_password = ?, exchange_id = ?,
                          alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?,
                          referral_count = ?, referral_credits = ?, premium_expiry = ?, premium_referrals = ?,
-                         referral_reward_triggered = ?
+                         referral_reward_triggered = ?, coinbase_sandbox = ?
                     WHERE id = ?
                 ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale,
-                      f_ref_count, f_credits, f_expiry, f_premium_ref, f_reward_triggered, user_id))
+                      f_ref_count, f_credits, f_expiry, f_premium_ref, f_reward_triggered, f_cb, user_id))
                 
                 # Update Users (Bot) with merged
                 c.execute('''
@@ -321,10 +326,10 @@ def update_web_user_telegram(user_id, telegram_chat_id):
                     SET source_wallet = ?, blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, exchange_id = ?,
                          alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?,
                          referral_count = ?, referral_credits = ?, premium_expiry = ?, premium_referrals = ?,
-                         referral_reward_triggered = ?
+                         referral_reward_triggered = ?, coinbase_sandbox = ?
                     WHERE telegram_chat_id = ?
                 ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale,
-                      f_ref_count, f_credits, f_expiry, f_premium_ref, f_reward_triggered, telegram_chat_id))
+                      f_ref_count, f_credits, f_expiry, f_premium_ref, f_reward_triggered, f_cb, telegram_chat_id))
 
 def send_telegram_notification(chat_id, message):
     try:
