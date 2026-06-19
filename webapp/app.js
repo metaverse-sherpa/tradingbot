@@ -6607,15 +6607,11 @@ window.renderAdminLogs = function(service) {
         const lower = escaped.toLowerCase();
         
         // Coloring ERROR and WARNING
-        if (escaped.includes('ERROR')) {
-            escaped = escaped.replace(/ERROR/g, '<span class="text-error font-bold">ERROR</span>');
-        }
-        if (escaped.includes('WARNING')) {
-            escaped = escaped.replace(/WARNING/g, '<span class="text-yellow-400 font-bold">WARNING</span>');
-        }
+        escaped = escaped.replace(/(error)/gi, '<span class="text-[#ff4444] font-bold">$1</span>');
+        escaped = escaped.replace(/(warning)/gi, '<span class="text-yellow-400 font-bold">$1</span>');
         
         if (lower.includes('restarted') || lower.includes('reloaded') || lower.includes('restart') || lower.includes('reload') || lower.includes('starting') || lower.includes('stopping') || lower.includes('started') || lower.includes('stopped')) {
-            return `<span class="bg-error/30 text-error px-1 rounded font-bold">${escaped}</span>`;
+            return `<span class="bg-[#ff4444]/30 text-[#ff4444] px-1 rounded font-bold">${escaped}</span>`;
         }
         return escaped;
     }).join('\n');
