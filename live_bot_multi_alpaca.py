@@ -84,7 +84,7 @@ def update_stock_daily_cache():
     
     for ticker in sorted(list(tickers)):
         # Dynamic lookback: check the latest date in DB
-        start_date = None
+        db_latest_date = None
         try:
             conn_stock = sqlite3.connect(STOCK_DB_PATH)
             c_stock = conn_stock.cursor()
@@ -92,13 +92,9 @@ def update_stock_daily_cache():
             row = c_stock.fetchone()
             conn_stock.close()
             if row and row[0]:
-                start_date = row[0]
+                db_latest_date = row[0]
         except Exception as e:
             logger.error(f"Error querying latest date for {ticker}: {e}")
-            
-        if not start_date:
-            from datetime import timedelta
-            start_date = (datetime.today() - timedelta(days=120)).strftime('%Y-%m-%d')
             
         # Helper to check if the date is already up to date
         def is_date_up_to_date(latest_date_str):
@@ -119,12 +115,19 @@ def update_stock_daily_cache():
             except Exception:
                 return False
 
-        if is_date_up_to_date(start_date):
-            logger.info(f"Cache for {ticker} is already up to date ({start_date}). Skipping.")
+        if is_date_up_to_date(db_latest_date):
+            logger.info(f"Cache for {ticker} is already up to date ({db_latest_date}). Skipping.")
             continue
             
-        logger.info(f"Fetching {ticker} daily bars from {start_date} to {today_str}...")
-        data = stock_data_cache_daily.fetch_daily_data(ticker, ALPACA_API_KEY, ALPACA_API_SECRET, start_date=start_date, end_date=today_str)
+        if not db_latest_date:
+            from datetime import timedelta
+            fetch_start = (datetime.today() - timedelta(days=120)).strftime('%Y-%m-%d')
+        else:
+            from datetime import timedelta
+            fetch_start = (datetime.strptime(db_latest_date, "%Y-%m-%d") + timedelta(days=1)).strftime('%Y-%m-%d')
+            
+        logger.info(f"Fetching {ticker} daily bars from {fetch_start} to {today_str}...")
+        data = stock_data_cache_daily.fetch_daily_data(ticker, ALPACA_API_KEY, ALPACA_API_SECRET, start_date=fetch_start, end_date=today_str)
         if data:
             stock_data_cache_daily.save_to_db(ticker, data)
         # Small rate limit sleep
