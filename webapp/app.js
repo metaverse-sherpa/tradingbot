@@ -3819,7 +3819,7 @@ function renderSettingsView() {
                             </h4>
                             <div class="space-y-2">
                                 <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Select Platform</label>
-                                <details class="relative w-full group" id="exchange-dropdown-details">
+                                <details class="relative w-full group z-50" id="exchange-dropdown-details">
                                     <summary class="w-full h-11 bg-surface-container-low text-on-surface text-base border border-white/10 rounded-lg px-4 flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                         <span id="exchange-select-label">${!hasLinkedCrypto ? 'Blofin' : 'Alpaca Stocks'}</span>
                                         <span class="material-symbols-outlined text-on-surface-variant group-open:rotate-180 transition-transform">expand_more</span>
