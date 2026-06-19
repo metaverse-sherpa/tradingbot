@@ -22,6 +22,7 @@ def _get_telegram_user(web_user):
         try:
             return database.get_user(int(tg_id))
         except Exception as e:
+            pass
     return None
 
 import re
@@ -242,6 +243,7 @@ def test_connection():
                         api_password = tg_user.get('api_password') or tg_user.get('blofin_api_password') or ''
                         exchange_id = tg_user.get('exchange_id', exchange_id)
                 except Exception as e:
+                    pass
 
         if not api_key or not api_secret:
             return jsonify({'success': False, 'error': 'No crypto API keys saved'}), 200

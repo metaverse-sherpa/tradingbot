@@ -71,6 +71,7 @@ def _get_telegram_user(web_user):
         try:
             return database.get_user(int(tg_id))
         except Exception as e:
+            pass
     return None
 
 def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
@@ -85,6 +86,7 @@ def _set_coinbase_sandbox_if_needed(client, exchange_id, tg_user, web_user):
             if exchange_id == 'coinbase':
                 client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
         else:
+            pass
 
 @trades_bp.route('/api/user/profile', methods=['GET'])
 @require_auth
@@ -784,6 +786,7 @@ def get_trades_history():
                 if row and row[0]:
                     raw_cache = row[0]
         except Exception as e:
+            pass
             
     if raw_cache:
         try:
@@ -793,6 +796,7 @@ def get_trades_history():
                 tr["type"] = "stock" if is_stk else "crypto"
                 history.append(tr)
         except Exception as e:
+            pass
 
     # 2. Try the history_cache from the Telegram bot's Users table if empty
     if not history and tg_user:
@@ -806,6 +810,7 @@ def get_trades_history():
                     tr["type"] = "stock" if is_stk else "crypto"
                     history.append(tr)
             except Exception as e:
+                pass
         
         # Fallback: query the DB directly
         if not history:
@@ -821,6 +826,7 @@ def get_trades_history():
                             tr["type"] = "stock" if is_stk else "crypto"
                             history.append(tr)
             except Exception as e:
+                pass
         
     # Fallback: fetch directly from CCXT
     if not history:
@@ -914,6 +920,7 @@ def get_trades_history():
                             else:
                                 database.set_history_cache(None, last_50, web_user_id=user.get('id'))
                         except Exception as cache_err:
+                            pass
                 finally:
                     loop.close()
             except Exception as e:
@@ -962,6 +969,7 @@ def get_trades_history():
                                 "entry_price": entry
                             })
             except Exception as e:
+                pass
                         
         for tr in alpaca_history:
             if not any(h.get("symbol") == tr.get("symbol") and h.get("timestamp") == tr.get("close_timestamp", 0) for h in history):
@@ -972,6 +980,7 @@ def get_trades_history():
                 tr["timestamp"] = tr.get("close_timestamp", tr.get("close_time", 0))
                 history.append(tr)
     except Exception as e:
+        pass
         
     # Sort history by timestamp descending
     history.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
