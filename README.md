@@ -7,12 +7,23 @@ A production-ready, multi-tenant Telegram trading bot and companion web dashboar
 ## 🚀 Key Features
 
 *   **Multi-Tenant Telegram Interface**: Secure `/setup` or `/reset` flows. Each tenant runs autonomously using their own credentials.
-*   **Multi-Exchange Engine**: Real-time integration with Blofin, Binance, MEXC, and Bitget futures via CCXT.
+*   **Multi-Exchange Engine**: Real-time integration with Blofin, Binance, MEXC, Bitget, and **Coinbase Advanced (CDP API Keys)** via CCXT.
 *   **Equities Integration**: Automated stock trading using the Alpaca API driven by the **Sherpa Velocity Pullback** strategy.
 *   **Lightweight Web SPA**: A highly responsive premium web dashboard featuring glassmorphic designs, real-time position status, and inline technical charting.
 *   **Military-Grade Encryption**: Fernet symmetric encryption key encrypts exchange API keys/passwords at rest in the SQLite database.
 *   **Performance Tracking**: Live win rate, total trade counts, and theoretical/forward testing simulations.
 *   **Administrative Control Overrides**: Admin-only commands to manage tiers, referrals, generate gift codes, and execute emergency panic closes.
+
+---
+
+## 🆕 Recent Updates
+
+*   **Coinbase Advanced (CDP) Integration**: Added support for Coinbase's new Developer Platform (CDP) API keys using ES256/Ed25519 signatures.
+*   **Robust PEM Key Parsing**: Implemented a highly resilient `_clean_pem()` function on the backend that automatically cleans and reconstructs corrupted multiline private keys (e.g., literal `\n` strings, missing newlines, or extra spaces introduced by browser copy-pasting) to prevent `Incorrect padding` base64 decoding errors.
+*   **UI/UX Improvements**: 
+    *   Fixed a z-index stacking context bug on the webapp where the custom exchange dropdown rendered behind adjacent form inputs.
+    *   Fixed an issue where the UI would incorrectly display "Blofin" momentarily after saving Coinbase credentials due to an incorrect state variable update (`crypto_exchange_id` vs `exchange_id`).
+    *   Resolved a PostgreSQL `DatatypeMismatch` crash by enforcing strict integer casting for boolean toggle settings (like "Hide Values").
 
 ---
 

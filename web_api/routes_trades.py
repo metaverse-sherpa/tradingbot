@@ -136,7 +136,10 @@ def profile():
     user["has_exchange_keys"] = bool((tg_user or {}).get("api_key") or user.get("api_key"))
     user["has_alpaca_keys"] = bool((tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key"))
     
-    user["exchange_id"] = user.get("exchange_id") or (tg_user or {}).get("exchange_id")
+    if tg_user and tg_user.get("api_key"):
+        user["exchange_id"] = tg_user.get("exchange_id", "blofin")
+    else:
+        user["exchange_id"] = user.get("exchange_id", "blofin")
     user["alpaca_endpoint"] = user.get("alpaca_endpoint") or (tg_user or {}).get("alpaca_endpoint")
     
     # Fetch recruits for referral UI
@@ -177,10 +180,16 @@ def get_balance():
     balance_stock = 0.0
     
     # Use the linked Telegram user's exchange keys if available
-    crypto_api_key = (tg_user or {}).get("api_key") or user.get("api_key")
-    crypto_api_secret = (tg_user or {}).get("api_secret") or user.get("api_secret")
-    crypto_api_password = (tg_user or {}).get("api_password") or user.get("api_password") or ""
-    crypto_exchange_id = (tg_user or {}).get("exchange_id") or user.get("exchange_id", "blofin")
+    if tg_user and tg_user.get("api_key"):
+        crypto_api_key = tg_user.get("api_key")
+        crypto_api_secret = tg_user.get("api_secret")
+        crypto_api_password = tg_user.get("api_password") or ""
+        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+    else:
+        crypto_api_key = user.get("api_key")
+        crypto_api_secret = user.get("api_secret")
+        crypto_api_password = user.get("api_password") or ""
+        crypto_exchange_id = user.get("exchange_id", "blofin")
     
     # 1. Query live Crypto balance (CCXT)
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
@@ -239,12 +248,17 @@ def get_balance():
             
     # 2. Query live Stock balance (Alpaca)
     # Use linked Telegram user's Alpaca keys if available
-    alpaca_key = (tg_user or {}).get("alpaca_api_key") or user.get("alpaca_api_key")
-    alpaca_secret = (tg_user or {}).get("alpaca_api_secret") or user.get("alpaca_api_secret")
+    if tg_user and tg_user.get("alpaca_api_key"):
+        alpaca_key = tg_user.get("alpaca_api_key")
+        alpaca_secret = tg_user.get("alpaca_api_secret")
+        alpaca_user = tg_user
+    else:
+        alpaca_key = user.get("alpaca_api_key")
+        alpaca_secret = user.get("alpaca_api_secret")
+        alpaca_user = user
     
     if (not segment or segment == 'stock') and alpaca_key and alpaca_secret:
         def fetch_stock_balance():
-            alpaca_user = tg_user or user
             res = database.make_alpaca_request(alpaca_user, "GET", "/v2/account")
             return (float(res.get("portfolio_value", 0.0)), True)
         
@@ -308,10 +322,16 @@ def get_stats():
     crypto_open_count = 0
     
     # Attempt CCXT fetch if keys exist
-    crypto_api_key = tg_user.get("api_key")
-    crypto_api_secret = tg_user.get("api_secret")
-    crypto_api_password = tg_user.get("api_password")
-    crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+    if tg_user and tg_user.get("api_key"):
+        crypto_api_key = tg_user.get("api_key")
+        crypto_api_secret = tg_user.get("api_secret")
+        crypto_api_password = tg_user.get("api_password") or ""
+        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+    else:
+        crypto_api_key = user.get("api_key")
+        crypto_api_secret = user.get("api_secret")
+        crypto_api_password = user.get("api_password") or ""
+        crypto_exchange_id = user.get("exchange_id", "blofin")
     
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_stats():
@@ -656,10 +676,16 @@ def get_open_trades():
             print(f"Alpaca local fallback error: {e}")
         
     # 2. Fetch CCXT Crypto positions
-    crypto_api_key = merged_user.get("api_key")
-    crypto_api_secret = merged_user.get("api_secret")
-    crypto_api_password = merged_user.get("api_password") or ""
-    crypto_exchange_id = merged_user.get("exchange_id", "blofin")
+    if tg_user and tg_user.get("api_key"):
+        crypto_api_key = tg_user.get("api_key")
+        crypto_api_secret = tg_user.get("api_secret")
+        crypto_api_password = tg_user.get("api_password") or ""
+        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+    else:
+        crypto_api_key = user.get("api_key")
+        crypto_api_secret = user.get("api_secret")
+        crypto_api_password = user.get("api_password") or ""
+        crypto_exchange_id = user.get("exchange_id", "blofin")
     
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_open_trades():
@@ -806,10 +832,16 @@ def get_trades_history():
     # Fallback: fetch directly from CCXT
     if not history:
         print("[HISTORY] Cache empty or web-only premium, trying CCXT fallback...")
-        crypto_api_key = (tg_user.get("api_key") if tg_user else None) or user.get("api_key")
-        crypto_api_secret = (tg_user.get("api_secret") if tg_user else None) or user.get("api_secret")
-        crypto_api_password = (tg_user.get("api_password") if tg_user else None) or user.get("api_password") or ""
-        crypto_exchange_id = (tg_user.get("exchange_id") if tg_user else None) or user.get("exchange_id", "blofin")
+        if tg_user and tg_user.get("api_key"):
+            crypto_api_key = tg_user.get("api_key")
+            crypto_api_secret = tg_user.get("api_secret")
+            crypto_api_password = tg_user.get("api_password") or ""
+            crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+        else:
+            crypto_api_key = user.get("api_key")
+            crypto_api_secret = user.get("api_secret")
+            crypto_api_password = user.get("api_password") or ""
+            crypto_exchange_id = user.get("exchange_id", "blofin")
         print(f"[HISTORY] CCXT: exchange={crypto_exchange_id}, has_key={bool(crypto_api_key)}, has_secret={bool(crypto_api_secret)}")
         if crypto_api_key and crypto_api_secret:
             try:
@@ -2046,10 +2078,16 @@ def share_card():
                 
                 # Fetch live crypto balance / unrealized if API key exists
                 crypto_unrealized = 0.0
-                crypto_api_key = tg_user.get("api_key")
-                crypto_api_secret = tg_user.get("api_secret")
-                crypto_api_password = tg_user.get("api_password")
-                crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+                if tg_user and tg_user.get("api_key"):
+        crypto_api_key = tg_user.get("api_key")
+        crypto_api_secret = tg_user.get("api_secret")
+        crypto_api_password = tg_user.get("api_password") or ""
+        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+    else:
+        crypto_api_key = user.get("api_key")
+        crypto_api_secret = user.get("api_secret")
+        crypto_api_password = user.get("api_password") or ""
+        crypto_exchange_id = user.get("exchange_id", "blofin")
                 
                 realized_daily_pnl = 0.0
                 if crypto_api_key and crypto_api_secret:
