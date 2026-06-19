@@ -1266,6 +1266,8 @@ async function handleRoute() {
         }).catch(err => console.error("Error loading referral stats:", err));
     } else if (hash === '#/help') {
         STATE.current_view = 'help';
+    } else if (hash === '#/logs') {
+        STATE.current_view = 'logs';
     }
     
     renderView();
