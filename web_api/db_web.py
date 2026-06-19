@@ -2,19 +2,33 @@ import sqlite3
 import time
 from database import db_session, encrypt, decrypt
 
+_ENCRYPTED_KEY_FIELDS = ("api_key", "api_secret", "api_password", "alpaca_api_key", "alpaca_api_secret")
+
+def _decrypt_user_keys(user):
+    """Decrypt all encrypted API key fields on a user dict in-place."""
+    if not user:
+        return user
+    for field in _ENCRYPTED_KEY_FIELDS:
+        if user.get(field):
+            try:
+                user[field] = decrypt(user[field])
+            except Exception as e:
+                print(f"[DECRYPT ERROR] Failed to decrypt {field} for user {user.get('id', '?')}: {e}")
+    return user
+
 def get_web_user_by_email(email):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('SELECT * FROM WebUsers WHERE email = ?', (email.strip().lower(),))
         row = c.fetchone()
-        return dict(row) if row else None
+        return _decrypt_user_keys(dict(row)) if row else None
 
 def get_web_user_by_google_id(google_id):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('SELECT * FROM WebUsers WHERE google_id = ?', (google_id,))
         row = c.fetchone()
-        return dict(row) if row else None
+        return _decrypt_user_keys(dict(row)) if row else None
 
 def get_web_user_by_id(user_id):
     with db_session() as conn:
