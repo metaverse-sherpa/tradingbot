@@ -218,6 +218,18 @@ def test_connection():
         if not api_key or not api_secret:
             return jsonify({'success': False, 'error': 'No crypto API keys saved'}), 200
 
+        # Build diagnostic info
+        diag = {
+            'exchange': exchange_id,
+            'api_key_len': len(api_key) if api_key else 0,
+            'api_secret_len': len(api_secret) if api_secret else 0,
+            'secret_has_pem_header': '-----BEGIN' in (api_secret or ''),
+            'secret_has_newlines': '\n' in (api_secret or ''),
+            'secret_first_40': (api_secret or '')[:40] + '...',
+            'coinbase_sandbox': user.get('coinbase_sandbox'),
+        }
+        print(f'[TEST-CONNECTION] Diagnostics: {diag}')
+
         try:
             import ccxt
             from web_api.routes_trades import _set_coinbase_sandbox_if_needed
@@ -230,13 +242,14 @@ def test_connection():
             }
             client = getattr(ccxt, exchange_id)(config)
             _set_coinbase_sandbox_if_needed(client, exchange_id, None, user)
+            print(f'[TEST-CONNECTION] Using endpoint: {client.urls.get("api", {})}')
             bal = client.fetch_balance()
             client.close()
-            return jsonify({'success': True, 'exchange': exchange_id, 'endpoint': client.urls.get('api', {}).get('rest', '')}), 200
+            return jsonify({'success': True, 'exchange': exchange_id, 'diag': diag}), 200
         except Exception as e:
             err = str(e)
             print(f'[TEST-CONNECTION] {exchange_id} error: {err}')
-            return jsonify({'success': False, 'exchange': exchange_id, 'error': err[:300]}), 200
+            return jsonify({'success': False, 'exchange': exchange_id, 'error': err[:500], 'diag': diag}), 200
 
     elif segment == 'stock':
         import database

@@ -24,21 +24,13 @@ def get_web_user_by_id(user_id):
         if row:
             user = dict(row)
             # Decrypt exchange keys if they exist
-            if user.get("api_key"):
-                try: user["api_key"] = decrypt(user["api_key"])
-                except Exception: pass
-            if user.get("api_secret"):
-                try: user["api_secret"] = decrypt(user["api_secret"])
-                except Exception: pass
-            if user.get("api_password"):
-                try: user["api_password"] = decrypt(user["api_password"])
-                except Exception: pass
-            if user.get("alpaca_api_key"):
-                try: user["alpaca_api_key"] = decrypt(user["alpaca_api_key"])
-                except Exception: pass
-            if user.get("alpaca_api_secret"):
-                try: user["alpaca_api_secret"] = decrypt(user["alpaca_api_secret"])
-                except Exception: pass
+            for key_field in ("api_key", "api_secret", "api_password", "alpaca_api_key", "alpaca_api_secret"):
+                if user.get(key_field):
+                    try:
+                        user[key_field] = decrypt(user[key_field])
+                    except Exception as e:
+                        print(f"[DECRYPT ERROR] Failed to decrypt {key_field} for user {user_id}: {e}")
+                        # Leave the raw encrypted value — it will fail at the exchange
             return user
         return None
 
