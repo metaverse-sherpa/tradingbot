@@ -6610,6 +6610,9 @@ window.renderAdminLogs = function(service) {
         escaped = escaped.replace(/(error)/gi, '<span class="text-[#ff4444] font-bold">$1</span>');
         escaped = escaped.replace(/(warning)/gi, '<span class="text-yellow-400 font-bold">$1</span>');
         
+        // Highlight specific words
+        escaped = escaped.replace(/(started|reloaded)/gi, '<b class="text-white font-black">$1</b>');
+        
         if (lower.includes('restarted') || lower.includes('reloaded') || lower.includes('restart') || lower.includes('reload') || lower.includes('starting') || lower.includes('stopping') || lower.includes('started') || lower.includes('stopped')) {
             return `<span class="bg-[#ff4444]/30 text-[#ff4444] px-1 rounded font-bold">${escaped}</span>`;
         }
