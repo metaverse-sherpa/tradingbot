@@ -4169,6 +4169,9 @@ function renderSettingsView() {
 }
 
 function renderLogsView() {
+    const webapiFilter = localStorage.getItem('webapi_log_filter') || '';
+    const tradingbotFilter = localStorage.getItem('tradingbot_log_filter') || '';
+
     return `
         ${renderHeader()}
         <main class="w-full pt-20 px-container-margin pb-24 max-w-[1200px] mx-auto min-h-screen flex flex-col">
@@ -4176,10 +4179,6 @@ function renderLogsView() {
                 <h2 class="font-headline-sm text-headline-sm text-[#ffdb3c] flex items-center gap-2">
                     <span class="material-symbols-outlined">terminal</span> Server Logs
                 </h2>
-                <div class="text-xs text-on-surface-variant flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[16px]">search</span>
-                    <input type="text" id="admin-log-search" onkeyup="filterAdminLogs()" placeholder="Search logs..." class="bg-black/50 border border-white/10 rounded px-3 py-1.5 text-on-surface focus:outline-none focus:border-[#ffdb3c] transition-colors font-mono w-48 placeholder:text-white/20">
-                </div>
             </div>
             
             <style>
@@ -4206,11 +4205,11 @@ function renderLogsView() {
                         <h4 class="font-bold text-sm text-on-surface truncate">Web API</h4>
                         <div class="flex items-center gap-1.5 shrink-0">
                             <button onclick="copyLogs('webapi')" title="Copy Visible Logs" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">content_copy</span></button>
-                            <button onclick="copyLogs('webapi', true)" title="Copy Restart/Reload Lines" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
-                            <button onclick="restartService('webapi')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
+                            <button onclick="promptLogFilter('webapi')" title="Filter Logs" class="text-[10px] bg-surface-container-high px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1 ${webapiFilter ? 'text-[#ffdb3c] border border-[#ffdb3c]/50' : 'text-on-surface-variant'}"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
+                            <button onclick="restartService('webapi')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Reload</button>
                         </div>
                     </div>
-                    <div style="color: #4ade80; white-space: pre; overflow-x: auto; height: 75vh;" class="bg-black border border-white/10 rounded-lg p-3 font-mono text-[10px] leading-tight" id="webapi-logs-container">
+                    <div style="color: #4ade80; white-space: pre; overflow-x: auto; height: 65vh;" class="bg-black border border-white/10 rounded-lg p-3 font-mono text-[10px] leading-tight" id="webapi-logs-container">
                         Loading Web API logs...
                     </div>
                 </div>
@@ -4220,11 +4219,11 @@ function renderLogsView() {
                         <h4 class="font-bold text-sm text-on-surface truncate">Trading Bot</h4>
                         <div class="flex items-center gap-1.5 shrink-0">
                             <button onclick="copyLogs('tradingbot')" title="Copy Visible Logs" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">content_copy</span></button>
-                            <button onclick="copyLogs('tradingbot', true)" title="Copy Restart/Reload Lines" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
+                            <button onclick="promptLogFilter('tradingbot')" title="Filter Logs" class="text-[10px] bg-surface-container-high px-2 py-1.5 rounded hover:bg-white/10 transition-colors font-bold uppercase tracking-wider flex items-center gap-1 ${tradingbotFilter ? 'text-[#ffdb3c] border border-[#ffdb3c]/50' : 'text-on-surface-variant'}"><span class="material-symbols-outlined text-[12px]">filter_alt</span></button>
                             <button onclick="restartService('tradingbot')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
                         </div>
                     </div>
-                    <div style="color: #3cd7ff; white-space: pre; overflow-x: auto; height: 75vh;" class="bg-black border border-white/10 rounded-lg p-3 font-mono text-[10px] leading-tight" id="tradingbot-logs-container">
+                    <div style="color: #3cd7ff; white-space: pre; overflow-x: auto; height: 65vh;" class="bg-black border border-white/10 rounded-lg p-3 font-mono text-[10px] leading-tight" id="tradingbot-logs-container">
                         Loading Trading Bot logs...
                     </div>
                 </div>
@@ -6591,8 +6590,7 @@ window.fetchAdminLogs = async function(service) {
 
 window.renderAdminLogs = function(service) {
     const container = document.getElementById(`${service}-logs-container`);
-    const searchInput = document.getElementById('admin-log-search');
-    const query = searchInput ? searchInput.value.toLowerCase() : "";
+    const query = localStorage.getItem(`${service}_log_filter`) || "";
     if (!container) return;
     
     const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 50;
@@ -6600,7 +6598,8 @@ window.renderAdminLogs = function(service) {
     let rawLogs = window.rawAdminLogs[service] || "";
     let lines = rawLogs.split('\n');
     if (query) {
-        lines = lines.filter(line => line.toLowerCase().includes(query));
+        const lowerQuery = query.toLowerCase();
+        lines = lines.filter(line => line.toLowerCase().includes(lowerQuery));
     }
     
     let highlighted = lines.map(line => {
@@ -6627,39 +6626,33 @@ window.renderAdminLogs = function(service) {
     }
 };
 
-window.filterAdminLogs = function() {
-    if (document.getElementById('webapi-logs-container')) window.renderAdminLogs('webapi');
-    if (document.getElementById('tradingbot-logs-container')) window.renderAdminLogs('tradingbot');
+window.promptLogFilter = function(service) {
+    const currentFilter = localStorage.getItem(`${service}_log_filter`) || "";
+    const promptText = prompt(`Enter text to filter ${service === 'webapi' ? 'Web API' : 'Trading Bot'} logs (leave blank to clear):`, currentFilter);
+    if (promptText !== null) {
+        if (promptText.trim() === '') {
+            localStorage.removeItem(`${service}_log_filter`);
+            window.showToast("Filter cleared.", "success");
+        } else {
+            localStorage.setItem(`${service}_log_filter`, promptText.trim());
+            window.showToast("Filter applied.", "success");
+        }
+        renderView(); 
+        window.renderAdminLogs(service); 
+    }
 };
 
-window.setAdminLogsTab = function(tab) {
-    window.adminLogsMobileTab = tab;
-    renderView();
-};
-
-window.copyLogs = function(service, onlyRestarts = false) {
+window.copyLogs = function(service) {
     const container = document.getElementById(`${service}-logs-container`);
     if (!container) return;
     
-    const searchInput = document.getElementById('admin-log-search');
-    const query = searchInput ? searchInput.value.toLowerCase() : "";
-    let lines = (window.rawAdminLogs[service] || "").split('\n');
+    let textToCopy = container.innerText;
     
-    if (query) {
-        lines = lines.filter(line => line.toLowerCase().includes(query));
+    if (!textToCopy.trim()) {
+        window.showToast("No logs to copy", "error");
+        return;
     }
     
-    let textToCopy = lines.join('\n');
-    if (onlyRestarts) {
-        textToCopy = lines.filter(line => {
-            const lower = line.toLowerCase();
-            return lower.includes('restarted') || lower.includes('reloaded') || lower.includes('restart') || lower.includes('reload') || lower.includes('starting') || lower.includes('stopping') || lower.includes('started') || lower.includes('stopped');
-        }).join('\n');
-        if (!textToCopy.trim()) {
-            window.showToast("No restart/reload lines found", "error");
-            return;
-        }
-    }
     navigator.clipboard.writeText(textToCopy).then(() => {
         window.showToast(onlyRestarts ? "Restart events copied!" : "All logs copied!", 'success');
     }).catch(err => {

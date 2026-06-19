@@ -282,7 +282,10 @@ def admin_restart():
         # We start the subprocess but we shouldn't wait if restarting webapi will kill our own request!
         # Actually, if we are webapi, restarting ourself will drop the connection. 
         # But we still trigger it.
-        subprocess.Popen(['sudo', 'systemctl', 'restart', service])
-        return jsonify({"message": f"{service} restart initiated"}), 200
+        if service == 'webapi':
+            subprocess.Popen(['sudo', 'systemctl', 'reload-or-restart', service])
+        else:
+            subprocess.Popen(['sudo', 'systemctl', 'restart', service])
+        return jsonify({"message": f"{service} restart/reload initiated."}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to restart {service}: {str(e)}"}), 500
