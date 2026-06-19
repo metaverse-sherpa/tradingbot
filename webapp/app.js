@@ -4182,9 +4182,9 @@ function renderLogsView() {
                 </div>
             </div>
             
-            <div class="flex flex-col lg:flex-row gap-4 w-full">
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; width: 100%;">
                 <!-- Web Server -->
-                <div class="flex-1 flex flex-col min-w-0 glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow">
+                <div style="flex: 1 1 400px; min-width: 0;" class="glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow flex flex-col">
                     <div class="flex justify-between items-center mb-3 shrink-0">
                         <h4 class="font-bold text-sm text-on-surface truncate">Web API</h4>
                         <div class="flex items-center gap-1.5 shrink-0">
@@ -4193,12 +4193,12 @@ function renderLogsView() {
                             <button onclick="restartService('webapi')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
                         </div>
                     </div>
-                    <div class="bg-black border border-white/10 rounded-lg p-3 h-[75vh] overflow-auto font-mono text-[10px] text-green-400 whitespace-pre leading-tight" id="webapi-logs-container">
+                    <div style="color: #4ade80; white-space: pre; overflow-x: auto; height: 75vh;" class="bg-black border border-white/10 rounded-lg p-3 font-mono text-[10px] leading-tight" id="webapi-logs-container">
                         Loading Web API logs...
                     </div>
                 </div>
                 <!-- Trading Bot -->
-                <div class="flex-1 flex flex-col min-w-0 glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow">
+                <div style="flex: 1 1 400px; min-width: 0;" class="glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow flex flex-col">
                     <div class="flex justify-between items-center mb-3 shrink-0">
                         <h4 class="font-bold text-sm text-on-surface truncate">Trading Bot</h4>
                         <div class="flex items-center gap-1.5 shrink-0">
@@ -4207,7 +4207,7 @@ function renderLogsView() {
                             <button onclick="restartService('tradingbot')" class="text-[10px] bg-error/20 text-error px-3 py-1.5 rounded hover:bg-error/40 transition-colors font-bold uppercase tracking-wider">Restart</button>
                         </div>
                     </div>
-                    <div class="bg-black border border-white/10 rounded-lg p-3 h-[75vh] overflow-auto font-mono text-[10px] text-primary whitespace-pre leading-tight" id="tradingbot-logs-container">
+                    <div style="color: #3cd7ff; white-space: pre; overflow-x: auto; height: 75vh;" class="bg-black border border-white/10 rounded-lg p-3 font-mono text-[10px] leading-tight" id="tradingbot-logs-container">
                         Loading Trading Bot logs...
                     </div>
                 </div>
@@ -6634,19 +6634,14 @@ window.copyLogs = function(service, onlyRestarts = false) {
             return lower.includes('restarted') || lower.includes('reloaded') || lower.includes('restart') || lower.includes('reload') || lower.includes('starting') || lower.includes('stopping') || lower.includes('started') || lower.includes('stopped');
         }).join('\n');
         if (!textToCopy.trim()) {
-            alert("No restart/reload lines found in the current logs.");
+            window.showToast("No restart/reload lines found", "error");
             return;
         }
     }
     navigator.clipboard.writeText(textToCopy).then(() => {
-        // Create a temporary toast notification instead of alert for better UX
-        const toast = document.createElement('div');
-        toast.className = 'fixed bottom-4 right-4 bg-surface-container-high text-on-surface px-4 py-2 rounded shadow-lg border border-white/10 z-[9999] animate-fade-in font-bold text-sm';
-        toast.innerText = onlyRestarts ? "Restart events copied!" : "All logs copied!";
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2000);
+        window.showToast(onlyRestarts ? "Restart events copied!" : "All logs copied!", 'success');
     }).catch(err => {
-        alert("Failed to copy text: " + err);
+        window.showToast("Failed to copy text: " + err, 'error');
     });
 };
 
