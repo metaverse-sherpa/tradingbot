@@ -376,24 +376,26 @@ async def run():
         return
 
     mdm = MarketDataManager()
+    sem = asyncio.Semaphore(3)
     try:
         # 🕵️ Sync Position Status for all users first (Parallelized)
         async def sync_user_pos(user):
-            try:
-                ex = get_exchange_client(user)
+            async with sem:
                 try:
-                    pos = await ex.fetch_positions()
-                    has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
-                    database.update_position_status(user.get('telegram_chat_id'), has_active, web_user_id=user.get('web_user_id'))
-                finally:
-                    await ex.close()
-            except Exception as e:
-                futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-                log.error("Position sync failed for %s on exchange %s (%s futures): %s",
-                          user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}",
-                          user.get('exchange_id', 'blofin'),
-                          futures_type,
-                          e)
+                    ex = get_exchange_client(user)
+                    try:
+                        pos = await ex.fetch_positions()
+                        has_active = any(float(p.get("contracts", 0) or 0) != 0 for p in pos)
+                        database.update_position_status(user.get('telegram_chat_id'), has_active, web_user_id=user.get('web_user_id'))
+                    finally:
+                        await ex.close()
+                except Exception as e:
+                    futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
+                    log.error("Position sync failed for %s on exchange %s (%s futures): %s",
+                              user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}",
+                              user.get('exchange_id', 'blofin'),
+                              futures_type,
+                              e)
 
         await asyncio.gather(*(sync_user_pos(u) for u in active_users))
 
@@ -434,7 +436,10 @@ async def run():
                     signal = compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
                     if signal:
                         for user in users:
-                            processing_tasks.append(process_user_on_symbol(user, symbol, signal))
+                            async def wrapped_process(u=user, s=symbol, sig=signal):
+                                async with sem:
+                                    await process_user_on_symbol(u, s, sig)
+                            processing_tasks.append(wrapped_process())
 
         if processing_tasks:
             await asyncio.gather(*processing_tasks)
