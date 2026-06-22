@@ -4,10 +4,10 @@ import multiprocessing
 # Bind to localhost on port 5001 (proxied by Nginx)
 bind = "127.0.0.1:5001"
 
-# Worker configuration (matches README recommendation)
-workers = 4
+# Worker configuration (scaled down for small VPS memory footprint)
+workers = 2
 worker_class = "gthread"
-threads = 10
+threads = 4
 
 # Timeout settings (seconds)
 # Max time a worker is allowed to process a single request before Gunicorn restarts it.
