@@ -37,14 +37,14 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
             # Try to fetch from GCP Secret Manager
             client = secretmanager.SecretManagerServiceClient()
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-            response = client.access_secret_version(request={"name": name})
+            response = client.access_secret_version(request={"name": name}, timeout=3.0)
             payload = response.payload.data.decode("UTF-8")
             _secrets_cache[secret_id] = payload
             return payload
         except Exception as e:
             # Graceful fallback to local .env
             _gcp_failed = True
-            logger.warning(f"Could not fetch '{secret_id}' from GCP (falling back to .env and marking GCP as failed): {e}")
+            logger.warning(f"Could not fetch '{secret_id}' from GCP (timeout/failure - falling back to .env): {e}")
             
     val = os.getenv(fallback_env_key)
     if not val:

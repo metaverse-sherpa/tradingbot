@@ -8,3 +8,4 @@ VPS Operations:
 - Web Server daemon: `sudo systemctl reload webapi`
 - Vacuum system logs: `sudo journalctl --vacuum-size=500M`
 Deployment: We push the files to Github and a workflow pushes them to the VPS and restarts the services.
+If you have long running tasks that you are creating to get data for me, ask me to run them instead so I can save tokens.
