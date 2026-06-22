@@ -1232,6 +1232,9 @@ def close_trade():
         else:
             return jsonify({"error": msg}), 400
     except Exception as e:
+        user_info = f"Web User: {user.get('id')} ({user.get('email', 'None')}), TG: {chat_id}"
+        from utils_error import send_telegram_alert
+        send_telegram_alert(f"Trade Close Error [{user_info}]", e)
         return jsonify({"error": f"Failed to execute exchange order: {str(e)}"}), 500
 
 @trades_bp.route('/api/trades/panic', methods=['POST'])

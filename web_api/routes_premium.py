@@ -97,6 +97,9 @@ def check_payment():
             
     except Exception as e:
         print(f"Error checking payment: {e}")
+        user_info = f"Web User: {user.get('id')} ({user.get('email', 'None')}), TG: {user.get('telegram_chat_id', 'None')}"
+        from utils_error import send_telegram_alert
+        send_telegram_alert(f"Premium Check Payment [{user_info}]", e)
         return jsonify({"message": "Error querying Tron blockchain. Please try again later."}), 500
 
 @premium_bp.route('/api/premium/redeem-gift', methods=['POST'])
@@ -116,6 +119,9 @@ def redeem_gift():
             return jsonify({"error": message}), 400
     except Exception as e:
         print(f"Error redeeming gift: {e}")
+        user_info = f"Web User: {user.get('id')} ({user.get('email', 'None')}), TG: {user.get('telegram_chat_id', 'None')}"
+        from utils_error import send_telegram_alert
+        send_telegram_alert(f"Premium Redeem Gift [{user_info}]", e)
         return jsonify({"error": "Internal server error"}), 500
 
 @premium_bp.route('/api/referral/info', methods=['GET'])

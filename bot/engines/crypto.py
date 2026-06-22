@@ -481,10 +481,25 @@ async def signal_engine(application):
                                                                 logger.info(f"Signal executed successfully for web-only user {web_user_id}. Symbol: {res['symbol']}")
                                                 except Exception as sym_err:
                                                     logger.error(f"Signal execution failed for user {chat_id or f'web_{web_user_id}'} on {ex_id} executing {side_str} trade on {symbol}: {sym_err}")
+                                                    err_str = str(sym_err).lower()
+                                                    if "insufficient" not in err_str and "balance" not in err_str:
+                                                        from utils_error import send_telegram_alert
+                                                        user_info = f"User: {chat_id or f'web_{web_user_id}'}, Symbol: {symbol}, Side: {side_str}"
+                                                        send_telegram_alert(f"Engine Error (Crypto Signal) [{user_info}]", sym_err)
                                     except Exception as client_err:
                                         logger.error(f"Exchange client setup or balance sync failed for user {chat_id or f'web_{web_user_id}'} on {ex_id}: {client_err}")
+                                        err_str = str(client_err).lower()
+                                        if "insufficient" not in err_str and "balance" not in err_str:
+                                            from utils_error import send_telegram_alert
+                                            user_info = f"User: {chat_id or f'web_{web_user_id}'}, Exchange: {ex_id}"
+                                            send_telegram_alert(f"Engine Error (Exchange Client) [{user_info}]", client_err)
                                 except Exception as outer_err:
                                     logger.error(f"Signal execution outer error for user {user.get('telegram_chat_id') or 'web_' + str(user.get('web_user_id', '?'))}: {outer_err}")
+                                    err_str = str(outer_err).lower()
+                                    if "insufficient" not in err_str and "balance" not in err_str:
+                                        from utils_error import send_telegram_alert
+                                        user_info = f"User: {user.get('telegram_chat_id') or 'web_' + str(user.get('web_user_id', '?'))}"
+                                        send_telegram_alert(f"Engine Error (Signal Outer) [{user_info}]", outer_err)
                         
                         await asyncio.gather(*(execute_user_signals(u) for u in users))
                 

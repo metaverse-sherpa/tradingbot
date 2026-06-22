@@ -1,9 +1,6 @@
-import smtplib
 import os
 import threading
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 # Import utils_gcp to fetch secrets from Google Secret Manager
 import sys
@@ -12,22 +9,10 @@ from utils_gcp import get_secret
 
 logger = logging.getLogger("email_service")
 
-# Default configurations loaded from environment
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-
-# Generous fallback to Resend API endpoint if Resend API Key is provided
+# Resend API Key
 RESEND_API_KEY = get_secret("RESEND_API_KEY") or os.getenv("RESEND_API_KEY", "")
 
-SMTP_SENDER_EMAIL = get_secret("SMTP_SENDER_EMAIL") or os.getenv("SMTP_SENDER_EMAIL", "")
-
-# Only attempt to fetch SMTP credentials if we are NOT using Resend
-if not RESEND_API_KEY:
-    SMTP_USERNAME = get_secret("SMTP_USERNAME") or os.getenv("SMTP_USERNAME", "")
-    SMTP_PASSWORD = get_secret("SMTP_PASSWORD") or os.getenv("SMTP_PASSWORD", "")
-else:
-    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
-    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SENDER_EMAIL = get_secret("SMTP_SENDER_EMAIL") or os.getenv("SMTP_SENDER_EMAIL", "")
 
 import queue
 import time
@@ -58,7 +43,7 @@ def _send_email_direct(to_email, subject, html_content):
                     "Content-Type": "application/json"
                 }
                 payload = {
-                    "from": "Metaverse Sherpa Bot Alerts <" + (SMTP_SENDER_EMAIL or "alerts@metaversesherpa.io") + ">",
+                    "from": "Metaverse Sherpa Bot Alerts <" + (SENDER_EMAIL or "alerts@metaversesherpa.io") + ">",
                     "to": [to_email],
                     "subject": subject,
                     "html": html_content
@@ -74,38 +59,23 @@ def _send_email_direct(to_email, subject, html_content):
                     time.sleep(retry_after)
                 else:
                     logger.error(f"❌ Resend API failed: {resp.status_code} - {resp.text}")
+                    try:
+                        from utils_error import send_telegram_alert
+                        send_telegram_alert(f"Email Delivery Error (Resend API)", Exception(f"Status {resp.status_code}: {resp.text}"))
+                    except: pass
                     break
             except Exception as res_err:
                 logger.error(f"❌ Failed sending email via Resend API: {res_err}")
-                break
+                try:
+                    from utils_error import send_telegram_alert
+                    send_telegram_alert(f"Email Delivery Error (Resend API)", res_err)
+                except: pass
+                return False
+                
+    else:
+        logger.warning("RESEND_API_KEY not configured. Email was not sent.")
 
-    # Fallback to SMTP
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
-        logger.warning("SMTP credentials not fully configured. Email was not sent.")
-        return False
-
-    try:
-        sender = SMTP_SENDER_EMAIL or SMTP_USERNAME
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"Metaverse Sherpa <{sender}>"
-        msg["To"] = to_email
-
-        # Attach HTML
-        part_html = MIMEText(html_content, "html")
-        msg.attach(part_html)
-
-        # Establish secure TLS connection
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.sendmail(sender, to_email, msg.as_string())
-        server.quit()
-        logger.info(f"✅ Email successfully sent via SMTP to {to_email}")
-        return True
-    except Exception as e:
-        logger.error(f"❌ Background SMTP delivery failed: {e}")
-        return False
+    return False
 
 def _email_worker():
     """

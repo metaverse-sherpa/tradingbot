@@ -166,6 +166,9 @@ async def alpaca_fractional_monitor_engine(application):
                                     await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
                                 except Exception as e:
                                     logger.error(f"Failed to close fractional trade {sym} for {chat_id}: {e}")
+                                    from utils_error import send_telegram_alert
+                                    user_info = f"User: {chat_id}, Symbol: {sym}"
+                                    send_telegram_alert(f"Engine Error (Stock Exit Failed) [{user_info}]", e)
                                     
         except asyncio.CancelledError:
             logger.info("🦙 Alpaca Monitor task cancelled.")

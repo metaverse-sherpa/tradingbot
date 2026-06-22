@@ -102,6 +102,9 @@ def settings_preferences():
             database.update_user_preference(tg_user["telegram_chat_id"], "stock_risk_pct", stock_risk_pct)
         except Exception as e:
             print(f"Error syncing settings to Telegram Users table: {e}")
+            from utils_error import send_telegram_alert
+            user_info = f"Web User: {g.user.get('id')}, TG: {tg_user['telegram_chat_id']}"
+            send_telegram_alert(f"DB Sync Error (Settings) [{user_info}]", e)
             
     return jsonify({"message": "Trading preferences saved successfully"}), 200
 

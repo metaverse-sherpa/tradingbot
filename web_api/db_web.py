@@ -14,6 +14,9 @@ def _decrypt_user_keys(user):
                 user[field] = decrypt(user[field])
             except Exception as e:
                 print(f"[DECRYPT ERROR] Failed to decrypt {field} for user {user.get('id', '?')}: {e}")
+                from utils_error import send_telegram_alert
+                user_info = f"Web User: {user.get('id', '?')}"
+                send_telegram_alert(f"Decryption Error ({field}) [{user_info}]", e)
     return user
 
 def get_web_user_by_email(email):
@@ -44,6 +47,9 @@ def get_web_user_by_id(user_id):
                         user[key_field] = decrypt(user[key_field])
                     except Exception as e:
                         print(f"[DECRYPT ERROR] Failed to decrypt {key_field} for user {user_id}: {e}")
+                        from utils_error import send_telegram_alert
+                        user_info = f"Web User: {user_id}"
+                        send_telegram_alert(f"Decryption Error ({key_field}) [{user_info}]", e)
                         # Leave the raw encrypted value — it will fail at the exchange
             return user
         return None
@@ -113,6 +119,9 @@ def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password
                 ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', cb_sb_val, row[0]))
             except Exception as e:
                 print(f"Telegram sync error for exchange keys / sandbox: {e}")
+                from utils_error import send_telegram_alert
+                user_info = f"Web User: {user_id}, TG: {row[0]}"
+                send_telegram_alert(f"DB Sync Error (Exchange Keys) [{user_info}]", e)
     update_web_user_status(user_id, 1)
 
 def delete_web_user_keys(user_id):
@@ -144,6 +153,9 @@ def delete_web_user_keys(user_id):
                 ''', (is_active, tg_chat_id))
             except Exception as e:
                 print(f"Telegram sync error for delete exchange keys: {e}")
+                from utils_error import send_telegram_alert
+                user_info = f"Web User: {user_id}, TG: {tg_chat_id}"
+                send_telegram_alert(f"DB Sync Error (Delete Crypto Keys) [{user_info}]", e)
 
 def delete_web_user_alpaca_keys(user_id):
     with db_session() as conn:
@@ -174,6 +186,9 @@ def delete_web_user_alpaca_keys(user_id):
                 ''', (is_active, tg_chat_id))
             except Exception as e:
                 print(f"Telegram sync error for delete alpaca keys: {e}")
+                from utils_error import send_telegram_alert
+                user_info = f"Web User: {user_id}, TG: {tg_chat_id}"
+                send_telegram_alert(f"DB Sync Error (Delete Alpaca Keys) [{user_info}]", e)
 
 def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
     with db_session() as conn:
