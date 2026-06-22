@@ -5,6 +5,9 @@ import database
 from flask import request, jsonify, g
 from web_api.db_web import get_web_user_by_email, get_web_user_by_id
 import utils_gcp
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Initialize Firebase Admin SDK
 import firebase_admin
@@ -59,9 +62,14 @@ def require_auth(f):
                 
             g.user = user
         except Exception as e:
-            print(f"[AUTH ERROR] Firebase verify_id_token failed: {e}")
+            err_msg = str(e)
+            if "expired" in err_msg.lower():
+                logger.warning(f"Firebase token expired")
+            else:
+                logger.error(f"Firebase verify_id_token failed: {e}")
             return jsonify({"error": "Invalid or expired session"}), 401
             
         return f(*args, **kwargs)
     return decorated
+
 
