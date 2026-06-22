@@ -44,11 +44,23 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
         except Exception as e:
             # Graceful fallback to local .env
             _gcp_failed = True
-            logger.warning(f"Could not fetch '{secret_id}' from GCP (timeout/failure - falling back to .env): {e}")
+            logger.error(f"Could not fetch '{secret_id}' from GCP (timeout/failure - falling back to .env): {e}")
+            if secret_id != "TELEGRAM_BOT_TOKEN":
+                try:
+                    from utils_error import send_telegram_alert
+                    send_telegram_alert(f"SecretManager ({secret_id})", e)
+                except Exception as alert_err:
+                    logger.error(f"Failed to send Telegram alert for SecretManager failure: {alert_err}")
             
     val = os.getenv(fallback_env_key)
     if not val:
         logger.error(f"Failed to find {fallback_env_key} in local .env as well.")
+        if secret_id != "TELEGRAM_BOT_TOKEN":
+            try:
+                from utils_error import send_telegram_alert
+                send_telegram_alert(f"SecretManager/Env ({secret_id})", f"Failed to find {fallback_env_key} in GCP or local .env")
+            except Exception as alert_err:
+                logger.error(f"Failed to send Telegram alert: {alert_err}")
     if val:
         _secrets_cache[secret_id] = val
     return val
