@@ -22,3 +22,6 @@ backlog = 2048
 
 # Keepalive connection timeout (seconds) for persistent HTTP/1.1 connections.
 keepalive = 5
+
+# Suppress INFO logging noise (e.g. worker start/stop, SIGTERM on SIGHUP) by setting loglevel to warning
+loglevel = "warning"

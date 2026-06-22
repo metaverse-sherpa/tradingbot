@@ -1607,11 +1607,11 @@ def redeem_gift_code_web(web_user_id, code):
 
 def get_chat_id_by_username(username):
     """Resolves a @username to a telegram_chat_id from the database."""
-    # Strip @ if present
-    username = username.lstrip('@')
+    clean_username = username.lstrip('@')
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT telegram_chat_id FROM Users WHERE username = ? OR full_name LIKE ?', (username, f"%{username}%"))
+        c.execute('SELECT telegram_chat_id FROM Users WHERE username = ? OR username = ? OR full_name LIKE ?', 
+                  (clean_username, f"@{clean_username}", f"%{clean_username}%"))
         row = c.fetchone()
     return row[0] if row else None
 
