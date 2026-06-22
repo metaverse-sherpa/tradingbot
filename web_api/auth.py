@@ -64,7 +64,7 @@ def require_auth(f):
         except Exception as e:
             err_msg = str(e)
             if "expired" in err_msg.lower():
-                logger.warning(f"Firebase token expired")
+                logger.debug(f"Firebase token expired")
             else:
                 logger.error(f"Firebase verify_id_token failed: {e}")
             return jsonify({"error": "Invalid or expired session"}), 401
