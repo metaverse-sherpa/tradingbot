@@ -37,7 +37,7 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
             # Try to fetch from GCP Secret Manager
             client = secretmanager.SecretManagerServiceClient()
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-            response = client.access_secret_version(request={"name": name}, timeout=3.0)
+            response = client.access_secret_version(request={"name": name}, timeout=10.0)
             payload = response.payload.data.decode("UTF-8")
             _secrets_cache[secret_id] = payload
             return payload
