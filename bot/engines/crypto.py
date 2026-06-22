@@ -179,6 +179,10 @@ async def theory_trades_resolution_engine(application):
                 await mdm.close()
         except Exception as e:
             logger.error(f"Error in theory_trades_resolution_engine: {e}")
+            try:
+                from utils_error import send_telegram_alert
+                send_telegram_alert("Engine Error (Crypto Theory Trades Loop)", e)
+            except: pass
 
 async def signal_engine(application):
     """

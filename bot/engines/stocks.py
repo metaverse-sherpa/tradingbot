@@ -175,4 +175,8 @@ async def alpaca_fractional_monitor_engine(application):
             break
         except Exception as e:
             logger.error(f"Alpaca monitor error: {e}")
+            try:
+                from utils_error import send_telegram_alert
+                send_telegram_alert("Engine Error (Fractional Stock Exit Loop)", e)
+            except: pass
             await asyncio.sleep(60)

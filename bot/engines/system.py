@@ -52,6 +52,10 @@ async def premium_expiration_engine(application):
             break
         except Exception as e:
             logger.error(f"⏳ Premium Expiration Engine error: {e}")
+            try:
+                from utils_error import send_telegram_alert
+                send_telegram_alert("Engine Error (Premium Expiration Loop)", e)
+            except: pass
             await asyncio.sleep(3600)
 
 async def email_summary_engine(application):
@@ -368,4 +372,8 @@ async def email_summary_engine(application):
             break
         except Exception as e:
             logger.error(f"⏳ Daily Email Summary Engine error: {e}")
+            try:
+                from utils_error import send_telegram_alert
+                send_telegram_alert("Engine Error (Daily Email Summary Loop)", e)
+            except: pass
             await asyncio.sleep(3600)
