@@ -1,4 +1,9 @@
 cat << 'INNER_EOF' | sudo tee /etc/nginx/sites-available/bot.metaversesherpa.io
+upstream webapi_backend {
+    server 127.0.0.1:5001;
+    keepalive 32;
+}
+
 server {
     server_name bot.metaversesherpa.io;
 
@@ -10,12 +15,18 @@ server {
     }
 
     location ~ ^/(api|unsubscribe) {
-        proxy_pass http://127.0.0.1:5001;
+        proxy_pass http://webapi_backend;
         proxy_set_header Host $host;
         proxy_http_version 1.1;
+        proxy_set_header Connection ""; # Clear header for keepalive support
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Keepalive/timeout tuning to handle worker recycling gracefully
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
     }
 
     listen 443 ssl; # managed by Certbot
