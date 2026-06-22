@@ -42,7 +42,7 @@ def fetch_daily_data(ticker, api_key, api_secret, start_date="2020-05-19", end_d
     """Fetches daily historical prices from Alpaca daily endpoint using adjusted columns."""
     if not end_date:
         end_date = datetime.today().strftime('%Y-%m-%d')
-    print(f"🛰️ Fetching daily data for {ticker} from {start_date} to {end_date}...")
+    # print(f"🛰️ Fetching daily data for {ticker} from {start_date} to {end_date}...")
     url = f"https://data.alpaca.markets/v2/stocks/bars"
     # Ensure start/end dates are RFC-3339 for Alpaca if needed, but YYYY-MM-DD usually works.
     params = {

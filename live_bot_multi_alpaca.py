@@ -116,7 +116,7 @@ def update_stock_daily_cache():
                 return False
 
         if is_date_up_to_date(db_latest_date):
-            logger.info(f"Cache for {ticker} is already up to date ({db_latest_date}). Skipping.")
+            logger.debug(f"Cache for {ticker} is already up to date ({db_latest_date}). Skipping.")
             continue
             
         if not db_latest_date:
@@ -126,7 +126,7 @@ def update_stock_daily_cache():
             from datetime import timedelta
             fetch_start = (datetime.strptime(db_latest_date, "%Y-%m-%d") + timedelta(days=1)).strftime('%Y-%m-%d')
             
-        logger.info(f"Fetching {ticker} daily bars from {fetch_start} to {today_str}...")
+        logger.debug(f"Fetching {ticker} daily bars from {fetch_start} to {today_str}...")
         data = stock_data_cache_daily.fetch_daily_data(ticker, ALPACA_API_KEY, ALPACA_API_SECRET, start_date=fetch_start, end_date=today_str)
         if data:
             stock_data_cache_daily.save_to_db(ticker, data)
