@@ -163,6 +163,62 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
         )
         return True
 
+    if query.data == "admin_direct_gift_prompt":
+        if chat_id != SUPER_ADMIN_ID: return True
+        clear_input_states(context)
+        context.user_data['admin_direct_gifting'] = True
+        await query.message.reply_text(
+            "💎 *Direct Premium Extension*\n\n"
+            "Please enter the **Telegram Chat ID** or **@username** of the user whose Premium access you wish to directly extend/grant:\n\n"
+            "Tap /cancel to abort.",
+            parse_mode="Markdown"
+        )
+        return True
+
+    if query.data.startswith("admin_dg_dur_"):
+        if chat_id != SUPER_ADMIN_ID: return True
+        await query.answer()
+        
+        dur_type = query.data.split("_")[-1]
+        target_id = context.user_data.get('direct_gift_target_id')
+        if not target_id:
+            await query.message.reply_text("❌ Session expired or target user ID not found. Please start over.")
+            from bot.handlers.admin import show_admin_dashboard
+            await show_admin_dashboard(update, context)
+            return True
+            
+        if dur_type == "custom":
+            clear_input_states(context)
+            context.user_data['direct_gift_target_id'] = target_id
+            context.user_data['admin_direct_gifting_custom'] = True
+            await query.message.reply_text(
+                "⚙️ *Custom Days Extension*\n\n"
+                "Please enter the custom number of days you wish to grant:\n\n"
+                "Tap /cancel to abort.",
+                parse_mode="Markdown"
+            )
+            return True
+            
+        try:
+            days = int(dur_type)
+            database.add_premium_days(target_id, days)
+            
+            try:
+                msg_user = f"💎 *Premium Access Granted/Extended!*\n\nThe Sherpa Overlord has directly granted/extended your Premium Institutional Access by *{days} days*."
+                await context.bot.send_message(chat_id=target_id, text=msg_user, parse_mode="Markdown")
+                user_notified = "and user has been notified directly"
+            except Exception as notify_err:
+                user_notified = f"but failed to notify user directly ({notify_err})"
+                
+            await query.message.reply_text(f"✅ Successfully granted *{days} days* of Premium access to user `{target_id}` {user_notified}.", parse_mode="Markdown")
+            context.user_data.pop('direct_gift_target_id', None)
+        except Exception as e:
+            await query.message.reply_text(f"❌ Failed to extend premium access: {e}")
+            
+        from bot.handlers.admin import show_admin_dashboard
+        await show_admin_dashboard(update, context)
+        return True
+
     if query.data == "admin_revoke_prompt":
         if chat_id != SUPER_ADMIN_ID: return True
         clear_input_states(context)

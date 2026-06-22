@@ -4,7 +4,7 @@ from bot.ui.keyboards import get_nav_buttons, safe_edit_text
 
 def clear_input_states(context):
     """Clears all mutually exclusive interactive input states from user_data."""
-    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'admin_revoking', 'setting_crypto_risk', 'setting_stock_risk', 'setup_step', 'setting_cap_amount', 'setting_cap_pct']:
+    for key in ['setting_wallet', 'setting_admin_wallet', 'admin_broadcasting', 'admin_gifting', 'admin_direct_gifting', 'admin_direct_gifting_custom', 'direct_gift_target_id', 'admin_revoking', 'setting_crypto_risk', 'setting_stock_risk', 'setup_step', 'setting_cap_amount', 'setting_cap_pct']:
         context.user_data.pop(key, None)
 
 async def show_symbol_menu(update, context, user):

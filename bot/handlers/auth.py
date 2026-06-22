@@ -478,6 +478,94 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_admin_dashboard(update, context)
         return
 
+    elif context.user_data.get('admin_direct_gifting') and chat_id == SUPER_ADMIN_ID:
+        try:
+            target_input = text.strip()
+            target_id = None
+            
+            if target_input.startswith('@') or not target_input.isdigit():
+                target_id = database.get_chat_id_by_username(target_input)
+            else:
+                target_id = int(target_input)
+                
+            if not target_id:
+                await update.message.reply_text("❌ User not found in the database. Please check the ID or username and try again (or tap /cancel to abort):")
+                return
+                
+            context.user_data.pop('admin_direct_gifting', None)
+            context.user_data['direct_gift_target_id'] = target_id
+            
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("1 Month (30d)", callback_data="admin_dg_dur_30"),
+                    InlineKeyboardButton("3 Months (90d)", callback_data="admin_dg_dur_90")
+                ],
+                [
+                    InlineKeyboardButton("6 Months (180d)", callback_data="admin_dg_dur_180"),
+                    InlineKeyboardButton("12 Months (365d)", callback_data="admin_dg_dur_365")
+                ],
+                [
+                    InlineKeyboardButton("⚙️ Custom Days", callback_data="admin_dg_dur_custom"),
+                    InlineKeyboardButton("❌ Cancel", callback_data="admin_command")
+                ]
+            ])
+            
+            user_info = database.get_user(target_id)
+            user_name = user_info.get('full_name') or "Unknown"
+            user_uname = f" (@{user_info.get('username')})" if user_info.get('username') else ""
+            
+            await update.message.reply_text(
+                f"💎 *User Found: {user_name}{user_uname}* (`{target_id}`)\n\n"
+                "Please select the duration you wish to grant/extend:",
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error locating user: {e}")
+            context.user_data.pop('admin_direct_gifting', None)
+            from bot.handlers.admin import show_admin_dashboard
+            await show_admin_dashboard(update, context)
+        return
+
+    elif context.user_data.get('admin_direct_gifting_custom') and chat_id == SUPER_ADMIN_ID:
+        target_id = context.user_data.get('direct_gift_target_id')
+        context.user_data.pop('admin_direct_gifting_custom', None)
+        
+        if not target_id:
+            await update.message.reply_text("❌ Session expired or target user ID not found. Please try again.")
+            from bot.handlers.admin import show_admin_dashboard
+            await show_admin_dashboard(update, context)
+            return
+            
+        try:
+            days = int(text.strip())
+            if days <= 0:
+                raise ValueError()
+        except ValueError:
+            context.user_data['direct_gift_target_id'] = target_id
+            context.user_data['admin_direct_gifting_custom'] = True
+            await update.message.reply_text("❌ *Invalid Days*: Please enter a valid positive number of days (or tap /cancel to abort):", parse_mode="Markdown")
+            return
+            
+        try:
+            database.add_premium_days(target_id, days)
+            
+            try:
+                msg_user = f"💎 *Premium Access Granted/Extended!*\n\nThe Sherpa Overlord has directly granted/extended your Premium Institutional Access by *{days} days*."
+                await context.bot.send_message(chat_id=target_id, text=msg_user, parse_mode="Markdown")
+                user_notified = "and user has been notified directly"
+            except Exception as notify_err:
+                user_notified = f"but failed to notify user directly ({notify_err})"
+                
+            await update.message.reply_text(f"✅ Successfully granted *{days} days* of Premium access to user `{target_id}` {user_notified}.", parse_mode="Markdown")
+            context.user_data.pop('direct_gift_target_id', None)
+        except Exception as e:
+            await update.message.reply_text(f"❌ Failed to extend premium access: {e}")
+            
+        from bot.handlers.admin import show_admin_dashboard
+        await show_admin_dashboard(update, context)
+        return
+
     elif context.user_data.get('admin_revoking'):
         context.user_data.pop('admin_revoking', None)
         try:

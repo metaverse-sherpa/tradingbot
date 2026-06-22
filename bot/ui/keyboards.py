@@ -238,6 +238,7 @@ def get_admin_keyboard(master_wallet):
         share_row if share_row else [],
         [InlineKeyboardButton("🚫 Manage Strategies", callback_data="admin_manage_strategies")],
         [InlineKeyboardButton("🎁 Generate Gift Code", callback_data="admin_gift_prompt")],
+        [InlineKeyboardButton("💎 Direct Gift/Extend", callback_data="admin_direct_gift_prompt")],
         [InlineKeyboardButton("🚫 Revoke Premium Access", callback_data="admin_revoke_prompt")],
         [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
         [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],
