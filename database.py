@@ -30,11 +30,13 @@ except Exception as patch_err:
 
 load_dotenv()
 
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+import utils_gcp
+ENCRYPTION_KEY = utils_gcp.get_secret("ENCRYPTION_KEY", fallback_env_key="ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
     ENCRYPTION_KEY = Fernet.generate_key().decode()
     with open(".env", "a") as f:
         f.write(f"\nENCRYPTION_KEY={ENCRYPTION_KEY}\n")
+
 
 cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
