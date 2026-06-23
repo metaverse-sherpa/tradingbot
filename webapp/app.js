@@ -422,6 +422,27 @@ window.forceRefreshSegment = function(segment) {
         });
 };
 
+window.refreshTradesHistory = function() {
+    showToast("Refreshing closed trade history (bypassing cache)...", "info");
+    apiRequest('/trades/history?bypass_cache=true')
+        .then(hist => {
+            if (hist) {
+                STATE.history = hist;
+                showToast("Trade history refreshed!", "success");
+                if (STATE.current_view === 'trades' || STATE.current_view === 'history') {
+                    renderView();
+                }
+            } else {
+                showToast("No trade history returned.", "warning");
+            }
+        })
+        .catch(err => {
+            console.error("Failed to refresh trade history:", err);
+            showToast("Failed to refresh trade history: " + (err.message || err), "error");
+        });
+};
+
+
 
 let STATE = {
     user: null,
@@ -3155,7 +3176,14 @@ function renderTradesView() {
             <!-- Mobile View (Single List - One Category Only) -->
             <div class="space-y-stack-gap md:hidden">
                 <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
-                    ${cryptoCount > 0 ? `<span>🪙</span> Crypto (${cryptoCount})` : `<span>🦙</span> Stocks (${stockCount})`}
+                    ${cryptoCount > 0 ? `
+                        <span>🪙</span> Crypto (${cryptoCount})
+                        ${tradesMode === 'closed' ? `
+                        <button onclick="window.refreshTradesHistory()" class="p-1 hover:bg-white/10 rounded-full transition-colors active:scale-95 flex items-center justify-center inline-flex align-middle" title="Force Refresh History (bypass cache)">
+                            <span class="material-symbols-outlined text-primary text-[18px] sm:text-[20px] cursor-pointer">refresh</span>
+                        </button>
+                        ` : ''}
+                    ` : `<span>🦙</span> Stocks (${stockCount})`}
                 </h3>
                 ${cryptoCount > 0 ? cryptoHtml : stockHtml}
             </div>
@@ -3168,6 +3196,11 @@ function renderTradesView() {
                 <div>
                     <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
                         <span>🪙</span> Crypto (${cryptoCount})
+                        ${tradesMode === 'closed' ? `
+                        <button onclick="window.refreshTradesHistory()" class="p-1 hover:bg-white/10 rounded-full transition-colors active:scale-95 flex items-center justify-center inline-flex align-middle" title="Force Refresh History (bypass cache)">
+                            <span class="material-symbols-outlined text-primary text-[20px] cursor-pointer">refresh</span>
+                        </button>
+                        ` : ''}
                     </h3>
                     <div class="space-y-stack-gap">
                         ${cryptoHtml}

@@ -857,6 +857,7 @@ def get_trades_history():
                             # Coinbase fills don't have positionSide in info.
                             since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
                             all_fills = await client.fetch_my_trades(None, since=since, limit=500)
+                            print(f"[DEBUG] Coinbase FIFO: Fetched {len(all_fills)} fills total from the last 90 days.", flush=True)
                             # Build a map from Coinbase market base -> canonical symbol name
                             base_to_sym = {sym.split('/')[0].upper(): sym for sym in symbols_to_check}
                             # Group fills by their exact exchange symbol (e.g. 'ETH/USD:USD-301220')
@@ -877,6 +878,7 @@ def get_trades_history():
                                 canonical_sym = grp["canonical"]
                                 # Sort fills by timestamp ascending
                                 sorted_fills = sorted(grp["fills"], key=lambda x: x.get('timestamp', 0))
+                                print(f"[DEBUG] Coinbase FIFO: Processing {len(sorted_fills)} fills for symbol {exch_sym} (canonical={canonical_sym})", flush=True)
                                 # Simple FIFO pairing: buy fills open a position, sell fills close it
                                 open_fills = []  # stack of (qty, price, fee, fill) for buys
                                 for fill in sorted_fills:
@@ -884,8 +886,10 @@ def get_trades_history():
                                     qty = float(fill.get('amount') or fill.get('filled') or 0)
                                     price = float(fill.get('price') or 0)
                                     fee = float((fill.get('fee') or {}).get('cost') or 0)
+                                    print(f"[DEBUG] Coinbase FIFO fill: {side} {qty} @ {price} (fee={fee})", flush=True)
                                     if side == 'buy':
                                         open_fills.append({'qty': qty, 'price': price, 'fee': fee})
+                                        print(f"[DEBUG] Coinbase FIFO: Added buy to open stack. Stack size: {len(open_fills)}", flush=True)
                                     elif side == 'sell' and open_fills:
                                         # Match against the oldest open buy (FIFO)
                                         opener = open_fills.pop(0)
@@ -895,6 +899,7 @@ def get_trades_history():
                                         gross_pnl = (close_price - entry_price) * closed_qty
                                         total_fee = opener['fee'] + fee
                                         net_pnl = gross_pnl - total_fee
+                                        print(f"[DEBUG] Coinbase FIFO match: Paired buy @ {entry_price} with sell @ {close_price} for qty {closed_qty}. Gross PnL: {gross_pnl:.4f}, Net PnL: {net_pnl:.4f}", flush=True)
                                         results.append({
                                             "type": "crypto",
                                             "symbol": canonical_sym,
@@ -903,6 +908,8 @@ def get_trades_history():
                                             "net_pnl": net_pnl,
                                             "price": close_price,
                                         })
+                                    else:
+                                        print(f"[DEBUG] Coinbase FIFO: Skipped pairing sell because open stack is empty.", flush=True)
                             return results
                         else:
                             async def fetch_sym_history(sym):
