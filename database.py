@@ -72,7 +72,32 @@ class CoinbaseWrapper(ccxt.coinbase):
             params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
         return await super().create_order(symbol, type, side, amount, price, params)
 
-def get_exchange_client(user):
+class CoinbaseWrapperSync(ccxt_sync.coinbase):
+    def fetch_positions(self, symbols=None, params={}):
+        if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
+            try:
+                portfolios = self.fetch_portfolios()
+                if portfolios:
+                    self.options['portfolio'] = portfolios[0]['id']
+                    self.options['retail_portfolio_id'] = portfolios[0]['id']
+            except Exception:
+                pass
+        return super().fetch_positions(symbols, params)
+
+    def create_order(self, symbol, type, side, amount, price=None, params={}):
+        if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
+            try:
+                portfolios = self.fetch_portfolios()
+                if portfolios:
+                    self.options['portfolio'] = portfolios[0]['id']
+                    self.options['retail_portfolio_id'] = portfolios[0]['id']
+            except Exception:
+                pass
+        if self.options.get('portfolio') and 'retail_portfolio_id' not in params:
+            params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
+        return super().create_order(symbol, type, side, amount, price, params)
+
+def get_exchange_client(user, is_async=True):
     """
     Factory function to create a CCXT exchange client for a specific user.
     """
@@ -91,12 +116,18 @@ def get_exchange_client(user):
     }
     if ex_id == 'coinbase':
         config['options']['fetchBalance'] = 'v3PrivateGetBrokerageAccounts'
-        client = CoinbaseWrapper(config)
+        if is_async:
+            client = CoinbaseWrapper(config)
+        else:
+            client = CoinbaseWrapperSync(config)
         sandbox = user.get('coinbase_sandbox')
         if sandbox in (1, True, '1', 'true', 'True'):
             client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
     else:
-        client = getattr(ccxt, ex_id)(config)
+        if is_async:
+            client = getattr(ccxt, ex_id)(config)
+        else:
+            client = getattr(ccxt_sync, ex_id)(config)
     return client
 
 def normalize_symbol(symbol, exchange_id):

@@ -692,18 +692,8 @@ def get_open_trades():
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_open_trades():
             trades = []
-            import ccxt
-            default_type = "swap"
-            config = {
-                "apiKey": crypto_api_key,
-                "secret": crypto_api_secret,
-                **({"password": crypto_api_password} if crypto_api_password else {}),
-                "options": {"defaultType": default_type},
-                "enableRateLimit": False,
-                "timeout": 4000,
-            }
-            client = getattr(ccxt, crypto_exchange_id)(config)
-            _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, merged_user, merged_user)
+            client = database.get_exchange_client(merged_user, is_async=False)
+            client.timeout = 4000
             try:
                 try:
                     positions = client.fetch_positions()
@@ -765,6 +755,7 @@ def get_open_trades():
 def get_trades_history():
     user = g.user
     limit = int(request.args.get("limit", 10))
+    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     tg_user = _get_telegram_user(user)
     
     if tg_user and user.get("telegram_chat_id"):
@@ -772,92 +763,85 @@ def get_trades_history():
     else:
         trade_chat_id = int(user["id"]) + 1000000000
     
-    
     history = []
     
-    # 1. Try the history_cache from the WebUsers table first
-    raw_cache = user.get("history_cache")
-    if not raw_cache:
-        try:
-            with database.db_session() as conn:
-                c = conn.cursor()
-                c.execute("SELECT history_cache FROM WebUsers WHERE id = ?", (user.get("id"),))
-                row = c.fetchone()
-                if row and row[0]:
-                    raw_cache = row[0]
-        except Exception as e:
-            pass
-            
-    if raw_cache:
-        try:
-            cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
-            for tr in cached:
-                is_stk = is_stock(tr.get("symbol", ""))
-                tr["type"] = "stock" if is_stk else "crypto"
-                history.append(tr)
-        except Exception as e:
-            pass
-
-    # 2. Try the history_cache from the Telegram bot's Users table if empty
-    if not history and tg_user:
-        raw_cache_tg = tg_user.get("history_cache")
-        
-        if raw_cache_tg:
+    if not bypass_cache:
+        # 1. Try the history_cache from the WebUsers table first
+        raw_cache = user.get("history_cache")
+        if not raw_cache:
             try:
-                cached = json.loads(raw_cache_tg) if isinstance(raw_cache_tg, str) else raw_cache_tg
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    c.execute("SELECT history_cache FROM WebUsers WHERE id = ?", (user.get("id"),))
+                    row = c.fetchone()
+                    if row and row[0]:
+                        raw_cache = row[0]
+            except Exception as e:
+                pass
+                
+        if raw_cache:
+            try:
+                cached = json.loads(raw_cache) if isinstance(raw_cache, str) else raw_cache
                 for tr in cached:
                     is_stk = is_stock(tr.get("symbol", ""))
                     tr["type"] = "stock" if is_stk else "crypto"
                     history.append(tr)
             except Exception as e:
                 pass
-        
-        # Fallback: query the DB directly
-        if not history:
-            try:
-                with database.db_session() as conn:
-                    c = conn.cursor()
-                    c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (trade_chat_id,))
-                    row = c.fetchone()
-                    if row and row[0]:
-                        cached = json.loads(row[0])
-                        for tr in cached:
-                            is_stk = is_stock(tr.get("symbol", ""))
-                            tr["type"] = "stock" if is_stk else "crypto"
-                            history.append(tr)
-            except Exception as e:
-                pass
+
+        # 2. Try the history_cache from the Telegram bot's Users table if empty
+        if not history and tg_user:
+            raw_cache_tg = tg_user.get("history_cache")
+            
+            if raw_cache_tg:
+                try:
+                    cached = json.loads(raw_cache_tg) if isinstance(raw_cache_tg, str) else raw_cache_tg
+                    for tr in cached:
+                        is_stk = is_stock(tr.get("symbol", ""))
+                        tr["type"] = "stock" if is_stk else "crypto"
+                        history.append(tr)
+                except Exception as e:
+                    pass
+            
+            # Fallback: query the DB directly
+            if not history:
+                try:
+                    with database.db_session() as conn:
+                        c = conn.cursor()
+                        c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (trade_chat_id,))
+                        row = c.fetchone()
+                        if row and row[0]:
+                            cached = json.loads(row[0])
+                            for tr in cached:
+                                is_stk = is_stock(tr.get("symbol", ""))
+                                tr["type"] = "stock" if is_stk else "crypto"
+                                history.append(tr)
+                except Exception as e:
+                    pass
         
     # Fallback: fetch directly from CCXT
-    if not history:
-        if tg_user and tg_user.get("api_key"):
-            crypto_api_key = tg_user.get("api_key")
-            crypto_api_secret = tg_user.get("api_secret")
-            crypto_api_password = tg_user.get("api_password") or ""
-            crypto_exchange_id = tg_user.get("exchange_id", "blofin")
-        else:
-            crypto_api_key = user.get("api_key")
-            crypto_api_secret = user.get("api_secret")
-            crypto_api_password = user.get("api_password") or ""
-            crypto_exchange_id = user.get("exchange_id", "blofin")
+    if not history or bypass_cache:
+        # Merge credentials
+        merged_user = {}
+        if user:
+            merged_user.update(user)
+        if tg_user:
+            for k, v in tg_user.items():
+                if v is not None and v != "":
+                    merged_user[k] = v
+                    
+        crypto_api_key = merged_user.get("api_key")
+        crypto_api_secret = merged_user.get("api_secret")
+        crypto_exchange_id = merged_user.get("exchange_id", "blofin")
+        
         if crypto_api_key and crypto_api_secret:
             try:
                 import ccxt.async_support as ccxt_async
                 import live_bot_multi
                 
-                default_type = "swap"
-                config = {
-                    "apiKey": crypto_api_key,
-                    "secret": crypto_api_secret,
-                    **({"password": crypto_api_password} if crypto_api_password else {}),
-                    "options": {"defaultType": default_type},
-                    "enableRateLimit": True,
-                    "timeout": 5000,
-                }
-                
                 async def fetch_my_trades_async():
-                    client = getattr(ccxt_async, crypto_exchange_id)(config)
-                    _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
+                    client = database.get_exchange_client(merged_user, is_async=True)
+                    client.timeout = 5000
                     try:
                         await client.load_markets()
                         
