@@ -515,27 +515,7 @@ async def run_theoretical_tally_engine(today_opens):
                     for target_id in all_targets:
                         await send_telegram_message(target_id, entry_msg, entities=[entry_entity])
                         
-                    # Dispatch Email alerts
-                    try:
-                        from web_api.db_web import get_users_for_email_alerts
-                        from web_api.email_service import send_alert_email, get_signal_alert_html
-                        rt_users = get_users_for_email_alerts("realtime")
-                        if rt_users:
-                            subject = f"🛰️ New Alpha Signal: {sym} (LONG)"
-                            for ru in rt_users:
-                                if ru.get("email"):
-                                    html_content = get_signal_alert_html(
-                                        symbol=sym,
-                                        side="LONG",
-                                        strategy="Sherpa Velocity Pullback",
-                                        entry=o_price,
-                                        tp=tp_price,
-                                        sl=sl_price,
-                                        is_premium_user=ru.get("is_premium_user", False)
-                                    )
-                                    send_alert_email(ru["email"], subject, html_content)
-                    except Exception as email_err:
-                        logger.error(f"Failed to dispatch entry email alerts: {email_err}")
+
                 except Exception as b_err:
                     logger.warning(f"Failed to send free signal entry broadcast to targets: {b_err}")
                     
@@ -643,33 +623,7 @@ async def run_real_trader_execution(today_opens):
                             else:
                                 logger.info(f"Dynamic Exit logged for web user {web_user_id}. Symbol: {sym}")
                             
-                            # Fetch user's email and email preferences from WebUsers
-                            conn_email = sqlite3.connect(USER_DB_PATH)
-                            c_email = conn_email.cursor()
-                            if chat_id:
-                                c_email.execute("SELECT email, email_notifications FROM WebUsers WHERE telegram_chat_id = ?", (chat_id,))
-                            else:
-                                c_email.execute("SELECT email, email_notifications FROM WebUsers WHERE id = ?", (web_user_id,))
-                            web_user_row = c_email.fetchone()
-                            conn_email.close()
-                            
-                            if web_user_row and web_user_row[0] and web_user_row[1] == 1:
-                                user_email = web_user_row[0]
-                                from web_api.email_service import send_alert_email, get_signal_alert_html
-                                html_content = get_signal_alert_html(
-                                    symbol=sym,
-                                    side="LONG",
-                                    strategy="Sherpa Velocity Pullback (Dynamic Exit)",
-                                    entry=entry_price,
-                                    tp=entry_price * 1.05,
-                                    sl=entry_price * 0.95,
-                                    resolution="closed",
-                                    pnl_pct=pnl_pct,
-                                    is_premium_user=True
-                                )
-                                subject = f"🔒 POSITION EXITED: {sym} ({pnl_pct:+.2f}%)"
-                                send_alert_email(user_email, subject, html_content)
-                                logger.info(f"Dynamic Exit email dispatched to {user_email}")
+
                         except Exception as e:
                             logger.error(f"Failed to liquidate real user {chat_id or f'web_{web_user_id}'} position {sym}: {e}")
                             if chat_id:

@@ -103,29 +103,7 @@ async def theory_trades_resolution_engine(application):
                             if not is_stock(symbol):
                                 display_pnl_pct *= CRYPTO_LEVERAGE
  
-                            # Email alerts for exit
-                            try:
-                                from web_api.db_web import get_users_for_email_alerts
-                                from web_api.email_service import send_alert_email, get_signal_alert_html
-                                rt_users = get_users_for_email_alerts("realtime")
-                                if rt_users:
-                                    subject = f"🏆 Position Exited: {symbol}" if status == 'tp' else f"🛡️ Position Exited: {symbol}"
-                                    side_str = "LONG" if side == 'buy' else "SHORT"
-                                    html_content = get_signal_alert_html(
-                                        symbol=symbol,
-                                        side=side_str,
-                                        strategy=t.get('strategy', 'Mean Reversion Scalper'),
-                                        entry=entry_price,
-                                        tp=tp_price,
-                                        sl=sl_price,
-                                        resolution=status,
-                                        pnl_pct=display_pnl_pct
-                                    )
-                                    for ru in rt_users:
-                                        if ru.get("email"):
-                                            send_alert_email(ru["email"], subject, html_content)
-                            except Exception as email_err:
-                                logger.error(f"Failed to dispatch exit email alerts: {email_err}")
+
  
                             strategy = t.get('strategy', 'Mean Reversion Scalper')
                             currency = get_currency(symbol)
@@ -278,28 +256,7 @@ async def signal_engine(application):
                              position_size=position_size_units
                         )
                         
-                        # Email alerts for entry
-                        try:
-                            from web_api.db_web import get_users_for_email_alerts
-                            from web_api.email_service import send_alert_email, get_signal_alert_html
-                            rt_users = get_users_for_email_alerts("realtime")
-                            if rt_users:
-                                subject = f"🛰️ New Alpha Signal: {symbol} ({'LONG' if side == 'buy' else 'SHORT'})"
-                                side_str = "LONG" if side == 'buy' else "SHORT"
-                                for ru in rt_users:
-                                    if ru.get("email"):
-                                        html_content = get_signal_alert_html(
-                                            symbol=symbol,
-                                            side=side_str,
-                                            strategy=strategy_name,
-                                            entry=entry,
-                                            tp=tp,
-                                            sl=sl,
-                                            is_premium_user=ru.get("is_premium_user", False)
-                                        )
-                                        send_alert_email(ru["email"], subject, html_content)
-                        except Exception as email_err:
-                            logger.error(f"Failed to dispatch entry email alerts: {email_err}")
+
  
                         
                         chart_file = None

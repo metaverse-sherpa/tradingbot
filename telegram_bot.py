@@ -27,7 +27,18 @@ if BASE_DIR not in sys.path:
 from bot.config import TELEGRAM_TOKEN, SUPER_ADMIN_ID, logger
 import database
 from bot.handlers import register_handlers
-from bot.engines import sync_engine, signal_engine, alpaca_equities_engine, alpaca_fractional_monitor_engine, premium_expiration_engine, email_summary_engine, theory_trades_resolution_engine
+from bot.engines import (
+    sync_engine,
+    signal_engine,
+    alpaca_equities_engine,
+    alpaca_fractional_monitor_engine,
+    premium_expiration_engine,
+    daily_stock_email_engine,
+    daily_crypto_email_engine,
+    weekly_stock_email_engine,
+    weekly_crypto_email_engine,
+    theory_trades_resolution_engine
+)
 from bot.handlers.system import error_handler
 
 # Backward compatibility imports for downstream charting/audit scripts
@@ -97,11 +108,18 @@ async def post_init(application):
     task3 = asyncio.create_task(alpaca_equities_engine(application))
     task4 = asyncio.create_task(alpaca_fractional_monitor_engine(application))
     task5 = asyncio.create_task(premium_expiration_engine(application))
-    task6 = asyncio.create_task(email_summary_engine(application))
+    task6_1 = asyncio.create_task(daily_stock_email_engine(application))
+    task6_2 = asyncio.create_task(daily_crypto_email_engine(application))
+    task6_3 = asyncio.create_task(weekly_stock_email_engine(application))
+    task6_4 = asyncio.create_task(weekly_crypto_email_engine(application))
     task7 = asyncio.create_task(theory_trades_resolution_engine(application))
     
     # Store references to prevent garbage collection
-    application.bot_data["bg_tasks"] = [task1, task2, task3, task4, task5, task6, task7]
+    application.bot_data["bg_tasks"] = [
+        task1, task2, task3, task4, task5,
+        task6_1, task6_2, task6_3, task6_4,
+        task7
+    ]
 
 
 async def post_stop(application):

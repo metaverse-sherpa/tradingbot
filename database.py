@@ -646,7 +646,7 @@ def init_db():
             "premium_referrals": "INTEGER DEFAULT 0",
             "referral_reward_triggered": "BOOLEAN DEFAULT 0",
             "email_notifications": "INTEGER DEFAULT 1",
-            "email_frequency": "TEXT DEFAULT 'realtime'",
+            "email_frequency": "TEXT DEFAULT 'daily'",
             "browser_notifications": "INTEGER DEFAULT 1",
             "public_key": "TEXT",
             "encrypted_private_key": "TEXT",
@@ -658,6 +658,13 @@ def init_db():
             if col_name not in existing_web_cols_2:
                 try: c.execute(f"ALTER TABLE WebUsers ADD COLUMN {col_name} {col_def}")
                 except: pass
+
+        # Migrate all users from realtime to daily frequency to optimize Resend limits
+        try:
+            c.execute("UPDATE WebUsers SET email_frequency = 'daily' WHERE email_frequency = 'realtime'")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Migration error (realtime to daily): {e}")
 
 
 

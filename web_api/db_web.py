@@ -571,3 +571,40 @@ def get_users_for_daily_processing():
             
     return processed_users
 
+def get_users_for_weekly_processing():
+    """
+    Returns a list of WebUsers who want weekly summaries (email_notifications = 1).
+    Respects emails_premium_only settings.
+    """
+    from database import get_config, is_premium, get_user
+    emails_prem_only = get_config("emails_premium_only", "0") == "1"
+    
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT * FROM WebUsers WHERE email_notifications = 1')
+        rows = c.fetchall()
+        
+    users = [dict(r) for r in rows]
+    processed_users = []
+    for u in users:
+        tg_id = u.get('telegram_chat_id')
+        u['is_premium_user'] = False
+        if tg_id:
+            tg_user = get_user(tg_id)
+            if tg_user and is_premium(tg_user):
+                u['is_premium_user'] = True
+                
+        if emails_prem_only and not u['is_premium_user']:
+            continue
+            
+        # Determine if exchange is connected
+        has_crypto = bool(u.get('api_key') and u.get('api_secret'))
+        has_stock = bool(u.get('alpaca_api_key') and u.get('alpaca_api_secret'))
+        u['has_crypto_exchange'] = has_crypto
+        u['has_stock_exchange'] = has_stock
+        
+        processed_users.append(u)
+        
+    return processed_users
+
+
