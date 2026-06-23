@@ -203,27 +203,18 @@ def get_balance():
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
                 if crypto_exchange_id == 'coinbase':
-                    def _extract_usd(b):
-                        usd_bal = b.get('USD', {})
-                        usdc_bal = b.get('USDC', {})
-                        if not isinstance(usd_bal, dict): usd_bal = {}
-                        if not isinstance(usdc_bal, dict): usdc_bal = {}
-                        free_usd = float(usd_bal.get('free') or b.get('free', {}).get('USD') or 0.0)
-                        used_usd = float(usd_bal.get('used') or b.get('used', {}).get('USD') or 0.0)
-                        free_usdc = float(usdc_bal.get('free') or b.get('free', {}).get('USDC') or 0.0)
-                        used_usdc = float(usdc_bal.get('used') or b.get('used', {}).get('USDC') or 0.0)
-                        return free_usd + used_usd + free_usdc + used_usdc
-                    
-                    # Primary USD (spot) balance
-                    free_asset = _extract_usd(bal)
-                    
-                    # Also fetch the Derivatives USD balance (separate Coinbase wallet)
-                    try:
-                        deriv_bal = client.fetch_balance(params={"type": "swap", "v3": True})
-                        free_asset += _extract_usd(deriv_bal)
-                        print(f"[DEBUG] Coinbase spot={_extract_usd(bal):.2f} deriv={_extract_usd(deriv_bal):.2f} total={free_asset:.2f}", flush=True)
-                    except Exception as deriv_err:
-                        print(f"[DEBUG] Coinbase derivatives balance fetch error (ignored): {deriv_err}", flush=True)
+                    usd_bal = bal.get('USD', {})
+                    usdc_bal = bal.get('USDC', {})
+                    if not isinstance(usd_bal, dict): usd_bal = {}
+                    if not isinstance(usdc_bal, dict): usdc_bal = {}
+                    # Coinbase spot API returns: free=Primary USD, used=Derivatives USD locked margin
+                    # Summing free+used gives the true total cash across both wallets
+                    free_usd = float(usd_bal.get('free') or bal.get('free', {}).get('USD') or 0.0)
+                    used_usd = float(usd_bal.get('used') or bal.get('used', {}).get('USD') or 0.0)
+                    free_usdc = float(usdc_bal.get('free') or bal.get('free', {}).get('USDC') or 0.0)
+                    used_usdc = float(usdc_bal.get('used') or bal.get('used', {}).get('USDC') or 0.0)
+                    free_asset = free_usd + used_usd + free_usdc + used_usdc
+                    print(f"[DEBUG] Coinbase balance: free={free_usd:.2f} used(deriv)={used_usd:.2f} total={free_asset:.2f}", flush=True)
                 else:
                     asset = 'USDT'
                     asset_bal = bal.get(asset, {})
@@ -860,31 +851,41 @@ def get_trades_history():
                         sem = asyncio.Semaphore(2) # rate limit protection
                         
                         if crypto_exchange_id == 'coinbase':
-                            # Coinbase: fetch all fills at once (no per-symbol loop needed)
-                            # This avoids symbol mapping issues and captures futures/perp fills
+                            # Coinbase: fetch all fills at once then group by instrument symbol
+                            # and pair open+close fills so each completed trade shows as one entry
                             since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
-                            all_trades = await client.fetch_my_trades(None, since=since, limit=500)
+                            all_fills = await client.fetch_my_trades(None, since=since, limit=500)
                             # Build a map from Coinbase market base -> canonical symbol name
                             base_to_sym = {sym.split('/')[0].upper(): sym for sym in symbols_to_check}
-                            results = []
-                            for trade in all_trades:
-                                t_sym = trade.get('symbol', '')
-                                # Determine base (e.g. 'ETH' from 'ETH/USD:USD-301220')
-                                trade_base = t_sym.split('/')[0].upper() if t_sym else ''
+                            # Group fills by their exact exchange symbol (e.g. 'ETH/USD:USD-301220')
+                            fills_by_sym = {}
+                            for fill in all_fills:
+                                t_sym = fill.get('symbol', '')
+                                # Skip spot fills (no ':' settlement asset suffix)
+                                if not t_sym or ':' not in t_sym:
+                                    continue
+                                trade_base = t_sym.split('/')[0].upper()
                                 canonical_sym = base_to_sym.get(trade_base)
                                 if not canonical_sym:
                                     continue  # Skip symbols not in the user's watchlist
-                                # Skip spot trades (no ':' means it's a spot fill)
-                                if ':' not in t_sym and t_sym.count('/') == 1:
-                                    continue
-                                results.append({
-                                    "type": "crypto",
-                                    "symbol": canonical_sym,
-                                    "side": "l" if str(trade.get('side', '')).lower() == 'sell' else "s",
-                                    "timestamp": trade.get('timestamp', 0),
-                                    "net_pnl": float(trade.get('cost', 0) or 0),  # Approximate
-                                    "price": float(trade.get('price', 0) or 0),
-                                })
+                                fills_by_sym.setdefault(t_sym, {"canonical": canonical_sym, "fills": []})
+                                fills_by_sym[t_sym]["fills"].append(fill)
+                            # Process each group to pair open/close fills into round-trip trades
+                            results = []
+                            for exch_sym, grp in fills_by_sym.items():
+                                processed = database.process_exchange_trades_for_symbol(
+                                    grp["fills"], crypto_exchange_id
+                                )
+                                for p in processed:
+                                    t = p["trade"]
+                                    results.append({
+                                        "type": "crypto",
+                                        "symbol": grp["canonical"],
+                                        "side": "l" if str(t.get('side', '')).lower() == 'sell' else "s",
+                                        "timestamp": t.get('timestamp', 0),
+                                        "net_pnl": p["net_pnl"],
+                                        "price": float(t.get('price', 0) or 0),
+                                    })
                             return results
                         else:
                             async def fetch_sym_history(sym):
