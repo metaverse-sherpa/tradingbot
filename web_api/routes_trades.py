@@ -900,6 +900,8 @@ def get_trades_history():
                                         total_fee = opener['fee'] + fee
                                         net_pnl = gross_pnl - total_fee
                                         print(f"[DEBUG] Coinbase FIFO match: Paired buy @ {entry_price} with sell @ {close_price} for qty {closed_qty}. Gross PnL: {gross_pnl:.4f}, Net PnL: {net_pnl:.4f}", flush=True)
+                                        initial_margin = (entry_price * closed_qty) / 20
+                                        roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
                                         results.append({
                                             "type": "crypto",
                                             "symbol": canonical_sym,
@@ -907,6 +909,9 @@ def get_trades_history():
                                             "timestamp": fill.get('timestamp', 0),
                                             "net_pnl": net_pnl,
                                             "price": close_price,
+                                            "roe_val": roe_val,
+                                            "entry_price": entry_price,
+                                            "close_price": close_price,
                                         })
                                     else:
                                         print(f"[DEBUG] Coinbase FIFO: Skipped pairing sell because open stack is empty.", flush=True)

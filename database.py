@@ -1176,6 +1176,8 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
                             closed_qty = min(opener['qty'], qty)
                             gross_pnl = (price - opener['price']) * closed_qty
                             net_pnl = gross_pnl - (opener['fee'] + fee)
+                            initial_margin = (opener['price'] * closed_qty) / 20
+                            roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
                             all_closed.append({
                                 'symbol': canonical_sym,
                                 'timestamp': fill.get('timestamp', 0),
@@ -1183,7 +1185,9 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
                                 'price': price,
                                 'amount': closed_qty,
                                 'side': 'l',
-                                'roe_val': 0,
+                                'roe_val': roe_val,
+                                'entry_price': opener['price'],
+                                'close_price': price,
                             })
             except Exception as cb_err:
                 logger.error(f"Coinbase FIFO history rebuild error: {cb_err}")
