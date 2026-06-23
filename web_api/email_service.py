@@ -21,10 +21,16 @@ import requests
 # Create a thread-safe task queue
 _email_queue = queue.Queue()
 
+import datetime
+
+_quota_exceeded_date = None
+
 def _send_email_direct(to_email, subject, html_content):
     """
     Directly sends email using SMTP or Resend API (with 429 retry support).
     """
+    global _quota_exceeded_date
+
     if not to_email:
         logger.warning("No recipient email provided. Skipping dispatch.")
         return False
@@ -35,6 +41,11 @@ def _send_email_direct(to_email, subject, html_content):
 
     # Try Resend API first if key exists
     if RESEND_API_KEY:
+        current_date = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        if _quota_exceeded_date == current_date:
+            logger.warning(f"Skipping Resend API dispatch; daily/monthly quota limit has already been exceeded for today ({current_date}).")
+            return False
+
         for attempt in range(3):
             try:
                 url = "https://api.resend.com/emails"
@@ -53,10 +64,36 @@ def _send_email_direct(to_email, subject, html_content):
                     logger.info(f"✅ Email successfully sent via Resend API to {to_email}")
                     return True
                 elif resp.status_code == 429:
-                    # Rate limit hit, backoff and retry
-                    retry_after = 2.0 ** (attempt + 1)
-                    logger.warning(f"⚠️ Resend 429 Rate Limit hit. Retrying in {retry_after}s...")
-                    time.sleep(retry_after)
+                    is_quota_limit = False
+                    err_name = ""
+                    try:
+                        err_json = resp.json()
+                        err_name = err_json.get("name", "")
+                        if "quota_exceeded" in err_name:
+                            is_quota_limit = True
+                    except Exception:
+                        pass
+
+                    if is_quota_limit:
+                        logger.error(f"❌ Resend API Quota Exceeded ({err_name}): {resp.text}")
+                        # Record the exceeded state for today
+                        _quota_exceeded_date = current_date
+                        
+                        # Send alert to Telegram admin once
+                        try:
+                            from utils_error import send_telegram_alert
+                            send_telegram_alert(
+                                "Resend API Quota Exceeded",
+                                Exception(f"Resend email quota limit hit ({err_name}). Message: {resp.text}\nEmail sending is disabled for today.")
+                            )
+                        except Exception as telegram_err:
+                            logger.error(f"Failed to send Telegram alert for quota limit: {telegram_err}")
+                        return False
+                    else:
+                        # Rate limit hit, backoff and retry
+                        retry_after = 2.0 ** (attempt + 1)
+                        logger.warning(f"⚠️ Resend 429 Rate Limit hit. Retrying in {retry_after}s...")
+                        time.sleep(retry_after)
                 else:
                     logger.error(f"❌ Resend API failed: {resp.status_code} - {resp.text}")
                     try:
@@ -76,6 +113,7 @@ def _send_email_direct(to_email, subject, html_content):
         logger.warning("RESEND_API_KEY not configured. Email was not sent.")
 
     return False
+
 
 def _email_worker():
     """
