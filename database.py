@@ -83,7 +83,10 @@ def get_exchange_client(user):
         "apiKey": user["api_key"],
         "secret": user["api_secret"],
         **({"password": user["api_password"]} if user["api_password"] else {}),
-        "options": {"defaultType": "swap"},
+        "options": {
+            "defaultType": "swap",
+            "adjustForTimeDifference": True
+        },
         "enableRateLimit": True,
     }
     if ex_id == 'coinbase':
@@ -855,24 +858,30 @@ def get_all_active_users():
     with db_session() as conn:
         c = conn.cursor()
         
-        # 1. Fetch active users from Users (Telegram)
-        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND blofin_api_key IS NOT NULL AND blofin_api_key != ''")
-        tg_chat_ids = [row[0] for row in c.fetchall()]
-        active_users = [get_user(cid) for cid in tg_chat_ids]
+        active_users = []
+        active_tg_ids_from_web = set()
         
-        # 2. Fetch active users from WebUsers (Web-only or not synced)
+        # 1. Fetch active users from WebUsers first (since they take precedence)
         try:
             c.execute("SELECT * FROM WebUsers WHERE is_active = 1 AND api_key IS NOT NULL AND api_key != ''")
             web_rows = c.fetchall()
             for r in web_rows:
                 web_user = dict(r)
                 tg_id = web_user.get('telegram_chat_id')
-                if tg_id and tg_id in tg_chat_ids:
-                    continue
+                if tg_id:
+                    active_tg_ids_from_web.add(tg_id)
                 formatted_web_user = get_user_from_web_row(web_user)
                 active_users.append(formatted_web_user)
         except Exception as e:
             print(f"Error querying WebUsers in get_all_active_users: {e}")
+            
+        # 2. Fetch active users from Users (Telegram) who are NOT overridden by WebUsers
+        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND blofin_api_key IS NOT NULL AND blofin_api_key != ''")
+        for row in c.fetchall():
+            tg_chat_id = row[0]
+            if tg_chat_id in active_tg_ids_from_web:
+                continue
+            active_users.append(get_user(tg_chat_id))
             
     return active_users
 
@@ -880,24 +889,30 @@ def get_all_active_stock_users():
     with db_session() as conn:
         c = conn.cursor()
         
-        # 1. Fetch active stock users from Users (Telegram)
-        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != ''")
-        tg_chat_ids = [row[0] for row in c.fetchall()]
-        active_users = [get_user(cid) for cid in tg_chat_ids]
+        active_users = []
+        active_tg_ids_from_web = set()
         
-        # 2. Fetch active stock users from WebUsers (Web-only or not synced)
+        # 1. Fetch active stock users from WebUsers first (since they take precedence)
         try:
             c.execute("SELECT * FROM WebUsers WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != ''")
             web_rows = c.fetchall()
             for r in web_rows:
                 web_user = dict(r)
                 tg_id = web_user.get('telegram_chat_id')
-                if tg_id and tg_id in tg_chat_ids:
-                    continue
+                if tg_id:
+                    active_tg_ids_from_web.add(tg_id)
                 formatted_web_user = get_user_from_web_row(web_user)
                 active_users.append(formatted_web_user)
         except Exception as e:
             print(f"Error querying WebUsers in get_all_active_stock_users: {e}")
+            
+        # 2. Fetch active stock users from Users (Telegram) who are NOT overridden by WebUsers
+        c.execute("SELECT telegram_chat_id FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != ''")
+        for row in c.fetchall():
+            tg_chat_id = row[0]
+            if tg_chat_id in active_tg_ids_from_web:
+                continue
+            active_users.append(get_user(tg_chat_id))
             
     return active_users
 
