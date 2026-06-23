@@ -896,11 +896,18 @@ def get_trades_history():
                                         entry_price = opener['price']
                                         close_price = price
                                         closed_qty = min(opener['qty'], qty)
-                                        gross_pnl = (close_price - entry_price) * closed_qty
+                                        # Get contract size if available
+                                        contract_size = 1.0
+                                        try:
+                                            market = client.market(exch_sym)
+                                            contract_size = float(market.get('contractSize', 1.0))
+                                        except:
+                                            pass
+                                        gross_pnl = (close_price - entry_price) * closed_qty * contract_size
                                         total_fee = opener['fee'] + fee
                                         net_pnl = gross_pnl - total_fee
-                                        print(f"[DEBUG] Coinbase FIFO match: Paired buy @ {entry_price} with sell @ {close_price} for qty {closed_qty}. Gross PnL: {gross_pnl:.4f}, Net PnL: {net_pnl:.4f}", flush=True)
-                                        initial_margin = (entry_price * closed_qty) / 20
+                                        print(f"[DEBUG] Coinbase FIFO match: Paired buy @ {entry_price} with sell @ {close_price} for qty {closed_qty} (contract_size={contract_size}). Gross PnL: {gross_pnl:.4f}, Net PnL: {net_pnl:.4f}", flush=True)
+                                        initial_margin = (entry_price * closed_qty * contract_size) / 20
                                         roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
                                         results.append({
                                             "type": "crypto",
