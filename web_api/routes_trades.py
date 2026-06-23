@@ -203,16 +203,27 @@ def get_balance():
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
                 if crypto_exchange_id == 'coinbase':
-                    usd_bal = bal.get('USD', {})
-                    usdc_bal = bal.get('USDC', {})
-                    if not isinstance(usd_bal, dict): usd_bal = {}
-                    if not isinstance(usdc_bal, dict): usdc_bal = {}
-                    free_usd = float(usd_bal.get('free') or bal.get('free', {}).get('USD') or 0.0)
-                    used_usd = float(usd_bal.get('used') or bal.get('used', {}).get('USD') or 0.0)
-                    free_usdc = float(usdc_bal.get('free') or bal.get('free', {}).get('USDC') or 0.0)
-                    used_usdc = float(usdc_bal.get('used') or bal.get('used', {}).get('USDC') or 0.0)
-                    # Total = free cash + locked margin (used) to show full account value
-                    free_asset = free_usd + used_usd + free_usdc + used_usdc
+                    def _extract_usd(b):
+                        usd_bal = b.get('USD', {})
+                        usdc_bal = b.get('USDC', {})
+                        if not isinstance(usd_bal, dict): usd_bal = {}
+                        if not isinstance(usdc_bal, dict): usdc_bal = {}
+                        free_usd = float(usd_bal.get('free') or b.get('free', {}).get('USD') or 0.0)
+                        used_usd = float(usd_bal.get('used') or b.get('used', {}).get('USD') or 0.0)
+                        free_usdc = float(usdc_bal.get('free') or b.get('free', {}).get('USDC') or 0.0)
+                        used_usdc = float(usdc_bal.get('used') or b.get('used', {}).get('USDC') or 0.0)
+                        return free_usd + used_usd + free_usdc + used_usdc
+                    
+                    # Primary USD (spot) balance
+                    free_asset = _extract_usd(bal)
+                    
+                    # Also fetch the Derivatives USD balance (separate Coinbase wallet)
+                    try:
+                        deriv_bal = client.fetch_balance(params={"type": "swap", "v3": True})
+                        free_asset += _extract_usd(deriv_bal)
+                        print(f"[DEBUG] Coinbase spot={_extract_usd(bal):.2f} deriv={_extract_usd(deriv_bal):.2f} total={free_asset:.2f}", flush=True)
+                    except Exception as deriv_err:
+                        print(f"[DEBUG] Coinbase derivatives balance fetch error (ignored): {deriv_err}", flush=True)
                 else:
                     asset = 'USDT'
                     asset_bal = bal.get(asset, {})
