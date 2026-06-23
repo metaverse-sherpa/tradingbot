@@ -331,6 +331,7 @@ def get_stats():
                 
     crypto_api_key = merged_user.get("api_key")
     crypto_api_secret = merged_user.get("api_secret")
+    crypto_exchange_id = merged_user.get("exchange_id", "blofin")
     
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_stats():
@@ -357,6 +358,36 @@ def get_stats():
         crypto_open_count = open_count
         crypto_unrealized = unrealized
             
+    if crypto_exchange_id == 'coinbase':
+        try:
+            import json
+            with database.db_session() as conn:
+                c = conn.cursor()
+                if tg_user.get("telegram_chat_id"):
+                    c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (tg_user["telegram_chat_id"],))
+                else:
+                    c.execute("SELECT history_cache FROM WebUsers WHERE id = ?", (user_id,))
+                row = c.fetchone()
+                if row and row[0]:
+                    trades_list = json.loads(row[0])
+                    calc_cum_pnl = 0.0
+                    calc_wins = 0
+                    calc_losses = 0
+                    for tr in trades_list:
+                        tr_pnl = float(tr.get("net_pnl") or 0.0)
+                        calc_cum_pnl += tr_pnl
+                        if tr_pnl > 0:
+                            calc_wins += 1
+                        elif tr_pnl < 0:
+                            calc_losses += 1
+                    crypto_cum_pnl = calc_cum_pnl
+                    crypto_wins = calc_wins
+                    crypto_losses = calc_losses
+                    crypto_total = crypto_wins + crypto_losses
+                    crypto_win_rate = round((crypto_wins / crypto_total) * 100, 1) if crypto_total > 0 else 0.0
+        except Exception as stats_recalc_err:
+            print(f"Error recalculating Coinbase stats: {stats_recalc_err}", flush=True)
+
     crypto_overall_pnl = crypto_cum_pnl + crypto_unrealized
     crypto_overall_pnl_pct = round((crypto_overall_pnl / crypto_equity) * 100, 2) if crypto_equity > 0 else 0.0
     

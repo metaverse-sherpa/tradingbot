@@ -53,6 +53,34 @@ def db_session():
         yield session
 
 class CoinbaseWrapper(ccxt.coinbase):
+    async def fetch_balance(self, params={}):
+        balance = await super().fetch_balance(params)
+        try:
+            method = None
+            if hasattr(self, 'v3_private_get_brokerage_cfm_balance_summary'):
+                method = self.v3_private_get_brokerage_cfm_balance_summary
+            elif hasattr(self, 'v3PrivateGetBrokerageCfmBalanceSummary'):
+                method = self.v3PrivateGetBrokerageCfmBalanceSummary
+            if method:
+                cfm_summary = await method()
+                if cfm_summary and 'balance_summary' in cfm_summary:
+                    summary = cfm_summary['balance_summary']
+                    cfm_bal_info = summary.get('cfm_usd_balance', {})
+                    cfm_usd = float(cfm_bal_info.get('value') or 0.0)
+                    
+                    if 'USD' not in balance:
+                        balance['USD'] = {'free': 0.0, 'used': 0.0, 'total': 0.0}
+                    balance['USD']['free'] = balance['USD'].get('free', 0.0) + cfm_usd
+                    balance['USD']['total'] = balance['USD'].get('total', 0.0) + cfm_usd
+                    
+                    if 'total' in balance:
+                        balance['total']['USD'] = balance['total'].get('USD', 0.0) + cfm_usd
+                    if 'free' in balance:
+                        balance['free']['USD'] = balance['free'].get('USD', 0.0) + cfm_usd
+        except Exception:
+            pass
+        return balance
+
     async def fetch_positions(self, symbols=None, params={}):
         if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
             try:
@@ -78,6 +106,34 @@ class CoinbaseWrapper(ccxt.coinbase):
         return await super().create_order(symbol, type, side, amount, price, params)
 
 class CoinbaseWrapperSync(ccxt_sync.coinbase):
+    def fetch_balance(self, params={}):
+        balance = super().fetch_balance(params)
+        try:
+            method = None
+            if hasattr(self, 'v3_private_get_brokerage_cfm_balance_summary'):
+                method = self.v3_private_get_brokerage_cfm_balance_summary
+            elif hasattr(self, 'v3PrivateGetBrokerageCfmBalanceSummary'):
+                method = self.v3PrivateGetBrokerageCfmBalanceSummary
+            if method:
+                cfm_summary = method()
+                if cfm_summary and 'balance_summary' in cfm_summary:
+                    summary = cfm_summary['balance_summary']
+                    cfm_bal_info = summary.get('cfm_usd_balance', {})
+                    cfm_usd = float(cfm_bal_info.get('value') or 0.0)
+                    
+                    if 'USD' not in balance:
+                        balance['USD'] = {'free': 0.0, 'used': 0.0, 'total': 0.0}
+                    balance['USD']['free'] = balance['USD'].get('free', 0.0) + cfm_usd
+                    balance['USD']['total'] = balance['USD'].get('total', 0.0) + cfm_usd
+                    
+                    if 'total' in balance:
+                        balance['total']['USD'] = balance['total'].get('USD', 0.0) + cfm_usd
+                    if 'free' in balance:
+                        balance['free']['USD'] = balance['free'].get('USD', 0.0) + cfm_usd
+        except Exception:
+            pass
+        return balance
+
     def fetch_positions(self, symbols=None, params={}):
         if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
             try:
