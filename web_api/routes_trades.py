@@ -203,36 +203,17 @@ def get_balance():
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
                 if crypto_exchange_id == 'coinbase':
-                    # Primary USD: from spot accounts endpoint (fetch_balance type=spot)
+                    # Coinbase: spot balance 'total' = Primary USD
+                    # 'used' = margin locked in open derivatives positions (part of same wallet total)
+                    # The Derivatives sub-wallet is separate but we use 'total' which CCXT aggregates
                     usd_bal = bal.get('USD', {})
                     usdc_bal = bal.get('USDC', {})
                     if not isinstance(usd_bal, dict): usd_bal = {}
                     if not isinstance(usdc_bal, dict): usdc_bal = {}
-                    primary_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
-                    primary_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
-                    free_asset = primary_usd + primary_usdc
-                    
-                    # Derivatives USD: from the INTX balances endpoint (separate Coinbase sub-account)
-                    # GET /api/v3/brokerage/intx/balances/{portfolio_uuid}
-                    try:
-                        # Ensure we have the portfolio UUID (already fetched for order creation)
-                        portfolio_id = client.options.get('portfolio') or client.options.get('retail_portfolio_id')
-                        if not portfolio_id:
-                            portfolios = client.fetch_portfolios()
-                            if portfolios:
-                                portfolio_id = portfolios[0]['id']
-                                client.options['portfolio'] = portfolio_id
-                        if portfolio_id:
-                            intx_resp = client.v3PrivateGetBrokerageIntxBalancesPortfolioUuid({'portfolioUuid': portfolio_id})
-                            intx_balances = intx_resp.get('portfolio_balances', {})
-                            # cash_equivalent_value includes USD + any settled collateral in the derivatives wallet
-                            deriv_usd = float(intx_balances.get('cash_equivalent_value', 0) or 0)
-                            free_asset += deriv_usd
-                            print(f"[DEBUG] Coinbase primary_usd={primary_usd:.2f} deriv_usd={deriv_usd:.2f} total={free_asset:.2f}", flush=True)
-                        else:
-                            print(f"[DEBUG] Coinbase: no portfolio_id found, showing primary balance only: {free_asset:.2f}", flush=True)
-                    except Exception as deriv_err:
-                        print(f"[DEBUG] Coinbase INTX balance error (showing primary only): {deriv_err}", flush=True)
+                    total_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
+                    total_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
+                    free_asset = total_usd + total_usdc
+                    print(f"[DEBUG] Coinbase spot balance: usd={total_usd:.2f} usdc={total_usdc:.2f} total={free_asset:.2f}", flush=True)
                 else:
                     asset = 'USDT'
                     asset_bal = bal.get(asset, {})
@@ -241,14 +222,15 @@ def get_balance():
                     free_asset = float(asset_bal.get('free') or asset_bal.get('total') or bal.get('free', {}).get(asset) or bal.get('total', {}).get(asset) or 0.0)
                 
                 total_equity = free_asset
-                try:
-                    positions = client.fetch_positions()
-                    for p in positions:
-                        margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
-                        upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
-                        total_equity += (margin + upnl)
-                except Exception as pos_err:
-                    if crypto_exchange_id != 'coinbase':
+                if crypto_exchange_id != 'coinbase':
+                    # For Coinbase, skip positions fetch (already reflected in total balance)
+                    try:
+                        positions = client.fetch_positions()
+                        for p in positions:
+                            margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
+                            upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
+                            total_equity += (margin + upnl)
+                    except Exception as pos_err:
                         print(f"Error fetching positions for balance: {pos_err}")
                 return (total_equity, True)
             finally:
@@ -869,8 +851,10 @@ def get_trades_history():
                         sem = asyncio.Semaphore(2) # rate limit protection
                         
                         if crypto_exchange_id == 'coinbase':
-                            # Coinbase: fetch all fills at once then group by instrument symbol
-                            # and pair open+close fills so each completed trade shows as one entry
+                            # Coinbase: fetch all fills then pair buy->sell as a round-trip trade.
+                            # Coinbase uses 'buy' for opening a long and 'sell' for closing it.
+                            # process_exchange_trades_for_symbol doesn't handle this correctly because
+                            # Coinbase fills don't have positionSide in info.
                             since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
                             all_fills = await client.fetch_my_trades(None, since=since, limit=500)
                             # Build a map from Coinbase market base -> canonical symbol name
@@ -879,31 +863,46 @@ def get_trades_history():
                             fills_by_sym = {}
                             for fill in all_fills:
                                 t_sym = fill.get('symbol', '')
-                                # Skip spot fills (no ':' settlement asset suffix)
-                                if not t_sym or ':' not in t_sym:
+                                if not t_sym or ':' not in t_sym:  # skip spot fills
                                     continue
                                 trade_base = t_sym.split('/')[0].upper()
                                 canonical_sym = base_to_sym.get(trade_base)
                                 if not canonical_sym:
-                                    continue  # Skip symbols not in the user's watchlist
+                                    continue
                                 fills_by_sym.setdefault(t_sym, {"canonical": canonical_sym, "fills": []})
                                 fills_by_sym[t_sym]["fills"].append(fill)
-                            # Process each group to pair open/close fills into round-trip trades
+                            
                             results = []
                             for exch_sym, grp in fills_by_sym.items():
-                                processed = database.process_exchange_trades_for_symbol(
-                                    grp["fills"], crypto_exchange_id
-                                )
-                                for p in processed:
-                                    t = p["trade"]
-                                    results.append({
-                                        "type": "crypto",
-                                        "symbol": grp["canonical"],
-                                        "side": "l" if str(t.get('side', '')).lower() == 'sell' else "s",
-                                        "timestamp": t.get('timestamp', 0),
-                                        "net_pnl": p["net_pnl"],
-                                        "price": float(t.get('price', 0) or 0),
-                                    })
+                                canonical_sym = grp["canonical"]
+                                # Sort fills by timestamp ascending
+                                sorted_fills = sorted(grp["fills"], key=lambda x: x.get('timestamp', 0))
+                                # Simple FIFO pairing: buy fills open a position, sell fills close it
+                                open_fills = []  # stack of (qty, price, fee, fill) for buys
+                                for fill in sorted_fills:
+                                    side = str(fill.get('side', '')).lower()
+                                    qty = float(fill.get('amount') or fill.get('filled') or 0)
+                                    price = float(fill.get('price') or 0)
+                                    fee = float((fill.get('fee') or {}).get('cost') or 0)
+                                    if side == 'buy':
+                                        open_fills.append({'qty': qty, 'price': price, 'fee': fee})
+                                    elif side == 'sell' and open_fills:
+                                        # Match against the oldest open buy (FIFO)
+                                        opener = open_fills.pop(0)
+                                        entry_price = opener['price']
+                                        close_price = price
+                                        closed_qty = min(opener['qty'], qty)
+                                        gross_pnl = (close_price - entry_price) * closed_qty
+                                        total_fee = opener['fee'] + fee
+                                        net_pnl = gross_pnl - total_fee
+                                        results.append({
+                                            "type": "crypto",
+                                            "symbol": canonical_sym,
+                                            "side": "l",  # was a long (buy->sell)
+                                            "timestamp": fill.get('timestamp', 0),
+                                            "net_pnl": net_pnl,
+                                            "price": close_price,
+                                        })
                             return results
                         else:
                             async def fetch_sym_history(sym):
