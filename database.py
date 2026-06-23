@@ -47,6 +47,31 @@ def db_session():
     with db_session_adapter(DB_PATH, sqlite_timeout=30.0) as session:
         yield session
 
+class CoinbaseWrapper(ccxt.coinbase):
+    async def fetch_positions(self, symbols=None, params={}):
+        if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
+            try:
+                portfolios = await self.fetch_portfolios()
+                if portfolios:
+                    self.options['portfolio'] = portfolios[0]['id']
+                    self.options['retail_portfolio_id'] = portfolios[0]['id']
+            except Exception:
+                pass
+        return await super().fetch_positions(symbols, params)
+
+    async def create_order(self, symbol, type, side, amount, price=None, params={}):
+        if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
+            try:
+                portfolios = await self.fetch_portfolios()
+                if portfolios:
+                    self.options['portfolio'] = portfolios[0]['id']
+                    self.options['retail_portfolio_id'] = portfolios[0]['id']
+            except Exception:
+                pass
+        if self.options.get('portfolio') and 'retail_portfolio_id' not in params:
+            params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
+        return await super().create_order(symbol, type, side, amount, price, params)
+
 def get_exchange_client(user):
     """
     Factory function to create a CCXT exchange client for a specific user.
@@ -61,11 +86,14 @@ def get_exchange_client(user):
         "options": {"defaultType": "swap"},
         "enableRateLimit": True,
     }
-    client = getattr(ccxt, ex_id)(config)
     if ex_id == 'coinbase':
+        config['options']['fetchBalance'] = 'v3PrivateGetBrokerageAccounts'
+        client = CoinbaseWrapper(config)
         sandbox = user.get('coinbase_sandbox')
-        if sandbox is None or sandbox in (1, True, '1', 'true', 'True'):
+        if sandbox in (1, True, '1', 'true', 'True'):
             client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
+    else:
+        client = getattr(ccxt, ex_id)(config)
     return client
 
 def normalize_symbol(symbol, exchange_id):
@@ -233,7 +261,7 @@ def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
     representing the correct futures/swap trading account.
     """
     if exchange_id == 'coinbase':
-        return {"type": "spot"}     # Use spot balance since Coinbase sweeps spot funds for margin automatically
+        return {"type": "spot", "v3": True}     # Use spot balance since Coinbase sweeps spot funds for margin automatically
     elif exchange_id == 'bingx':
         return {"type": "swap"}     # USDT-M Perpetual Account
     elif exchange_id == 'bitget':
