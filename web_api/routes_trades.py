@@ -203,18 +203,36 @@ def get_balance():
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
                 if crypto_exchange_id == 'coinbase':
+                    # Primary USD: from spot accounts endpoint (fetch_balance type=spot)
                     usd_bal = bal.get('USD', {})
                     usdc_bal = bal.get('USDC', {})
                     if not isinstance(usd_bal, dict): usd_bal = {}
                     if not isinstance(usdc_bal, dict): usdc_bal = {}
-                    # Coinbase spot API returns: free=Primary USD, used=Derivatives USD locked margin
-                    # Summing free+used gives the true total cash across both wallets
-                    free_usd = float(usd_bal.get('free') or bal.get('free', {}).get('USD') or 0.0)
-                    used_usd = float(usd_bal.get('used') or bal.get('used', {}).get('USD') or 0.0)
-                    free_usdc = float(usdc_bal.get('free') or bal.get('free', {}).get('USDC') or 0.0)
-                    used_usdc = float(usdc_bal.get('used') or bal.get('used', {}).get('USDC') or 0.0)
-                    free_asset = free_usd + used_usd + free_usdc + used_usdc
-                    print(f"[DEBUG] Coinbase balance: free={free_usd:.2f} used(deriv)={used_usd:.2f} total={free_asset:.2f}", flush=True)
+                    primary_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
+                    primary_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
+                    free_asset = primary_usd + primary_usdc
+                    
+                    # Derivatives USD: from the INTX balances endpoint (separate Coinbase sub-account)
+                    # GET /api/v3/brokerage/intx/balances/{portfolio_uuid}
+                    try:
+                        # Ensure we have the portfolio UUID (already fetched for order creation)
+                        portfolio_id = client.options.get('portfolio') or client.options.get('retail_portfolio_id')
+                        if not portfolio_id:
+                            portfolios = client.fetch_portfolios()
+                            if portfolios:
+                                portfolio_id = portfolios[0]['id']
+                                client.options['portfolio'] = portfolio_id
+                        if portfolio_id:
+                            intx_resp = client.v3PrivateGetBrokerageIntxBalancesPortfolioUuid({'portfolioUuid': portfolio_id})
+                            intx_balances = intx_resp.get('portfolio_balances', {})
+                            # cash_equivalent_value includes USD + any settled collateral in the derivatives wallet
+                            deriv_usd = float(intx_balances.get('cash_equivalent_value', 0) or 0)
+                            free_asset += deriv_usd
+                            print(f"[DEBUG] Coinbase primary_usd={primary_usd:.2f} deriv_usd={deriv_usd:.2f} total={free_asset:.2f}", flush=True)
+                        else:
+                            print(f"[DEBUG] Coinbase: no portfolio_id found, showing primary balance only: {free_asset:.2f}", flush=True)
+                    except Exception as deriv_err:
+                        print(f"[DEBUG] Coinbase INTX balance error (showing primary only): {deriv_err}", flush=True)
                 else:
                     asset = 'USDT'
                     asset_bal = bal.get(asset, {})
