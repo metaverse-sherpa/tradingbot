@@ -708,7 +708,7 @@ def get_user(chat_id):
         row = c.fetchone()
     if row:
         row_dict = dict(row)
-        def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
+        def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
         return {
             "api_key": decrypt(row_dict.get('blofin_api_key')),
             "api_secret": decrypt(row_dict.get('blofin_api_secret')),
@@ -774,7 +774,7 @@ def consume_referral_credits(chat_id, amount):
 def get_user_from_web_row(row):
     if not row:
         return None
-    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
+    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
     
     # Decrypt keys
     api_key = None

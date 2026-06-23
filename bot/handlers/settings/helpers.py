@@ -16,7 +16,7 @@ async def show_symbol_menu(update, context, user):
         all_syms = ["SOL", "LINK", "BTC", "ADA", "DOT", "ETH", "SUI"]
         title_text = "🛰 *Manage Valkyrie Symbols*\n\nTap a symbol to toggle it ON or OFF. Valkyrie operates on these Top 7 institutional volume assets."
     else:
-        all_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","TON","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
+        all_syms = ["BTC","ETH","SOL","DOGE","ADA","LINK","DOT","ZEC","PEPE","BNB","NEAR","SUI","NOT","TAO","ONDO","ENA","FET","WIF"]
         title_text = "🛰 *Manage Symbols*\n\nTap a symbol to toggle it ON or OFF for your account."
         
     enabled = user['enabled_symbols']

@@ -96,7 +96,7 @@ def profile():
     user.pop("password_hash", None)
     
     # Convert enabled_symbols string back to array
-    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,TON,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
+    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
     user["enabled_symbols"] = (user.get("enabled_symbols") or def_syms).split(",")
     
     # Determine premium level
