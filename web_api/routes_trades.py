@@ -54,6 +54,9 @@ def run_with_timeout(func, timeout_sec, fallback):
         future = THREAD_POOL.submit(func)
         return future.result(timeout=timeout_sec)
     except Exception as e:
+        print(f"[DEBUG] run_with_timeout error for {func.__name__ if hasattr(func, '__name__') else func}: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         return fallback
 
 # Module-level variable to prevent concurrent background updates for active signals
@@ -177,33 +180,23 @@ def get_balance():
     balance_crypto = 0.0
     balance_stock = 0.0
     
-    # Use the linked Telegram user's exchange keys if available
-    if tg_user and tg_user.get("api_key"):
-        crypto_api_key = tg_user.get("api_key")
-        crypto_api_secret = tg_user.get("api_secret")
-        crypto_api_password = tg_user.get("api_password") or ""
-        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
-    else:
-        crypto_api_key = user.get("api_key")
-        crypto_api_secret = user.get("api_secret")
-        crypto_api_password = user.get("api_password") or ""
-        crypto_exchange_id = user.get("exchange_id", "blofin")
+    # Merge credentials
+    merged_user = {}
+    if user:
+        merged_user.update(user)
+    if tg_user:
+        for k, v in tg_user.items():
+            if v is not None and v != "":
+                merged_user[k] = v
+                
+    crypto_api_key = merged_user.get("api_key")
+    crypto_api_secret = merged_user.get("api_secret")
     
     # 1. Query live Crypto balance (CCXT)
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_balance():
-            import ccxt
-            default_type = "swap"
-            config = {
-                "apiKey": crypto_api_key,
-                "secret": crypto_api_secret,
-                **({"password": crypto_api_password} if crypto_api_password else {}),
-                "options": {"defaultType": default_type},
-                "enableRateLimit": False,
-                "timeout": 4000,
-            }
-            client = getattr(ccxt, crypto_exchange_id)(config)
-            _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
+            client = database.get_exchange_client(merged_user, is_async=False)
+            client.timeout = 4000
             try:
                 futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
@@ -321,31 +314,22 @@ def get_stats():
     crypto_open_count = 0
     
     # Attempt CCXT fetch if keys exist
-    if tg_user and tg_user.get("api_key"):
-        crypto_api_key = tg_user.get("api_key")
-        crypto_api_secret = tg_user.get("api_secret")
-        crypto_api_password = tg_user.get("api_password") or ""
-        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
-    else:
-        crypto_api_key = user.get("api_key")
-        crypto_api_secret = user.get("api_secret")
-        crypto_api_password = user.get("api_password") or ""
-        crypto_exchange_id = user.get("exchange_id", "blofin")
+    # Merge credentials
+    merged_user = {}
+    if user:
+        merged_user.update(user)
+    if tg_user:
+        for k, v in tg_user.items():
+            if v is not None and v != "":
+                merged_user[k] = v
+                
+    crypto_api_key = merged_user.get("api_key")
+    crypto_api_secret = merged_user.get("api_secret")
     
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_stats():
-            import ccxt
-            default_type = "swap"
-            config = {
-                "apiKey": crypto_api_key,
-                "secret": crypto_api_secret,
-                **({"password": crypto_api_password or ""} if crypto_api_password or "" else {}),
-                "options": {"defaultType": default_type},
-                "enableRateLimit": False,
-                "timeout": 4000
-            }
-            client = getattr(ccxt, crypto_exchange_id)(config)
-            _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
+            client = database.get_exchange_client(merged_user, is_async=False)
+            client.timeout = 4000
             try:
                 open_count = 0
                 unrealized = 0.0
@@ -883,6 +867,9 @@ def get_trades_history():
                                     })
                                 return results
                             except Exception as e:
+                                print(f"[DEBUG] fetch_sym_history error for {sym}: {e}", flush=True)
+                                import traceback
+                                traceback.print_exc()
                                 return []
                         
                         all_results = await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
@@ -908,6 +895,9 @@ def get_trades_history():
                 finally:
                     loop.close()
             except Exception as e:
+                print(f"[DEBUG] get_trades_history outer exception: {e}", flush=True)
+                import traceback
+                traceback.print_exc()
                 futures_type = (tg_user.get("bingx_futures_type") if tg_user else None) or user.get("bingx_futures_type", "standard")
                 type_desc = f" ({futures_type} Futures)" if crypto_exchange_id == 'bingx' else ""
             
@@ -2065,20 +2055,22 @@ def share_card():
                     crypto_api_password = user.get("api_password") or ""
                     crypto_exchange_id = user.get("exchange_id", "blofin")
                 
+                # Merge credentials
+                merged_user = {}
+                if user:
+                    merged_user.update(user)
+                if tg_user:
+                    for k, v in tg_user.items():
+                        if v is not None and v != "":
+                            merged_user[k] = v
+                crypto_api_key = merged_user.get("api_key")
+                crypto_api_secret = merged_user.get("api_secret")
+                
                 realized_daily_pnl = 0.0
                 if crypto_api_key and crypto_api_secret:
                     try:
-                        import ccxt
-                        default_type = "swap"
-                        config = {
-                            "apiKey": crypto_api_key,
-                            "secret": crypto_api_secret,
-                            **({"password": crypto_api_password or ""} if crypto_api_password or "" else {}),
-                            "options": {"defaultType": default_type},
-                            "timeout": 3000
-                        }
-                        client = getattr(ccxt, crypto_exchange_id)(config)
-                        _set_coinbase_sandbox_if_needed(client, crypto_exchange_id, tg_user, user)
+                        client = database.get_exchange_client(merged_user, is_async=False)
+                        client.timeout = 3000
                         try:
                             try:
                                 positions = client.fetch_positions()
