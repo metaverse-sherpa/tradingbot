@@ -937,13 +937,26 @@ def get_trades_history():
                                     results = []
                                     for p in processed:
                                         t = p["trade"]
+                                        qty = float(t.get('amount') or t.get('filled') or 0)
+                                        price = float(t.get('price') or 0)
+                                        contract_size = 1.0
+                                        try:
+                                            market = client.market(norm_sym)
+                                            contract_size = float(market.get('contractSize', 1.0))
+                                        except:
+                                            pass
+                                        initial_margin = (price * qty * contract_size) / 20
+                                        roe_val = (p["net_pnl"] / initial_margin) * 100 if initial_margin > 0 else 0
                                         results.append({
                                             "type": "crypto",
                                             "symbol": sym,
                                             "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
                                             "timestamp": t.get('timestamp', 0),
                                             "net_pnl": p["net_pnl"],
-                                            "price": t.get('price', 0),
+                                            "price": price,
+                                            "roe_val": roe_val,
+                                            "entry_price": price,
+                                            "close_price": price
                                         })
                                     return results
                                 except Exception as e:
