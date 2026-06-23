@@ -1272,6 +1272,14 @@ async function handleRoute() {
             return;
         }
         STATE.current_view = 'logs';
+    } else if (hash === '#/admin') {
+        if (!STATE.user || (!STATE.user.is_admin && STATE.user.telegram_chat_id !== 1567788633)) {
+            window.location.hash = '#/dashboard';
+            return;
+        }
+        STATE.current_view = 'admin';
+        // Trigger fetch of active admin configurations
+        window.fetchAdminConfig();
     }
     
     renderView();
@@ -1564,6 +1572,13 @@ function renderView() {
                 return;
             }
             html = renderLogsView();
+            break;
+        case 'admin':
+            if (!(STATE.user && (STATE.user.is_admin || STATE.user.telegram_chat_id == 1567788633))) {
+                window.location.hash = '/';
+                return;
+            }
+            html = renderAdminView();
             break;
         case 'strategy':
             html = renderStrategyView();
@@ -4236,6 +4251,84 @@ function renderLogsView() {
     `;
 }
 
+function renderAdminView() {
+    const excluded = STATE.admin_config ? STATE.admin_config.excluded_symbols : '';
+    
+    return `
+        ${renderHeader()}
+        <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto min-h-screen flex flex-col justify-start">
+            <div class="flex justify-between items-center shrink-0 glass-card rounded-xl p-card-padding border border-[#ffdb3c]/30 gold-glow">
+                <h2 class="font-headline-sm text-headline-sm text-[#ffdb3c] flex items-center gap-2">
+                    <span class="material-symbols-outlined">settings_suggest</span> Admin Settings
+                </h2>
+            </div>
+            
+            <section class="glass-card rounded-xl p-card-padding space-y-4 border border-[#ffdb3c]/30 gold-glow">
+                <h3 class="font-body-lg text-body-lg font-bold text-on-surface">🚫 Token Exclusions</h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Specify comma-separated crypto symbols to exclude from all strategy loops (e.g. <code>TON,WIF</code>). Delisted or rebranded tokens entered here will not be queried.
+                </p>
+                <div class="space-y-3">
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Excluded Symbols</label>
+                        <input id="excluded-symbols-input" class="w-full h-11 bg-surface-container-low text-on-surface text-sm border border-white/10 rounded-lg px-4 cyan-glow-focus transition-all animate-none font-mono" placeholder="e.g. TON,WIF" type="text" value="${excluded || ''}" />
+                    </div>
+                    <button onclick="saveAdminConfig()" class="w-full h-11 bg-gradient-to-r from-primary to-[#ffdb3c] text-background font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined text-lg">save</span>
+                        <span>Save Exclusions</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="glass-card rounded-xl p-card-padding space-y-4 border border-error/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.1)] transition-shadow">
+                <h3 class="font-body-lg text-body-lg font-bold text-error flex items-center gap-2">
+                    <span class="material-symbols-outlined">restart_alt</span> Restart Engine
+                </h3>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Restart the trading bot service to apply the configuration immediately. Active trades will not be closed.
+                </p>
+                <button onclick="restartService('tradingbot')" class="w-full h-11 bg-error/20 text-error border border-error/55 font-bold rounded-lg hover:bg-error/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <span class="material-symbols-outlined text-lg">restart_alt</span>
+                    <span>Restart Trading Bot</span>
+                </button>
+            </section>
+        </main>
+    `;
+}
+
+window.fetchAdminConfig = async function() {
+    try {
+        const config = await apiRequest('/admin/config');
+        if (config) {
+            STATE.admin_config = config;
+            if (STATE.current_view === 'admin') {
+                renderView();
+            }
+        }
+    } catch (e) {
+        console.error("Failed to fetch admin config:", e);
+    }
+};
+
+window.saveAdminConfig = async function() {
+    const input = document.getElementById('excluded-symbols-input');
+    if (!input) return;
+    const value = input.value.trim();
+    try {
+        const res = await apiRequest('/admin/config', 'POST', { excluded_symbols: value });
+        if (res && res.message) {
+            window.showToast("Exclusions updated successfully!", 'success');
+            if (STATE.admin_config) {
+                STATE.admin_config.excluded_symbols = value;
+            } else {
+                STATE.admin_config = { excluded_symbols: value };
+            }
+        }
+    } catch (e) {
+        window.showToast("Failed to save configuration.", 'error');
+    }
+};
+
 function renderStrategyView() {
     const user = STATE.user || {};
     const current = user.active_crypto_strategy || 'Valkyrie Elite Scalper';
@@ -6687,6 +6780,12 @@ window.restartService = async function(service) {
     } catch (e) {
         alert("Failed to restart service.");
     }
+};
+
+window.setAdminLogsTab = function(tab) {
+    window.adminLogsMobileTab = tab;
+    renderView();
+    window.fetchAdminLogs(tab);
 };
 
 if (!window.adminLogsPollerInitialized) {

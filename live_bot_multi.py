@@ -17,6 +17,32 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime, timezone
+import database
+
+class DynamicSymbolsList(list):
+    def __init__(self, configs):
+        self.configs = configs
+        super().__init__()
+
+    def _get_list(self):
+        try:
+            excluded = database.get_config("excluded_symbols", "")
+            excluded_list = [s.strip().upper() for s in excluded.split(",") if s.strip()]
+        except Exception:
+            excluded_list = []
+        return [f"{s}/USDT:USDT" for s in self.configs.keys() if s not in excluded_list]
+
+    def __iter__(self):
+        return iter(self._get_list())
+
+    def __len__(self):
+        return len(self._get_list())
+
+    def __getitem__(self, index):
+        return self._get_list()[index]
+
+    def __repr__(self):
+        return repr(self._get_list())
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -56,7 +82,7 @@ VALKYRIE_SYMBOL_CONFIGS = {
     "SUI":  {"bb": 2.2, "atr": 4.0, "rr": 0.8, "adx": 25, "rsi_low": 25, "rsi_high": 75}
 }
 
-SYMBOLS = [f"{s}/USDT:USDT" for s in SYMBOL_CONFIGS.keys()]
+SYMBOLS = DynamicSymbolsList(SYMBOL_CONFIGS)
 BAD_HOURS_UTC = {4, 12}
 TIMEFRAME     = "15m"
 LEVERAGE      = 20

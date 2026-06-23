@@ -302,3 +302,31 @@ def admin_restart():
         return jsonify({"message": f"{service} restart/reload initiated."}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to restart {service}: {str(e)}"}), 500
+
+@premium_bp.route('/api/admin/config', methods=['GET'])
+@require_auth
+def get_admin_config():
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    excluded = database.get_config("excluded_symbols", "")
+    return jsonify({"excluded_symbols": excluded}), 200
+
+@premium_bp.route('/api/admin/config', methods=['POST'])
+@require_auth
+def update_admin_config():
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    data = request.get_json() or {}
+    excluded = data.get("excluded_symbols", "").strip()
+    database.update_config("excluded_symbols", excluded)
+    return jsonify({"message": "Configuration updated successfully."}), 200
