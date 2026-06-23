@@ -191,6 +191,7 @@ def get_balance():
                 
     crypto_api_key = merged_user.get("api_key")
     crypto_api_secret = merged_user.get("api_secret")
+    crypto_exchange_id = merged_user.get("exchange_id", "blofin")
     
     # 1. Query live Crypto balance (CCXT)
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
