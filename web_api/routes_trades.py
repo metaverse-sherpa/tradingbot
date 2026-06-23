@@ -340,6 +340,7 @@ def get_stats():
             try:
                 open_count = 0
                 unrealized = 0.0
+                live_bal = 0.0
                 try:
                     positions = client.fetch_positions()
                 except Exception:
@@ -349,14 +350,35 @@ def get_stats():
                     if contracts != 0:
                         open_count += 1
                         unrealized += float(p.get("unrealizedPnl", 0) or 0)
-                return open_count, unrealized
+                try:
+                    futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
+                    bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
+                    bal = client.fetch_balance(params=bal_params)
+                    if crypto_exchange_id == 'coinbase':
+                        usd_bal = bal.get('USD', {})
+                        usdc_bal = bal.get('USDC', {})
+                        if not isinstance(usd_bal, dict): usd_bal = {}
+                        if not isinstance(usdc_bal, dict): usdc_bal = {}
+                        total_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
+                        total_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
+                        live_bal = total_usd + total_usdc
+                    else:
+                        asset = 'USDT'
+                        asset_bal = bal.get(asset, {})
+                        if not isinstance(asset_bal, dict): asset_bal = {}
+                        live_bal = float(asset_bal.get('free') or asset_bal.get('total') or bal.get('free', {}).get(asset) or bal.get('total', {}).get(asset) or 0.0)
+                except Exception as bal_err:
+                    print(f"Error fetching live balance in stats: {bal_err}", flush=True)
+                return open_count, unrealized, live_bal
             finally:
                 try: client.close()
                 except: pass
 
-        open_count, unrealized = run_with_timeout(fetch_crypto_stats, 6.0, (0, 0.0))
+        open_count, unrealized, live_bal = run_with_timeout(fetch_crypto_stats, 6.0, (0, 0.0, 0.0))
         crypto_open_count = open_count
         crypto_unrealized = unrealized
+        if live_bal > 0:
+            crypto_equity = live_bal
             
     if crypto_exchange_id == 'coinbase':
         try:

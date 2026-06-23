@@ -3515,7 +3515,9 @@ function renderStatsView() {
         return renderFreeStatsView();
     }
     
-    const hasLinkedKeys = STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys;
+    const hasLinkedCrypto = !!(STATE.user && STATE.user.has_exchange_keys);
+    const hasLinkedStock = !!(STATE.user && STATE.user.has_alpaca_keys);
+    const hasLinkedKeys = hasLinkedCrypto || hasLinkedStock;
     if (!hasLinkedKeys) {
         return renderFreeStatsView(true);
     }
@@ -3551,8 +3553,9 @@ function renderStatsView() {
         <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Institutional Performance</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 ${(hasLinkedCrypto && hasLinkedStock) ? 'md:grid-cols-2' : ''} gap-6">
                 <!-- Crypto Performance Section -->
+                ${hasLinkedCrypto ? `
                 <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 space-y-4">
                 <div class="flex justify-between items-center">
                     <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Performance</h3>
@@ -3644,8 +3647,10 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
+            ` : ''}
             
             <!-- Stocks Performance Section -->
+            ${hasLinkedStock ? `
             <section class="glass-card rounded-xl p-card-padding border-t-2 border-secondary-container/40 space-y-4">
                 <div class="flex justify-between items-center">
                     <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Performance</h3>
@@ -3737,6 +3742,7 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
+            ` : ''}
             </div>
         </main>
     `;
