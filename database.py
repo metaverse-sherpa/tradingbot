@@ -130,7 +130,7 @@ def get_exchange_client(user, is_async=True):
             client = getattr(ccxt_sync, ex_id)(config)
     return client
 
-def normalize_symbol(symbol, exchange_id):
+def normalize_symbol(symbol, exchange_id, client=None):
     """
     Handles exchange-specific symbol dialects.
     """
@@ -140,27 +140,61 @@ def normalize_symbol(symbol, exchange_id):
     # Clean symbol inputs (standardize slashes, uppercase)
     sym = symbol.upper().replace('-', '/')
 
+    ex_id = exchange_id.lower()
+
+    # Dynamic symbol resolution for Coinbase if client has markets loaded
+    if ex_id == 'coinbase' and client and hasattr(client, 'markets') and client.markets:
+        base = sym.split('/')[0]
+        matching = []
+        for m_symbol, market in client.markets.items():
+            if market.get('base') == base and (market.get('future') or market.get('swap') or market.get('type') in ('swap', 'future') or market.get('contract')):
+                matching.append((m_symbol, market))
+        if matching:
+            best_symbol = None
+            best_score = -99
+            for m_symbol, market in matching:
+                info = market.get('info', {})
+                disp_name = str(info.get('display_name', '')).upper()
+                prod_id = str(info.get('product_id', '')).upper()
+                score = 0
+                if 'PERP' in prod_id or 'PERP' in disp_name or 'PERPETUAL' in disp_name:
+                    score += 10
+                if m_symbol.endswith('301220'):
+                    score += 5
+                if any(month in disp_name for month in ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']):
+                    if 'PERPETUAL' not in disp_name and 'PERP' not in disp_name:
+                        if '301220' not in m_symbol:
+                            score -= 15
+                settle_currency = market.get('settle') or market.get('quote') or 'USD'
+                if settle_currency == 'USD':
+                    score += 2
+                if score > best_score:
+                    best_score = score
+                    best_symbol = m_symbol
+            if best_symbol:
+                return best_symbol
+
     # Exchange-specific symbol mapping tables
     MAPPINGS = {
         'coinbase': {
-            'BTC/USDT:USDT': 'BTC/USDC:USDC',
-            'BTC/USDT': 'BTC/USDC:USDC',
-            'ETH/USDT:USDT': 'ETH/USDC:USDC',
-            'ETH/USDT': 'ETH/USDC:USDC',
-            'SOL/USDT:USDT': 'SOL/USDC:USDC',
-            'SOL/USDT': 'SOL/USDC:USDC',
-            'ADA/USDT:USDT': 'ADA/USDC:USDC',
-            'ADA/USDT': 'ADA/USDC:USDC',
-            'DOGE/USDT:USDT': 'DOGE/USDC:USDC',
-            'DOGE/USDT': 'DOGE/USDC:USDC',
-            'LINK/USDT:USDT': 'LINK/USDC:USDC',
-            'LINK/USDT': 'LINK/USDC:USDC',
-            'DOT/USDT:USDT': 'DOT/USDC:USDC',
-            'DOT/USDT': 'DOT/USDC:USDC',
-            'SHIB/USDT:USDT': '1000SHIB/USDC:USDC',
-            'SHIB/USDT': '1000SHIB/USDC:USDC',
-            'PEPE/USDT:USDT': '1000PEPE/USDC:USDC',
-            'PEPE/USDT': '1000PEPE/USDC:USDC',
+            'BTC/USDT:USDT': 'BTC/USD:USD-301220',
+            'BTC/USDT': 'BTC/USD:USD-301220',
+            'ETH/USDT:USDT': 'ETH/USD:USD-301220',
+            'ETH/USDT': 'ETH/USD:USD-301220',
+            'SOL/USDT:USDT': 'SOL/USD:USD-301220',
+            'SOL/USDT': 'SOL/USD:USD-301220',
+            'ADA/USDT:USDT': 'ADA/USD:USD-301220',
+            'ADA/USDT': 'ADA/USD:USD-301220',
+            'DOGE/USDT:USDT': 'DOGE/USD:USD-301220',
+            'DOGE/USDT': 'DOGE/USD:USD-301220',
+            'LINK/USDT:USDT': 'LINK/USD:USD-301220',
+            'LINK/USDT': 'LINK/USD:USD-301220',
+            'DOT/USDT:USDT': 'DOT/USD:USD-301220',
+            'DOT/USDT': 'DOT/USD:USD-301220',
+            'SHIB/USDT:USDT': 'SHIB/USD:USD-301220',
+            'SHIB/USDT': 'SHIB/USD:USD-301220',
+            'PEPE/USDT:USDT': 'PEPE/USD:USD-301220',
+            'PEPE/USDT': 'PEPE/USD:USD-301220',
         },
         'bingx': {
             'TON/USDT:USDT': 'TONCOIN/USDT:USDT',

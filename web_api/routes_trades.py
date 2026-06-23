@@ -207,9 +207,12 @@ def get_balance():
                     usdc_bal = bal.get('USDC', {})
                     if not isinstance(usd_bal, dict): usd_bal = {}
                     if not isinstance(usdc_bal, dict): usdc_bal = {}
-                    free_usd = float(usd_bal.get('free') or usd_bal.get('total') or bal.get('free', {}).get('USD') or bal.get('total', {}).get('USD') or 0.0)
-                    free_usdc = float(usdc_bal.get('free') or usdc_bal.get('total') or bal.get('free', {}).get('USDC') or bal.get('total', {}).get('USDC') or 0.0)
-                    free_asset = free_usd + free_usdc
+                    free_usd = float(usd_bal.get('free') or bal.get('free', {}).get('USD') or 0.0)
+                    used_usd = float(usd_bal.get('used') or bal.get('used', {}).get('USD') or 0.0)
+                    free_usdc = float(usdc_bal.get('free') or bal.get('free', {}).get('USDC') or 0.0)
+                    used_usdc = float(usdc_bal.get('used') or bal.get('used', {}).get('USDC') or 0.0)
+                    # Total = free cash + locked margin (used) to show full account value
+                    free_asset = free_usd + used_usd + free_usdc + used_usdc
                 else:
                     asset = 'USDT'
                     asset_bal = bal.get(asset, {})
@@ -845,36 +848,64 @@ def get_trades_history():
                             
                         sem = asyncio.Semaphore(2) # rate limit protection
                         
-                        async def fetch_sym_history(sym):
-                            try:
-                                norm_sym = database.normalize_symbol(sym, crypto_exchange_id)
-                                if norm_sym not in client.markets:
+                        if crypto_exchange_id == 'coinbase':
+                            # Coinbase: fetch all fills at once (no per-symbol loop needed)
+                            # This avoids symbol mapping issues and captures futures/perp fills
+                            since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
+                            all_trades = await client.fetch_my_trades(None, since=since, limit=500)
+                            # Build a map from Coinbase market base -> canonical symbol name
+                            base_to_sym = {sym.split('/')[0].upper(): sym for sym in symbols_to_check}
+                            results = []
+                            for trade in all_trades:
+                                t_sym = trade.get('symbol', '')
+                                # Determine base (e.g. 'ETH' from 'ETH/USD:USD-301220')
+                                trade_base = t_sym.split('/')[0].upper() if t_sym else ''
+                                canonical_sym = base_to_sym.get(trade_base)
+                                if not canonical_sym:
+                                    continue  # Skip symbols not in the user's watchlist
+                                # Skip spot trades (no ':' means it's a spot fill)
+                                if ':' not in t_sym and t_sym.count('/') == 1:
+                                    continue
+                                results.append({
+                                    "type": "crypto",
+                                    "symbol": canonical_sym,
+                                    "side": "l" if str(trade.get('side', '')).lower() == 'sell' else "s",
+                                    "timestamp": trade.get('timestamp', 0),
+                                    "net_pnl": float(trade.get('cost', 0) or 0),  # Approximate
+                                    "price": float(trade.get('price', 0) or 0),
+                                })
+                            return results
+                        else:
+                            async def fetch_sym_history(sym):
+                                try:
+                                    norm_sym = database.normalize_symbol(sym, crypto_exchange_id, client=client)
+                                    if norm_sym not in client.markets:
+                                        return []
+                                    since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
+                                    async with sem:
+                                        await asyncio.sleep(0.1) # tiny throttle delay to respect rate limits
+                                        trades = await client.fetch_my_trades(norm_sym, since=since, limit=50)
+                                    processed = database.process_exchange_trades_for_symbol(trades, crypto_exchange_id)
+                                    results = []
+                                    for p in processed:
+                                        t = p["trade"]
+                                        results.append({
+                                            "type": "crypto",
+                                            "symbol": sym,
+                                            "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
+                                            "timestamp": t.get('timestamp', 0),
+                                            "net_pnl": p["net_pnl"],
+                                            "price": t.get('price', 0),
+                                        })
+                                    return results
+                                except Exception as e:
+                                    print(f"[DEBUG] fetch_sym_history error for {sym}: {e}", flush=True)
+                                    import traceback
+                                    traceback.print_exc()
                                     return []
-                                since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
-                                async with sem:
-                                    await asyncio.sleep(0.1) # tiny throttle delay to respect rate limits
-                                    trades = await client.fetch_my_trades(norm_sym, since=since, limit=50)
-                                processed = database.process_exchange_trades_for_symbol(trades, crypto_exchange_id)
-                                results = []
-                                for p in processed:
-                                    t = p["trade"]
-                                    results.append({
-                                        "type": "crypto",
-                                        "symbol": sym,
-                                        "side": "l" if str(t.get('side')).lower() == 'sell' else "s",
-                                        "timestamp": t.get('timestamp', 0),
-                                        "net_pnl": p["net_pnl"],
-                                        "price": t.get('price', 0),
-                                    })
-                                return results
-                            except Exception as e:
-                                print(f"[DEBUG] fetch_sym_history error for {sym}: {e}", flush=True)
-                                import traceback
-                                traceback.print_exc()
-                                return []
-                        
-                        all_results = await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
-                        return [item for sublist in all_results for item in sublist]
+                            
+                            all_results = await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
+                            return [item for sublist in all_results for item in sublist]
                     finally:
                         await client.close()
 
