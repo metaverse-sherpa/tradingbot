@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from google.cloud import secretmanager
 from dotenv import load_dotenv
 
@@ -10,7 +11,6 @@ logger = logging.getLogger("SecretManager")
 
 # In-memory cache to share keys across the application and avoid network round-trips
 _secrets_cache = {}
-_gcp_failed = False
 
 def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=None):
     """
@@ -18,7 +18,6 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
     If it fails (e.g., running locally without gcloud auth), it gracefully
     falls back to os.getenv(). Uses an in-memory cache to eliminate GCP round-trips.
     """
-    global _gcp_failed
     if fallback_env_key is None:
         fallback_env_key = secret_id.replace('-', '_').upper()
         
@@ -32,9 +31,11 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
         _secrets_cache[secret_id] = val
         return val
         
-    if not _gcp_failed:
+    # Try to fetch from GCP Secret Manager with retries
+    max_retries = 3
+    retry_delay = 1
+    for attempt in range(max_retries):
         try:
-            # Try to fetch from GCP Secret Manager
             client = secretmanager.SecretManagerServiceClient()
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
             response = client.access_secret_version(request={"name": name}, timeout=10.0)
@@ -42,15 +43,18 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
             _secrets_cache[secret_id] = payload
             return payload
         except Exception as e:
-            # Graceful fallback to local .env
-            _gcp_failed = True
-            logger.error(f"Could not fetch '{secret_id}' from GCP (timeout/failure - falling back to .env): {e}")
-            if secret_id != "TELEGRAM_BOT_TOKEN":
-                try:
-                    from utils_error import send_telegram_alert
-                    send_telegram_alert(f"SecretManager ({secret_id})", e)
-                except Exception as alert_err:
-                    logger.error(f"Failed to send Telegram alert for SecretManager failure: {alert_err}")
+            if attempt < max_retries - 1:
+                logger.warning(f"Attempt {attempt + 1} failed to fetch '{secret_id}' from GCP: {e}. Retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                logger.error(f"Could not fetch '{secret_id}' from GCP after {max_retries} attempts (timeout/failure - falling back to .env): {e}")
+                if secret_id != "TELEGRAM_BOT_TOKEN":
+                    try:
+                        from utils_error import send_telegram_alert
+                        send_telegram_alert(f"SecretManager ({secret_id})", e)
+                    except Exception as alert_err:
+                        logger.error(f"Failed to send Telegram alert for SecretManager failure: {alert_err}")
             
     val = os.getenv(fallback_env_key)
     if not val:
@@ -64,3 +68,4 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
     if val:
         _secrets_cache[secret_id] = val
     return val
+
