@@ -40,6 +40,9 @@ cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
 from contextlib import contextmanager
 
+# Cache Coinbase portfolio UUID per user (keyed by api_key prefix) - doesn't change
+_COINBASE_PORTFOLIO_ID_CACHE = {}
+
 from db_adapter import db_session_adapter
 
 @contextmanager
@@ -1138,8 +1141,54 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
             except Exception as sym_err:
                 logger.error(f"Error fetching history for {sym}: {sym_err}")
  
-        # Fetch in parallel
-        await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
+        # Fetch in parallel (except Coinbase which needs serial FIFO pairing)
+        if hasattr(exchange, 'id') and exchange.id == 'coinbase':
+            # Coinbase FIFO pairing: buy fills open a LONG, sell fills close it
+            try:
+                since = int((time.time() - 90 * 86400) * 1000)
+                all_fills = await exchange.fetch_my_trades(None, since=since, limit=500)
+                base_to_sym = {sym.split('/')[0].upper(): sym for sym in symbols_to_check}
+                fills_by_sym = {}
+                for fill in all_fills:
+                    t_sym = fill.get('symbol', '')
+                    if not t_sym or ':' not in t_sym:
+                        continue
+                    trade_base = t_sym.split('/')[0].upper()
+                    canonical_sym = base_to_sym.get(trade_base)
+                    if not canonical_sym:
+                        continue
+                    fills_by_sym.setdefault(t_sym, {'canonical': canonical_sym, 'fills': []})
+                    fills_by_sym[t_sym]['fills'].append(fill)
+                
+                for exch_sym, grp in fills_by_sym.items():
+                    canonical_sym = grp['canonical']
+                    sorted_fills = sorted(grp['fills'], key=lambda x: x.get('timestamp', 0))
+                    open_stack = []
+                    for fill in sorted_fills:
+                        side = str(fill.get('side', '')).lower()
+                        qty = float(fill.get('amount') or fill.get('filled') or 0)
+                        price = float(fill.get('price') or 0)
+                        fee = float((fill.get('fee') or {}).get('cost') or 0)
+                        if side == 'buy':
+                            open_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': fill.get('timestamp', 0)})
+                        elif side == 'sell' and open_stack:
+                            opener = open_stack.pop(0)
+                            closed_qty = min(opener['qty'], qty)
+                            gross_pnl = (price - opener['price']) * closed_qty
+                            net_pnl = gross_pnl - (opener['fee'] + fee)
+                            all_closed.append({
+                                'symbol': canonical_sym,
+                                'timestamp': fill.get('timestamp', 0),
+                                'net_pnl': net_pnl,
+                                'price': price,
+                                'amount': closed_qty,
+                                'side': 'l',
+                                'roe_val': 0,
+                            })
+            except Exception as cb_err:
+                logger.error(f"Coinbase FIFO history rebuild error: {cb_err}")
+        else:
+            await asyncio.gather(*(fetch_sym_history(sym) for sym in symbols_to_check))
         
         all_closed.sort(key=lambda x: x['timestamp'], reverse=True)
         last_50 = all_closed[:50]
