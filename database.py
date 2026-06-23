@@ -110,7 +110,7 @@ def get_exchange_client(user, is_async=True):
         **({"password": user["api_password"]} if user["api_password"] else {}),
         "options": {
             "defaultType": "swap",
-            "adjustForTimeDifference": True
+            "adjustForTimeDifference": False if ex_id == 'coinbase' else True
         },
         "enableRateLimit": True,
     }
