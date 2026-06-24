@@ -180,3 +180,36 @@ async def alpaca_fractional_monitor_engine(application):
                 send_telegram_alert("Engine Error (Fractional Stock Exit Loop)", e)
             except: pass
             await asyncio.sleep(60)
+
+async def alpaca_hourly_sync_engine(application):
+    import live_bot_multi_alpaca
+    logger.info("🦙 Starting Alpaca Hourly Sync Engine...")
+    
+    while True:
+        try:
+            tz = ZoneInfo('US/Eastern')
+            now = datetime.now(tz)
+            
+            # Target next top of the hour
+            target = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+            wait_time = (target - now).total_seconds()
+            
+            logger.info(f"Hourly Sync sleeping for {wait_time:.1f}s until {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            await asyncio.sleep(wait_time)
+            
+            now = datetime.now(tz)
+            # Only run during market hours (9:30 AM to 4:00 PM EST)
+            # Since it runs on the hour, active times are 10:00, 11:00, 12:00, 13:00, 14:00, 15:00, 16:00
+            if now.weekday() < 5 and (9 < now.hour <= 16):
+                logger.info("🦙 Waking up! Running hourly portfolio sync...")
+                await live_bot_multi_alpaca.run_hourly_portfolio_sync()
+            else:
+                logger.info("Hourly Sync: Market is closed or outside active hours. Skipping.")
+                
+            await asyncio.sleep(60) # Prevent double firing
+        except asyncio.CancelledError:
+            logger.info("🦙 Alpaca Hourly Sync Engine task cancelled.")
+            break
+        except Exception as e:
+            logger.error(f"Alpaca Hourly Sync error: {e}")
+            await asyncio.sleep(60)
