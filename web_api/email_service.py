@@ -543,10 +543,10 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
         <meta name="supported-color-schemes" content="light dark">
         <title>Sherpa Daily Digest</title>
         <style>
-            :root {
+            :root {{
                 color-scheme: light dark;
                 supported-color-schemes: light dark;
-            }
+            }}
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 background-color: {color_bg};
@@ -792,10 +792,10 @@ def get_combined_weekly_summary_html(is_premium=False,
         <meta name="supported-color-schemes" content="light dark">
         <title>Sherpa Weekly Audit</title>
         <style>
-            :root {
+            :root {{
                 color-scheme: light dark;
                 supported-color-schemes: light dark;
-            }
+            }}
         </style>
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
