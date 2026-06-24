@@ -54,7 +54,7 @@ def run_with_timeout(func, timeout_sec, fallback):
         future = THREAD_POOL.submit(func)
         return future.result(timeout=timeout_sec)
     except Exception as e:
-        print(f"[DEBUG] run_with_timeout error for {func.__name__ if hasattr(func, '__name__') else func}: {e}", flush=True)
+        # print(f"[DEBUG] run_with_timeout error for {func.__name__ if hasattr(func, '__name__') else func}: {e}", flush=True)
         import traceback
         traceback.print_exc()
         return fallback
@@ -213,7 +213,7 @@ def get_balance():
                     total_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
                     total_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
                     free_asset = total_usd + total_usdc
-                    print(f"[DEBUG] Coinbase spot balance: usd={total_usd:.2f} usdc={total_usdc:.2f} total={free_asset:.2f}", flush=True)
+                    # print(f"[DEBUG] Coinbase spot balance: usd={total_usd:.2f} usdc={total_usdc:.2f} total={free_asset:.2f}", flush=True)
                 else:
                     asset = 'USDT'
                     asset_bal = bal.get(asset, {})
@@ -910,7 +910,7 @@ def get_trades_history():
                             # Coinbase fills don't have positionSide in info.
                             since = int((time.time() - 90 * 86400) * 1000) # 90 days ago
                             all_fills = await client.fetch_my_trades(None, since=since, limit=500)
-                            print(f"[DEBUG] Coinbase FIFO: Fetched {len(all_fills)} fills total from the last 90 days.", flush=True)
+                            # print(f"[DEBUG] Coinbase FIFO: Fetched {len(all_fills)} fills total from the last 90 days.", flush=True)
                             # Build a map from Coinbase market base -> canonical symbol name
                             base_to_sym = {sym.split('/')[0].upper(): sym for sym in symbols_to_check}
                             # Group fills by their exact exchange symbol (e.g. 'ETH/USD:USD-301220')
@@ -931,7 +931,7 @@ def get_trades_history():
                                 canonical_sym = grp["canonical"]
                                 # Sort fills by timestamp ascending
                                 sorted_fills = sorted(grp["fills"], key=lambda x: x.get('timestamp', 0))
-                                print(f"[DEBUG] Coinbase FIFO: Processing {len(sorted_fills)} fills for symbol {exch_sym} (canonical={canonical_sym})", flush=True)
+                                # print(f"[DEBUG] Coinbase FIFO: Processing {len(sorted_fills)} fills for symbol {exch_sym} (canonical={canonical_sym})", flush=True)
                                 buy_stack = []  # stack for longs
                                 sell_stack = [] # stack for shorts
                                 
@@ -1052,7 +1052,7 @@ def get_trades_history():
                                         })
                                     return results
                                 except Exception as e:
-                                    print(f"[DEBUG] fetch_sym_history error for {sym}: {e}", flush=True)
+                                    # print(f"[DEBUG] fetch_sym_history error for {sym}: {e}", flush=True)
                                     import traceback
                                     traceback.print_exc()
                                     return []
@@ -1080,7 +1080,7 @@ def get_trades_history():
                 finally:
                     loop.close()
             except Exception as e:
-                print(f"[DEBUG] get_trades_history outer exception: {e}", flush=True)
+                # print(f"[DEBUG] get_trades_history outer exception: {e}", flush=True)
                 import traceback
                 traceback.print_exc()
                 futures_type = (tg_user.get("bingx_futures_type") if tg_user else None) or user.get("bingx_futures_type", "standard")
