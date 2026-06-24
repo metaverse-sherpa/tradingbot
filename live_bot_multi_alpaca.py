@@ -65,17 +65,17 @@ def update_stock_daily_cache():
     # Gather all stock symbols to update
     tickers = set(stock_data_cache_daily.SYMBOLS)
     try:
-        conn_user = sqlite3.connect(USER_DB_PATH)
-        c_user = conn_user.cursor()
-        c_user.execute("SELECT DISTINCT symbol FROM AlpacaActiveTrades WHERE status = 'open'")
-        for r in c_user.fetchall():
-            if r[0] and "/" not in r[0] and ":" not in r[0]:
-                tickers.add(r[0])
-        c_user.execute("SELECT DISTINCT symbol FROM TheoreticalTrades WHERE status = 'open'")
-        for r in c_user.fetchall():
-            if r[0] and "/" not in r[0] and ":" not in r[0]:
-                tickers.add(r[0])
-        conn_user.close()
+        import database
+        with database.db_session() as conn_user:
+            c_user = conn_user.cursor()
+            c_user.execute("SELECT DISTINCT symbol FROM AlpacaActiveTrades WHERE status = 'open'")
+            for r in c_user.fetchall():
+                if r[0] and "/" not in r[0] and ":" not in r[0]:
+                    tickers.add(r[0])
+            c_user.execute("SELECT DISTINCT symbol FROM TheoreticalTrades WHERE status = 'open'")
+            for r in c_user.fetchall():
+                if r[0] and "/" not in r[0] and ":" not in r[0]:
+                    tickers.add(r[0])
     except Exception as e:
         logger.error(f"Error gathering active trade symbols for cache update: {e}")
         
