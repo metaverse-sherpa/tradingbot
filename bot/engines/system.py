@@ -218,6 +218,7 @@ async def fetch_premium_open_trades(tg_user, asset_class):
                         entry_price = float(p.get("avg_entry_price", 0.0) or 0.0)
                         current_price = float(p.get("current_price", 0.0) or 0.0)
                         roe = float(p.get("unrealized_plpc", 0.0) or 0.0) * 100
+                        intraday_roe = float(p.get("unrealized_intraday_plpc", 0.0) or 0.0) * 100
                         
                         open_positions.append({
                             "symbol": p.get("symbol"),
@@ -225,6 +226,7 @@ async def fetch_premium_open_trades(tg_user, asset_class):
                             "sl_price": sl_price,
                             "tp_price": tp_price,
                             "current_pnl_pct": roe,
+                            "daily_pnl_pct": intraday_roe,
                             "target_pnl_pct": abs(((tp_price - entry_price) / entry_price) * 100) if entry_price > 0 else 0.0,
                             "open_time": open_time
                         })
@@ -293,8 +295,9 @@ async def fetch_premium_open_trades(tg_user, asset_class):
                                 "symbol": pos.get("symbol"),
                                 "entry_price": entry_price,
                                 "sl_price": sl_price,
-                                "tp_price": tp_price,
+                                "tp_price": tp_price_val,
                                 "current_pnl_pct": float(pos.get("percentage") or 0.0),
+                                "daily_pnl_pct": 0.0,
                                 "target_pnl_pct": abs(((tp_price_val - entry_price) / entry_price) * 100) * CRYPTO_LEVERAGE if entry_price > 0 else 0.0,
                                 "open_time": open_time
                             })
@@ -414,7 +417,10 @@ async def daily_combined_email_engine(application):
                         resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
                         if resp.status_code == 200:
                             for sym, snapshot in resp.json().items():
-                                live_prices_stock[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
+                                curr = snapshot.get('latestTrade', {}).get('p', 0.0)
+                                prev_close = snapshot.get('prevDailyBar', {}).get('c', 0.0)
+                                d_change = ((curr - prev_close) / prev_close) * 100 if prev_close > 0 else 0.0
+                                live_prices_stock[sym] = {"price": curr, "daily": d_change}
                 except Exception as pe:
                     logger.error(f"Error fetching stock prices for daily digest: {pe}")
 
@@ -422,11 +428,14 @@ async def daily_combined_email_engine(application):
                 if s['status'] != 'open':
                     s['current_pnl_pct'] = s.get('pnl_pct', 0.0)
                     s['target_tp_pct'] = 0.0
+                    s['daily_pnl_pct'] = 0.0
                     continue
                 sym = s['symbol']
                 entry_price = s['entry_price']
                 tp_price = s.get('tp_price') or 0.0
-                curr_price = live_prices_stock.get(sym, entry_price)
+                price_info = live_prices_stock.get(sym, {"price": entry_price, "daily": 0.0})
+                curr_price = price_info["price"]
+                daily_change = price_info["daily"]
                 is_long = s['side'].upper() in ['BUY', 'LONG']
                 if entry_price > 0:
                     if is_long:
@@ -440,6 +449,7 @@ async def daily_combined_email_engine(application):
                     tp = 0.0
                 s['current_pnl_pct'] = pnl
                 s['target_tp_pct'] = tp
+                s['daily_pnl_pct'] = daily_change if is_long else -daily_change
 
             # --- PROCESS CRYPTO SIGNALS ---
             for s in crypto_signals:
@@ -452,11 +462,11 @@ async def daily_combined_email_engine(application):
             live_prices_crypto = {}
             if crypto_open_symbols:
                 try:
-                    r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
+                    r = requests.get("https://api.binance.us/api/v3/ticker/24hr", timeout=2)
                     if r.status_code != 200:
-                        r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
+                        r = requests.get("https://api.binance.com/api/v3/ticker/24hr", timeout=2)
                     if r.status_code == 200:
-                        binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
+                        binance_prices = {item['symbol']: {"price": float(item['lastPrice']), "daily": float(item['priceChangePercent'])} for item in r.json()}
                         for sym in crypto_open_symbols:
                             clean = sym.split(':')[0].replace('/', '')
                             if clean in binance_prices:
@@ -467,7 +477,12 @@ async def daily_combined_email_engine(application):
                         resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
                         if resp.status_code == 200:
                             data = resp.json().get('data', [])
-                            price_map = {item['instId']: float(item['last']) for item in data}
+                            price_map = {}
+                            for item in data:
+                                curr = float(item.get('last', 0))
+                                open24 = float(item.get('open24h', curr))
+                                change = ((curr - open24) / open24) * 100 if open24 > 0 else 0.0
+                                price_map[item['instId']] = {"price": curr, "daily": change}
                             for sym in remaining_crypto:
                                 clean_sym = sym.split(':')[0].replace('/', '-')
                                 if clean_sym in price_map:
@@ -479,11 +494,14 @@ async def daily_combined_email_engine(application):
                 if s['status'] != 'open':
                     s['current_pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
                     s['target_tp_pct'] = 0.0
+                    s['daily_pnl_pct'] = 0.0
                     continue
                 sym = s['symbol']
                 entry_price = s['entry_price']
                 tp_price = s.get('tp_price') or 0.0
-                curr_price = live_prices_crypto.get(sym, entry_price)
+                price_info = live_prices_crypto.get(sym, {"price": entry_price, "daily": 0.0})
+                curr_price = price_info["price"]
+                daily_change = price_info["daily"]
                 is_long = s['side'].upper() in ['BUY', 'LONG']
                 if entry_price > 0:
                     if is_long:
@@ -500,6 +518,7 @@ async def daily_combined_email_engine(application):
                 tp *= CRYPTO_LEVERAGE
                 s['current_pnl_pct'] = pnl
                 s['target_tp_pct'] = tp
+                s['daily_pnl_pct'] = (daily_change * CRYPTO_LEVERAGE) if is_long else (-daily_change * CRYPTO_LEVERAGE)
 
             from web_api.email_service import send_alert_email, get_combined_daily_summary_html
             daily_mail_users = [ru for ru in daily_users if ru.get("wants_daily_email")]
