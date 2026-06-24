@@ -254,8 +254,8 @@ def fetch_today_open_prices():
 def check_is_market_open():
     import database
     # Get all active Alpaca users
-    with sqlite3.connect(USER_DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    import database
+    with database.db_session() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != '' AND active_stock_strategy = 'Sherpa Velocity Pullback' LIMIT 1")
         row = c.fetchone()
@@ -284,13 +284,14 @@ async def run_theoretical_tally_engine(today_opens):
     logger.info("Running Theoretical Tally Engine...")
     
     # 1. Update/check open trades using yesterday's high/low
-    conn = sqlite3.connect(USER_DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT * FROM TheoreticalTrades WHERE strategy = 'Sherpa Velocity Pullback' AND status = 'open'")
-    open_trades = c.fetchall()
+    import database
+    with database.db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM TheoreticalTrades WHERE strategy = 'Sherpa Velocity Pullback' AND status = 'open'")
+        open_trades = c.fetchall()
     
-    colnames = [desc[0] for desc in c.description]
-    open_trades_dicts = [dict(zip(colnames, row)) for row in open_trades]
+        colnames = [desc[0] for desc in c.description]
+        open_trades_dicts = [dict(zip(colnames, row)) for row in open_trades]
     
     for trade in open_trades_dicts:
         trade_id = trade['id']
@@ -387,18 +388,21 @@ async def run_theoretical_tally_engine(today_opens):
                 pnl_pct = (pnl_raw / entry_price) * 100
                 pnl_usdt = position_size * (pnl_pct / 100)
                 
-                c.execute("""
-                    UPDATE TheoreticalTrades 
-                    SET close_time = ?, status = ?, pnl_raw = ?, pnl_pct = ?, pnl_usdt = ?
-                    WHERE id = ?
-                """, (close_time_ts, status, pnl_raw, pnl_pct, pnl_usdt, trade_id))
+                import database
+                with database.db_session() as update_conn:
+                    uc = update_conn.cursor()
+                    uc.execute("""
+                        UPDATE TheoreticalTrades 
+                        SET close_time = ?, status = ?, pnl_raw = ?, pnl_pct = ?, pnl_usdt = ?
+                        WHERE id = ?
+                    """, (close_time_ts, status, pnl_raw, pnl_pct, pnl_usdt, trade_id))
+                    
+                    uc.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
+                    bal_row = uc.fetchone()
+                    bal = float(bal_row[0]) if bal_row else 1000.0
+                    new_bal = bal + pnl_usdt
+                    uc.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
                 
-                c.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
-                bal_row = c.fetchone()
-                bal = float(bal_row[0]) if bal_row else 1000.0
-                new_bal = bal + pnl_usdt
-                c.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
-                conn.commit()
                 logger.info(f"Theoretical Trade CLOSED ({status.upper()}) for {sym}: PnL = {pnl_usdt:+.2f} USDT. New Balance: {new_bal:.2f}")
                 
                 # Broadcast SL/TP exit to all targets
@@ -530,14 +534,14 @@ async def run_hourly_portfolio_sync(today_opens=None):
             active_positions = {p['symbol']: p for p in positions if float(p.get("qty", 0)) != 0}
             
             # Reconcile external closures
-            conn_active = sqlite3.connect(USER_DB_PATH)
-            c_active = conn_active.cursor()
-            if chat_id:
-                c_active.execute("SELECT id, symbol, entry_price, tp_price, sl_price, qty FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'open'", (chat_id,))
-            else:
-                c_active.execute("SELECT id, symbol, entry_price, tp_price, sl_price, qty FROM AlpacaActiveTrades WHERE web_user_id = ? AND status = 'open'", (web_user_id,))
-            open_db_trades = c_active.fetchall()
-            conn_active.close()
+            import database
+            with database.db_session() as conn_active:
+                c_active = conn_active.cursor()
+                if chat_id:
+                    c_active.execute("SELECT id, symbol, entry_price, tp_price, sl_price, qty FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'open'", (chat_id,))
+                else:
+                    c_active.execute("SELECT id, symbol, entry_price, tp_price, sl_price, qty FROM AlpacaActiveTrades WHERE web_user_id = ? AND status = 'open'", (web_user_id,))
+                open_db_trades = c_active.fetchall()
             
             for row in open_db_trades:
                 trade_db_id = row[0]
