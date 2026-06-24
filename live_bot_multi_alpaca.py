@@ -554,80 +554,95 @@ async def run_real_trader_execution(today_opens):
                 logger.info(f"User {chat_id or f'web_{web_user_id}'} stock strategy retired gracefully (0 active positions).")
                 continue
             
-            # --- PHASE 1: PROCESS DYNAMIC EXITS ---
+            # --- PHASE 1: PROCESS EXITS (DYNAMIC & MISSED SL/TP) ---
             for sym, pos in active_positions.items():
-                indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
-                if indicator_dict:
-                    # Dynamic exit: yesterday's RSI(4) > 75
-                    is_dynamic_exit = indicator_dict['rsi'] > 75
-                    
-                    if is_dynamic_exit:
-                        logger.info(f"Dynamic Exit triggered for real user {chat_id or f'web_{web_user_id}'} symbol {sym}. Liquidating...")
-                        try:
-                            await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
-                            
-                            # Get open trade from local DB to get entry price and calculate PnL
-                            conn_active = sqlite3.connect(USER_DB_PATH)
-                            c_active = conn_active.cursor()
-                            if chat_id:
-                                c_active.execute("SELECT id, entry_price FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (chat_id, sym))
-                            else:
-                                c_active.execute("SELECT id, entry_price FROM AlpacaActiveTrades WHERE web_user_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (web_user_id, sym))
-                            row_active = c_active.fetchone()
-                            conn_active.close()
-                            
-                            trade_db_id = row_active[0] if row_active else None
-                            entry_price = float(pos['avg_entry_price']) if pos.get('avg_entry_price') else 0.0
-                            
-                            close_price = float(pos.get('current_price', today_opens.get(sym, entry_price)))
-                            qty_val = float(pos['qty'])
-                            
-                            pnl_raw = float(pos.get('unrealized_pl', (close_price - entry_price) * qty_val))
-                            pnl_pct = float(pos.get('unrealized_plpc', ((close_price - entry_price) / entry_price if entry_price > 0 else 0))) * 100
-                            
-                            from telegram import MessageEntity
-                            from datetime import datetime, timezone
-                            now_ts = int(time.time())
-                            
-                            if trade_db_id:
-                                database.close_alpaca_trade(
-                                    trade_id=trade_db_id,
-                                    close_time=now_ts * 1000,
-                                    close_price=close_price,
-                                    pnl_raw=pnl_raw,
-                                    pnl_pct=pnl_pct
-                                )
-                                logger.info(f"Closed trade in local DB for {sym} (ID: {trade_db_id}). PnL: {pnl_pct:+.2f}%")
-                            
-                            now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
-                            close_text_before = (
-                                "🦙 *Alpaca Stock Strategy: Dynamic Exit Triggered* 🦙\n\n"
-                                f"Exited **{sym}** LONG position at today's open.\n"
-                                f"• Symbol: `{sym}`\n"
-                                f"• Qty: `{pos['qty']}` shares\n"
-                                f"• Entry Price: `${entry_price:.2f}`\n"
-                                f"• Approximate Exit Price: `${close_price:.2f}`\n"
-                                "🚀 _Associated Stop-Loss and Take-Profit orders have been automatically cancelled._\n\n"
-                                "Closed at: "
-                             )
-                            placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
-                            close_entity = MessageEntity(
-                                type=MessageEntity.DATE_TIME,
-                                offset=len(close_text_before),
-                                length=len(placeholder),
-                                unix_time=now_dt,
-                            )
-                            msg_close = close_text_before + placeholder
-                            if chat_id:
-                                await send_telegram_message(chat_id, msg_close, entities=[close_entity])
-                            else:
-                                logger.info(f"Dynamic Exit logged for web user {web_user_id}. Symbol: {sym}")
-                            
+                conn_active = sqlite3.connect(USER_DB_PATH)
+                c_active = conn_active.cursor()
+                if chat_id:
+                    c_active.execute("SELECT id, entry_price, tp_price, sl_price FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (chat_id, sym))
+                else:
+                    c_active.execute("SELECT id, entry_price, tp_price, sl_price FROM AlpacaActiveTrades WHERE web_user_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (web_user_id, sym))
+                row_active = c_active.fetchone()
+                conn_active.close()
+                
+                trade_db_id = row_active[0] if row_active else None
+                entry_price_db = float(row_active[1]) if row_active else 0.0
+                tp_price = float(row_active[2]) if row_active else None
+                sl_price = float(row_active[3]) if row_active else None
 
-                        except Exception as e:
-                            logger.error(f"Failed to liquidate real user {chat_id or f'web_{web_user_id}'} position {sym}: {e}")
-                            if chat_id:
-                                await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} dynamically: {e}")
+                db_conn = sqlite3.connect(STOCK_DB_PATH)
+                db_c = db_conn.cursor()
+                db_c.execute("SELECT high, low FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
+                y_row = db_c.fetchone()
+                db_conn.close()
+                y_high = y_row[0] if y_row else 0.0
+                y_low = y_row[1] if y_row else 999999.0
+
+                indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
+                
+                exit_reason = None
+                if indicator_dict and indicator_dict['rsi'] > 75:
+                    exit_reason = "Dynamic Exit (RSI > 75)"
+                elif sl_price and y_low <= sl_price:
+                    exit_reason = "STOP LOSS"
+                elif tp_price and y_high >= tp_price:
+                    exit_reason = "TAKE PROFIT"
+                
+                if exit_reason:
+                    logger.info(f"{exit_reason} triggered for real user {chat_id or f'web_{web_user_id}'} symbol {sym}. Liquidating...")
+                    try:
+                        await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
+                        
+                        entry_price = float(pos['avg_entry_price']) if pos.get('avg_entry_price') else entry_price_db
+                        close_price = float(pos.get('current_price', today_opens.get(sym, entry_price)))
+                        qty_val = float(pos['qty'])
+                        
+                        pnl_raw = float(pos.get('unrealized_pl', (close_price - entry_price) * qty_val))
+                        pnl_pct = float(pos.get('unrealized_plpc', ((close_price - entry_price) / entry_price if entry_price > 0 else 0))) * 100
+                        
+                        from telegram import MessageEntity
+                        from datetime import datetime, timezone
+                        now_ts = int(time.time())
+                        
+                        if trade_db_id:
+                            database.close_alpaca_trade(
+                                trade_id=trade_db_id,
+                                close_time=now_ts * 1000,
+                                close_price=close_price,
+                                pnl_raw=pnl_raw,
+                                pnl_pct=pnl_pct
+                            )
+                            logger.info(f"Closed trade in local DB for {sym} (ID: {trade_db_id}). PnL: {pnl_pct:+.2f}%")
+                        
+                        now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+                        close_text_before = (
+                            "🦙 *Alpaca Stock Strategy: Exit Triggered* 🦙\n\n"
+                            f"Exited **{sym}** LONG position at today's open.\n"
+                            f"• Trigger: `{exit_reason}`\n"
+                            f"• Symbol: `{sym}`\n"
+                            f"• Qty: `{pos['qty']}` shares\n"
+                            f"• Entry Price: `${entry_price:.2f}`\n"
+                            f"• Approximate Exit Price: `${close_price:.2f}`\n"
+                            "🚀 _Associated Stop-Loss and Take-Profit orders have been automatically cancelled._\n\n"
+                            "Closed at: "
+                         )
+                        placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
+                        close_entity = MessageEntity(
+                            type=MessageEntity.DATE_TIME,
+                            offset=len(close_text_before),
+                            length=len(placeholder),
+                            unix_time=now_dt,
+                        )
+                        msg_close = close_text_before + placeholder
+                        if chat_id:
+                            await send_telegram_message(chat_id, msg_close, entities=[close_entity])
+                        else:
+                            logger.info(f"Exit logged for web user {web_user_id}. Symbol: {sym}")
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to liquidate real user {chat_id or f'web_{web_user_id}'} position {sym}: {e}")
+                        if chat_id:
+                            await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} ({exit_reason}): {e}")
             
             # --- PHASE 2: PROCESS NEW BUY ENTRIES ---
             if is_disabled:
