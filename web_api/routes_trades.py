@@ -932,49 +932,88 @@ def get_trades_history():
                                 # Sort fills by timestamp ascending
                                 sorted_fills = sorted(grp["fills"], key=lambda x: x.get('timestamp', 0))
                                 print(f"[DEBUG] Coinbase FIFO: Processing {len(sorted_fills)} fills for symbol {exch_sym} (canonical={canonical_sym})", flush=True)
-                                # Simple FIFO pairing: buy fills open a position, sell fills close it
-                                open_fills = []  # stack of (qty, price, fee, fill) for buys
+                                buy_stack = []  # stack for longs
+                                sell_stack = [] # stack for shorts
+                                
+                                contract_size = 1.0
+                                try:
+                                    market = client.market(exch_sym)
+                                    contract_size = float(market.get('contractSize', 1.0))
+                                except:
+                                    pass
+                                    
                                 for fill in sorted_fills:
                                     side = str(fill.get('side', '')).lower()
                                     qty = float(fill.get('amount') or fill.get('filled') or 0)
                                     price = float(fill.get('price') or 0)
                                     fee = float((fill.get('fee') or {}).get('cost') or 0)
-                                    print(f"[DEBUG] Coinbase FIFO fill: {side} {qty} @ {price} (fee={fee})", flush=True)
+                                    ts = fill.get('timestamp', 0)
+                                    
                                     if side == 'buy':
-                                        open_fills.append({'qty': qty, 'price': price, 'fee': fee})
-                                        print(f"[DEBUG] Coinbase FIFO: Added buy to open stack. Stack size: {len(open_fills)}", flush=True)
-                                    elif side == 'sell' and open_fills:
-                                        # Match against the oldest open buy (FIFO)
-                                        opener = open_fills.pop(0)
-                                        entry_price = opener['price']
-                                        close_price = price
-                                        closed_qty = min(opener['qty'], qty)
-                                        # Get contract size if available
-                                        contract_size = 1.0
-                                        try:
-                                            market = client.market(exch_sym)
-                                            contract_size = float(market.get('contractSize', 1.0))
-                                        except:
-                                            pass
-                                        gross_pnl = (close_price - entry_price) * closed_qty * contract_size
-                                        total_fee = opener['fee'] + fee
-                                        net_pnl = gross_pnl - total_fee
-                                        print(f"[DEBUG] Coinbase FIFO match: Paired buy @ {entry_price} with sell @ {close_price} for qty {closed_qty} (contract_size={contract_size}). Gross PnL: {gross_pnl:.4f}, Net PnL: {net_pnl:.4f}", flush=True)
-                                        initial_margin = (entry_price * closed_qty * contract_size) / 20
-                                        roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                                        results.append({
-                                            "type": "crypto",
-                                            "symbol": canonical_sym,
-                                            "side": "l",  # was a long (buy->sell)
-                                            "timestamp": fill.get('timestamp', 0),
-                                            "net_pnl": net_pnl,
-                                            "price": close_price,
-                                            "roe_val": roe_val,
-                                            "entry_price": entry_price,
-                                            "close_price": close_price,
-                                        })
-                                    else:
-                                        print(f"[DEBUG] Coinbase FIFO: Skipped pairing sell because open stack is empty.", flush=True)
+                                        while qty > 0 and sell_stack:
+                                            opener = sell_stack[0]
+                                            closed_qty = min(opener['qty'], qty)
+                                            gross_pnl = (opener['price'] - price) * closed_qty * contract_size
+                                            opener_fee_share = opener['fee'] * (closed_qty / opener['qty'])
+                                            opener['fee'] -= opener_fee_share
+                                            fill_fee_share = fee * (closed_qty / qty)
+                                            total_fee = opener_fee_share + fill_fee_share
+                                            net_pnl = gross_pnl - total_fee
+                                            
+                                            initial_margin = (opener['price'] * closed_qty * contract_size) / 20
+                                            roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                                            
+                                            results.append({
+                                                "type": "crypto",
+                                                "symbol": canonical_sym,
+                                                "side": "s",
+                                                "timestamp": ts,
+                                                "net_pnl": net_pnl,
+                                                "price": price,
+                                                "roe_val": roe_val,
+                                                "entry_price": opener['price'],
+                                                "close_price": price,
+                                            })
+                                            
+                                            opener['qty'] -= closed_qty
+                                            qty -= closed_qty
+                                            if opener['qty'] <= 0:
+                                                sell_stack.pop(0)
+                                        if qty > 0:
+                                            buy_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': ts})
+                                            
+                                    elif side == 'sell':
+                                        while qty > 0 and buy_stack:
+                                            opener = buy_stack[0]
+                                            closed_qty = min(opener['qty'], qty)
+                                            gross_pnl = (price - opener['price']) * closed_qty * contract_size
+                                            opener_fee_share = opener['fee'] * (closed_qty / opener['qty'])
+                                            opener['fee'] -= opener_fee_share
+                                            fill_fee_share = fee * (closed_qty / qty)
+                                            total_fee = opener_fee_share + fill_fee_share
+                                            net_pnl = gross_pnl - total_fee
+                                            
+                                            initial_margin = (opener['price'] * closed_qty * contract_size) / 20
+                                            roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                                            
+                                            results.append({
+                                                "type": "crypto",
+                                                "symbol": canonical_sym,
+                                                "side": "l",
+                                                "timestamp": ts,
+                                                "net_pnl": net_pnl,
+                                                "price": price,
+                                                "roe_val": roe_val,
+                                                "entry_price": opener['price'],
+                                                "close_price": price,
+                                            })
+                                            
+                                            opener['qty'] -= closed_qty
+                                            qty -= closed_qty
+                                            if opener['qty'] <= 0:
+                                                buy_stack.pop(0)
+                                        if qty > 0:
+                                            sell_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': ts})
                             return results
                         else:
                             async def fetch_sym_history(sym):

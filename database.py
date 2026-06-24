@@ -1221,32 +1221,88 @@ async def rebuild_history_cache_from_engine(chat_id, exchange, web_user_id=None)
                 for exch_sym, grp in fills_by_sym.items():
                     canonical_sym = grp['canonical']
                     sorted_fills = sorted(grp['fills'], key=lambda x: x.get('timestamp', 0))
-                    open_stack = []
+                    buy_stack = []
+                    sell_stack = []
+                    
+                    contract_size = 1.0
+                    try:
+                        market = exchange.market(exch_sym)
+                        contract_size = float(market.get('contractSize', 1.0))
+                    except:
+                        pass
+                        
                     for fill in sorted_fills:
                         side = str(fill.get('side', '')).lower()
                         qty = float(fill.get('amount') or fill.get('filled') or 0)
                         price = float(fill.get('price') or 0)
                         fee = float((fill.get('fee') or {}).get('cost') or 0)
+                        ts = fill.get('timestamp', 0)
+                        
                         if side == 'buy':
-                            open_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': fill.get('timestamp', 0)})
-                        elif side == 'sell' and open_stack:
-                            opener = open_stack.pop(0)
-                            closed_qty = min(opener['qty'], qty)
-                            gross_pnl = (price - opener['price']) * closed_qty
-                            net_pnl = gross_pnl - (opener['fee'] + fee)
-                            initial_margin = (opener['price'] * closed_qty) / 20
-                            roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
-                            all_closed.append({
-                                'symbol': canonical_sym,
-                                'timestamp': fill.get('timestamp', 0),
-                                'net_pnl': net_pnl,
-                                'price': price,
-                                'amount': closed_qty,
-                                'side': 'l',
-                                'roe_val': roe_val,
-                                'entry_price': opener['price'],
-                                'close_price': price,
-                            })
+                            while qty > 0 and sell_stack:
+                                opener = sell_stack[0]
+                                closed_qty = min(opener['qty'], qty)
+                                gross_pnl = (opener['price'] - price) * closed_qty * contract_size
+                                opener_fee_share = opener['fee'] * (closed_qty / opener['qty'])
+                                opener['fee'] -= opener_fee_share
+                                fill_fee_share = fee * (closed_qty / qty)
+                                total_fee = opener_fee_share + fill_fee_share
+                                net_pnl = gross_pnl - total_fee
+                                
+                                initial_margin = (opener['price'] * closed_qty * contract_size) / 20
+                                roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                                
+                                all_closed.append({
+                                    'symbol': canonical_sym,
+                                    'timestamp': ts,
+                                    'net_pnl': net_pnl,
+                                    'price': price,
+                                    'amount': closed_qty,
+                                    'side': 's',
+                                    'roe_val': roe_val,
+                                    'entry_price': opener['price'],
+                                    'close_price': price,
+                                })
+                                
+                                opener['qty'] -= closed_qty
+                                qty -= closed_qty
+                                if opener['qty'] <= 0:
+                                    sell_stack.pop(0)
+                            if qty > 0:
+                                buy_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': ts})
+                                
+                        elif side == 'sell':
+                            while qty > 0 and buy_stack:
+                                opener = buy_stack[0]
+                                closed_qty = min(opener['qty'], qty)
+                                gross_pnl = (price - opener['price']) * closed_qty * contract_size
+                                opener_fee_share = opener['fee'] * (closed_qty / opener['qty'])
+                                opener['fee'] -= opener_fee_share
+                                fill_fee_share = fee * (closed_qty / qty)
+                                total_fee = opener_fee_share + fill_fee_share
+                                net_pnl = gross_pnl - total_fee
+                                
+                                initial_margin = (opener['price'] * closed_qty * contract_size) / 20
+                                roe_val = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                                
+                                all_closed.append({
+                                    'symbol': canonical_sym,
+                                    'timestamp': ts,
+                                    'net_pnl': net_pnl,
+                                    'price': price,
+                                    'amount': closed_qty,
+                                    'side': 'l',
+                                    'roe_val': roe_val,
+                                    'entry_price': opener['price'],
+                                    'close_price': price,
+                                })
+                                
+                                opener['qty'] -= closed_qty
+                                qty -= closed_qty
+                                if opener['qty'] <= 0:
+                                    buy_stack.pop(0)
+                            if qty > 0:
+                                sell_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': ts})
             except Exception as cb_err:
                 logger.error(f"Coinbase FIFO history rebuild error: {cb_err}")
         else:
@@ -1387,9 +1443,127 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application, 
                 logging.getLogger(__name__).error(f"Error fetching trades for {sym}: {e}")
                 return []
  
-        results = await asyncio.gather(*(process_symbol_trades(sym) for sym in symbols_to_check))
-        for r in results:
-            new_closed.extend(r)
+        if getattr(exchange, 'id', '') == 'coinbase':
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                # Coinbase specific matching
+                all_fills = await exchange.fetch_my_trades(None, since=last_ts, limit=500)
+                base_to_sym = {sym.split('/')[0].upper(): sym for sym in symbols_to_check}
+                fills_by_sym = {}
+                for fill in all_fills:
+                    exch_sym = fill.get('symbol')
+                    if not exch_sym: continue
+                    base = exch_sym.split('-')[0].upper()
+                    if base not in base_to_sym: continue
+                    if exch_sym not in fills_by_sym:
+                        fills_by_sym[exch_sym] = {'canonical': base_to_sym[base], 'fills': []}
+                    fills_by_sym[exch_sym]['fills'].append(fill)
+                    
+                for exch_sym, grp in fills_by_sym.items():
+                    canonical_sym = grp['canonical']
+                    sorted_fills = sorted(grp['fills'], key=lambda x: x.get('timestamp', 0))
+                    buy_stack = []
+                    sell_stack = []
+                    
+                    contract_size = 1.0
+                    try:
+                        market = exchange.market(exch_sym)
+                        contract_size = float(market.get('contractSize', 1.0))
+                    except:
+                        pass
+                        
+                    for fill in sorted_fills:
+                        side = str(fill.get('side', '')).lower()
+                        qty = float(fill.get('amount') or fill.get('filled') or 0)
+                        price = float(fill.get('price') or 0)
+                        fee = float((fill.get('fee') or {}).get('cost') or 0)
+                        ts = fill.get('timestamp', 0)
+                        
+                        if ts <= last_ts: continue
+                        
+                        if side == 'buy':
+                            while qty > 0 and sell_stack:
+                                opener = sell_stack[0]
+                                closed_qty = min(opener['qty'], qty)
+                                gross_pnl = (opener['price'] - price) * closed_qty * contract_size
+                                opener_fee_share = opener['fee'] * (closed_qty / opener['qty'])
+                                opener['fee'] -= opener_fee_share
+                                fill_fee_share = fee * (closed_qty / qty)
+                                total_fee = opener_fee_share + fill_fee_share
+                                net_pnl = gross_pnl - total_fee
+                                
+                                initial_margin = (opener['price'] * closed_qty * contract_size) / 20
+                                roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                                
+                                cum_pnl += net_pnl
+                                from bot.config import CRYPTO_LEVERAGE
+                                leverage = int(CRYPTO_LEVERAGE)
+                                if net_pnl > 0:
+                                    wins += 1
+                                    header = "🏆 *Trade Won!*"
+                                    share_data = f"sh_{canonical_sym}_s_{roe_pct:.2f}_{opener['price']}_{price}_{net_pnl:.2f}"
+                                else:
+                                    losses += 1
+                                    header = "❌ *Trade Lost*"
+                                    share_data = None
+                                    
+                                new_closed.append({
+                                    "msg": f"{header}\n\nSymbol: `{canonical_sym}`\nDirection: *SHORT {leverage}x*\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
+                                    "share_data": share_data
+                                })
+                                
+                                opener['qty'] -= closed_qty
+                                qty -= closed_qty
+                                if opener['qty'] <= 0:
+                                    sell_stack.pop(0)
+                            if qty > 0:
+                                buy_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': ts})
+                                
+                        elif side == 'sell':
+                            while qty > 0 and buy_stack:
+                                opener = buy_stack[0]
+                                closed_qty = min(opener['qty'], qty)
+                                gross_pnl = (price - opener['price']) * closed_qty * contract_size
+                                opener_fee_share = opener['fee'] * (closed_qty / opener['qty'])
+                                opener['fee'] -= opener_fee_share
+                                fill_fee_share = fee * (closed_qty / qty)
+                                total_fee = opener_fee_share + fill_fee_share
+                                net_pnl = gross_pnl - total_fee
+                                
+                                initial_margin = (opener['price'] * closed_qty * contract_size) / 20
+                                roe_pct = (net_pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                                
+                                cum_pnl += net_pnl
+                                from bot.config import CRYPTO_LEVERAGE
+                                leverage = int(CRYPTO_LEVERAGE)
+                                if net_pnl > 0:
+                                    wins += 1
+                                    header = "🏆 *Trade Won!*"
+                                    share_data = f"sh_{canonical_sym}_l_{roe_pct:.2f}_{opener['price']}_{price}_{net_pnl:.2f}"
+                                else:
+                                    losses += 1
+                                    header = "❌ *Trade Lost*"
+                                    share_data = None
+                                    
+                                new_closed.append({
+                                    "msg": f"{header}\n\nSymbol: `{canonical_sym}`\nDirection: *LONG {leverage}x*\nPnL: *${net_pnl:.2f}*\nROE: *{roe_pct:+.2f}%*",
+                                    "share_data": share_data
+                                })
+                                
+                                opener['qty'] -= closed_qty
+                                qty -= closed_qty
+                                if opener['qty'] <= 0:
+                                    buy_stack.pop(0)
+                            if qty > 0:
+                                sell_stack.append({'qty': qty, 'price': price, 'fee': fee, 'ts': ts})
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error fetching Coinbase history: {e}")
+        else:
+            results = await asyncio.gather(*(process_symbol_trades(sym) for sym in symbols_to_check))
+            for r in results:
+                new_closed.extend(r)
             
         if new_closed:
             clear_history_cache(chat_id, web_user_id=web_user_id)
