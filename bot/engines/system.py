@@ -418,8 +418,8 @@ async def daily_combined_email_engine(application):
                         if resp.status_code == 200:
                             for sym, snapshot in resp.json().items():
                                 curr = snapshot.get('latestTrade', {}).get('p', 0.0)
-                                prev_close = snapshot.get('prevDailyBar', {}).get('c', 0.0)
-                                d_change = ((curr - prev_close) / prev_close) * 100 if prev_close > 0 else 0.0
+                                daily_open = snapshot.get('dailyBar', {}).get('o', 0.0)
+                                d_change = ((curr - daily_open) / daily_open) * 100 if daily_open > 0 else 0.0
                                 live_prices_stock[sym] = {"price": curr, "daily": d_change}
                 except Exception as pe:
                     logger.error(f"Error fetching stock prices for daily digest: {pe}")

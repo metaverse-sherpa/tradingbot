@@ -426,18 +426,6 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
             target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
 
-            if is_premium:
-                details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>SL: ${s.get('sl_price', 0.0):.2f}<br>TP: ${s.get('tp_price', 0.0):.2f}"
-                stock_opened_rows += f"""
-                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
-                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{daily_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{total_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{target_pnl_display}</td>
-                </tr>
-                """
-            else:
                 stock_opened_rows += f"""
                 <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
                     <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
@@ -519,18 +507,6 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             dir_emoji = "📈" if is_long else "📉"
             sym_html = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: {color_accent_crypto}; text-decoration: none;">{dir_emoji} {sym}</a>'
             
-            if is_premium:
-                details = f"Entry: ${s.get('entry_price', 0.0):.4f}<br>SL: ${s.get('sl_price', 0.0):.4f}<br>TP: ${s.get('tp_price', 0.0):.4f}"
-                crypto_opened_rows += f"""
-                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
-                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{daily_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{total_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{target_pnl_display}</td>
-                </tr>
-                """
-            else:
                 crypto_opened_rows += f"""
                 <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
                     <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
@@ -586,11 +562,10 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                 """
 
     active_headers = f"""
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
-                                    {'<th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>' if is_premium else ''}
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Daily PnL</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Total PnL</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Target PnL</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 40%;">Symbol</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Daily PnL</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Total PnL</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Target PnL</th>
     """
     closed_headers = f"""
                                     <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
@@ -661,7 +636,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                         </table>
                     </div>
 
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Closed</h3>
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Closed (Last 24 Hours)</h3>
                     <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 40px; overflow: hidden;">
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
@@ -693,7 +668,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                         </table>
                     </div>
 
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Closed</h3>
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Closed (Last 24 Hours)</h3>
                     <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 20px; overflow: hidden;">
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
