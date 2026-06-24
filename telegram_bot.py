@@ -32,6 +32,7 @@ from bot.engines import (
     signal_engine,
     alpaca_equities_engine,
     alpaca_fractional_monitor_engine,
+    alpaca_hourly_sync_engine,
     premium_expiration_engine,
     daily_combined_email_engine,
     weekly_combined_email_engine,
@@ -105,6 +106,7 @@ async def post_init(application):
     task2 = asyncio.create_task(signal_engine(application))
     task3 = asyncio.create_task(alpaca_equities_engine(application))
     task4 = asyncio.create_task(alpaca_fractional_monitor_engine(application))
+    task4_1 = asyncio.create_task(alpaca_hourly_sync_engine(application))
     task5 = asyncio.create_task(premium_expiration_engine(application))
     task6_1 = asyncio.create_task(daily_combined_email_engine(application))
     task6_2 = asyncio.create_task(weekly_combined_email_engine(application))
@@ -112,7 +114,7 @@ async def post_init(application):
     
     # Store references to prevent garbage collection
     application.bot_data["bg_tasks"] = [
-        task1, task2, task3, task4, task5,
+        task1, task2, task3, task4, task4_1, task5,
         task6_1, task6_2,
         task7
     ]

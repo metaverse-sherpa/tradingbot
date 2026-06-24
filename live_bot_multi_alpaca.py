@@ -523,14 +523,19 @@ async def run_theoretical_tally_engine(today_opens):
                 
     conn.close()
 
-async def run_real_trader_execution(today_opens):
-    logger.info("Running Real Trader Execution Engine...")
+
+async def run_hourly_portfolio_sync(today_opens=None):
+    logger.info("Running Hourly Portfolio Sync & Dynamic Exits...")
+    if today_opens is None:
+        today_opens = fetch_today_open_prices()
     
     import database
+    import time
+    from telegram import MessageEntity
+    from datetime import datetime, timezone
+    
     active_users = database.get_all_active_stock_users()
-        
     if not active_users:
-        logger.info("No active Alpaca users to execute trades for.")
         return
         
     for user in active_users:
@@ -539,36 +544,59 @@ async def run_real_trader_execution(today_opens):
         if not user or user.get("active_stock_strategy") != "Sherpa Velocity Pullback":
             continue
             
-        logger.info(f"Processing real trade execution for user chat_id={chat_id} web_user_id={web_user_id}...")
-        
         try:
-            # 1. Fetch current positions on Alpaca
             positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
             active_positions = {p['symbol']: p for p in positions if float(p.get("qty", 0)) != 0}
             
-            # Graceful strategy retirement check
-            is_disabled = database.is_strategy_disabled("Sherpa Velocity Pullback")
-            if is_disabled and len(active_positions) == 0:
-                database.migrate_user_if_no_open_positions(chat_id, web_user_id=web_user_id)
-                logger.info(f"User {chat_id or f'web_{web_user_id}'} stock strategy retired gracefully (0 active positions).")
-                continue
+            # Reconcile external closures
+            conn_active = sqlite3.connect(USER_DB_PATH)
+            c_active = conn_active.cursor()
+            if chat_id:
+                c_active.execute("SELECT id, symbol, entry_price, tp_price, sl_price, qty FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'open'", (chat_id,))
+            else:
+                c_active.execute("SELECT id, symbol, entry_price, tp_price, sl_price, qty FROM AlpacaActiveTrades WHERE web_user_id = ? AND status = 'open'", (web_user_id,))
+            open_db_trades = c_active.fetchall()
+            conn_active.close()
             
-            # --- PHASE 1: PROCESS EXITS (DYNAMIC & MISSED SL/TP) ---
-            for sym, pos in active_positions.items():
-                conn_active = sqlite3.connect(USER_DB_PATH)
-                c_active = conn_active.cursor()
-                if chat_id:
-                    c_active.execute("SELECT id, entry_price, tp_price, sl_price FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (chat_id, sym))
-                else:
-                    c_active.execute("SELECT id, entry_price, tp_price, sl_price FROM AlpacaActiveTrades WHERE web_user_id = ? AND symbol = ? AND status = 'open' LIMIT 1", (web_user_id, sym))
-                row_active = c_active.fetchone()
-                conn_active.close()
+            for row in open_db_trades:
+                trade_db_id = row[0]
+                sym = row[1]
+                entry_price_db = float(row[2]) if row[2] else 0.0
+                tp_price = float(row[3]) if row[3] else None
+                sl_price = float(row[4]) if row[4] else None
+                qty_db = float(row[5]) if row[5] else 0.0
                 
-                trade_db_id = row_active[0] if row_active else None
-                entry_price_db = float(row_active[1]) if row_active else 0.0
-                tp_price = float(row_active[2]) if row_active else None
-                sl_price = float(row_active[3]) if row_active else None
-
+                if sym not in active_positions:
+                    # Missing from Alpaca - manually closed!
+                    orders = await database.make_alpaca_request_async(user, "GET", f"/v2/orders?status=closed&symbols={sym}&limit=1")
+                    close_price = entry_price_db
+                    if orders and len(orders) > 0:
+                        cp = float(orders[0].get('filled_avg_price') or orders[0].get('limit_price') or entry_price_db)
+                        if cp > 0: close_price = cp
+                    else:
+                        close_price = today_opens.get(sym, entry_price_db)
+                        
+                    pnl_raw = (close_price - entry_price_db) * qty_db
+                    pnl_pct = ((close_price - entry_price_db) / entry_price_db) * 100 if entry_price_db > 0 else 0
+                    now_ts = int(time.time())
+                    
+                    database.close_alpaca_trade(trade_id=trade_db_id, close_time=now_ts * 1000, close_price=close_price, pnl_raw=pnl_raw, pnl_pct=pnl_pct)
+                    
+                    msg = (
+                        f"🔄 *Alpaca Portfolio Sync*\n\n"
+                        f"Detected external closure of **{sym}** LONG position.\n"
+                        f"• Est. Exit Price: `${close_price:.2f}`\n"
+                        f"• Estimated Trade PnL: *{pnl_pct:+.2f}%* (${pnl_raw:+.2f})\n"
+                        "Database updated to reflect closed status."
+                    )
+                    if chat_id:
+                        await send_telegram_message(chat_id, msg)
+                    logger.info(f"Marked {sym} as externally closed for {chat_id or web_user_id}.")
+                    continue
+                
+                # Exists in active positions, run Phase 1 Dynamic Exits
+                pos = active_positions[sym]
+                
                 db_conn = sqlite3.connect(STOCK_DB_PATH)
                 db_c = db_conn.cursor()
                 db_c.execute("SELECT high, low FROM StockDailyData WHERE symbol = ? ORDER BY date DESC LIMIT 1", (sym,))
@@ -599,24 +627,20 @@ async def run_real_trader_execution(today_opens):
                         pnl_raw = float(pos.get('unrealized_pl', (close_price - entry_price) * qty_val))
                         pnl_pct = float(pos.get('unrealized_plpc', ((close_price - entry_price) / entry_price if entry_price > 0 else 0))) * 100
                         
-                        from telegram import MessageEntity
-                        from datetime import datetime, timezone
                         now_ts = int(time.time())
-                        
-                        if trade_db_id:
-                            database.close_alpaca_trade(
-                                trade_id=trade_db_id,
-                                close_time=now_ts * 1000,
-                                close_price=close_price,
-                                pnl_raw=pnl_raw,
-                                pnl_pct=pnl_pct
-                            )
-                            logger.info(f"Closed trade in local DB for {sym} (ID: {trade_db_id}). PnL: {pnl_pct:+.2f}%")
+                        database.close_alpaca_trade(
+                            trade_id=trade_db_id,
+                            close_time=now_ts * 1000,
+                            close_price=close_price,
+                            pnl_raw=pnl_raw,
+                            pnl_pct=pnl_pct
+                        )
+                        logger.info(f"Closed trade in local DB for {sym} (ID: {trade_db_id}). PnL: {pnl_pct:+.2f}%")
                         
                         now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
                         close_text_before = (
                             "🦙 *Alpaca Stock Strategy: Exit Triggered* 🦙\n\n"
-                            f"Exited **{sym}** LONG position at today's open.\n"
+                            f"Exited **{sym}** LONG position.\n"
                             f"• Trigger: `{exit_reason}`\n"
                             f"• Symbol: `{sym}`\n"
                             f"• Qty: `{pos['qty']}` shares\n"
@@ -635,13 +659,52 @@ async def run_real_trader_execution(today_opens):
                         msg_close = close_text_before + placeholder
                         if chat_id:
                             await send_telegram_message(chat_id, msg_close, entities=[close_entity])
-                        else:
-                            logger.info(f"Exit logged for web user {web_user_id}. Symbol: {sym}")
                         
                     except Exception as e:
                         logger.error(f"Failed to liquidate real user {chat_id or f'web_{web_user_id}'} position {sym}: {e}")
                         if chat_id:
                             await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Failed to close position for {sym} ({exit_reason}): {e}")
+
+        except Exception as u_err:
+            logger.error(f"Error processing hourly sync for user {chat_id}: {u_err}")
+
+async def run_real_trader_execution(today_opens):
+    logger.info("Running Real Trader Execution Engine...")
+    
+    # Run Phase 1 Sync first to clear out closures
+    await run_hourly_portfolio_sync(today_opens)
+    
+    import database
+    active_users = database.get_all_active_stock_users()
+        
+    if not active_users:
+        logger.info("No active Alpaca users to execute trades for.")
+        return
+        
+    for user in active_users:
+        chat_id = user.get('telegram_chat_id')
+        web_user_id = user.get('web_user_id')
+        if not user or user.get("active_stock_strategy") != "Sherpa Velocity Pullback":
+            continue
+            
+        logger.info(f"Processing real trade execution for user chat_id={chat_id} web_user_id={web_user_id}...")
+        
+        try:
+            # 1. Fetch current positions on Alpaca
+            positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
+            active_positions = {p['symbol']: p for p in positions if float(p.get("qty", 0)) != 0}
+            
+            # Graceful strategy retirement check
+            is_disabled = database.is_strategy_disabled("Sherpa Velocity Pullback")
+            if is_disabled and len(active_positions) == 0:
+                database.migrate_user_if_no_open_positions(chat_id, web_user_id=web_user_id)
+                logger.info(f"User {chat_id or f'web_{web_user_id}'} stock strategy retired gracefully (0 active positions).")
+                continue
+            
+            # --- PHASE 1: PROCESS EXITS & SYNC ---
+            # Now handled by hourly portfolio sync. We call it here to ensure it runs during morning sweeps.
+            # (Note: we don't need to re-fetch positions since it fetches them inside run_hourly_portfolio_sync, 
+            # but we run it anyway for safety)
             
             # --- PHASE 2: PROCESS NEW BUY ENTRIES ---
             if is_disabled:
