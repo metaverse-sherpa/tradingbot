@@ -361,15 +361,9 @@ async def run_theoretical_tally_engine(today_opens):
                             "Closed at: "
                         )
                         placeholder = close_dt.strftime("%Y-%m-%d %H:%M UTC")
-                        exit_entity = MessageEntity(
-                            type=MessageEntity.DATE_TIME,
-                            offset=len(exit_text_before),
-                            length=len(placeholder),
-                            unix_time=close_dt,
-                        )
                         exit_msg = exit_text_before + placeholder
                         for target_id in all_targets:
-                            await send_telegram_message(target_id, exit_msg, entities=[exit_entity])
+                            await send_telegram_message(target_id, exit_msg)
                     except Exception as b_err:
                         logger.warning(f"Failed to send free exit broadcast to targets: {b_err}")
                     continue
@@ -428,16 +422,9 @@ async def run_theoretical_tally_engine(today_opens):
                         "───────────────────────────────\n\n"
                         "Closed at: "
                     )
-                    placeholder = close_dt.strftime("%Y-%m-%d %H:%M UTC")
-                    exit_entity = MessageEntity(
-                        type=MessageEntity.DATE_TIME,
-                        offset=len(exit_text_before),
-                        length=len(placeholder),
-                        unix_time=close_dt,
-                    )
                     exit_msg = exit_text_before + placeholder
                     for target_id in all_targets:
-                        await send_telegram_message(target_id, exit_msg, entities=[exit_entity])
+                        await send_telegram_message(target_id, exit_msg)
                 except Exception as b_err:
                     logger.warning(f"Failed to send free exit broadcast to targets: {b_err}")
                 
@@ -503,16 +490,10 @@ async def run_theoretical_tally_engine(today_opens):
                         "Signal time: "
                     )
                     placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
-                    entry_entity = MessageEntity(
-                        type=MessageEntity.DATE_TIME,
-                        offset=len(entry_text_before),
-                        length=len(placeholder),
-                        unix_time=now_dt,
-                    )
                     entry_msg = entry_text_before + placeholder
                     
                     for target_id in all_targets:
-                        await send_telegram_message(target_id, entry_msg, entities=[entry_entity])
+                        await send_telegram_message(target_id, entry_msg)
                         
 
                 except Exception as b_err:
@@ -650,15 +631,9 @@ async def run_hourly_portfolio_sync(today_opens=None):
                             "Closed at: "
                          )
                         placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
-                        close_entity = MessageEntity(
-                            type=MessageEntity.DATE_TIME,
-                            offset=len(close_text_before),
-                            length=len(placeholder),
-                            unix_time=now_dt,
-                        )
                         msg_close = close_text_before + placeholder
                         if chat_id:
-                            await send_telegram_message(chat_id, msg_close, entities=[close_entity])
+                            await send_telegram_message(chat_id, msg_close)
                         
                     except Exception as e:
                         logger.error(f"Failed to liquidate real user {chat_id or f'web_{web_user_id}'} position {sym}: {e}")
@@ -780,15 +755,9 @@ async def run_real_trader_execution(today_opens):
                             "Signal time: "
                         )
                         placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
-                        buy_entity = MessageEntity(
-                            type=MessageEntity.DATE_TIME,
-                            offset=len(buy_text_before),
-                            length=len(placeholder),
-                            unix_time=now_dt,
-                        )
                         buy_msg = buy_text_before + placeholder
                         if chat_id:
-                            await send_telegram_message(chat_id, buy_msg, entities=[buy_entity])
+                            await send_telegram_message(chat_id, buy_msg)
                         else:
                             logger.info(f"Buy trade logged for web user {web_user_id}. Symbol: {sym}")
                         
