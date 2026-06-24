@@ -393,10 +393,10 @@ async def daily_stock_email_engine(application):
                 await asyncio.sleep(60)
                 continue
                 
-            signals_opened = [s for s in stock_signals if (s.get('open_time') or 0) >= since_ms and s['status'] == 'open']
+            signals_opened = [s for s in stock_signals if (s.get('open_time') or 0) >= since_ms]
             signals_closed = [s for s in stock_signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
             
-            open_symbols = list(set([s['symbol'] for s in signals_opened]))
+            open_symbols = list(set([s['symbol'] for s in signals_opened if s['status'] == 'open']))
             live_prices = {}
             if open_symbols:
                 try:
@@ -413,6 +413,11 @@ async def daily_stock_email_engine(application):
                     logger.error(f"Error fetching stock prices for daily stock digest: {pe}")
 
             for s in signals_opened:
+                if s['status'] != 'open':
+                    s['current_pnl_pct'] = s.get('pnl_pct', 0.0)
+                    s['target_tp_pct'] = 0.0
+                    continue
+
                 sym = s['symbol']
                 entry_price = s['entry_price']
                 tp_price = s.get('tp_price') or 0.0
@@ -493,10 +498,12 @@ async def daily_crypto_email_engine(application):
                 await asyncio.sleep(60)
                 continue
                 
-            signals_opened = [s for s in crypto_signals if (s.get('open_time') or 0) >= since_ms and s['status'] == 'open']
+            signals_opened = [s for s in crypto_signals if (s.get('open_time') or 0) >= since_ms]
             signals_closed = [s for s in crypto_signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
+            for s in signals_closed:
+                s['pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
             
-            open_symbols = list(set([s['symbol'] for s in signals_opened]))
+            open_symbols = list(set([s['symbol'] for s in signals_opened if s['status'] == 'open']))
             live_prices = {}
             if open_symbols:
                 try:
@@ -524,6 +531,11 @@ async def daily_crypto_email_engine(application):
                     logger.error(f"Error fetching crypto prices for daily crypto digest: {pe}")
 
             for s in signals_opened:
+                if s['status'] != 'open':
+                    s['current_pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
+                    s['target_tp_pct'] = 0.0
+                    continue
+
                 sym = s['symbol']
                 entry_price = s['entry_price']
                 tp_price = s.get('tp_price') or 0.0

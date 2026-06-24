@@ -149,6 +149,11 @@ def send_alert_email(to_email, subject, html_content):
     Public asynchronous entry point to dispatch emails without VPS blockage.
     Enqueues the email to the rate-limited background worker.
     """
+    import re
+    if re.match(r"^user_\d+_\d+@metaversesherpa\.io$", to_email):
+        logger.info(f"Skipping email to test account: {to_email}")
+        return
+        
     _email_queue.put((to_email, subject, html_content))
 
 def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None, pnl_pct=None, is_premium_user=True):
@@ -671,7 +676,7 @@ def get_daily_stock_summary_html(signals_opened, signals_closed, is_premium=Fals
     # 1. Compile signals opened
     opened_rows = ""
     if not signals_opened:
-        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No new stock signals opened today.</td></tr>'
+        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active stock positions today.</td></tr>'
     else:
         for s in signals_opened:
             sym = s['symbol']
@@ -712,7 +717,12 @@ def get_daily_stock_summary_html(signals_opened, signals_closed, is_premium=Fals
                 details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>Exit: ${exit_price:.2f}"
                 pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
             else:
-                details = "Position Exited"
+                if s.get('status') == 'tp':
+                    details = f"Hit Target of {pnl_str}"
+                elif s.get('status') == 'sl':
+                    details = "Hit Stop Loss, but that's what it's there for!"
+                else:
+                    details = "Position Exited"
                 pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
                 
             closed_rows += f"""
@@ -764,7 +774,7 @@ def get_daily_stock_summary_html(signals_opened, signals_closed, is_premium=Fals
                 </div>
                 <div style="padding: 30px;">
                     
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Signals Opened Today</h3>
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Active Positions Today</h3>
                     <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 30px; overflow: hidden;">
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
@@ -826,7 +836,7 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
     # 1. Compile signals opened
     opened_rows = ""
     if not signals_opened:
-        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No new crypto signals opened in the last 24 hours.</td></tr>'
+        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active crypto positions in the last 24 hours.</td></tr>'
     else:
         for s in signals_opened:
             sym = s['symbol']
@@ -869,7 +879,12 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
                 exit_price = s.get('close_price') or 0.0
                 details = f"Entry: ${s.get('entry_price', 0.0):.4f}<br>Exit: ${exit_price:.4f}"
             else:
-                details = "Position Exited"
+                if s.get('status') == 'tp':
+                    details = f"Hit Target of {pnl_str}"
+                elif s.get('status') == 'sl':
+                    details = "Hit Stop Loss, but that's what it's there for!"
+                else:
+                    details = "Position Exited"
                 
             closed_rows += f"""
             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
@@ -920,7 +935,7 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
                 </div>
                 <div style="padding: 30px;">
                     
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Signals Opened (Last 24 Hours)</h3>
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Active Positions (Last 24 Hours)</h3>
                     <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 30px; overflow: hidden;">
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
