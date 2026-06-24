@@ -426,15 +426,6 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
             target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
 
-            active_headers = f"""
-                            <tr style="background-color: #111822;">
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
-                                {'<th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>' if is_premium else ''}
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Daily PnL</th>
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Total PnL</th>
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Target PnL</th>
-                            </tr>
-        """
             if is_premium:
                 details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>SL: ${s.get('sl_price', 0.0):.2f}<br>TP: ${s.get('tp_price', 0.0):.2f}"
                 stock_opened_rows += f"""
@@ -756,6 +747,15 @@ def get_combined_weekly_summary_html(is_premium=False,
     def render_section(title, icon, accent_color, has_exchange, portfolio_data, open_trades, hypothetical_data):
         section_content = f'<h2 style="font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; color: {accent_color}; margin: 20px 0 20px 0; border-bottom: 1px solid #2a3546; padding-bottom: 10px;">{icon} {title}</h2>'
         
+        active_headers = f"""
+                            <tr style="background-color: #111822;">
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
+                                {'<th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>' if is_premium else ''}
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Daily PnL</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Total PnL</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Target PnL</th>
+                            </tr>
+        """
         if is_premium:
             if has_exchange:
                 equity = portfolio_data.get("equity", 0.0)
