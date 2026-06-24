@@ -36,20 +36,19 @@ async def send_telegram_message(chat_id, text, entities=None):
     }
     if entities:
         # entities is a list of MessageEntity objects — serialise to dicts for the raw HTTP call
-        payload["entities"] = [
-            {
-                "type": e.type,
-                "offset": e.offset,
-                "length": e.length,
-                **({"value": e.value} if getattr(e, "value", None) is not None else {}),
-            }
-            for e in entities
-        ]
+        payload["entities"] = [e.to_dict() for e in entities]
     else:
         payload["parse_mode"] = "Markdown"
+        
+    def _do_send():
+        resp = requests.post(url, json=payload, timeout=10)
+        if resp.status_code != 200:
+            logger.error(f"Telegram API Error {resp.status_code}: {resp.text}")
+        resp.raise_for_status()
+
     try:
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, lambda: requests.post(url, json=payload, timeout=10))
+        await loop.run_in_executor(None, _do_send)
     except Exception as e:
         logger.error(f"Failed to send Telegram message to {chat_id}: {e}")
 
