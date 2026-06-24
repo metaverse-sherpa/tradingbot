@@ -435,7 +435,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                                 <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Target PnL</th>
                             </tr>
         """
-        if is_premium:
+            if is_premium:
                 details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>SL: ${s.get('sl_price', 0.0):.2f}<br>TP: ${s.get('tp_price', 0.0):.2f}"
                 stock_opened_rows += f"""
                 <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
