@@ -422,26 +422,39 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             dir_emoji = "📈" if is_long else "📉"
             sym_html = f'<a href="https://marketmasters.ai/stocks/{sym}" style="color: {color_accent_stock}; text-decoration: none;">{dir_emoji} {sym}</a>'
             
-            if is_premium:
+            total_pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
+            daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
+            target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
+
+            active_headers = f"""
+                            <tr style="background-color: #111822;">
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
+                                {'<th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>' if is_premium else ''}
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Daily PnL</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Total PnL</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Target PnL</th>
+                            </tr>
+        """
+        if is_premium:
                 details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>SL: ${s.get('sl_price', 0.0):.2f}<br>TP: ${s.get('tp_price', 0.0):.2f}"
-                total_pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
-                daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
-                target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
+                stock_opened_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{daily_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{total_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{target_pnl_display}</td>
+                </tr>
+                """
             else:
-                details = f"Target Profit: <span style='color: #00C853; font-weight: bold;'>{target_str}</span>"
-                total_pnl_display = '<span style="color: #8892b0; font-style: italic;">Premium Only</span>'
-                daily_pnl_display = '<span style="color: #8892b0; font-style: italic;">Premium Only</span>'
-                target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
-                
-            stock_opened_rows += f"""
-            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
-                <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{daily_pnl_display}</td>
-                <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{total_pnl_display}</td>
-                <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{target_pnl_display}</td>
-            </tr>
-            """
+                stock_opened_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{daily_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{total_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{target_pnl_display}</td>
+                </tr>
+                """
 
     # 2. Compile stock signals closed
     stock_closed_rows = ""
@@ -463,25 +476,29 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                 exit_price = s.get('close_price') or 0.0
                 status_display = "Exited"
                 details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>Exit: ${exit_price:.2f}"
+                stock_closed_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 25%;">{status_display}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{pnl_display}</td>
+                </tr>
+                """
             else:
                 if s.get('status') == 'tp':
                     status_display = "Hit Target"
-                    details = "Position Exited"
                 elif s.get('status') == 'sl':
                     status_display = "Hit Stop Loss"
-                    details = "Position Exited"
                 else:
                     status_display = "Closed"
-                    details = "Position Exited"
-                
-            stock_closed_rows += f"""
-            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 25%;">{status_display}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
-                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{pnl_display}</td>
-            </tr>
-            """
+                    
+                stock_closed_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{status_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 30%;">{pnl_display}</td>
+                </tr>
+                """
 
     # --- CRYPTO SECTION ---
     # 1. Compile crypto signals opened
@@ -491,29 +508,46 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
     else:
         for s in crypto_opened:
             sym = s['symbol']
+            clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
             pnl_pct = s.get('current_pnl_pct', 0.0)
+            daily_pnl_pct = s.get('daily_pnl_pct', 0.0)
             target_tp_pct = s.get('target_tp_pct', 0.0)
             
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
-            pnl_str = f"{pnl_pct:+.2f}%"
-            tp_str = f"+{target_tp_pct:.1f}%"
+            daily_pnl_color = "#00C853" if daily_pnl_pct >= 0 else "#FF1744"
             
-            pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
-            tp_display = f'<span style="color: #00C853; font-weight: bold;">{tp_str}</span>'
+            pnl_str = f"{pnl_pct:+.2f}%"
+            daily_pnl_str = f"{daily_pnl_pct:+.2f}%"
+            target_str = f"+{target_tp_pct:.1f}%"
+            
+            total_pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
+            daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
+            target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
+            
+            is_long = s.get('side', '').upper() in ['BUY', 'LONG']
+            dir_emoji = "📈" if is_long else "📉"
+            sym_html = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: {color_accent_crypto}; text-decoration: none;">{dir_emoji} {sym}</a>'
             
             if is_premium:
-                details = f"Entry: ${s['entry_price']:.4f}<br>SL: ${s.get('sl_price', 0.0):.4f}<br>TP: ${s.get('tp_price', 0.0):.4f}"
+                details = f"Entry: ${s.get('entry_price', 0.0):.4f}<br>SL: ${s.get('sl_price', 0.0):.4f}<br>TP: ${s.get('tp_price', 0.0):.4f}"
+                crypto_opened_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{daily_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{total_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 15%;">{target_pnl_display}</td>
+                </tr>
+                """
             else:
-                details = f"Target PnL: {tp_display}"
-                
-            crypto_opened_rows += f"""
-            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; color: {color_accent_crypto}; font-size: 14px;">{sym}</td>
-                <td style="padding: 12px 10px; font-weight: bold; color: {('#00C853' if s['side'].upper() in ['BUY', 'LONG'] else '#FF1744')}; font-size: 12px;">{s['side'].upper()}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">{details}</td>
-                <td style="padding: 12px 10px; font-size: 13px;">{pnl_display}</td>
-            </tr>
-            """
+                crypto_opened_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{daily_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{total_pnl_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{target_pnl_display}</td>
+                </tr>
+                """
 
     # 2. Compile crypto signals closed
     crypto_closed_rows = ""
@@ -522,6 +556,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
     else:
         for s in crypto_closed:
             sym = s['symbol']
+            clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
             pnl_pct = s.get('pnl_pct', 0.0)
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
             pnl_str = f"{pnl_pct:+.2f}%"
@@ -529,31 +564,49 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             
             is_long = s.get('side', '').upper() in ['BUY', 'LONG']
             dir_emoji = "📈" if is_long else "📉"
-            sym_html = f'<a href="https://marketmasters.ai/currency/{sym}" style="color: {color_accent_crypto}; text-decoration: none;">{dir_emoji} {sym}</a>'
+            sym_html = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: {color_accent_crypto}; text-decoration: none;">{dir_emoji} {sym}</a>'
             
             if is_premium:
                 exit_price = s.get('close_price') or 0.0
                 status_display = "Exited"
                 details = f"Entry: ${s.get('entry_price', 0.0):.4f}<br>Exit: ${exit_price:.4f}"
+                crypto_closed_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 25%;">{status_display}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{pnl_display}</td>
+                </tr>
+                """
             else:
                 if s.get('status') == 'tp':
                     status_display = "Hit Target"
-                    details = "Position Exited"
                 elif s.get('status') == 'sl':
                     status_display = "Hit Stop Loss"
-                    details = "Position Exited"
                 else:
                     status_display = "Closed"
-                    details = "Position Exited"
-                
-            crypto_closed_rows += f"""
-            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 25%;">{status_display}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{details}</td>
-                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{pnl_display}</td>
-            </tr>
-            """
+                    
+                crypto_closed_rows += f"""
+                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                    <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">{status_display}</td>
+                    <td style="padding: 12px 10px; font-size: 13px; width: 30%;">{pnl_display}</td>
+                </tr>
+                """
+
+    active_headers = f"""
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
+                                    {'<th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>' if is_premium else ''}
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Daily PnL</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Total PnL</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Target PnL</th>
+    """
+    closed_headers = f"""
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '30%'};">Status</th>
+                                    {'<th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>' if is_premium else ''}
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'20%' if is_premium else '30%'};">Final PnL</th>
+    """
 
     # 3. Premium Upsell / Autopilot Banner
     upsell_section = ""
@@ -608,11 +661,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
                                 <tr style="background-color: #111822;">
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Daily PnL</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Total PnL</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Target PnL</th>
+{active_headers}
                                 </tr>
                             </thead>
                             <tbody>
@@ -626,10 +675,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
                                 <tr style="background-color: #111822;">
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Status</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Final PnL</th>
+{closed_headers}
                                 </tr>
                             </thead>
                             <tbody>
@@ -647,11 +693,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
                                 <tr style="background-color: #111822;">
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Daily PnL</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Total PnL</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Target PnL</th>
+{active_headers}
                                 </tr>
                             </thead>
                             <tbody>
@@ -665,10 +707,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
                                 <tr style="background-color: #111822;">
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Status</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Final PnL</th>
+{closed_headers}
                                 </tr>
                             </thead>
                             <tbody>
@@ -706,7 +745,7 @@ def get_combined_weekly_summary_html(is_premium=False,
     
     header_section = """
         <div style="padding: 35px 30px; text-align: center; background: #0c1f30; background-image: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(213, 0, 249, 0.1) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
-            <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #FFFFFF;">🏔️ Weekly Audit</h1>
+            <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #FFFFFF;">🏔️ Weekly Update</h1>
             <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Combined Weekly Performance Summary</p>
         </div>
     """
@@ -739,20 +778,32 @@ def get_combined_weekly_summary_html(is_premium=False,
                         daily_pnl_color = "#00C853" if daily_pnl_pct >= 0 else "#FF1744"
                         
                         sym = t['symbol']
+                        clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                         is_long = t.get('side', '').upper() in ['BUY', 'LONG']
                         dir_emoji = "📈" if is_long else "📉"
                         link_base = "stocks" if title == "Stock Markets" else "currency"
-                        sym_html = f'<a href="https://marketmasters.ai/{link_base}/{sym}" style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</a>'
+                        display_sym = clean_sym if title != "Stock Markets" else sym
+                        sym_html = f'<a href="https://marketmasters.ai/{link_base}/{display_sym}" style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</a>'
                         
-                        open_rows += f"""
-                        <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                            <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
-                            <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">Entry: ${t['entry_price']:.4f}<br>SL: ${t['sl_price']:.4f}<br>TP: ${t['tp_price']:.4f}</td>
-                            <td style="padding: 12px 10px; font-weight: bold; color: {daily_pnl_color}; font-size: 13px; width: 15%;">{daily_pnl_pct:+.2f}%</td>
-                            <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px; width: 15%;">{pnl_pct:+.2f}%</td>
-                            <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px; width: 15%;">+{target_pnl_pct:.1f}%</td>
-                        </tr>
-                        """
+                        if is_premium:
+                            open_rows += f"""
+                            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
+                                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">Entry: ${t['entry_price']:.4f}<br>SL: ${t['sl_price']:.4f}<br>TP: ${t['tp_price']:.4f}</td>
+                                <td style="padding: 12px 10px; font-weight: bold; color: {daily_pnl_color}; font-size: 13px; width: 15%;">{daily_pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px; width: 15%;">{pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px; width: 15%;">+{target_pnl_pct:.1f}%</td>
+                            </tr>
+                            """
+                        else:
+                            open_rows += f"""
+                            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                                <td style="padding: 12px 10px; font-weight: bold; color: {daily_pnl_color}; font-size: 13px; width: 20%;">{daily_pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px; width: 20%;">{pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px; width: 20%;">+{target_pnl_pct:.1f}%</td>
+                            </tr>
+                            """
                 
                 section_content += f"""
                 <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; padding: 20px; margin-bottom: 25px; text-align: center;">
@@ -767,13 +818,7 @@ def get_combined_weekly_summary_html(is_premium=False,
                 <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; overflow: hidden; margin-bottom: 20px;">
                     <table style="width: 100%; border-collapse: collapse; text-align: left;">
                         <thead>
-                            <tr style="background-color: #111822;">
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Daily PnL</th>
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Total PnL</th>
-                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Target PnL</th>
-                            </tr>
+{active_headers}
                         </thead>
                         <tbody>
                             {open_rows}
