@@ -388,297 +388,24 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
     </html>
     """
 
-def get_daily_summary_html(signals_opened, signals_closed, is_premium_user=False, user_stats=None):
-    """
-    Generates premium responsive HTML email template for daily trading summaries.
-    """
-    from bot.config import is_stock
-    color_bg = "#0B0E14"
-    color_card = "#141A24"
-    
-    opened_rows = ""
-    if not signals_opened:
-        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No new signals opened today.</td></tr>'
-    else:
-        for s in signals_opened:
-            sym = s['symbol']
-            if is_stock(sym):
-                symbol_link = f'<a href="https://marketmasters.ai/stocks/{sym}" style="color: #3cd7ff; text-decoration: underline;">{sym}</a>'
-            else:
-                clean_sym = sym.split("/")[0].split(":")[0].replace("USDT", "")
-                symbol_link = f'<a href="https://marketmasters.ai/currency/{clean_sym}USDT" style="color: #3cd7ff; text-decoration: underline;">{clean_sym}</a>'
-            direction_color = "#00C853" if s['side'] in ['buy', 'long', 'LONG'] else "#FF1744"
-            direction_label = "LONG" if s['side'] in ['buy', 'long', 'LONG'] else "SHORT"
-            
-            if 'current_pnl_pct' in s:
-                pnl_pct = s['current_pnl_pct']
-                tp_pct = s.get('target_tp_pct', 0.0)
-                pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
-                pnl_str = f"{pnl_pct:+.2f}%"
-                tp_str = f"{tp_pct:+.2f}%"
-                display_val = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span> / <span style="color: #00C853;">{tp_str}</span>'
-            else:
-                display_val = f"${s['entry_price']:.4f}"
-                
-            opened_rows += f"""
-            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{symbol_link}</td>
-                <td style="padding: 12px 10px; font-weight: bold; color: {direction_color}; font-size: 12px;">{direction_label}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">{display_val}</td>
-                <td style="padding: 12px 10px; color: #8892b0; font-size: 12px;">{s['strategy']}</td>
-            </tr>
-            """
-            
-    closed_rows = ""
-    if not signals_closed:
-        closed_rows = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No positions resolved today.</td></tr>'
-    else:
-        for s in signals_closed:
-            sym = s['symbol']
-            if is_stock(sym):
-                symbol_link = f'<a href="https://marketmasters.ai/stocks/{sym}" style="color: #3cd7ff; text-decoration: underline;">{sym}</a>'
-            else:
-                clean_sym = sym.split("/")[0].split(":")[0].replace("USDT", "")
-                symbol_link = f'<a href="https://marketmasters.ai/currency/{clean_sym}USDT" style="color: #3cd7ff; text-decoration: underline;">{clean_sym}</a>'
-            direction_color = "#00C853" if s['side'] in ['buy', 'long', 'LONG'] else "#FF1744"
-            direction_label = "LONG" if s['side'] in ['buy', 'long', 'LONG'] else "SHORT"
-            
-            pnl_pct = s.get('pnl_pct', 0.0)
-            from bot.config import CRYPTO_LEVERAGE
-            # Apply crypto leverage display multiplier
-            if not is_stock(sym):
-                pnl_pct *= CRYPTO_LEVERAGE
-                
-            pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
-            pnl_str = f"{pnl_pct:+.2f}%"
-            
-            closed_rows += f"""
-            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{symbol_link}</td>
-                <td style="padding: 12px 10px; font-weight: bold; color: {direction_color}; font-size: 12px;">{direction_label}</td>
-                <td style="padding: 12px 10px; font-weight: bold; color: {pnl_color}; font-size: 13px;">{pnl_str}</td>
-                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 12px;">{s['status'].upper()}</td>
-                <td style="padding: 12px 10px; color: #8892b0; font-size: 12px;">{s['strategy']}</td>
-            </tr>
-            """
-            
-    # Generate Premium Stats HTML
-    premium_stats_section = ""
-    if is_premium_user:
-        crypto_stats = user_stats.get("crypto", {}) if user_stats else {}
-        stock_stats = user_stats.get("stock", {}) if user_stats else {}
-        
-        # Crypto card
-        if crypto_stats.get("linked"):
-            c_eq = crypto_stats.get("equity", 0.0)
-            c_pnl_pct = crypto_stats.get("daily_pnl_pct", 0.0)
-            c_pnl_usd = crypto_stats.get("daily_pnl_usd", 0.0)
-            c_color = "#00C853" if c_pnl_pct >= 0 else "#FF1744"
-            c_sign = "+" if c_pnl_pct >= 0 else ""
-            c_usd_sign = "+" if c_pnl_usd >= 0 else ""
-            c_wr = crypto_stats.get("win_rate", 0.0)
-            c_open = crypto_stats.get("open_trades", 0)
-            c_wins = crypto_stats.get("wins", 0)
-            c_losses = crypto_stats.get("losses", 0)
-            
-            c_overall_pnl_pct = crypto_stats.get("overall_pnl_pct", 0.0)
-            c_overall_color = "#00C853" if c_overall_pnl_pct >= 0 else "#FF1744"
-            c_overall_sign = "+" if c_overall_pnl_pct >= 0 else ""
-            
-            c_open_display = f'<a href="https://bot.metaversesherpa.io/#/trades?tab=crypto" style="color: #3cd7ff; text-decoration: underline; font-weight: bold;">{c_open}</a>' if c_open > 0 else f"{c_open}"
-            
-            crypto_block = f"""
-            <div style="background-color: #141A24; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">🪙 Crypto Portfolio</div>
-                <div style="font-size: 20px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;">
-                    ${c_eq:,.2f} 
-                    <span style="font-size: 14px; color: {c_color}; margin-left: 8px;">{c_sign}{c_pnl_pct:.2f}% ({c_usd_sign}${c_pnl_usd:,.2f})</span>
-                </div>
-                <table style="width: 100%; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                    <tr>
-                        <td style="color: #8892b0;">Daily PnL</td>
-                        <td align="right" style="color: {c_color}; font-weight: bold;">{c_sign}{c_pnl_pct:.2f}% ({c_usd_sign}${c_pnl_usd:,.2f})</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #8892b0;">Overall PnL</td>
-                        <td align="right" style="color: {c_overall_color}; font-weight: bold;">{c_overall_sign}{c_overall_pnl_pct:.2f}%</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #8892b0;">Open Trades</td>
-                        <td align="right" style="color: #FFFFFF; font-weight: bold;">{c_open_display}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #8892b0;">Win Rate</td>
-                        <td align="right" style="color: #00C853; font-weight: bold;">{c_wr:.1f}% <span style="color: #8892b0; font-weight: normal; font-size: 11px;">({c_wins}W / {c_losses}L)</span></td>
-                    </tr>
-                </table>
-            </div>
-            """
-        else:
-            crypto_block = f"""
-            <div style="background-color: #141A24; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-bottom: 15px; text-align: center;">
-                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px;">🪙 Crypto Portfolio</div>
-                <p style="font-size: 12px; color: #8892b0; margin: 8px 0;">Link your crypto exchange to track live equity, daily performance, and stats.</p>
-                <a href="https://bot.metaversesherpa.io/#/settings" style="font-size: 11px; color: #3cd7ff; text-decoration: underline; font-weight: bold;">Configure Crypto API</a>
-            </div>
-            """
-            
-        # Stock card
-        if stock_stats.get("linked"):
-            s_eq = stock_stats.get("equity", 0.0)
-            s_pnl_pct = stock_stats.get("daily_pnl_pct", 0.0)
-            s_pnl_usd = stock_stats.get("daily_pnl_usd", 0.0)
-            s_color = "#00C853" if s_pnl_pct >= 0 else "#FF1744"
-            s_sign = "+" if s_pnl_pct >= 0 else ""
-            s_usd_sign = "+" if s_pnl_usd >= 0 else ""
-            s_wr = stock_stats.get("win_rate", 0.0)
-            s_open = stock_stats.get("open_trades", 0)
-            s_wins = stock_stats.get("wins", 0)
-            s_losses = stock_stats.get("losses", 0)
-            
-            s_overall_pnl_pct = stock_stats.get("overall_pnl_pct", 0.0)
-            s_overall_color = "#00C853" if s_overall_pnl_pct >= 0 else "#FF1744"
-            s_overall_sign = "+" if s_overall_pnl_pct >= 0 else ""
-            
-            s_open_display = f'<a href="https://bot.metaversesherpa.io/#/trades?tab=stock" style="color: #3cd7ff; text-decoration: underline; font-weight: bold;">{s_open}</a>' if s_open > 0 else f"{s_open}"
-            
-            stock_block = f"""
-            <div style="background-color: #141A24; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">🦙 Stocks Portfolio</div>
-                <div style="font-size: 20px; font-weight: bold; color: #FFFFFF; margin-bottom: 10px;">
-                    ${s_eq:,.2f} 
-                    <span style="font-size: 14px; color: {s_color}; margin-left: 8px;">{s_sign}{s_pnl_pct:.2f}% ({s_usd_sign}${s_pnl_usd:,.2f})</span>
-                </div>
-                <table style="width: 100%; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                    <tr>
-                        <td style="color: #8892b0;">Daily PnL</td>
-                        <td align="right" style="color: {s_color}; font-weight: bold;">{s_sign}{s_pnl_pct:.2f}% ({s_usd_sign}${s_pnl_usd:,.2f})</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #8892b0;">Overall PnL</td>
-                        <td align="right" style="color: {s_overall_color}; font-weight: bold;">{s_overall_sign}{s_overall_pnl_pct:.2f}%</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #8892b0;">Open Trades</td>
-                        <td align="right" style="color: #FFFFFF; font-weight: bold;">{s_open_display}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #8892b0;">Win Rate</td>
-                        <td align="right" style="color: #00C853; font-weight: bold;">{s_wr:.1f}% <span style="color: #8892b0; font-weight: normal; font-size: 11px;">({s_wins}W / {s_losses}L)</span></td>
-                    </tr>
-                </table>
-            </div>
-            """
-        else:
-            stock_block = f"""
-            <div style="background-color: #141A24; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin-bottom: 15px; text-align: center;">
-                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px;">🦙 Stocks Portfolio</div>
-                <p style="font-size: 12px; color: #8892b0; margin: 8px 0;">Link your Alpaca account to track live equity, daily performance, and stats.</p>
-                <a href="https://bot.metaversesherpa.io/#/settings" style="font-size: 11px; color: #3cd7ff; text-decoration: underline; font-weight: bold;">Configure Alpaca API</a>
-            </div>
-            """
-            
-        premium_stats_section = f"""
-        <h3 style="font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #3cd7ff; margin: 25px 0 15px 0; border-left: 3px solid #3cd7ff; padding-left: 10px;">📊 Personal Portfolio Performance</h3>
-        {crypto_block}
-        {stock_block}
-        """
-
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="color-scheme" content="light dark">
-        <meta name="supported-color-schemes" content="light dark">
-        <title>Metaverse Sherpa Daily Digest</title>
-        <style>
-            :root {{
-                color-scheme: light dark;
-            }}
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                background-color: {color_bg} !important;
-                color: #FFFFFF !important;
-            }}
-        </style>
-    </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
-        <div style="background-color: {color_bg}; padding: 20px 10px; min-height: 100%;">
-            <div style="max-width: 600px; margin: 20px auto; background-color: {color_card}; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 12px; overflow: hidden; color: #FFFFFF;">
-                <div style="padding: 35px 30px; text-align: center; background: #0c1f30; background-image: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(12, 31, 48, 0.5) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
-                    <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #3cd7ff;">🏔️ Daily Signals Digest</h1>
-                    <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Institutional Algorithmic Performance Summary</p>
-                </div>
-                <div style="padding: 30px;">
-                    
-                    <h3 style="font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #D500F9; margin: 0 0 15px 0; border-left: 3px solid #D500F9; padding-left: 10px;">🛰️ New Signals Opened</h3>
-                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 30px; overflow: hidden;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                            <thead>
-                                <tr style="background-color: #111822;">
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">Symbol</th>
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">Side</th>
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">PnL / Target</th>
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">Strategy</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {opened_rows}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h3 style="font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #D500F9; margin: 0 0 15px 0; border-left: 3px solid #D500F9; padding-left: 10px;">🏆 Signals Resolved</h3>
-                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 30px; overflow: hidden;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                            <thead>
-                                <tr style="background-color: #111822;">
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">Symbol</th>
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">Side</th>
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">PnL</th>
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">Status</th>
-                                    <th style="padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; border-bottom: 1px solid #2a3546;">Strategy</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {closed_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    {premium_stats_section}
-                    
-                    <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 20px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #00C853 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
-                </div>
-                <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
-                    🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
-                    <br><br>
-                    Do you prefer silent hikes in the Metaverse? <br>
-                    <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
 
 
-def get_daily_stock_summary_html(signals_opened, signals_closed, is_premium=False):
+def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, crypto_closed, is_premium=False):
     """
-    Generates premium/free tailored daily stock session summary HTML.
+    Generates premium/free tailored daily combined session summary HTML.
     """
     color_bg = "#0B0E14"
     color_card = "#141A24"
-    color_accent = "#3cd7ff"
+    color_accent_stock = "#3cd7ff"
+    color_accent_crypto = "#D500F9"
     
-    # 1. Compile signals opened
-    opened_rows = ""
-    if not signals_opened:
-        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active stock positions today.</td></tr>'
+    # --- STOCK SECTION ---
+    # 1. Compile stock signals opened
+    stock_opened_rows = ""
+    if not stock_opened:
+        stock_opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active stock positions today.</td></tr>'
     else:
-        for s in signals_opened:
+        for s in stock_opened:
             sym = s['symbol']
             pnl_pct = s.get('current_pnl_pct', 0.0)
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
@@ -692,153 +419,52 @@ def get_daily_stock_summary_html(signals_opened, signals_closed, is_premium=Fals
                 details = f"Target Profit: <span style='color: #00C853; font-weight: bold;'>+{target_tp_pct:.1f}%</span>"
                 pnl_display = '<span style="color: #8892b0; font-style: italic;">Premium Only</span>'
                 
-            opened_rows += f"""
+            stock_opened_rows += f"""
             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; color: {color_accent}; font-size: 14px;">{sym}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: {color_accent_stock}; font-size: 14px;">{sym}</td>
                 <td style="padding: 12px 10px; font-weight: bold; color: #00C853; font-size: 12px;">BUY (LONG)</td>
                 <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">{details}</td>
                 <td style="padding: 12px 10px; font-size: 13px;">{pnl_display}</td>
             </tr>
             """
 
-    # 2. Compile signals closed
-    closed_rows = ""
-    if not signals_closed:
-        closed_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No stock positions resolved today.</td></tr>'
+    # 2. Compile stock signals closed
+    stock_closed_rows = ""
+    if not stock_closed:
+        stock_closed_rows = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No stock positions resolved today.</td></tr>'
     else:
-        for s in signals_closed:
+        for s in stock_closed:
             sym = s['symbol']
             pnl_pct = s.get('pnl_pct', 0.0)
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
             pnl_str = f"{pnl_pct:+.2f}%"
+            pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
             
             if is_premium:
                 exit_price = s.get('close_price') or 0.0
-                details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>Exit: ${exit_price:.2f}"
-                pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
+                details = f"Entry: ${s.get('entry_price', 0.0):.2f}<br>Exit: ${exit_price:.2f}<br>Final PnL: {pnl_display}"
             else:
                 if s.get('status') == 'tp':
-                    details = f"Hit Target of {pnl_str}"
+                    details = f"Hit Target of {pnl_display}"
                 elif s.get('status') == 'sl':
                     details = "Hit Stop Loss, but that's what it's there for!"
                 else:
                     details = "Position Exited"
-                pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
                 
-            closed_rows += f"""
+            stock_closed_rows += f"""
             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; color: {color_accent}; font-size: 14px;">{sym}</td>
-                <td style="padding: 12px 10px; font-weight: bold; color: #8892b0; font-size: 12px;">{s.get('status', 'closed').upper()}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: {color_accent_stock}; font-size: 14px;">{sym}</td>
                 <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">{details}</td>
-                <td style="padding: 12px 10px; font-size: 13px;">{pnl_display}</td>
             </tr>
             """
 
-    # 3. Premium Upsell / Autopilot Banner
-    upsell_section = ""
-    if not is_premium:
-        upsell_section = f"""
-        <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-top: 30px; text-align: center;">
-            <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">🚀 UNLOCK STOCK AUTOPILOT</h3>
-            <p style="font-size: 12px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
-                You are receiving free signals but trades are not being executed automatically. Upgrade to <b>Premium Access</b> to unlock automated fractional stock trading via Alpaca and see exact entry/SL/TP parameters in real time.
-            </p>
-            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
-        </div>
-        """
-
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="color-scheme" content="light dark">
-        <title>Sherpa Stock Session Summary</title>
-        <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                background-color: {color_bg};
-                color: #FFFFFF;
-                margin: 0;
-                padding: 0;
-            }}
-        </style>
-    </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
-        <div style="background-color: {color_bg}; padding: 20px 10px; min-height: 100%;">
-            <div style="max-width: 600px; margin: 20px auto; background-color: {color_card}; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 12px; overflow: hidden; color: #FFFFFF;">
-                <div style="padding: 35px 30px; text-align: center; background: #0c1f30; background-image: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(12, 31, 48, 0.5) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
-                    <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: {color_accent};">🏔️ Stock Session Digest</h1>
-                    <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Daily Equities Performance Summary</p>
-                </div>
-                <div style="padding: 30px;">
-                    
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Active Positions Today</h3>
-                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 30px; overflow: hidden;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                            <thead>
-                                <tr style="background-color: #111822;">
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Direction</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 35%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Today's PnL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {opened_rows}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Closed Today</h3>
-                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 20px; overflow: hidden;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                            <thead>
-                                <tr style="background-color: #111822;">
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Status</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 35%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Final PnL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {closed_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    {upsell_section}
-                    
-                    <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #00C853 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
-                </div>
-                <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
-                    🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
-                    <br><br>
-                    Do you prefer silent hikes in the Metaverse? <br>
-                    <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-
-def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=False):
-    """
-    Generates daily crypto session summary HTML.
-    """
-    color_bg = "#0B0E14"
-    color_card = "#141A24"
-    color_accent = "#D500F9"
-    
-    # 1. Compile signals opened
-    opened_rows = ""
-    if not signals_opened:
-        opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active crypto positions in the last 24 hours.</td></tr>'
+    # --- CRYPTO SECTION ---
+    # 1. Compile crypto signals opened
+    crypto_opened_rows = ""
+    if not crypto_opened:
+        crypto_opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active crypto positions.</td></tr>'
     else:
-        for s in signals_opened:
+        for s in crypto_opened:
             sym = s['symbol']
             pnl_pct = s.get('current_pnl_pct', 0.0)
             target_tp_pct = s.get('target_tp_pct', 0.0)
@@ -855,43 +481,42 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
             else:
                 details = f"Target PnL: {tp_display}"
                 
-            opened_rows += f"""
+            crypto_opened_rows += f"""
             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{sym}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: {color_accent_crypto}; font-size: 14px;">{sym}</td>
                 <td style="padding: 12px 10px; font-weight: bold; color: {('#00C853' if s['side'].upper() in ['BUY', 'LONG'] else '#FF1744')}; font-size: 12px;">{s['side'].upper()}</td>
                 <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">{details}</td>
                 <td style="padding: 12px 10px; font-size: 13px;">{pnl_display}</td>
             </tr>
             """
 
-    # 2. Compile signals closed
-    closed_rows = ""
-    if not signals_closed:
-        closed_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No crypto positions resolved in the last 24 hours.</td></tr>'
+    # 2. Compile crypto signals closed
+    crypto_closed_rows = ""
+    if not crypto_closed:
+        crypto_closed_rows = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No crypto positions resolved today.</td></tr>'
     else:
-        for s in signals_closed:
+        for s in crypto_closed:
             sym = s['symbol']
             pnl_pct = s.get('pnl_pct', 0.0)
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
             pnl_str = f"{pnl_pct:+.2f}%"
+            pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
             
             if is_premium:
                 exit_price = s.get('close_price') or 0.0
-                details = f"Entry: ${s.get('entry_price', 0.0):.4f}<br>Exit: ${exit_price:.4f}"
+                details = f"Entry: ${s.get('entry_price', 0.0):.4f}<br>Exit: ${exit_price:.4f}<br>Final PnL: {pnl_display}"
             else:
                 if s.get('status') == 'tp':
-                    details = f"Hit Target of {pnl_str}"
+                    details = f"Hit Target of {pnl_display}"
                 elif s.get('status') == 'sl':
                     details = "Hit Stop Loss, but that's what it's there for!"
                 else:
                     details = "Position Exited"
                 
-            closed_rows += f"""
+            crypto_closed_rows += f"""
             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{sym}</td>
-                <td style="padding: 12px 10px; font-weight: bold; color: #8892b0; font-size: 12px;">{s.get('status', 'closed').upper()}</td>
+                <td style="padding: 12px 10px; font-weight: bold; color: {color_accent_crypto}; font-size: 14px;">{sym}</td>
                 <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">{details}</td>
-                <td style="padding: 12px 10px; font-size: 13px; font-weight: bold; color: {pnl_color};">{pnl_str}</td>
             </tr>
             """
 
@@ -900,9 +525,9 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
     if not is_premium:
         upsell_section = f"""
         <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-top: 30px; text-align: center;">
-            <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">🚀 UNLOCK CRYPTO AUTOPILOT</h3>
+            <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">🚀 UNLOCK FULL AUTOPILOT</h3>
             <p style="font-size: 12px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
-                Get automated execution, custom sizing, and exact entry/SL/TP parameters in real time by upgrading to <b>Premium Access</b>.
+                You are receiving free signals but trades are not being executed automatically. Upgrade to <b>Premium Access</b> to unlock automated fractional execution and see exact entry/SL/TP parameters in real time.
             </p>
             <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
         </div>
@@ -915,7 +540,7 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="color-scheme" content="light dark">
-        <title>Sherpa Crypto Session Summary</title>
+        <title>Sherpa Daily Digest</title>
         <style>
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -929,13 +554,16 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
         <div style="background-color: {color_bg}; padding: 20px 10px; min-height: 100%;">
             <div style="max-width: 600px; margin: 20px auto; background-color: {color_card}; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 12px; overflow: hidden; color: #FFFFFF;">
-                <div style="padding: 35px 30px; text-align: center; background: #260c30; background-image: linear-gradient(135deg, rgba(213, 0, 249, 0.1) 0%, rgba(12, 31, 48, 0.5) 100%); border-bottom: 1px solid rgba(213, 0, 249, 0.1);">
-                    <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: {color_accent};">🏔️ Crypto Daily Summary</h1>
-                    <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Daily Crypto Performance Digest</p>
+                <div style="padding: 35px 30px; text-align: center; background: #0c1f30; background-image: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(213, 0, 249, 0.1) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
+                    <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #FFFFFF;">🏔️ Daily Digest</h1>
+                    <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Daily Performance Summary</p>
                 </div>
                 <div style="padding: 30px;">
                     
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Active Positions (Last 24 Hours)</h3>
+                    <!-- STOCK SECTION START -->
+                    <h2 style="font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; color: {color_accent_stock}; margin: 0 0 20px 0; border-bottom: 1px solid #2a3546; padding-bottom: 10px;">📈 Stock Markets</h2>
+                    
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Active Positions</h3>
                     <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 30px; overflow: hidden;">
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
@@ -943,35 +571,70 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
                                     <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
                                     <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Direction</th>
                                     <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 35%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Current PnL</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Today's PnL</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {opened_rows}
+                                {stock_opened_rows}
                             </tbody>
                         </table>
                     </div>
 
-                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Exited (Last 24 Hours)</h3>
-                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 20px; overflow: hidden;">
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Closed</h3>
+                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 40px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background-color: #111822;">
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 35%;">Symbol</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 65%;">Parameters</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stock_closed_rows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- STOCK SECTION END -->
+                    
+                    <!-- CRYPTO SECTION START -->
+                    <h2 style="font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; color: {color_accent_crypto}; margin: 0 0 20px 0; border-bottom: 1px solid #2a3546; padding-bottom: 10px;">₿ Crypto Markets</h2>
+
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #00C853; margin: 0 0 15px 0; border-left: 3px solid #00C853; padding-left: 10px;">🛰️ Active Positions</h3>
+                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 30px; overflow: hidden;">
                         <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
                                 <tr style="background-color: #111822;">
                                     <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Status</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Direction</th>
                                     <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 35%;">Parameters</th>
-                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Final PnL</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 20%;">Today's PnL</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {closed_rows}
+                                {crypto_opened_rows}
                             </tbody>
                         </table>
                     </div>
+
+                    <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #FF1744; margin: 0 0 15px 0; border-left: 3px solid #FF1744; padding-left: 10px;">🏆 Positions Closed</h3>
+                    <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; margin-bottom: 20px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background-color: #111822;">
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 35%;">Symbol</th>
+                                    <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 65%;">Parameters</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {crypto_closed_rows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- CRYPTO SECTION END -->
                     
                     {upsell_section}
                     
-                    <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #00C853 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
+                    <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
                 </div>
                 <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
                     🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
@@ -986,110 +649,134 @@ def get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=Fal
     """
 
 
-def get_weekly_stock_summary_html(is_premium=False, has_exchange=False, portfolio_data=None, open_trades=None, hypothetical_data=None):
+def get_combined_weekly_summary_html(is_premium=False, 
+                                     has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
+                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None):
     """
-    Generates weekly stock performance update HTML.
+    Generates combined weekly stock & crypto performance update HTML.
     """
     color_bg = "#0B0E14"
     color_card = "#141A24"
     
     header_section = """
-        <div style="padding: 35px 30px; text-align: center; background: #0c1f30; background-image: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(12, 31, 48, 0.5) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
-            <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #3cd7ff;">🏔️ Weekly Stock Audit</h1>
-            <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Weekly Stock Performance Summary</p>
+        <div style="padding: 35px 30px; text-align: center; background: #0c1f30; background-image: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(213, 0, 249, 0.1) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
+            <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #FFFFFF;">🏔️ Weekly Audit</h1>
+            <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Combined Weekly Performance Summary</p>
         </div>
     """
     
     content = ""
     
-    if is_premium:
-        if has_exchange:
-            equity = portfolio_data.get("equity", 0.0)
-            weekly_pnl_pct = portfolio_data.get("weekly_pnl_pct", 0.0)
-            weekly_pnl_usd = portfolio_data.get("weekly_pnl_usd", 0.0)
-            pnl_color = "#00C853" if weekly_pnl_pct >= 0 else "#FF1744"
-            sign = "+" if weekly_pnl_pct >= 0 else ""
-            usd_sign = "+" if weekly_pnl_usd >= 0 else ""
-            
-            # Table rows for open positions
-            open_rows = ""
-            if not open_trades:
-                open_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No open stock positions currently.</td></tr>'
-            else:
-                for t in open_trades:
-                    pnl_pct = t.get("current_pnl_pct", 0.0)
-                    t_pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
-                    
-                    open_rows += f"""
-                    <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                        <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{t['symbol']}</td>
-                        <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">Entry: ${t['entry_price']:.2f}<br>SL: ${t['sl_price']:.2f}<br>TP: ${t['tp_price']:.2f}</td>
-                        <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px;">{pnl_pct:+.2f}%</td>
-                        <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px;">+{t.get("target_pnl_pct", 0.0):.1f}%</td>
-                    </tr>
-                    """
-            
-            content = f"""
-            <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; padding: 20px; margin-bottom: 25px; text-align: center;">
-                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">🦙 Alpaca Portfolio Equity</div>
-                <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${equity:,.2f} USD</div>
-                <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
-                    Weekly Performance: {sign}{weekly_pnl_pct:.2f}% ({usd_sign}${weekly_pnl_usd:,.2f})
-                </div>
-            </div>
-            
-            <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #3cd7ff; margin: 25px 0 15px 0; border-left: 3px solid #3cd7ff; padding-left: 10px;">🛰️ Currently Open Stock Positions</h3>
-            <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; overflow: hidden; margin-bottom: 20px;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                    <thead>
-                        <tr style="background-color: #111822;">
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 45%;">Parameters</th>
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">PnL</th>
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Target</th>
+    # helper for rendering sections
+    def render_section(title, icon, accent_color, has_exchange, portfolio_data, open_trades, hypothetical_data):
+        section_content = f'<h2 style="font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; color: {accent_color}; margin: 20px 0 20px 0; border-bottom: 1px solid #2a3546; padding-bottom: 10px;">{icon} {title}</h2>'
+        
+        if is_premium:
+            if has_exchange:
+                equity = portfolio_data.get("equity", 0.0)
+                weekly_pnl_pct = portfolio_data.get("weekly_pnl_pct", 0.0)
+                weekly_pnl_usd = portfolio_data.get("weekly_pnl_usd", 0.0)
+                pnl_color = "#00C853" if weekly_pnl_pct >= 0 else "#FF1744"
+                sign = "+" if weekly_pnl_pct >= 0 else ""
+                usd_sign = "+" if weekly_pnl_usd >= 0 else ""
+                
+                open_rows = ""
+                if not open_trades:
+                    open_rows = f'<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No open {title.lower()} positions currently.</td></tr>'
+                else:
+                    for t in open_trades:
+                        pnl_pct = t.get("current_pnl_pct", 0.0)
+                        t_pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
+                        
+                        open_rows += f"""
+                        <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                            <td style="padding: 12px 10px; font-weight: bold; color: {accent_color}; font-size: 14px;">{t['symbol']}</td>
+                            <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">Entry: ${t['entry_price']:.4f}<br>SL: ${t['sl_price']:.4f}<br>TP: ${t['tp_price']:.4f}</td>
+                            <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px;">{pnl_pct:+.2f}%</td>
+                            <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px;">+{t.get("target_pnl_pct", 0.0):.1f}%</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {open_rows}
-                    </tbody>
-                </table>
-            </div>
-            """
+                        """
+                
+                section_content += f"""
+                <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; padding: 20px; margin-bottom: 25px; text-align: center;">
+                    <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">Portfolio Equity</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${equity:,.2f} USD</div>
+                    <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
+                        Weekly Performance: {sign}{weekly_pnl_pct:.2f}% ({usd_sign}${weekly_pnl_usd:,.2f})
+                    </div>
+                </div>
+                
+                <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: {accent_color}; margin: 25px 0 15px 0; border-left: 3px solid {accent_color}; padding-left: 10px;">🛰️ Currently Open Positions</h3>
+                <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; overflow: hidden; margin-bottom: 20px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background-color: #111822;">
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 45%;">Parameters</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">PnL</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {open_rows}
+                        </tbody>
+                    </table>
+                </div>
+                """
+            else:
+                section_content += f"""
+                <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-bottom: 25px; text-align: center;">
+                    <h3 style="color: #FF1744; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">⚠️ Exchange Connection Required</h3>
+                    <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
+                        You have Premium Access, but your exchange API keys for {title.lower()} are missing or invalid. Please connect your exchange in the trading console to enable real-time tracking and autopilot execution.
+                    </p>
+                </div>
+                """
         else:
-            # Premium but no exchange linked
-            content = """
-            <div style="background-color: #1a1126; border: 1px solid rgba(60, 215, 255, 0.3); border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 20px;">
-                <h3 style="color: #3cd7ff; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">⚠️ LINK YOUR ALPACA ACCOUNT</h3>
-                <p style="font-size: 13px; color: #a4b3cf; margin: 0 0 20px 0; line-height: 1.6;">
-                    You have active Premium Access, but you haven't linked your stock exchange API keys. Link your Alpaca account today to enable 100% automated autopilot executions and have the Sherpa trade S&P stocks fractional shares directly for you.
+            hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
+            hypo_balance = 1000.0 + hypo_pnl
+            hypo_growth = (hypo_pnl / 1000.0) * 100
+            
+            wins = hypothetical_data.get("wins", 0)
+            losses = hypothetical_data.get("losses", 0)
+            win_rate = hypothetical_data.get("win_rate", 0.0)
+            
+            pnl_color = "#00C853" if hypo_pnl >= 0 else "#FF1744"
+            sign = "+" if hypo_pnl >= 0 else ""
+            
+            section_content += f"""
+            <div style="background-color: #1a222e; border-radius: 8px; border: 1px dashed {accent_color}; padding: 20px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: 0; right: 0; background-color: {accent_color}; color: #000; font-size: 9px; font-weight: bold; padding: 3px 10px; border-bottom-left-radius: 8px; text-transform: uppercase;">Hypothetical</div>
+                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">Premium Access Potential Equity</div>
+                <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${hypo_balance:,.2f} USD</div>
+                <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
+                    Cumulative Performance: {sign}{hypo_growth:.2f}% ({sign}${hypo_pnl:,.2f})
+                </div>
+                <div style="font-size: 13px; color: #8892b0; margin-top: 10px;">
+                    <b>Win Rate:</b> {win_rate:.1f}% ({wins} W | {losses} L)
+                </div>
+                <p style="font-size: 11px; color: #8892b0; margin: 15px 0 0 0; font-style: italic;">
+                    * This is a simulation of what your {title.lower()} portfolio would look like if you had upgraded to Premium and used our automated fractional execution (starting from a $1,000 base).
                 </p>
-                <a href="https://bot.metaversesherpa.io/#/settings" style="display: inline-block; background: linear-gradient(90deg, #3cd7ff 0%, #00C853 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Link Exchange API Keys</a>
             </div>
             """
-    else:
-        # Free User - show hypothetical growth
-        hypo_balance = hypothetical_data.get("current_balance", 1000.0)
-        hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
-        hypo_growth = ((hypo_balance - 1000.0) / 1000.0) * 100
-        
-        content = f"""
-        <div style="background-color: #1a1b24; border-radius: 8px; border: 1px solid #2a3546; padding: 20px; margin-bottom: 25px; text-align: center;">
-            <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">📈 Hypothetical Sherpa Simulator Performance</div>
-            <div style="font-size: 28px; font-weight: bold; color: #00C853; margin-bottom: 5px;">{hypo_growth:+.2f}% Growth</div>
-            <div style="font-size: 14px; color: #FFFFFF; line-height: 1.5;">
-                Simulated balance is now <b>${hypo_balance:,.2f} USDT</b> (started from $1,000 base).
-            </div>
-        </div>
-        
-        <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 20px;">
-            <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">🏔️ Close The Wealth Gap</h3>
-            <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 20px 0; line-height: 1.6;">
-                Standard Tier users missed out on compounding growth this week. Premium Autopilot handles all entry sizing, TP targets, and SL safety ropes across stock and crypto baskets without you lifting a finger.
+        return section_content
+
+    content += render_section("Stock Markets", "📈", "#3cd7ff", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data)
+    content += render_section("Crypto Markets", "₿", "#D500F9", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data)
+    
+    upsell_section = ""
+    if not is_premium:
+        upsell_section = f"""
+        <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-top: 30px; text-align: center;">
+            <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">🚀 UNLOCK FULL AUTOPILOT</h3>
+            <p style="font-size: 12px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
+                Stop leaving money on the table. Upgrade to <b>Premium Access</b> today to turn those hypothetical returns into reality with automated execution.
             </p>
-            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Go Premium Autopilot</a>
+            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
         </div>
         """
-
+        
     return f"""
     <!DOCTYPE html>
     <html>
@@ -1097,16 +784,7 @@ def get_weekly_stock_summary_html(is_premium=False, has_exchange=False, portfoli
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="color-scheme" content="light dark">
-        <title>Weekly Stock Audit</title>
-        <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                background-color: {color_bg};
-                color: #FFFFFF;
-                margin: 0;
-                padding: 0;
-            }}
-        </style>
+        <title>Sherpa Weekly Audit</title>
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
         <div style="background-color: {color_bg}; padding: 20px 10px; min-height: 100%;">
@@ -1114,158 +792,17 @@ def get_weekly_stock_summary_html(is_premium=False, has_exchange=False, portfoli
                 {header_section}
                 <div style="padding: 30px;">
                     {content}
+                    {upsell_section}
+                    <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
                 </div>
                 <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
                     🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
                     <br><br>
-                    <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
+                    Do you prefer silent hikes in the Metaverse? <br>
+                    <a href="{{{{UNSUBSCRIBE_LINK}}}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
                 </div>
             </div>
         </div>
     </body>
     </html>
     """
-
-
-def get_weekly_crypto_summary_html(is_premium=False, has_exchange=False, portfolio_data=None, open_trades=None, hypothetical_data=None):
-    """
-    Generates weekly crypto performance update HTML.
-    """
-    color_bg = "#0B0E14"
-    color_card = "#141A24"
-    
-    header_section = """
-        <div style="padding: 35px 30px; text-align: center; background: #260c30; background-image: linear-gradient(135deg, rgba(213, 0, 249, 0.1) 0%, rgba(12, 31, 48, 0.5) 100%); border-bottom: 1px solid rgba(213, 0, 249, 0.1);">
-            <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #D500F9;">🏔️ Weekly Crypto Audit</h1>
-            <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Weekly Crypto Performance Summary</p>
-        </div>
-    """
-    
-    content = ""
-    
-    if is_premium:
-        if has_exchange:
-            equity = portfolio_data.get("equity", 0.0)
-            weekly_pnl_pct = portfolio_data.get("weekly_pnl_pct", 0.0)
-            weekly_pnl_usd = portfolio_data.get("weekly_pnl_usd", 0.0)
-            pnl_color = "#00C853" if weekly_pnl_pct >= 0 else "#FF1744"
-            sign = "+" if weekly_pnl_pct >= 0 else ""
-            usd_sign = "+" if weekly_pnl_usd >= 0 else ""
-            
-            # Table rows for open positions
-            open_rows = ""
-            if not open_trades:
-                open_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No open crypto positions currently.</td></tr>'
-            else:
-                for t in open_trades:
-                    pnl_pct = t.get("current_pnl_pct", 0.0)
-                    t_pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
-                    
-                    open_rows += f"""
-                    <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                        <td style="padding: 12px 10px; font-weight: bold; color: #3cd7ff; font-size: 14px;">{t['symbol']}</td>
-                        <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px;">Entry: ${t['entry_price']:.4f}<br>SL: ${t['sl_price']:.4f}<br>TP: ${t['tp_price']:.4f}</td>
-                        <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px;">{pnl_pct:+.2f}%</td>
-                        <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px;">+{t.get("target_pnl_pct", 0.0):.1f}%</td>
-                    </tr>
-                    """
-            
-            content = f"""
-            <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; padding: 20px; margin-bottom: 25px; text-align: center;">
-                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">🪙 Crypto Portfolio Value</div>
-                <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${equity:,.2f} USDT</div>
-                <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
-                    Weekly Performance: {sign}{weekly_pnl_pct:.2f}% ({usd_sign}${weekly_pnl_usd:,.2f})
-                </div>
-            </div>
-            
-            <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #D500F9; margin: 25px 0 15px 0; border-left: 3px solid #D500F9; padding-left: 10px;">🛰️ Currently Open Crypto Positions</h3>
-            <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; overflow: hidden; margin-bottom: 20px;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                    <thead>
-                        <tr style="background-color: #111822;">
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 25%;">Symbol</th>
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 45%;">Parameters</th>
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">PnL</th>
-                            <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 15%;">Target</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {open_rows}
-                    </tbody>
-                </table>
-            </div>
-            """
-        else:
-            # Premium but no exchange linked
-            content = """
-            <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 20px;">
-                <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">⚠️ LINK YOUR CRYPTO EXCHANGE</h3>
-                <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 20px 0; line-height: 1.6;">
-                    You have active Premium Access, but you haven't linked your crypto API keys. Link your Blofin or Bitget exchange keys to enable 100% automated execution for crypto signals.
-                </p>
-                <a href="https://bot.metaversesherpa.io/#/settings" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Link Exchange API Keys</a>
-            </div>
-            """
-    else:
-        # Free User - show hypothetical growth
-        hypo_balance = hypothetical_data.get("current_balance", 1000.0)
-        hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
-        hypo_growth = ((hypo_balance - 1000.0) / 1000.0) * 100
-        
-        content = f"""
-        <div style="background-color: #1a1b24; border-radius: 8px; border: 1px solid #2a3546; padding: 20px; margin-bottom: 25px; text-align: center;">
-            <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">📈 Hypothetical Sherpa Simulator Performance</div>
-            <div style="font-size: 28px; font-weight: bold; color: #00C853; margin-bottom: 5px;">{hypo_growth:+.2f}% Growth</div>
-            <div style="font-size: 14px; color: #FFFFFF; line-height: 1.5;">
-                Simulated balance is now <b>${hypo_balance:,.2f} USDT</b> (started from $1,000 base).
-            </div>
-        </div>
-        
-        <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 20px;">
-            <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">🏔️ Compete in the Real Arena</h3>
-            <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 20px 0; line-height: 1.6;">
-                Standard Tier users missed out on compounding growth this week. Premium Autopilot handles all entry sizing, TP targets, and SL safety ropes across stock and crypto baskets without you lifting a finger.
-            </p>
-            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Go Premium Autopilot</a>
-        </div>
-        """
-
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="color-scheme" content="light dark">
-        <title>Weekly Crypto Audit</title>
-        <style>
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                background-color: {color_bg};
-                color: #FFFFFF;
-                margin: 0;
-                padding: 0;
-            }}
-        </style>
-    </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
-        <div style="background-color: {color_bg}; padding: 20px 10px; min-height: 100%;">
-            <div style="max-width: 600px; margin: 20px auto; background-color: {color_card}; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 12px; overflow: hidden; color: #FFFFFF;">
-                {header_section}
-                <div style="padding: 30px;">
-                    {content}
-                </div>
-                <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
-                    🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
-                    <br><br>
-                    <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-
-

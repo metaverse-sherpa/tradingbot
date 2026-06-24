@@ -33,10 +33,8 @@ from bot.engines import (
     alpaca_equities_engine,
     alpaca_fractional_monitor_engine,
     premium_expiration_engine,
-    daily_stock_email_engine,
-    daily_crypto_email_engine,
-    weekly_stock_email_engine,
-    weekly_crypto_email_engine,
+    daily_combined_email_engine,
+    weekly_combined_email_engine,
     theory_trades_resolution_engine
 )
 from bot.handlers.system import error_handler
@@ -108,16 +106,14 @@ async def post_init(application):
     task3 = asyncio.create_task(alpaca_equities_engine(application))
     task4 = asyncio.create_task(alpaca_fractional_monitor_engine(application))
     task5 = asyncio.create_task(premium_expiration_engine(application))
-    task6_1 = asyncio.create_task(daily_stock_email_engine(application))
-    task6_2 = asyncio.create_task(daily_crypto_email_engine(application))
-    task6_3 = asyncio.create_task(weekly_stock_email_engine(application))
-    task6_4 = asyncio.create_task(weekly_crypto_email_engine(application))
+    task6_1 = asyncio.create_task(daily_combined_email_engine(application))
+    task6_2 = asyncio.create_task(weekly_combined_email_engine(application))
     task7 = asyncio.create_task(theory_trades_resolution_engine(application))
     
     # Store references to prevent garbage collection
     application.bot_data["bg_tasks"] = [
         task1, task2, task3, task4, task5,
-        task6_1, task6_2, task6_3, task6_4,
+        task6_1, task6_2,
         task7
     ]
 

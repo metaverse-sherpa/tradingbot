@@ -303,42 +303,49 @@ async def fetch_premium_open_trades(tg_user, asset_class):
                 
     return open_positions
 
-async def daily_stock_email_engine(application):
+
+async def daily_combined_email_engine(application):
     """
-    Daily loop to compile and email daily summaries of stock trading signals
-    to users who have selected 'daily' frequency.
+    Daily loop to compile and email daily summaries of stock and crypto trading signals.
     Runs once a day at 18:00 (6:00 PM) EST.
     Also handles recording daily portfolio snapshots.
     """
     import utils_gcp
-    logger.info("⏳ Starting Daily Stock Email Engine...")
+    logger.info("⏳ Starting Daily Combined Email Engine...")
     
     while True:
         try:
             tz = ZoneInfo('US/Eastern')
             now = datetime.now(tz)
+            # Find next target: 18:00 EST Monday through Thursday
             target = now.replace(hour=18, minute=0, second=0, microsecond=0)
             if now >= target:
                 target += timedelta(days=1)
+            # If target falls on Friday (4), Saturday (5), or Sunday (6), advance to Monday (0)
+            while target.weekday() > 3:
+                target += timedelta(days=1)
                 
             wait_time = (target - now).total_seconds()
-            logger.info(f"Daily Stock Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            logger.info(f"Daily Combined Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             await asyncio.sleep(wait_time)
             
-            logger.info("📧 Compiling daily stock signals summary...")
+            logger.info("📧 Compiling daily combined signals summary...")
             now_ms = int(time.time() * 1000)
-            since_ms = now_ms - (24 * 60 * 60 * 1000)
+            # If it's Monday, we want to look back 4 days (to Thursday 18:00) to capture weekend closures
+            days_back = 4 if now.weekday() == 0 else 1
+            since_ms = now_ms - (days_back * 24 * 60 * 60 * 1000)
             
             with database.db_session() as conn:
                 conn.row_factory = sqlite3.Row
                 c = conn.cursor()
-                c.execute("SELECT * FROM TheoreticalTrades WHERE open_time >= ? OR (close_time >= ? AND status != 'open')", (since_ms, since_ms))
+                c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' OR (close_time >= ? AND status != 'open')", (since_ms,))
                 rows = c.fetchall()
             
             signals = [dict(r) for r in rows]
             stock_signals = [s for s in signals if is_stock(s['symbol'])]
+            crypto_signals = [s for s in signals if not is_stock(s['symbol'])]
             
-            # 1. Capture snapshots first
+            # --- PORTFOLIO SNAPSHOTS ---
             from web_api.db_web import get_users_for_daily_processing
             daily_users = get_users_for_daily_processing()
             for ru in daily_users:
@@ -358,7 +365,6 @@ async def daily_stock_email_engine(application):
                         
                         crypto_equity = 0.0
                         if crypto_linked:
-                            # Simple estimate from DB
                             crypto_equity = tg_user.get("equity", 1000.0) or 1000.0
                             
                         stock_equity = 0.0
@@ -388,40 +394,39 @@ async def daily_stock_email_engine(application):
                             except Exception as db_err:
                                 logger.error(f"Error saving portfolio balance history: {db_err}")
 
-            if not stock_signals:
-                logger.info("No stock trading signals to summarize. Skipping daily stock emails.")
+            if not stock_signals and not crypto_signals:
+                logger.info("No trading signals to summarize. Skipping daily emails.")
                 await asyncio.sleep(60)
                 continue
                 
-            signals_opened = [s for s in stock_signals if (s.get('open_time') or 0) >= since_ms]
-            signals_closed = [s for s in stock_signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
-            
-            open_symbols = list(set([s['symbol'] for s in signals_opened if s['status'] == 'open']))
-            live_prices = {}
-            if open_symbols:
+            # --- PROCESS STOCK SIGNALS ---
+            stock_opened = [s for s in stock_signals if s['status'] == 'open']
+            stock_closed = [s for s in stock_signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
+            stock_open_symbols = list(set([s['symbol'] for s in stock_opened]))
+            live_prices_stock = {}
+            if stock_open_symbols:
                 try:
                     alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY") or os.getenv("ALPACA_API_KEY")
                     alpaca_secret = utils_gcp.get_secret("ALPACA_API_SECRET") or os.getenv("ALPACA_API_SECRET")
                     if alpaca_key and alpaca_secret:
                         headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
-                        sym_str = ",".join(open_symbols)
+                        sym_str = ",".join(stock_open_symbols)
                         resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
                         if resp.status_code == 200:
                             for sym, snapshot in resp.json().items():
-                                live_prices[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
+                                live_prices_stock[sym] = snapshot.get('latestTrade', {}).get('p', 0.0)
                 except Exception as pe:
-                    logger.error(f"Error fetching stock prices for daily stock digest: {pe}")
+                    logger.error(f"Error fetching stock prices for daily digest: {pe}")
 
-            for s in signals_opened:
+            for s in stock_opened:
                 if s['status'] != 'open':
                     s['current_pnl_pct'] = s.get('pnl_pct', 0.0)
                     s['target_tp_pct'] = 0.0
                     continue
-
                 sym = s['symbol']
                 entry_price = s['entry_price']
                 tp_price = s.get('tp_price') or 0.0
-                curr_price = live_prices.get(sym, entry_price)
+                curr_price = live_prices_stock.get(sym, entry_price)
                 is_long = s['side'].upper() in ['BUY', 'LONG']
                 if entry_price > 0:
                     if is_long:
@@ -436,88 +441,28 @@ async def daily_stock_email_engine(application):
                 s['current_pnl_pct'] = pnl
                 s['target_tp_pct'] = tp
 
-            from web_api.email_service import send_alert_email, get_daily_stock_summary_html
-            daily_stock_users = [ru for ru in daily_users if ru.get("wants_daily_email")]
-            if daily_stock_users:
-                subject = f"🏔️ Metaverse Sherpa Stock Session Summary - {datetime.now(tz).strftime('%Y-%m-%d')}"
-                for ru in daily_stock_users:
-                    if ru.get("email"):
-                        is_prem = ru.get("is_premium_user", False)
-                        html_content = get_daily_stock_summary_html(signals_opened, signals_closed, is_premium=is_prem)
-                        send_alert_email(ru["email"], subject, html_content)
-                logger.info(f"✅ Daily Stock summary emails dispatched to {len(daily_stock_users)} subscribers.")
+            # --- PROCESS CRYPTO SIGNALS ---
+            for s in crypto_signals:
+                if s['status'] != 'open' and (s.get('close_time') or 0) >= since_ms:
+                    s['pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
             
-            await asyncio.sleep(60)
-            
-        except asyncio.CancelledError:
-            logger.info("⏳ Daily Stock Email Engine cancelled.")
-            break
-        except Exception as e:
-            logger.error(f"⏳ Daily Stock Email Engine error: {e}")
-            try:
-                from utils_error import send_telegram_alert
-                send_telegram_alert("Engine Error (Daily Stock Email Summary Loop)", e)
-            except: pass
-            await asyncio.sleep(3600)
-
-async def daily_crypto_email_engine(application):
-    """
-    Daily loop to compile and email daily summaries of crypto trading signals
-    to users who have selected 'daily' frequency.
-    Runs once a day at 8:00 AM London time (Europe/London).
-    """
-    logger.info("⏳ Starting Daily Crypto Email Engine...")
-    
-    while True:
-        try:
-            tz = ZoneInfo('Europe/London')
-            now = datetime.now(tz)
-            target = now.replace(hour=8, minute=0, second=0, microsecond=0)
-            if now >= target:
-                target += timedelta(days=1)
-                
-            wait_time = (target - now).total_seconds()
-            logger.info(f"Daily Crypto Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
-            await asyncio.sleep(wait_time)
-            
-            logger.info("📧 Compiling daily crypto signals summary...")
-            now_ms = int(time.time() * 1000)
-            since_ms = now_ms - (24 * 60 * 60 * 1000)
-            
-            with database.db_session() as conn:
-                conn.row_factory = sqlite3.Row
-                c = conn.cursor()
-                c.execute("SELECT * FROM TheoreticalTrades WHERE open_time >= ? OR (close_time >= ? AND status != 'open')", (since_ms, since_ms))
-                rows = c.fetchall()
-            
-            signals = [dict(r) for r in rows]
-            crypto_signals = [s for s in signals if not is_stock(s['symbol'])]
-            
-            if not crypto_signals:
-                logger.info("No crypto trading signals to summarize. Skipping daily crypto emails.")
-                await asyncio.sleep(60)
-                continue
-                
-            signals_opened = [s for s in crypto_signals if (s.get('open_time') or 0) >= since_ms]
-            signals_closed = [s for s in crypto_signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
-            for s in signals_closed:
-                s['pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
-            
-            open_symbols = list(set([s['symbol'] for s in signals_opened if s['status'] == 'open']))
-            live_prices = {}
-            if open_symbols:
+            crypto_opened = [s for s in crypto_signals if s['status'] == 'open']
+            crypto_closed = [s for s in crypto_signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
+            crypto_open_symbols = list(set([s['symbol'] for s in crypto_opened]))
+            live_prices_crypto = {}
+            if crypto_open_symbols:
                 try:
                     r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
                     if r.status_code != 200:
                         r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
                     if r.status_code == 200:
                         binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
-                        for sym in open_symbols:
+                        for sym in crypto_open_symbols:
                             clean = sym.split(':')[0].replace('/', '')
                             if clean in binance_prices:
-                                live_prices[sym] = binance_prices[clean]
+                                live_prices_crypto[sym] = binance_prices[clean]
                     
-                    remaining_crypto = [sym for sym in open_symbols if sym not in live_prices]
+                    remaining_crypto = [sym for sym in crypto_open_symbols if sym not in live_prices_crypto]
                     if remaining_crypto:
                         resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
                         if resp.status_code == 200:
@@ -526,20 +471,19 @@ async def daily_crypto_email_engine(application):
                             for sym in remaining_crypto:
                                 clean_sym = sym.split(':')[0].replace('/', '-')
                                 if clean_sym in price_map:
-                                    live_prices[sym] = price_map[clean_sym]
+                                    live_prices_crypto[sym] = price_map[clean_sym]
                 except Exception as pe:
-                    logger.error(f"Error fetching crypto prices for daily crypto digest: {pe}")
+                    logger.error(f"Error fetching crypto prices for daily digest: {pe}")
 
-            for s in signals_opened:
+            for s in crypto_opened:
                 if s['status'] != 'open':
                     s['current_pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
                     s['target_tp_pct'] = 0.0
                     continue
-
                 sym = s['symbol']
                 entry_price = s['entry_price']
                 tp_price = s.get('tp_price') or 0.0
-                curr_price = live_prices.get(sym, entry_price)
+                curr_price = live_prices_crypto.get(sym, entry_price)
                 is_long = s['side'].upper() in ['BUY', 'LONG']
                 if entry_price > 0:
                     if is_long:
@@ -557,39 +501,40 @@ async def daily_crypto_email_engine(application):
                 s['current_pnl_pct'] = pnl
                 s['target_tp_pct'] = tp
 
-            from web_api.db_web import get_users_for_daily_processing
-            from web_api.email_service import send_alert_email, get_daily_crypto_summary_html
-            daily_users = get_users_for_daily_processing()
-            daily_crypto_users = [ru for ru in daily_users if ru.get("wants_daily_email")]
-            
-            if daily_crypto_users:
-                subject = f"🏔️ Metaverse Sherpa Crypto Daily Summary - {datetime.now(tz).strftime('%Y-%m-%d')}"
-                for ru in daily_crypto_users:
+            from web_api.email_service import send_alert_email, get_combined_daily_summary_html
+            daily_mail_users = [ru for ru in daily_users if ru.get("wants_daily_email")]
+            if daily_mail_users:
+                subject = f"🏔️ Metaverse Sherpa Daily Digest - {datetime.now(tz).strftime('%Y-%m-%d')}"
+                for ru in daily_mail_users:
                     if ru.get("email"):
                         is_prem = ru.get("is_premium_user", False)
-                        html_content = get_daily_crypto_summary_html(signals_opened, signals_closed, is_premium=is_prem)
+                        html_content = get_combined_daily_summary_html(
+                            stock_opened, stock_closed, 
+                            crypto_opened, crypto_closed, 
+                            is_premium=is_prem
+                        )
                         send_alert_email(ru["email"], subject, html_content)
-                logger.info(f"✅ Daily Crypto summary emails dispatched to {len(daily_crypto_users)} subscribers.")
+                logger.info(f"✅ Daily combined summary emails dispatched to {len(daily_mail_users)} subscribers.")
             
             await asyncio.sleep(60)
             
         except asyncio.CancelledError:
-            logger.info("⏳ Daily Crypto Email Engine cancelled.")
+            logger.info("⏳ Daily Combined Email Engine cancelled.")
             break
         except Exception as e:
-            logger.error(f"⏳ Daily Crypto Email Engine error: {e}")
+            logger.error(f"⏳ Daily Combined Email Engine error: {e}")
             try:
                 from utils_error import send_telegram_alert
-                send_telegram_alert("Engine Error (Daily Crypto Email Summary Loop)", e)
+                send_telegram_alert("Engine Error (Daily Combined Email Summary Loop)", e)
             except: pass
             await asyncio.sleep(3600)
 
-async def weekly_stock_email_engine(application):
+async def weekly_combined_email_engine(application):
     """
-    Weekly loop to compile and email weekly stock audits to all users.
+    Weekly loop to compile and email weekly combined audits to all users.
     Runs on Fridays at 18:00 (6:00 PM) EST.
     """
-    logger.info("⏳ Starting Weekly Stock Email Engine...")
+    logger.info("⏳ Starting Weekly Combined Email Engine...")
     
     while True:
         try:
@@ -602,120 +547,64 @@ async def weekly_stock_email_engine(application):
                 days_ahead += 7
             target = (now + timedelta(days=days_ahead)).replace(hour=18, minute=0, second=0, microsecond=0)
             wait_time = (target - now).total_seconds()
-            logger.info(f"Weekly Stock Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            logger.info(f"Weekly Combined Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             await asyncio.sleep(wait_time)
             
-            logger.info("📧 Compiling weekly stock audits...")
+            logger.info("📧 Compiling weekly combined audits...")
             from web_api.db_web import get_users_for_weekly_processing
-            from web_api.email_service import send_alert_email, get_weekly_stock_summary_html
+            from web_api.email_service import send_alert_email, get_combined_weekly_summary_html
             
             weekly_users = get_users_for_weekly_processing()
-            hypothetical_data = database.get_theoretical_stats()
+            stock_hypothetical_data = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
+            crypto_hypothetical_data = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
             
             for ru in weekly_users:
                 is_prem = ru.get("is_premium_user", False)
-                has_exch = ru.get("has_stock_exchange", False)
-                portfolio_data = None
-                open_trades = None
+                has_stock_exch = ru.get("has_stock_exchange", False)
+                has_crypto_exch = ru.get("has_crypto_exchange", False)
                 
-                if is_prem and has_exch:
+                stock_portfolio_data = None
+                stock_open_trades = None
+                crypto_portfolio_data = None
+                crypto_open_trades = None
+                
+                if is_prem:
                     from database import get_user
                     tg_id = ru.get('telegram_chat_id')
                     tg_user = get_user(tg_id) if tg_id else None
                     if tg_user:
-                        portfolio_data = await fetch_weekly_stock_stats(tg_user)
-                        open_trades = await fetch_premium_open_trades(tg_user, "stock")
+                        if has_stock_exch:
+                            stock_portfolio_data = await fetch_weekly_stock_stats(tg_user)
+                            stock_open_trades = await fetch_premium_open_trades(tg_user, "stock")
+                        if has_crypto_exch:
+                            crypto_portfolio_data = await fetch_premium_crypto_stats(tg_user)
+                            crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto")
                         
                 if ru.get("email"):
-                    subject = f"🏔️ Metaverse Sherpa Weekly Stock Performance Audit - {datetime.now(tz).strftime('%Y-%m-%d')}"
-                    html_content = get_weekly_stock_summary_html(
+                    subject = f"🏔️ Metaverse Sherpa Weekly Audit - {datetime.now(tz).strftime('%Y-%m-%d')}"
+                    html_content = get_combined_weekly_summary_html(
                         is_premium=is_prem,
-                        has_exchange=has_exch,
-                        portfolio_data=portfolio_data,
-                        open_trades=open_trades,
-                        hypothetical_data=hypothetical_data
+                        has_stock_exchange=has_stock_exch,
+                        stock_portfolio_data=stock_portfolio_data,
+                        stock_open_trades=stock_open_trades,
+                        stock_hypothetical_data=stock_hypothetical_data,
+                        has_crypto_exchange=has_crypto_exch,
+                        crypto_portfolio_data=crypto_portfolio_data,
+                        crypto_open_trades=crypto_open_trades,
+                        crypto_hypothetical_data=crypto_hypothetical_data
                     )
                     send_alert_email(ru["email"], subject, html_content)
                     
-            logger.info(f"✅ Weekly Stock summary emails dispatched to {len(weekly_users)} subscribers.")
+            logger.info(f"✅ Weekly combined summary emails dispatched to {len(weekly_users)} subscribers.")
             await asyncio.sleep(60)
             
         except asyncio.CancelledError:
-            logger.info("⏳ Weekly Stock Email Engine cancelled.")
+            logger.info("⏳ Weekly Combined Email Engine cancelled.")
             break
         except Exception as e:
-            logger.error(f"⏳ Weekly Stock Email Engine error: {e}")
+            logger.error(f"⏳ Weekly Combined Email Engine error: {e}")
             try:
                 from utils_error import send_telegram_alert
-                send_telegram_alert("Engine Error (Weekly Stock Email Audit Loop)", e)
+                send_telegram_alert("Engine Error (Weekly Combined Email Audit Loop)", e)
             except: pass
             await asyncio.sleep(3600)
-
-async def weekly_crypto_email_engine(application):
-    """
-    Weekly loop to compile and email weekly crypto audits to all users.
-    Runs on Fridays at 18:30 (6:30 PM) EST.
-    This runs 30 minutes after the stock weekly audit to avoid server overload.
-    """
-    logger.info("⏳ Starting Weekly Crypto Email Engine...")
-    
-    while True:
-        try:
-            tz = ZoneInfo('US/Eastern')
-            now = datetime.now(tz)
-            
-            # Find next Friday 18:30 EST
-            days_ahead = 4 - now.weekday()
-            if days_ahead < 0 or (days_ahead == 0 and (now.hour > 18 or (now.hour == 18 and now.minute >= 30))):
-                days_ahead += 7
-            target = (now + timedelta(days=days_ahead)).replace(hour=18, minute=30, second=0, microsecond=0)
-            wait_time = (target - now).total_seconds()
-            logger.info(f"Weekly Crypto Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
-            await asyncio.sleep(wait_time)
-            
-            logger.info("📧 Compiling weekly crypto audits...")
-            from web_api.db_web import get_users_for_weekly_processing
-            from web_api.email_service import send_alert_email, get_weekly_crypto_summary_html
-            
-            weekly_users = get_users_for_weekly_processing()
-            hypothetical_data = database.get_theoretical_stats()
-            
-            for ru in weekly_users:
-                is_prem = ru.get("is_premium_user", False)
-                has_exch = ru.get("has_crypto_exchange", False)
-                portfolio_data = None
-                open_trades = None
-                
-                if is_prem and has_exch:
-                    from database import get_user
-                    tg_id = ru.get('telegram_chat_id')
-                    tg_user = get_user(tg_id) if tg_id else None
-                    if tg_user:
-                        portfolio_data = await fetch_premium_crypto_stats(tg_user)
-                        open_trades = await fetch_premium_open_trades(tg_user, "crypto")
-                        
-                if ru.get("email"):
-                    subject = f"🏔️ Metaverse Sherpa Weekly Crypto Performance Audit - {datetime.now(tz).strftime('%Y-%m-%d')}"
-                    html_content = get_weekly_crypto_summary_html(
-                        is_premium=is_prem,
-                        has_exchange=has_exch,
-                        portfolio_data=portfolio_data,
-                        open_trades=open_trades,
-                        hypothetical_data=hypothetical_data
-                    )
-                    send_alert_email(ru["email"], subject, html_content)
-                    
-            logger.info(f"✅ Weekly Crypto summary emails dispatched to {len(weekly_users)} subscribers.")
-            await asyncio.sleep(60)
-            
-        except asyncio.CancelledError:
-            logger.info("⏳ Weekly Crypto Email Engine cancelled.")
-            break
-        except Exception as e:
-            logger.error(f"⏳ Weekly Crypto Email Engine error: {e}")
-            try:
-                from utils_error import send_telegram_alert
-                send_telegram_alert("Engine Error (Weekly Crypto Email Audit Loop)", e)
-            except: pass
-            await asyncio.sleep(3600)
-    await asyncio.sleep(3600)
