@@ -3183,7 +3183,14 @@ function renderTradesView() {
                             <span class="material-symbols-outlined text-primary text-[18px] sm:text-[20px] cursor-pointer">refresh</span>
                         </button>
                         ` : ''}
-                    ` : `<span>🦙</span> Stocks (${stockCount})`}
+                    ` : `
+                        <span>🦙</span> Stocks (${stockCount})
+                        ${tradesMode === 'closed' ? `
+                        <button onclick="window.refreshTradesHistory()" class="p-1 hover:bg-white/10 rounded-full transition-colors active:scale-95 flex items-center justify-center inline-flex align-middle" title="Force Refresh History (bypass cache)">
+                            <span class="material-symbols-outlined text-primary text-[18px] sm:text-[20px] cursor-pointer">refresh</span>
+                        </button>
+                        ` : ''}
+                    `}
                 </h3>
                 ${cryptoCount > 0 ? cryptoHtml : stockHtml}
             </div>
@@ -3212,6 +3219,11 @@ function renderTradesView() {
                 <div>
                     <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center justify-center gap-2">
                         <span>🦙</span> Stocks (${stockCount})
+                        ${tradesMode === 'closed' ? `
+                        <button onclick="window.refreshTradesHistory()" class="p-1 hover:bg-white/10 rounded-full transition-colors active:scale-95 flex items-center justify-center inline-flex align-middle" title="Force Refresh History (bypass cache)">
+                            <span class="material-symbols-outlined text-primary text-[20px] cursor-pointer">refresh</span>
+                        </button>
+                        ` : ''}
                     </h3>
                     <div class="space-y-stack-gap">
                         ${stockHtml}
