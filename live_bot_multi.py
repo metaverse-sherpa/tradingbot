@@ -314,8 +314,12 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         order_side = "buy" if signal["side"] == "buy" else "sell"
         if exchange.id == 'coinbase':
             params = {
-                "stopLossPrice": sl,
-                "takeProfitPrice": tp
+                "attached_order_configuration": {
+                    "trigger_bracket_gtc": {
+                        "limit_price": exchange.price_to_precision(symbol, tp),
+                        "stop_trigger_price": exchange.price_to_precision(symbol, sl)
+                    }
+                }
             }
         else:
             params = {

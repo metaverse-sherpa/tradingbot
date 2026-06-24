@@ -1959,13 +1959,23 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
             if qty < market['limits']['amount']['min']:
                 return False, f"⚠️ Your position size ({qty}) is below the exchange minimum for {sym}."
                 
-            params = {
-                "marginMode": margin_mode,
-                "takeProfit": {"triggerPrice": tp_price},
-                "stopLoss": {"triggerPrice": sl_price}
-            }
-            if ex_id == 'bitget':
-                params['tdMode'] = 'isolated'
+            if ex_id == 'coinbase':
+                params = {
+                    "attached_order_configuration": {
+                        "trigger_bracket_gtc": {
+                            "limit_price": exchange.price_to_precision(sym, tp_price),
+                            "stop_trigger_price": exchange.price_to_precision(sym, sl_price)
+                        }
+                    }
+                }
+            else:
+                params = {
+                    "marginMode": margin_mode,
+                    "takeProfit": {"triggerPrice": tp_price},
+                    "stopLoss": {"triggerPrice": sl_price}
+                }
+                if ex_id == 'bitget':
+                    params['tdMode'] = 'isolated'
                 
             await exchange.create_order(sym, "market", exec_side, qty, params=params)
                 
