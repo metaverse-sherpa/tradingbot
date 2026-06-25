@@ -4,7 +4,7 @@
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
-    "max_active_browsers": 4,
+    "max_active_browsers": 12,
     "routes": [
         {
             "action": "navigate",
@@ -36,39 +36,39 @@
         },
         {
             "action": "click",
-            "disabled": false,
+            "disabled": true,
             "screenshot": true,
             "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')"
         },
         {
             "action": "wait_for_selector",
-            "disabled": false,
+            "disabled": true,
             "screenshot": true,
             "selector": "img[alt='Equity Curve']",
             "timeout": 60000
         },
         {
             "action": "navigate",
-            "disabled": false,
+            "disabled": true,
             "path": "/#/stats",
             "screenshot": true
         },
         {
             "action": "click",
-            "disabled": false,
+            "disabled": true,
             "screenshot": true,
             "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')"
         },
         {
             "action": "wait_for_selector",
-            "disabled": false,
+            "disabled": true,
             "screenshot": true,
             "selector": "img[alt='Equity Curve']",
             "timeout": 60000
         },
         {
-            "path": "/#/settings",
             "action": "navigate",
+            "path": "/#/settings",
             "screenshot": true
         }
     ]

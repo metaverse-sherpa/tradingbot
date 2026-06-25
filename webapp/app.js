@@ -373,7 +373,7 @@ window.forceRefreshSegment = function(segment) {
     
     updateViewIfOnDashboard();
     
-    const balancePromise = apiRequest(`/user/balance?segment=${segment}&bypass_cache=true`)
+    const balancePromise = apiRequest(`/user/balance?segment=${segment}`)
         .then(bal => {
             if (bal) {
                 if (segment === 'crypto') {
@@ -387,7 +387,7 @@ window.forceRefreshSegment = function(segment) {
             console.error(`Failed to refresh balance for ${segment}:`, err);
         });
         
-    const statsPromise = apiRequest(`/user/stats?segment=${segment}&bypass_cache=true`)
+    const statsPromise = apiRequest(`/user/stats?segment=${segment}`)
         .then(stats => {
             if (stats && stats[segment]) {
                 if (!STATE.stats) STATE.stats = {};
@@ -402,7 +402,7 @@ window.forceRefreshSegment = function(segment) {
             console.error(`Failed to refresh stats for ${segment}:`, err);
         });
         
-    const openTradesPromise = apiRequest(`/trades/open?segment=${segment}&bypass_cache=true`)
+    const openTradesPromise = apiRequest(`/trades/open?segment=${segment}`)
         .then(open => {
             if (open) {
                 STATE.open_trades = STATE.open_trades.filter(t => t.type !== segment).concat(open);
@@ -423,8 +423,8 @@ window.forceRefreshSegment = function(segment) {
 };
 
 window.refreshTradesHistory = function() {
-    showToast("Refreshing closed trade history (bypassing cache)...", "info");
-    apiRequest('/trades/history?bypass_cache=true')
+    showToast("Refreshing closed trade history...", "info");
+    apiRequest('/trades/history')
         .then(hist => {
             if (hist) {
                 STATE.history = hist;
