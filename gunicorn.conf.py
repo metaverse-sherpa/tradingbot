@@ -5,9 +5,9 @@ import multiprocessing
 bind = "127.0.0.1:5001"
 
 # Worker configuration (scaled down for small VPS memory footprint)
-workers = 2
+workers = 3
 worker_class = "gthread"
-threads = 4
+threads = 10
 
 # Timeout settings (seconds)
 # Max time a worker is allowed to process a single request before Gunicorn restarts it.

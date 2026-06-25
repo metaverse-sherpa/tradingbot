@@ -74,16 +74,35 @@ const ZKCrypto = {
     },
 
     async generateRSAKeyPair() {
-        return window.crypto.subtle.generateKey(
-            {
-                name: "RSA-OAEP",
-                modulusLength: 2048,
-                publicExponent: new Uint8Array([1, 0, 1]),
-                hash: "SHA-256"
-            },
-            true,
-            ["encrypt", "decrypt"]
-        );
+        return new Promise((resolve, reject) => {
+            const workerCode = `
+                self.onmessage = async function() {
+                    try {
+                        const keypair = await crypto.subtle.generateKey(
+                            {
+                                name: "RSA-OAEP",
+                                modulusLength: 2048,
+                                publicExponent: new Uint8Array([1, 0, 1]),
+                                hash: "SHA-256"
+                            },
+                            true,
+                            ["encrypt", "decrypt"]
+                        );
+                        self.postMessage(keypair);
+                    } catch (e) {
+                        self.postMessage({ error: e.toString() });
+                    }
+                };
+            `;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const worker = new Worker(URL.createObjectURL(blob));
+            worker.onmessage = function(e) {
+                if (e.data.error) reject(new Error(e.data.error));
+                else resolve(e.data);
+                worker.terminate();
+            };
+            worker.postMessage('start');
+        });
     },
 
     async exportPublicKeyPEM(publicKey) {
