@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, g
 import database
-from web_api.auth import require_auth
+from web_api.auth import require_auth, require_premium
 from web_api.db_web import (
     update_web_user_keys,
     update_web_user_alpaca_keys,
