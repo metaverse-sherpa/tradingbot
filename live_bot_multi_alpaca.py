@@ -789,6 +789,10 @@ async def main():
         update_stock_daily_cache()
     except Exception as e:
         logger.error(f"Error updating stock cache: {e}")
+        try:
+            from utils_error import send_telegram_alert
+            send_telegram_alert("Stock Trading Engine (Cache Update)", e)
+        except: pass
         
     # 3. Fetch today's real-time open prices (or fallbacks)
     today_opens = fetch_today_open_prices()
@@ -798,12 +802,20 @@ async def main():
         await run_theoretical_tally_engine(today_opens)
     except Exception as e:
         logger.error(f"Error running theoretical engine: {e}")
+        try:
+            from utils_error import send_telegram_alert
+            send_telegram_alert("Stock Trading Engine (Theoretical Tally)", e)
+        except: pass
         
     # 5. Run real user execution
     try:
         await run_real_trader_execution(today_opens)
     except Exception as e:
         logger.error(f"Error running real trader execution: {e}")
+        try:
+            from utils_error import send_telegram_alert
+            send_telegram_alert("Stock Trading Engine (Real Execution)", e)
+        except: pass
         
     logger.info("Daily stock swing execution completed successfully!")
 
