@@ -74,35 +74,15 @@ const ZKCrypto = {
     },
 
     async generateRSAKeyPair() {
-        return new Promise((resolve, reject) => {
-            const workerCode = `
-                self.onmessage = async function() {
-                    try {
-                        const keypair = await crypto.subtle.generateKey(
-                            {
-                                name: "RSA-OAEP",
-                                modulusLength: 2048,
-                                publicExponent: new Uint8Array([1, 0, 1]),
-                                hash: "SHA-256"
-                            },
-                            true,
-                            ["encrypt", "decrypt"]
-                        );
-                        self.postMessage(keypair);
-                    } catch (e) {
-                        self.postMessage({ error: e.toString() });
-                    }
-                };
-            `;
-            const blob = new Blob([workerCode], { type: 'application/javascript' });
-            const worker = new Worker(URL.createObjectURL(blob));
-            worker.onmessage = function(e) {
-                if (e.data.error) reject(new Error(e.data.error));
-                else resolve(e.data);
-                worker.terminate();
-            };
-            worker.postMessage('start');
-        });
+        // Generates ECDH P-256 key pair instead of RSA for high performance
+        return window.crypto.subtle.generateKey(
+            {
+                name: "ECDH",
+                namedCurve: "P-256"
+            },
+            true,
+            ["deriveKey", "deriveBits"]
+        );
     },
 
     async exportPublicKeyPEM(publicKey) {
@@ -117,28 +97,106 @@ const ZKCrypto = {
     },
 
     async importPrivateKey(privateKeyJwk) {
-        return window.crypto.subtle.importKey(
-            "jwk",
-            privateKeyJwk,
-            { name: "RSA-OAEP", hash: "SHA-256" },
-            false,
-            ["decrypt"]
-        );
+        if (privateKeyJwk.kty === "RSA") {
+            return window.crypto.subtle.importKey(
+                "jwk",
+                privateKeyJwk,
+                { name: "RSA-OAEP", hash: "SHA-256" },
+                false,
+                ["decrypt"]
+            );
+        } else {
+            return window.crypto.subtle.importKey(
+                "jwk",
+                privateKeyJwk,
+                { name: "ECDH", namedCurve: "P-256" },
+                false,
+                ["deriveKey", "deriveBits"]
+            );
+        }
     },
 
-    async decryptRSA(encryptedBase64, rsaPrivateKey) {
-        const binary = atob(encryptedBase64);
-        const array = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-            array[i] = binary.charCodeAt(i);
+    async decryptRSA(encryptedBase64, privateKey) {
+        if (!encryptedBase64) return "";
+        
+        if (privateKey.algorithm.name === "RSA-OAEP") {
+            const binary = atob(encryptedBase64);
+            const array = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                array[i] = binary.charCodeAt(i);
+            }
+            const decrypted = await window.crypto.subtle.decrypt(
+                { name: "RSA-OAEP" },
+                privateKey,
+                array
+            );
+            const decoder = new TextDecoder();
+            return decoder.decode(decrypted);
+        } else {
+            // ECIES decryption: ECDH + HKDF + AES-GCM
+            const binary = atob(encryptedBase64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            
+            // Extract: Ephemeral Public Key (65 bytes), IV (12 bytes), Ciphertext (rest)
+            const ephemeralPubBytes = bytes.slice(0, 65);
+            const iv = bytes.slice(65, 77);
+            const ciphertext = bytes.slice(77);
+            
+            // Import ephemeral public key
+            const ephemeralPubKey = await window.crypto.subtle.importKey(
+                "raw",
+                ephemeralPubBytes,
+                { name: "ECDH", namedCurve: "P-256" },
+                true,
+                []
+            );
+            
+            // Key agreement to get shared secret bits
+            const rawSharedSecret = await window.crypto.subtle.deriveBits(
+                {
+                    name: "ECDH",
+                    public: ephemeralPubKey
+                },
+                privateKey,
+                256
+            );
+            
+            // Import secret bits for HKDF
+            const hkdfInputKey = await window.crypto.subtle.importKey(
+                "raw",
+                rawSharedSecret,
+                { name: "HKDF" },
+                false,
+                ["deriveKey"]
+            );
+            
+            // Derive AES-GCM symmetric key
+            const aesKey = await window.crypto.subtle.deriveKey(
+                {
+                    name: "HKDF",
+                    hash: "SHA-256",
+                    salt: new Uint8Array(0),
+                    info: new TextEncoder().encode("ecies-tradingbot-aes-gcm")
+                },
+                hkdfInputKey,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["decrypt"]
+            );
+            
+            // Decrypt the ciphertext
+            const decrypted = await window.crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: iv },
+                aesKey,
+                ciphertext
+            );
+            
+            const decoder = new TextDecoder();
+            return decoder.decode(decrypted);
         }
-        const decrypted = await window.crypto.subtle.decrypt(
-            { name: "RSA-OAEP" },
-            rsaPrivateKey,
-            array
-        );
-        const decoder = new TextDecoder();
-        return decoder.decode(decrypted);
     }
 };
 // Pre-generate a keypair immediately to avoid registration CPU bottlenecks

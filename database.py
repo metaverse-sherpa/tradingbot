@@ -415,15 +415,19 @@ def decrypt(data):
 def encrypt_with_public_key(public_key_pem: str, plaintext: str) -> str:
     """
     Encrypts plaintext using the user's public key (PEM/SPKI base64 format).
+    Supports both ECDH P-256 (ECIES) and RSA-2048 (OAEP) key types.
     Returns base64 encoded ciphertext.
     """
     if not public_key_pem or not plaintext:
         return ""
     try:
-        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives.asymmetric import padding, ec
         from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key, Encoding, PublicFormat
+        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         import base64
+        import os
 
         pem_data = public_key_pem.strip()
         if not pem_data.startswith("-----BEGIN PUBLIC KEY-----"):
@@ -434,15 +438,47 @@ def encrypt_with_public_key(public_key_pem: str, plaintext: str) -> str:
 
         pub_key = load_pem_public_key(pem_data.encode())
         
-        ciphertext = pub_key.encrypt(
-            plaintext.encode(),
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        if isinstance(pub_key, ec.EllipticCurvePublicKey):
+            # 1. Ephemeral keypair
+            ephemeral_priv = ec.generate_private_key(ec.SECP256R1())
+            ephemeral_pub = ephemeral_priv.public_key()
+            
+            # 2. Shared secret via ECDH
+            shared_secret = ephemeral_priv.exchange(ec.ECDH(), pub_key)
+            
+            # 3. HKDF key derivation
+            derived_key = HKDF(
                 algorithm=hashes.SHA256(),
-                label=None
+                length=32,
+                salt=None,
+                info=b"ecies-tradingbot-aes-gcm",
+            ).derive(shared_secret)
+            
+            # 4. AES-GCM Encryption
+            aesgcm = AESGCM(derived_key)
+            iv = os.urandom(12)
+            ciphertext = aesgcm.encrypt(iv, plaintext.encode(), None)
+            
+            # 5. Raw ephemeral public key (65 bytes)
+            ephemeral_pub_bytes = ephemeral_pub.public_bytes(
+                encoding=Encoding.X962,
+                format=PublicFormat.UncompressedPoint
             )
-        )
-        return base64.b64encode(ciphertext).decode('utf-8')
+            
+            # 6. Combined package
+            package = ephemeral_pub_bytes + iv + ciphertext
+            return base64.b64encode(package).decode('utf-8')
+        else:
+            # Fallback to RSA-OAEP
+            ciphertext = pub_key.encrypt(
+                plaintext.encode(),
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            return base64.b64encode(ciphertext).decode('utf-8')
     except Exception as e:
         print(f"Encryption error: {e}")
         return ""
