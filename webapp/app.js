@@ -4326,9 +4326,9 @@ function renderSettingsView() {
                 </p>
                 <div class="space-y-3">
                     ${STATE.user.developer_api_key ? `
-                        <div class="relative">
-                            <input type="text" readonly value="${STATE.user.developer_api_key}" id="dev-api-key-input" class="w-full bg-background border border-white/10 rounded-lg py-2.5 px-3 pr-10 text-xs text-on-surface focus:outline-none focus:border-primary/50 text-center tracking-widest font-mono" />
-                            <button onclick="copyDeveloperApiKey()" class="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors p-1" title="Copy to clipboard">
+                        <div class="relative flex w-full">
+                            <input type="text" readonly value="${STATE.user.developer_api_key}" id="dev-api-key-input" class="w-full min-w-0 bg-background border border-white/10 rounded-lg py-2.5 pl-3 pr-10 text-xs text-on-surface focus:outline-none focus:border-primary/50 text-center tracking-wider font-mono text-ellipsis" />
+                            <button onclick="copyDeveloperApiKey()" class="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors p-1 bg-background" title="Copy to clipboard">
                                 <span class="material-symbols-outlined text-sm">content_copy</span>
                             </button>
                         </div>
