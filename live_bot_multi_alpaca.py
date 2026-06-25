@@ -325,18 +325,20 @@ async def run_theoretical_tally_engine(today_opens):
                     pnl_pct = (pnl_raw / entry_price) * 100
                     pnl_usdt = position_size * (pnl_pct / 100)
                     
-                    c.execute("""
-                        UPDATE TheoreticalTrades 
-                        SET close_time = ?, status = 'dynamic_exit', pnl_raw = ?, pnl_pct = ?, pnl_usdt = ?
-                        WHERE id = ?
-                    """, (int(datetime.now().timestamp()), pnl_raw, pnl_pct, pnl_usdt, trade_id))
-                    
-                    c.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
-                    bal_row = c.fetchone()
-                    bal = float(bal_row[0]) if bal_row else 1000.0
-                    new_bal = bal + pnl_usdt
-                    c.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
-                    conn.commit()
+                    with database.db_session() as update_conn:
+                        uc = update_conn.cursor()
+                        uc.execute("""
+                            UPDATE TheoreticalTrades 
+                            SET close_time = ?, status = 'dynamic_exit', pnl_raw = ?, pnl_pct = ?, pnl_usdt = ?
+                            WHERE id = ?
+                        """, (int(datetime.now().timestamp()), pnl_raw, pnl_pct, pnl_usdt, trade_id))
+                        
+                        uc.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
+                        bal_row = uc.fetchone()
+                        bal = float(bal_row[0]) if bal_row else 1000.0
+                        new_bal = bal + pnl_usdt
+                        uc.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
+                        
                     logger.info(f"Theoretical Trade CLOSED (Dynamic Exit) for {sym}: PnL = {pnl_usdt:+.2f} USDT. New Balance: {new_bal:.2f}")
                     
                     # Broadcast dynamic exit to all targets
@@ -426,6 +428,7 @@ async def run_theoretical_tally_engine(today_opens):
                         "───────────────────────────────\n\n"
                         "Closed at: "
                     )
+                    placeholder = close_dt.strftime("%Y-%m-%d %H:%M UTC")
                     exit_msg = exit_text_before + placeholder
                     for target_id in all_targets:
                         await send_telegram_message(target_id, exit_msg)
