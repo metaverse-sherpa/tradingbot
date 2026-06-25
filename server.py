@@ -143,6 +143,11 @@ def get_config():
 def health():
     return jsonify({"status": "healthy", "timestamp": int(time.time())}), 200
 
+@app.after_request
+def add_security_headers(response):
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+    return response
+
 # ----------------- Global Error Handler -----------------
 @app.errorhandler(Exception)
 def handle_exception(e):

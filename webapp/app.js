@@ -165,7 +165,7 @@ async function setupZKKeys(email, password) {
                             console.log("🔒 Decrypted legacy keys and migrated encryption to stable Firebase UID.");
                             return;
                         } catch (legacyDecErr) {
-                            console.error("Legacy decryption also failed:", legacyDecErr);
+                            console.warn("Legacy decryption failed, will generate new keys if no other method works.");
                         }
                     }
                 }
@@ -189,7 +189,7 @@ async function setupZKKeys(email, password) {
                     console.log("🔒 Decrypted and loaded pre-existing ZK keys.");
                     return;
                 } catch (decErr) {
-                    console.error("Could not decrypt pre-existing private key:", decErr);
+                    console.warn("Could not decrypt pre-existing private key, generating a new one.");
                 }
             }
         }
