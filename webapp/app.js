@@ -737,7 +737,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     if (window.auth && auth.currentUser) {
         try {
             token = await auth.currentUser.getIdToken();
-            localStorage.setItem('session_token', token);
+            localStorage.setItem('session_token', token); document.cookie = "session_token=" + token + "; path=/; samesite=strict";
         } catch (e) {
             console.error("Failed to refresh Firebase token in apiRequest:", e);
         }
@@ -752,7 +752,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     try {
         const response = await fetch(url, options);
         if (response.status === 401) {
-            localStorage.removeItem('session_token');
+            localStorage.removeItem('session_token'); document.cookie = "session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
             if (window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/' && window.location.hash !== '#/help') {
                 // Unauthorized → redirect to landing
                 STATE.user = null;
@@ -929,7 +929,7 @@ async function handleGoogleCredentialResponse(response) {
         const userCredential = await auth.signInWithCredential(credential);
         const idToken = await userCredential.user.getIdToken();
         
-        localStorage.setItem('session_token', idToken);
+        localStorage.setItem('session_token', idToken); document.cookie = "session_token=" + idToken + "; path=/; samesite=strict";
         
         const referrer = localStorage.getItem('referred_by');
         const payload = {};
@@ -5551,12 +5551,12 @@ auth.onIdTokenChanged(async (user) => {
     if (user) {
         try {
             const idToken = await user.getIdToken();
-            localStorage.setItem('session_token', idToken);
+            localStorage.setItem('session_token', idToken); document.cookie = "session_token=" + idToken + "; path=/; samesite=strict";
         } catch (e) {
             console.error("Failed to store refreshed token:", e);
         }
     } else {
-        localStorage.removeItem('session_token');
+        localStorage.removeItem('session_token'); document.cookie = "session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     }
     
     if (!firebaseAuthInitialized) {
@@ -5579,7 +5579,7 @@ async function handleEmailLogin(e) {
         const idToken = await userCredential.user.getIdToken();
         
         // Save the Firebase ID token locally as our session token
-        localStorage.setItem('session_token', idToken);
+        localStorage.setItem('session_token', idToken); document.cookie = "session_token=" + idToken + "; path=/; samesite=strict";
         
         // Sync profile with backend (passes token in require_auth implicitly next)
         const profile = await apiRequest('/user/profile');
@@ -5627,7 +5627,7 @@ async function handleEmailRegister(e) {
         const idToken = await userCredential.user.getIdToken();
         
         // Store token
-        localStorage.setItem('session_token', idToken);
+        localStorage.setItem('session_token', idToken); document.cookie = "session_token=" + idToken + "; path=/; samesite=strict";
         
         // Sync profile and referrals in Postgres
         const payload = { full_name: name };
@@ -5672,7 +5672,7 @@ async function handleLogout() {
         await auth.signOut();
         await apiRequest('/auth/logout', 'POST');
     } catch (e) {}
-    localStorage.removeItem('session_token');
+    localStorage.removeItem('session_token'); document.cookie = "session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     sessionStorage.removeItem('zk_private_key_jwk');
     
     // Reset STATE to defaults
