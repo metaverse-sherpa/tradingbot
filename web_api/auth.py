@@ -72,4 +72,17 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-
+def require_premium(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user = getattr(g, 'user', None)
+        if not user:
+            return jsonify({"error": "Authentication required"}), 401
+            
+        now = int(time.time())
+        expiry = user.get('premium_expiry') or 0
+        if expiry <= now:
+            return jsonify({"error": "Premium subscription required to access this resource"}), 403
+            
+        return f(*args, **kwargs)
+    return decorated

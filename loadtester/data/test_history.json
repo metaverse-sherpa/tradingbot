@@ -1,31 +1,5 @@
 [
     {
-        "id": "run_1782383965",
-        "timestamp": 1782383965.171263,
-        "duration": 73.84,
-        "status": "idle",
-        "success_count": 12,
-        "failure_count": 0,
-        "latencies_count": 48,
-        "errors": [],
-        "screenshots_count": 48,
-        "peak_cpu": 33.6,
-        "peak_memory": 36.01
-    },
-    {
-        "id": "run_1782383965",
-        "timestamp": 1782383965.171263,
-        "duration": 73.84,
-        "status": "idle",
-        "success_count": 12,
-        "failure_count": 0,
-        "latencies_count": 48,
-        "errors": [],
-        "screenshots_count": 48,
-        "peak_cpu": 33.6,
-        "peak_memory": 36.01
-    },
-    {
         "id": "run_1782384338",
         "timestamp": 1782384338.878051,
         "duration": 38.37,
@@ -625,5 +599,31 @@
         "screenshots_count": 400,
         "peak_cpu": 70.7,
         "peak_memory": 36.24
+    },
+    {
+        "id": "run_1782386623",
+        "timestamp": 1782386623.028576,
+        "duration": 163.79,
+        "status": "idle",
+        "success_count": 15,
+        "failure_count": 0,
+        "latencies_count": 70,
+        "errors": [],
+        "screenshots_count": 60,
+        "peak_cpu": 86.7,
+        "peak_memory": 37.71
+    },
+    {
+        "id": "run_1782386623",
+        "timestamp": 1782386623.028576,
+        "duration": 163.79,
+        "status": "idle",
+        "success_count": 15,
+        "failure_count": 0,
+        "latencies_count": 70,
+        "errors": [],
+        "screenshots_count": 60,
+        "peak_cpu": 86.7,
+        "peak_memory": 37.71
     }
 ]

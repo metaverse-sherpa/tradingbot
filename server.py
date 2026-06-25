@@ -55,10 +55,14 @@ app.register_blueprint(premium_bp)
 def serve_index():
     return app.send_static_file('index.html')
 
+from web_api.auth import require_auth, require_premium
+
 @app.route('/api')
 @app.route('/api/')
 @app.route('/api-docs')
 @app.route('/api/docs')
+@require_auth
+@require_premium
 def serve_api_docs():
     import os
     from flask import send_from_directory
