@@ -426,14 +426,14 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
             target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
 
-                stock_opened_rows += f"""
-                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{daily_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{total_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{target_pnl_display}</td>
-                </tr>
-                """
+            stock_opened_rows += f"""
+            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{daily_pnl_display}</td>
+                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{total_pnl_display}</td>
+                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{target_pnl_display}</td>
+            </tr>
+            """
 
     # 2. Compile stock signals closed
     stock_closed_rows = ""
@@ -507,14 +507,14 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             dir_emoji = "📈" if is_long else "📉"
             sym_html = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: {color_accent_crypto}; text-decoration: none;">{dir_emoji} {sym}</a>'
             
-                crypto_opened_rows += f"""
-                <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
-                    <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{daily_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{total_pnl_display}</td>
-                    <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{target_pnl_display}</td>
-                </tr>
-                """
+            crypto_opened_rows += f"""
+            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{daily_pnl_display}</td>
+                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{total_pnl_display}</td>
+                <td style="padding: 12px 10px; font-size: 13px; width: 20%;">{target_pnl_display}</td>
+            </tr>
+            """
 
     # 2. Compile crypto signals closed
     crypto_closed_rows = ""
