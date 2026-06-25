@@ -117,10 +117,16 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                                 error_text = await page.evaluate("() => { const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
                                 raise Exception(f"Registration Timeout exceeded. UI Error context: {error_text}")
                             
+                            # Record the actual registration API/UI latency BEFORE doing slow SSH database updates and reloading
+                            latency = time.time() - start_time
+                            log_event("latency", {"worker_id": worker_id, "path": path, "latency": latency})
+                            
                             if is_premium:
                                 promote_to_premium(email)
                                 await page.reload(wait_until="domcontentloaded")
                                 await page.wait_for_timeout(1000)
+                            
+                            start_time = None
                         
                         elif path == "/#/login" or path == "/login":
                             await page.goto(full_url, wait_until="domcontentloaded")
@@ -138,8 +144,9 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                             await page.goto(full_url, wait_until="domcontentloaded")
                             await page.wait_for_selector("#app", timeout=15000)
                         
-                        latency = time.time() - start_time
-                        log_event("latency", {"worker_id": worker_id, "path": path, "latency": latency})
+                        if start_time is not None:
+                            latency = time.time() - start_time
+                            log_event("latency", {"worker_id": worker_id, "path": path, "latency": latency})
 
                     elif action == "click":
                         selector = route.get("selector", "")

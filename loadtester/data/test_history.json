@@ -1,46 +1,5 @@
 [
     {
-        "id": "run_1781693263",
-        "timestamp": 1781693263.821536,
-        "duration": 36.21,
-        "status": "idle",
-        "success_count": 0,
-        "failure_count": 0,
-        "latencies_count": 15,
-        "errors": [],
-        "screenshots_count": 15,
-        "peak_cpu": 186.8,
-        "peak_memory": 69.43
-    },
-    {
-        "id": "run_1781693309",
-        "timestamp": 1781693309.82136,
-        "duration": 369.38,
-        "status": "idle",
-        "success_count": 34,
-        "failure_count": 2,
-        "latencies_count": 183,
-        "errors": [
-            {
-                "timestamp": 1781693441.3786108,
-                "worker_id": 12,
-                "path": "",
-                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
-                "console": ""
-            },
-            {
-                "timestamp": 1781693451.536033,
-                "worker_id": 13,
-                "path": "",
-                "error": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')\")\n",
-                "console": ""
-            }
-        ],
-        "screenshots_count": 185,
-        "peak_cpu": 200.0,
-        "peak_memory": 76.67
-    },
-    {
         "id": "run_1781693309",
         "timestamp": 1781693309.82136,
         "duration": 369.38,
@@ -158,5 +117,31 @@
         "screenshots_count": 400,
         "peak_cpu": 170.6,
         "peak_memory": 40.53
+    },
+    {
+        "id": "run_1782383965",
+        "timestamp": 1782383965.171263,
+        "duration": 73.84,
+        "status": "idle",
+        "success_count": 12,
+        "failure_count": 0,
+        "latencies_count": 48,
+        "errors": [],
+        "screenshots_count": 48,
+        "peak_cpu": 33.6,
+        "peak_memory": 36.01
+    },
+    {
+        "id": "run_1782383965",
+        "timestamp": 1782383965.171263,
+        "duration": 73.84,
+        "status": "idle",
+        "success_count": 12,
+        "failure_count": 0,
+        "latencies_count": 48,
+        "errors": [],
+        "screenshots_count": 48,
+        "peak_cpu": 33.6,
+        "peak_memory": 36.01
     }
 ]
