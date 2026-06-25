@@ -18,6 +18,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 import database
+from utils_error import send_telegram_alert
 
 class DynamicSymbolsList(list):
     def __init__(self, configs):
@@ -123,6 +124,11 @@ class MarketDataManager:
                 self.ohlcv_cache[symbol] = df
             except Exception as e:
                 log.error(f"MarketData fetch failed for {symbol}: {e}")
+                try:
+                    from utils_error import send_telegram_alert
+                    send_telegram_alert("Crypto Trading Engine (Market Data Fetch)", e)
+                except Exception:
+                    pass
                 return None
         return self.ohlcv_cache[symbol]
 
@@ -425,6 +431,11 @@ async def run():
                               user.get('exchange_id', 'blofin'),
                               futures_type,
                               e)
+                    try:
+                        from utils_error import send_telegram_alert
+                        send_telegram_alert("Crypto Trading Engine (Position Sync)", e)
+                    except Exception:
+                        pass
 
         await asyncio.gather(*(sync_user_pos(u) for u in active_users))
 

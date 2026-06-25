@@ -76,6 +76,11 @@ async def post_init(application):
             changelog = subprocess.check_output(['git', 'log', '-n', '3', '--pretty=format:• %s (%ar)']).decode('utf-8')
         except Exception as git_err:
             logger.error(f"Failed to fetch changelog via git: {git_err}")
+            try:
+                from utils_error import send_telegram_alert
+                send_telegram_alert("Telegram Bot Deployment", git_err)
+            except Exception:
+                pass
             changelog = "• New deployment (Audit Trail Unavailable)"
             
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
