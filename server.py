@@ -55,6 +55,8 @@ app.register_blueprint(premium_bp)
 def serve_index():
     return app.send_static_file('index.html')
 
+@app.route('/api')
+@app.route('/api/')
 @app.route('/api-docs')
 @app.route('/api/docs')
 def serve_api_docs():
