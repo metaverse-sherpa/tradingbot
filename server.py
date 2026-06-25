@@ -55,6 +55,15 @@ app.register_blueprint(premium_bp)
 def serve_index():
     return app.send_static_file('index.html')
 
+@app.route('/api-docs')
+@app.route('/api/docs')
+def serve_api_docs():
+    import os
+    from flask import send_from_directory
+    api_dir = os.path.join(app.root_path, 'api')
+    return send_from_directory(api_dir, 'index.html')
+
+
 @app.route('/favicon.svg')
 def favicon_svg():
     from flask import send_from_directory

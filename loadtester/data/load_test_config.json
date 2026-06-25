@@ -4,7 +4,7 @@
     "duration": 60,
     "ramp_up": 10,
     "premium_ratio": 0.2,
-    "max_active_browsers": 4,
+    "max_active_browsers": 15,
     "routes": [
         {
             "action": "navigate",
@@ -31,6 +31,7 @@
         },
         {
             "action": "navigate",
+            "disabled": false,
             "path": "/#/stats",
             "screenshot": true
         },
@@ -68,6 +69,7 @@
         },
         {
             "action": "navigate",
+            "disabled": false,
             "path": "/#/settings",
             "screenshot": true
         }

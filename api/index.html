@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Metaverse Sherpa | Developer API Portal</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- Tailwind CSS (Play CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#070a13',
+                        surface: '#0f1422',
+                        'surface-card': '#141b2d',
+                        'surface-hover': '#1e263d',
+                        primary: '#3cd7ff',
+                        'primary-glow': 'rgba(60, 215, 255, 0.15)',
+                        secondary: '#00e676',
+                        accent: '#8c52ff',
+                        danger: '#ff1744',
+                        warning: '#ff9100'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #070a13;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(20, 27, 45, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 20px rgba(60, 215, 255, 0.15);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.15);
+        }
+        .glow-red {
+            box-shadow: 0 0 20px rgba(255, 23, 68, 0.15);
+        }
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #070a13;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e263d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2d3856;
+        }
+        
+        .method-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        
+        .method-GET { background-color: rgba(0, 230, 118, 0.12); color: #00e676; border: 1px solid rgba(0, 230, 118, 0.25); }
+        .method-POST { background-color: rgba(60, 215, 255, 0.12); color: #3cd7ff; border: 1px solid rgba(60, 215, 255, 0.25); }
+        .method-DELETE { background-color: rgba(255, 23, 68, 0.12); color: #ff1744; border: 1px solid rgba(255, 23, 68, 0.25); }
+    </style>
+</head>
+<body class="text-gray-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 w-full border-b border-white/5 bg-[#070a13]/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🏔️</span>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    Metaverse Sherpa <span class="text-xs bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full font-mono font-normal">API v1.0</span>
+                </h1>
+                <p class="text-xs text-gray-400">Institutional-Grade Algorithmic Trading Console</p>
+            </div>
+        </div>
+
+        <!-- Authentication Configuration -->
+        <div class="flex items-center gap-4">
+            <div class="relative flex items-center bg-surface-card border border-white/5 rounded-lg px-3 py-1.5 w-80 md:w-96 focus-within:border-primary/50 transition">
+                <span class="material-symbols-outlined text-gray-500 text-lg mr-2 select-none">vpn_key</span>
+                <input 
+                    type="password" 
+                    id="token-input" 
+                    placeholder="Paste Firebase Session / Bearer Token" 
+                    class="bg-transparent text-xs text-gray-200 outline-none w-full font-mono placeholder:text-gray-600"
+                />
+                <button 
+                    onclick="toggleTokenVisibility()" 
+                    class="text-gray-500 hover:text-gray-300 ml-1 focus:outline-none"
+                    title="Toggle Visibility"
+                >
+                    <span id="visibility-icon" class="material-symbols-outlined text-base">visibility_off</span>
+                </button>
+            </div>
+            <div class="text-right hidden sm:block">
+                <div class="text-xs font-semibold text-secondary flex items-center gap-1.5 justify-end">
+                    <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                    API Connected
+                </div>
+                <div class="text-[10px] text-gray-400 font-mono" id="server-latency">Latency: -- ms</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- App Body Content -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Navigation (Endpoints List) -->
+        <aside class="w-80 border-r border-white/5 flex flex-col bg-[#080c18] overflow-y-auto select-none">
+            <!-- Sidebar Header Search -->
+            <div class="p-4 border-b border-white/5 sticky top-0 bg-[#080c18] z-10">
+                <div class="relative flex items-center bg-surface border border-white/5 rounded-lg px-3 py-2 focus-within:border-primary/30 transition">
+                    <span class="material-symbols-outlined text-gray-500 text-base mr-2">search</span>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        placeholder="Search API methods..." 
+                        class="bg-transparent text-xs text-gray-200 outline-none w-full placeholder:text-gray-600"
+                        oninput="filterEndpoints()"
+                    />
+                </div>
+            </div>
+
+            <!-- Categories Container -->
+            <div class="p-2 space-y-4 flex-1" id="sidebar-categories">
+                <!-- Dynamically Rendered Categories -->
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col md:flex-row overflow-hidden bg-background">
+            
+            <!-- Left Side: Documentation & Form parameters -->
+            <section class="flex-1 p-6 md:p-8 overflow-y-auto border-r border-white/5" id="documentation-section">
+                <!-- Welcome State -->
+                <div id="welcome-state" class="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto py-12">
+                    <span class="text-6xl mb-6">🧭</span>
+                    <h2 class="text-xl font-bold mb-2">Welcome to the Sherpa API Sandbox</h2>
+                    <p class="text-sm text-gray-400 leading-relaxed mb-6">
+                        Explore, configure, and test all active endpoints of the Metaverse Sherpa Trading Bot backend. 
+                        Select any method from the sidebar to begin testing.
+                    </p>
+                    <div class="w-full text-left bg-surface-card border border-white/5 rounded-xl p-4 text-xs font-mono space-y-2">
+                        <div class="text-primary font-bold">Authentication Note:</div>
+                        <p class="text-gray-400">
+                            Most routes require standard Firebase authentication. If you are already logged in to the main dashboard on this domain, your browser will automatically forward authorization credentials. 
+                            Otherwise, copy your Firebase ID Token and paste it into the key field in the header.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Endpoint Detail State (Hidden by default) -->
+                <div id="endpoint-detail" class="hidden space-y-6">
+                    <!-- Title & Header Block -->
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <div class="flex items-center gap-3 flex-wrap mb-2">
+                                <span id="doc-method" class="method-badge font-mono tracking-wider">GET</span>
+                                <code id="doc-path" class="text-lg font-bold font-mono text-white">/api/user/profile</code>
+                                <span id="doc-auth-badge" class="text-[10px] px-2 py-0.5 rounded border">Protected</span>
+                            </div>
+                            <h2 id="doc-title" class="text-xl font-extrabold text-white">Fetch User Profile</h2>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="text-sm text-gray-300 leading-relaxed" id="doc-description">
+                        Retrieves user details, enabled trading strategies, exchange key verification statuses, and system roles.
+                    </div>
+
+                    <!-- Parameters Input Form -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm">settings_input_component</span>
+                            Parameters
+                        </h3>
+                        
+                        <div class="bg-surface-card border border-white/5 rounded-xl overflow-hidden">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-surface/50 border-b border-white/5 text-gray-400 font-semibold">
+                                        <th class="p-3 w-1/4">Parameter</th>
+                                        <th class="p-3 w-1/4">Type / Source</th>
+                                        <th class="p-3 w-1/2">Value / Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="params-table-body" class="divide-y divide-white/5">
+                                    <!-- Parameters generated here -->
+                                </tbody>
+                            </table>
+                            <div id="no-params-msg" class="p-6 text-center text-gray-500 hidden">
+                                No inputs required for this endpoint.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center gap-3">
+                        <button 
+                            id="execute-btn"
+                            onclick="sendTestRequest()"
+                            class="bg-primary hover:bg-primary/80 text-background font-bold text-xs py-2.5 px-6 rounded-lg shadow-lg flex items-center gap-2 transition focus:ring-2 focus:ring-primary/50"
+                        >
+                            <span class="material-symbols-outlined text-sm font-bold">send</span>
+                            Execute Request
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Right Side: Request/Response Console Viewer -->
+            <section class="w-full md:w-[480px] lg:w-[560px] p-6 md:p-8 bg-[#090d18] flex flex-col gap-6 overflow-y-auto">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 select-none">
+                    <span class="material-symbols-outlined text-sm">terminal</span>
+                    Developer Console
+                </h3>
+
+                <!-- Request Box -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs text-gray-400">
+                        <span>REQUEST PAYLOAD</span>
+                        <button onclick="copyToClipboard('curl-command')" class="text-primary hover:underline flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[10px]">content_copy</span> Copy Curl
+                        </button>
+                    </div>
+                    <div class="bg-surface border border-white/5 rounded-xl p-4 font-mono text-xs overflow-x-auto glow-cyan/5">
+                        <pre id="curl-command" class="text-gray-300 select-all whitespace-pre-wrap font-mono break-all"></pre>
+                    </div>
+                </div>
+
+                <!-- Response Box -->
+                <div class="flex-1 flex flex-col gap-2 min-h-[300px]">
+                    <div class="flex justify-between items-center text-xs text-gray-400">
+                        <span>RESPONSE BODY</span>
+                        <div class="flex items-center gap-3">
+                            <span id="response-status" class="font-bold text-xs">--</span>
+                            <span id="response-time" class="text-[10px] text-gray-500 font-mono"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 bg-surface border border-white/5 rounded-xl p-4 font-mono text-xs overflow-x-auto relative flex flex-col min-h-0">
+                        <!-- Loading State -->
+                        <div id="response-loader" class="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 hidden z-10">
+                            <div class="w-8 h-8 rounded-full border-2 border-white/10 border-t-primary animate-spin"></div>
+                            <span class="text-xs text-primary font-mono font-semibold tracking-wider">EXECUTING...</span>
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div id="response-empty" class="flex-1 flex items-center justify-center text-gray-600 select-none text-center p-6 flex-col">
+                            <span class="material-symbols-outlined text-3xl mb-2">hourglass_empty</span>
+                            <span>Click Execute to perform an active test</span>
+                        </div>
+                        
+                        <!-- Real Response Output -->
+                        <pre id="response-body" class="text-gray-300 whitespace-pre-wrap select-all font-mono hidden flex-1"></pre>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-4 right-4 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-surface-card border border-white/10 rounded-xl px-4 py-3 shadow-2xl flex items-center gap-3">
+            <span id="toast-icon" class="material-symbols-outlined text-secondary text-lg">check_circle</span>
+            <span id="toast-text" class="text-xs font-semibold text-gray-200">Success message</span>
+        </div>
+    </div>
+
+    <!-- API Dataset -->
+    <script>
+        const endpointData = [
+            // --- Public / System ---
+            {
+                method: 'GET',
+                path: '/api/health',
+                group: 'Public & System',
+                auth: false,
+                title: 'System Health Check',
+                description: 'Fetches the backend service operational status and the current server timestamp.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/config',
+                group: 'Public & System',
+                auth: false,
+                title: 'Fetch Public Configurations',
+                description: 'Returns client-side environmental keys, such as the Google OAuth Client ID.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/stats/free',
+                group: 'Public & System',
+                auth: false,
+                title: 'Landing Page Global Stats',
+                description: 'Returns global metrics including cumulative trading volume, total active days, and simulation trade logs.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/share/card',
+                group: 'Public & System',
+                auth: false,
+                title: 'PnL Sharing Card Generator',
+                description: 'Generates a stylized sharing card HTML/canvas payload based on user details.',
+                params: [
+                    { name: 'id', type: 'string', required: false, source: 'query', desc: 'Web User ID override', default: '' },
+                    { name: 'username', type: 'string', required: false, source: 'query', desc: 'Telegram Username override', default: '' },
+                    { name: 'segment', type: 'string', required: false, source: 'query', desc: 'Trading segment ("crypto" or "stock")', default: 'crypto' }
+                ]
+            },
+            {
+                method: 'GET',
+                path: '/api/referral/info',
+                group: 'Public & System',
+                auth: false,
+                title: 'Fetch Referrer Details',
+                description: 'Looks up the full display name of a referrer by their User/Chat ID.',
+                params: [
+                    { name: 'ref', type: 'string', required: true, source: 'query', desc: 'Referral Code or ID', default: '' }
+                ]
+            },
+
+            // --- Authentication ---
+            {
+                method: 'POST',
+                path: '/api/auth/sync',
+                group: 'Authentication',
+                auth: true,
+                title: 'Sync Firebase User',
+                description: 'Saves or syncs a Firebase User inside the local database and maps referrals.',
+                params: [
+                    { name: 'referred_by', type: 'string', required: false, source: 'body', desc: 'User ID who invited this account', default: '' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/auth/logout',
+                group: 'Authentication',
+                auth: false,
+                title: 'Clear Session Token',
+                description: 'Clears the cookie-based session token in the client browser.',
+                params: []
+            },
+
+            // --- User & Portfolio ---
+            {
+                method: 'GET',
+                path: '/api/user/profile',
+                group: 'User & Portfolio',
+                auth: true,
+                title: 'Fetch User Profile',
+                description: 'Retrieves core credentials, premium status, active strategies, and API connection status.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/user/balance',
+                group: 'User & Portfolio',
+                auth: true,
+                title: 'Live Exchange Balance',
+                description: 'Connects directly to the user\'s API keys via CCXT or Alpaca and returns live wallet balances.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/user/balance-history',
+                group: 'User & Portfolio',
+                auth: true,
+                title: 'Portfolio Balance History',
+                description: 'Fetches history of portfolio balances across dates for charting.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/user/stats',
+                group: 'User & Portfolio',
+                auth: true,
+                title: 'Historical Trade Stats',
+                description: 'Aggregates win rate, total net profits, and metrics of closed trades.',
+                params: []
+            },
+
+            // --- Trades & Orders ---
+            {
+                method: 'GET',
+                path: '/api/trades/open',
+                group: 'Trades & Orders',
+                auth: true,
+                title: 'Active Open Positions',
+                description: 'Queries active database positions and current ticker values for live unrealized PnL logs.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/trades/history',
+                group: 'Trades & Orders',
+                auth: true,
+                title: 'Paginated Trade History',
+                description: 'Fetches historical completed trades with sorting.',
+                params: [
+                    { name: 'page', type: 'integer', required: false, source: 'query', desc: 'Page offset number', default: '1' },
+                    { name: 'limit', type: 'integer', required: false, source: 'query', desc: 'Items count per page limit', default: '10' },
+                    { name: 'segment', type: 'string', required: false, source: 'query', desc: 'Filter by "crypto" or "stock"', default: 'crypto' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/trades/close',
+                group: 'Trades & Orders',
+                auth: true,
+                title: 'Close Position',
+                description: 'Manually closes an active trade by executing an opposing market order.',
+                params: [
+                    { name: 'id', type: 'integer', required: true, source: 'body', desc: 'Internal Trade ID reference', default: '' },
+                    { name: 'symbol', type: 'string', required: true, source: 'body', desc: 'Trading symbol (e.g. BTC/USDT)', default: '' },
+                    { name: 'type', type: 'string', required: false, source: 'body', desc: 'Segment ("crypto" or "stock")', default: 'crypto' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/trades/panic',
+                group: 'Trades & Orders',
+                auth: true,
+                title: 'Emergency Panic Button',
+                description: 'Immediately triggers an emergency liquidation of ALL active positions across connected accounts.',
+                params: []
+            },
+            {
+                method: 'POST',
+                path: '/api/user/manual-trade',
+                group: 'Trades & Orders',
+                auth: true,
+                title: 'Manual Trade Trigger',
+                description: 'Forces the execution of a new trade position using a specific signal reference ID.',
+                params: [
+                    { name: 'signal_id', type: 'integer', required: true, source: 'body', desc: 'Signal record ID', default: '' }
+                ]
+            },
+
+            // --- Settings ---
+            {
+                method: 'POST',
+                path: '/api/settings/exchange',
+                group: 'Settings',
+                auth: true,
+                title: 'Configure Crypto Keys',
+                description: 'Saves encrypted credentials for Blofin, BingX, or Coinbase.',
+                params: [
+                    { name: 'exchange_id', type: 'string', required: true, source: 'body', desc: 'Selected exchange name (blofin, bingx, coinbase)', default: 'blofin' },
+                    { name: 'api_key', type: 'string', required: true, source: 'body', desc: 'API Key', default: '' },
+                    { name: 'api_secret', type: 'string', required: true, source: 'body', desc: 'API Secret / Private PEM Key', default: '' },
+                    { name: 'api_password', type: 'string', required: false, source: 'body', desc: 'API passphrase / password', default: '' },
+                    { name: 'bingx_futures_type', type: 'string', required: false, source: 'body', desc: 'BingX option ("perpetual")', default: 'perpetual' },
+                    { name: 'coinbase_sandbox', type: 'boolean', required: false, source: 'body', desc: 'Use Coinbase Developer Sandbox', default: false }
+                ]
+            },
+            {
+                method: 'DELETE',
+                path: '/api/settings/exchange',
+                group: 'Settings',
+                auth: true,
+                title: 'Delete Crypto Keys',
+                description: 'Deletes your saved, encrypted crypto API keys from the server database.',
+                params: []
+            },
+            {
+                method: 'POST',
+                path: '/api/settings/alpaca',
+                group: 'Settings',
+                auth: true,
+                title: 'Configure Alpaca Keys',
+                description: 'Saves credentials to run stock execution strategies on Alpaca markets.',
+                params: [
+                    { name: 'api_key', type: 'string', required: true, source: 'body', desc: 'Alpaca client ID key', default: '' },
+                    { name: 'api_secret', type: 'string', required: true, source: 'body', desc: 'Alpaca client secret key', default: '' },
+                    { name: 'endpoint', type: 'string', required: false, source: 'body', desc: 'Base endpoint URL (Paper or Live)', default: 'https://paper-api.alpaca.markets' }
+                ]
+            },
+            {
+                method: 'DELETE',
+                path: '/api/settings/alpaca',
+                group: 'Settings',
+                auth: true,
+                title: 'Delete Alpaca Keys',
+                description: 'Deletes your saved Alpaca Stock API keys from the server database.',
+                params: []
+            },
+            {
+                method: 'POST',
+                path: '/api/settings/preferences',
+                group: 'Settings',
+                auth: true,
+                title: 'Configure Preferences',
+                description: 'Updates default leverage limits, notification triggers, and custom pricing visibility fields.',
+                params: [
+                    { name: 'risk_pct', type: 'float', required: false, source: 'body', desc: 'Crypto risk limit (%) per trade', default: '1.0' },
+                    { name: 'stock_risk_pct', type: 'float', required: false, source: 'body', desc: 'Stock risk limit (%) per trade', default: '2.0' },
+                    { name: 'custom_equity_type', type: 'string', required: false, source: 'body', desc: 'Equity type constraint ("all" or "custom")', default: 'all' },
+                    { name: 'custom_equity_value', type: 'float', required: false, source: 'body', desc: 'Cap amount limit value if custom', default: '1000' },
+                    { name: 'hide_dollars', type: 'boolean', required: false, source: 'body', desc: 'Mask USD amounts inside interface', default: false },
+                    { name: 'email_notifications', type: 'boolean', required: false, source: 'body', desc: 'Send emails on executions', default: true },
+                    { name: 'email_frequency', type: 'string', required: false, source: 'body', desc: 'Frequency: "realtime" or "digest"', default: 'realtime' },
+                    { name: 'browser_notifications', type: 'boolean', required: false, source: 'body', desc: 'Enable browser web pushes', default: true }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/settings/telegram',
+                group: 'Settings',
+                auth: true,
+                title: 'Link Telegram Account',
+                description: 'Sets or clears the associated Telegram Chat ID to enable automated execution messaging logs.',
+                params: [
+                    { name: 'telegram_chat_id', type: 'integer', required: true, source: 'body', desc: 'Your private Telegram chat id', default: '' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/settings/symbols',
+                group: 'Settings',
+                auth: true,
+                title: 'Update Trading Symbols',
+                description: 'Updates the active cryptocurrency/trading list the bot is authorized to purchase.',
+                params: [
+                    { name: 'symbols', type: 'array', required: true, source: 'body', desc: 'JSON list of trading pairs e.g. ["BTC/USDT", "ETH/USDT"]', default: '["BTC/USDT", "ETH/USDT"]' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/settings/status',
+                group: 'Settings',
+                auth: true,
+                title: 'Toggle Trading Loop',
+                description: 'Toggles the background execution daemon state.',
+                params: [
+                    { name: 'is_active', type: 'boolean', required: true, source: 'body', desc: 'Bot run loop state', default: false }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/settings/strategy',
+                group: 'Settings',
+                auth: true,
+                title: 'Toggle Core Strategy',
+                description: 'Selects the strategy model used for stock or crypto trades.',
+                params: [
+                    { name: 'type', type: 'string', required: true, source: 'body', desc: '"crypto" or "stock"', default: 'crypto' },
+                    { name: 'strategy', type: 'string', required: true, source: 'body', desc: 'Internal strategy key name', default: 'Mean Reversion Scalper' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/settings/zk-keys',
+                group: 'Settings',
+                auth: true,
+                title: 'Register ZK Encryption Keys',
+                description: 'Saves your Client-Side Zero Knowledge Encryption parameters for API key storage.',
+                params: [
+                    { name: 'public_key', type: 'string', required: true, source: 'body', desc: 'HEX format ZK public key', default: '' },
+                    { name: 'encrypted_private_key', type: 'string', required: true, source: 'body', desc: 'Symmetrically encrypted private key', default: '' }
+                ]
+            },
+            {
+                method: 'GET',
+                path: '/api/settings/zk-keys',
+                group: 'Settings',
+                auth: true,
+                title: 'Retrieve ZK Key Details',
+                description: 'Retrieves public ZK elements registered on the account.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/settings/test-connection',
+                group: 'Settings',
+                auth: true,
+                title: 'Verify Exchange Status',
+                description: 'Directly validates credentials against CCXT/Alpaca and returns raw ping metrics.',
+                params: [
+                    { name: 'segment', type: 'string', required: false, source: 'query', desc: '"crypto" or "stock"', default: 'crypto' }
+                ]
+            },
+
+            // --- Premium & Referrals ---
+            {
+                method: 'POST',
+                path: '/api/premium/wallet',
+                group: 'Premium & Referral',
+                auth: true,
+                title: 'Set Source Wallet',
+                description: 'Registers the TRON address used to complete the premium USDT payment audit.',
+                params: [
+                    { name: 'source_wallet', type: 'string', required: true, source: 'body', desc: 'Your private TRON wallet address', default: '' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/premium/check-payment',
+                group: 'Premium & Referral',
+                auth: true,
+                title: 'Verify USDT Payment',
+                description: 'Triggers a blockchain audit against Tronscan records to verify USDT transfers and credit subscriptions.',
+                params: []
+            },
+            {
+                method: 'POST',
+                path: '/api/premium/redeem-gift',
+                group: 'Premium & Referral',
+                auth: true,
+                title: 'Redeem Gift Code',
+                description: 'Redeems a promotional code or gift card to receive premium membership access.',
+                params: [
+                    { name: 'code', type: 'string', required: true, source: 'body', desc: 'Alphanumeric promotion code', default: '' }
+                ]
+            },
+            {
+                method: 'GET',
+                path: '/api/referral/stats',
+                group: 'Premium & Referral',
+                auth: true,
+                title: 'Fetch Referral Metrics',
+                description: 'Retrieves invite links, count of successful signups, and pending credits.',
+                params: []
+            },
+
+            // --- Admin Utilities ---
+            {
+                method: 'GET',
+                path: '/api/admin/deployment',
+                group: 'Admin Utilities',
+                auth: true,
+                title: 'Git Deploy Logs',
+                description: 'Admin restricted. Returns the latest git changes, commit times, and verification lists.',
+                params: []
+            },
+            {
+                method: 'POST',
+                path: '/api/admin/generate-gift',
+                group: 'Admin Utilities',
+                auth: true,
+                title: 'Generate Gift Code',
+                description: 'Admin restricted. Creates a new single-use premium code for referrals.',
+                params: [
+                    { name: 'months', type: 'integer', required: false, source: 'body', desc: 'Promotional months duration limit', default: '1' }
+                ]
+            },
+            {
+                method: 'GET',
+                path: '/api/admin/logs',
+                group: 'Admin Utilities',
+                auth: true,
+                title: 'Journalctl Log Terminal',
+                description: 'Admin restricted. Queries live VPS log lines from WebAPI or Trading Bot service layers.',
+                params: [
+                    { name: 'service', type: 'string', required: true, source: 'query', desc: '"webapi" or "tradingbot"', default: 'webapi' }
+                ]
+            },
+            {
+                method: 'POST',
+                path: '/api/admin/restart',
+                group: 'Admin Utilities',
+                auth: true,
+                title: 'Restart System Service',
+                description: 'Admin restricted. Triggers systemctl command sequences to reload or restart execution processes.',
+                params: [
+                    { name: 'service', type: 'string', required: true, source: 'body', desc: '"webapi" or "tradingbot"', default: 'tradingbot' }
+                ]
+            },
+            {
+                method: 'GET',
+                path: '/api/admin/config',
+                group: 'Admin Utilities',
+                auth: true,
+                title: 'Get Global Configs',
+                description: 'Admin restricted. Retrieves list of globally disabled symbol blocks.',
+                params: []
+            },
+            {
+                method: 'POST',
+                path: '/api/admin/config',
+                group: 'Admin Utilities',
+                auth: true,
+                title: 'Update Global Configs',
+                description: 'Admin restricted. Commits modifications to global blacklists.',
+                params: [
+                    { name: 'excluded_symbols', type: 'string', required: true, source: 'body', desc: 'Comma-separated symbols list', default: 'PEPE/USDT,SHIB/USDT' }
+                ]
+            },
+
+            // --- Signals & Analysis ---
+            {
+                method: 'GET',
+                path: '/api/signals/active',
+                group: 'Signals & Analysis',
+                auth: false,
+                title: 'Active Technical Signals',
+                description: 'Lists currently active signals running in the mathematical prediction framework.',
+                params: []
+            },
+            {
+                method: 'GET',
+                path: '/api/signals/closed',
+                group: 'Signals & Analysis',
+                auth: false,
+                title: 'Historical Signal Logs',
+                description: 'Returns the log of recently closed technical prediction models.',
+                params: []
+            },
+            {
+                method: 'POST',
+                path: '/api/backtest/run',
+                group: 'Signals & Analysis',
+                auth: true,
+                title: 'Run Backtest Engine',
+                description: 'Simulates a strategy model against historical ticks and outputs performance cards.',
+                params: [
+                    { name: 'strategy', type: 'string', required: true, source: 'body', desc: 'Target Strategy Name', default: 'Mean Reversion Scalper' },
+                    { name: 'capital', type: 'float', required: false, source: 'body', desc: 'Backtest starting capital', default: '10000.0' },
+                    { name: 'risk_pct', type: 'float', required: false, source: 'body', desc: 'Risk multiplier per entry position', default: '1.5' }
+                ]
+            }
+        ];
+
+        let selectedEndpoint = null;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            // Load saved token from localStorage if exists
+            const savedToken = localStorage.getItem('sherpa_bearer_token');
+            if (savedToken) {
+                document.getElementById('token-input').value = savedToken;
+            }
+            
+            // Check latency / connection
+            testApiLatency();
+        });
+
+        // Toggle Bearer Token Visibility
+        function toggleTokenVisibility() {
+            const input = document.getElementById('token-input');
+            const icon = document.getElementById('visibility-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerText = 'visibility';
+            } else {
+                input.type = 'password';
+                icon.innerText = 'visibility_off';
+            }
+        }
+
+        // Test API latency to verify connection
+        async function testApiLatency() {
+            const start = Date.now();
+            const latencyEl = document.getElementById('server-latency');
+            try {
+                const response = await fetch('/api/health');
+                if (response.ok) {
+                    const diff = Date.now() - start;
+                    latencyEl.innerText = `Latency: ${diff} ms`;
+                    latencyEl.className = "text-[10px] text-secondary font-mono";
+                } else {
+                    latencyEl.innerText = "Health: Failed";
+                    latencyEl.className = "text-[10px] text-danger font-mono";
+                }
+            } catch (err) {
+                latencyEl.innerText = "Status: Offline";
+                latencyEl.className = "text-[10px] text-danger font-mono";
+            }
+            setTimeout(testApiLatency, 15000);
+        }
+
+        // Render Sidebar Menu Grouped by Category
+        function renderSidebar() {
+            const categoriesContainer = document.getElementById('sidebar-categories');
+            categoriesContainer.innerHTML = '';
+            
+            const grouped = {};
+            endpointData.forEach(ep => {
+                if (!grouped[ep.group]) grouped[ep.group] = [];
+                grouped[ep.group].push(ep);
+            });
+
+            Object.keys(grouped).forEach(groupName => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'sidebar-group mb-4';
+                
+                const groupTitle = document.createElement('h4');
+                groupTitle.className = 'text-[10px] uppercase font-bold tracking-wider text-gray-500 px-3 mb-1.5 mt-2';
+                groupTitle.innerText = groupName;
+                groupDiv.appendChild(groupTitle);
+
+                const list = document.createElement('ul');
+                list.className = 'space-y-0.5';
+
+                grouped[groupName].forEach(ep => {
+                    const li = document.createElement('li');
+                    li.setAttribute('data-path', ep.path);
+                    li.setAttribute('data-method', ep.method);
+                    li.className = 'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer hover:bg-surface-card hover:text-white transition text-gray-400';
+                    li.onclick = () => selectEndpoint(ep);
+                    
+                    const badge = document.createElement('span');
+                    badge.className = `method-badge font-mono text-[9px] w-12 text-center method-${ep.method}`;
+                    badge.innerText = ep.method;
+                    
+                    const pathSpan = document.createElement('span');
+                    pathSpan.className = 'font-mono truncate text-[11px]';
+                    pathSpan.innerText = ep.path;
+
+                    li.appendChild(badge);
+                    li.appendChild(pathSpan);
+                    list.appendChild(li);
+                });
+
+                groupDiv.appendChild(list);
+                categoriesContainer.appendChild(groupDiv);
+            });
+        }
+
+        // Filter Sidebar Items
+        function filterEndpoints() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const items = document.querySelectorAll('#sidebar-categories li');
+            
+            items.forEach(item => {
+                const path = item.getAttribute('data-path').toLowerCase();
+                const method = item.getAttribute('data-method').toLowerCase();
+                if (path.includes(query) || method.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Hide empty headers
+            document.querySelectorAll('.sidebar-group').forEach(group => {
+                const visibleItems = Array.from(group.querySelectorAll('li')).some(li => li.style.display !== 'none');
+                group.style.display = visibleItems ? 'block' : 'none';
+            });
+        }
+
+        // Handle Sidebar Selection
+        function selectEndpoint(ep) {
+            selectedEndpoint = ep;
+
+            // Highlight in sidebar
+            document.querySelectorAll('#sidebar-categories li').forEach(li => {
+                li.classList.remove('bg-surface-card', 'text-primary', 'border-l-2', 'border-primary');
+                li.classList.add('text-gray-400');
+            });
+            const selectedLi = Array.from(document.querySelectorAll('#sidebar-categories li')).find(li => 
+                li.getAttribute('data-path') === ep.path && li.getAttribute('data-method') === ep.method
+            );
+            if (selectedLi) {
+                selectedLi.classList.add('bg-surface-card', 'text-primary', 'border-l-2', 'border-primary');
+                selectedLi.classList.remove('text-gray-400');
+            }
+
+            // Update UI Panels
+            document.getElementById('welcome-state').classList.add('hidden');
+            document.getElementById('endpoint-detail').classList.remove('hidden');
+
+            document.getElementById('doc-method').className = `method-badge font-mono tracking-wider method-${ep.method}`;
+            document.getElementById('doc-method').innerText = ep.method;
+            document.getElementById('doc-path').innerText = ep.path;
+            document.getElementById('doc-title').innerText = ep.title;
+            document.getElementById('doc-description').innerText = ep.description;
+
+            const authBadge = document.getElementById('doc-auth-badge');
+            if (ep.auth) {
+                authBadge.innerText = 'Protected';
+                authBadge.className = 'text-[10px] px-2 py-0.5 rounded border border-warning/30 bg-warning/5 text-warning font-semibold';
+            } else {
+                authBadge.innerText = 'Public';
+                authBadge.className = 'text-[10px] px-2 py-0.5 rounded border border-secondary/30 bg-secondary/5 text-secondary font-semibold';
+            }
+
+            // Build parameters table
+            const tableBody = document.getElementById('params-table-body');
+            const noParamsMsg = document.getElementById('no-params-msg');
+            tableBody.innerHTML = '';
+
+            if (ep.params.length === 0) {
+                tableBody.parentElement.classList.add('hidden');
+                noParamsMsg.classList.remove('hidden');
+            } else {
+                tableBody.parentElement.classList.remove('hidden');
+                noParamsMsg.classList.add('hidden');
+
+                ep.params.forEach(p => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-surface-hover/20 transition';
+
+                    // Param Name & Required
+                    const nameTd = document.createElement('td');
+                    nameTd.className = 'p-3 font-semibold font-mono text-gray-200';
+                    nameTd.innerHTML = `${p.name} ${p.required ? '<span class="text-danger">*</span>' : ''}`;
+
+                    // Type & Source
+                    const typeTd = document.createElement('td');
+                    typeTd.className = 'p-3';
+                    typeTd.innerHTML = `<span class="text-gray-400 font-mono text-[11px]">${p.type}</span><span class="text-[10px] text-accent font-semibold ml-2 uppercase font-mono">${p.source}</span>`;
+
+                    // Value Input & Description
+                    const valueTd = document.createElement('td');
+                    valueTd.className = 'p-3 space-y-1';
+                    
+                    let inputHtml = '';
+                    if (p.type === 'boolean') {
+                        inputHtml = `
+                            <select data-param="${p.name}" data-source="${p.source}" class="bg-surface border border-white/5 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-primary/50 font-mono w-40">
+                                <option value="true" ${p.default === true ? 'selected' : ''}>true</option>
+                                <option value="false" ${p.default === false ? 'selected' : ''}>false</option>
+                            </select>
+                        `;
+                    } else if (p.type === 'array') {
+                        inputHtml = `
+                            <textarea data-param="${p.name}" data-source="${p.source}" placeholder='e.g. ["BTC/USDT"]' class="bg-surface border border-white/5 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-primary/50 font-mono w-full h-12">${p.default}</textarea>
+                        `;
+                    } else {
+                        inputHtml = `
+                            <input 
+                                type="text" 
+                                data-param="${p.name}" 
+                                data-source="${p.source}" 
+                                value="${p.default || ''}" 
+                                placeholder="${p.required ? 'Required' : 'Optional'}" 
+                                class="bg-surface border border-white/5 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-primary/50 font-mono w-full"
+                            />
+                        `;
+                    }
+                    
+                    valueTd.innerHTML = `
+                        ${inputHtml}
+                        <p class="text-[11px] text-gray-500 leading-normal">${p.desc}</p>
+                    `;
+
+                    tr.appendChild(nameTd);
+                    tr.appendChild(typeTd);
+                    tr.appendChild(valueTd);
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            // Sync Console
+            updateConsolePreview();
+            
+            // Clear Response Pane
+            document.getElementById('response-body').classList.add('hidden');
+            document.getElementById('response-empty').classList.remove('hidden');
+            document.getElementById('response-status').innerText = '--';
+            document.getElementById('response-time').innerText = '';
+        }
+
+        // Read Form inputs to build request parameters
+        function getFormParameters() {
+            const inputs = document.querySelectorAll('#params-table-body [data-param]');
+            const params = { query: {}, body: {} };
+            
+            inputs.forEach(el => {
+                const name = el.getAttribute('data-param');
+                const source = el.getAttribute('data-source');
+                let val = el.value.trim();
+
+                if (val !== '') {
+                    if (source === 'query') {
+                        params.query[name] = val;
+                    } else if (source === 'body') {
+                        // Attempt to parse JSON arrays or booleans
+                        if (val === 'true') val = true;
+                        else if (val === 'false') val = false;
+                        else if (val.startsWith('[') || val.startsWith('{')) {
+                            try { val = JSON.parse(val); } catch (e) {}
+                        } else if (!isNaN(val) && val !== '') {
+                            val = Number(val);
+                        }
+                        params.body[name] = val;
+                    }
+                }
+            });
+
+            return params;
+        }
+
+        // Live preview of the request curl command in the console box
+        function updateConsolePreview() {
+            if (!selectedEndpoint) return;
+            const params = getFormParameters();
+            const token = document.getElementById('token-input').value.trim();
+
+            let url = window.location.origin + selectedEndpoint.path;
+            
+            // Append Query String
+            const queryKeys = Object.keys(params.query);
+            if (queryKeys.length > 0) {
+                const qs = queryKeys.map(k => `${k}=${encodeURIComponent(params.query[k])}`).join('&');
+                url += `?${qs}`;
+            }
+
+            let curl = `curl -X ${selectedEndpoint.method} "${url}" \\\n`;
+            
+            // Headers
+            curl += `  -H "Content-Type: application/json"`;
+            if (token) {
+                curl += ` \\\n  -H "Authorization: Bearer ${token.substring(0, 8)}...[truncated]"`;
+            }
+            
+            // Body
+            const bodyKeys = Object.keys(params.body);
+            if (selectedEndpoint.method !== 'GET' && bodyKeys.length > 0) {
+                curl += ` \\\n  -d '${JSON.stringify(params.body, null, 2)}'`;
+            }
+
+            document.getElementById('curl-command').innerText = curl;
+        }
+
+        // Format and Syntax Highlight JSON outputs in console
+        function syntaxHighlight(json) {
+            if (typeof json !== 'string') {
+                 json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
+                let cls = 'text-amber-300';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'text-cyan-400';
+                    } else {
+                        cls = 'text-emerald-400';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'text-purple-400';
+                } else if (/null/.test(match)) {
+                    cls = 'text-gray-400';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // Perform AJAX Fetch Call against actual APIs
+        async function sendTestRequest() {
+            if (!selectedEndpoint) return;
+            
+            const params = getFormParameters();
+            const token = document.getElementById('token-input').value.trim();
+            
+            // Save Token in Local Storage for convenience
+            if (token) {
+                localStorage.setItem('sherpa_bearer_token', token);
+            } else {
+                localStorage.removeItem('sherpa_bearer_token');
+            }
+
+            // Build request URL
+            let url = selectedEndpoint.path;
+            const queryKeys = Object.keys(params.query);
+            if (queryKeys.length > 0) {
+                const qs = queryKeys.map(k => `${k}=${encodeURIComponent(params.query[k])}`).join('&');
+                url += `?${qs}`;
+            }
+
+            // Show Load Screen
+            document.getElementById('response-loader').classList.remove('hidden');
+            document.getElementById('response-empty').classList.add('hidden');
+            document.getElementById('response-body').classList.add('hidden');
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const fetchOptions = {
+                method: selectedEndpoint.method,
+                headers: headers
+            };
+
+            if (selectedEndpoint.method !== 'GET' && Object.keys(params.body).length > 0) {
+                fetchOptions.body = JSON.stringify(params.body);
+            }
+
+            const startTime = performance.now();
+            try {
+                const response = await fetch(url, fetchOptions);
+                const latency = (performance.now() - startTime).toFixed(0);
+                
+                // Status code styles
+                const statusEl = document.getElementById('response-status');
+                statusEl.innerText = `${response.status} ${response.statusText}`;
+                if (response.ok) {
+                    statusEl.className = 'font-bold text-xs text-secondary bg-secondary/10 px-2 py-0.5 rounded';
+                } else {
+                    statusEl.className = 'font-bold text-xs text-danger bg-danger/10 px-2 py-0.5 rounded';
+                }
+
+                document.getElementById('response-time').innerText = `Latency: ${latency} ms`;
+
+                let resData;
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    resData = await response.json();
+                    document.getElementById('response-body').innerHTML = syntaxHighlight(resData);
+                } else {
+                    resData = await response.text();
+                    document.getElementById('response-body').innerText = resData;
+                }
+
+            } catch (err) {
+                const latency = (performance.now() - startTime).toFixed(0);
+                const statusEl = document.getElementById('response-status');
+                statusEl.innerText = 'Network Error';
+                statusEl.className = 'font-bold text-xs text-danger bg-danger/10 px-2 py-0.5 rounded';
+                document.getElementById('response-time').innerText = `Error in ${latency} ms`;
+                document.getElementById('response-body').innerText = err.toString();
+            } finally {
+                document.getElementById('response-loader').classList.add('hidden');
+                document.getElementById('response-body').classList.remove('hidden');
+            }
+        }
+
+        // Copy key values to clipboards
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Copied to clipboard successfully!");
+            });
+        }
+
+        // Trigger notification banner alerts
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').innerText = message;
+            
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        // Hook parameter changes to update curl output previews on-the-fly
+        document.addEventListener('input', (e) => {
+            if (e.target.matches('#params-table-body input, #params-table-body textarea, #params-table-body select, #token-input')) {
+                updateConsolePreview();
+            }
+        });
+    </script>
+</body>
+</html>
