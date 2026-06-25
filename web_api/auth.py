@@ -86,3 +86,65 @@ def require_premium(f):
             
         return f(*args, **kwargs)
     return decorated
+
+def require_auth_web(f):
+    from flask import redirect
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.cookies.get('session_token')
+        
+        if not token:
+            # Fallback to Authorization header
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+        
+        if not token:
+            return redirect('/')
+            
+        try:
+            # Symmetrically verify the Firebase ID Token
+            decoded_token = firebase_auth.verify_id_token(token)
+            email = decoded_token.get("email")
+            uid = decoded_token.get("uid")
+            
+            if not email:
+                return redirect('/')
+                
+            # Fetch user from PostgreSQL
+            user = get_web_user_by_email(email)
+            if not user:
+                # Dynamically provision user record locally in PostgreSQL if they exist in Firebase but not in DB
+                with database.db_session() as conn:
+                    c = conn.cursor()
+                    created_at = int(time.time())
+                    full_name = decoded_token.get("name") or email.split("@")[0]
+                    c.execute('''
+                        INSERT INTO WebUsers (email, google_id, full_name, created_at, is_active)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (email.strip().lower(), uid, full_name, created_at, 1))
+                    conn.commit()
+                user = get_web_user_by_email(email)
+                
+            g.user = user
+        except Exception as e:
+            return redirect('/')
+            
+        return f(*args, **kwargs)
+    return decorated
+
+def require_premium_web(f):
+    from flask import redirect
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user = getattr(g, 'user', None)
+        if not user:
+            return redirect('/')
+            
+        now = int(time.time())
+        expiry = user.get('premium_expiry') or 0
+        if expiry <= now:
+            return redirect('/')
+            
+        return f(*args, **kwargs)
+    return decorated
