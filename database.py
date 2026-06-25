@@ -789,7 +789,8 @@ def init_db():
                 avatar_url TEXT,
                 created_at INTEGER,
                 referral_reward_triggered BOOLEAN DEFAULT 0,
-                alpaca_start_equity REAL
+                alpaca_start_equity REAL,
+                developer_api_key TEXT UNIQUE
             )''')
 
         if "PortfolioBalanceHistory" not in existing_tables:
@@ -817,7 +818,8 @@ def init_db():
             "encrypted_private_key": "TEXT",
             "bingx_futures_type": "TEXT DEFAULT 'standard'",
             "alpaca_start_equity": "REAL",
-            "coinbase_sandbox": "INTEGER DEFAULT 1"
+            "coinbase_sandbox": "INTEGER DEFAULT 1",
+            "developer_api_key": "TEXT UNIQUE"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:

@@ -312,3 +312,27 @@ def test_connection():
             return jsonify({'success': False, 'error': str(e)[:300]}), 200
 
     return jsonify({'error': 'Invalid segment'}), 400
+
+@settings_bp.route("/api/settings/developer-api-key/generate", methods=["POST"])
+@require_auth
+@require_premium
+def generate_developer_api_key():
+    import secrets
+    import database
+    from flask import g, jsonify
+    
+    user = g.user
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    new_key = "sk_" + secrets.token_urlsafe(32)
+    
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("UPDATE WebUsers SET developer_api_key = ? WHERE id = ?", (new_key, user["id"]))
+            conn.commit()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+        
+    return jsonify({"developer_api_key": new_key}), 200

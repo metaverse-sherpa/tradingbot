@@ -4307,6 +4307,44 @@ function renderSettingsView() {
 
             </div>
 
+            
+            ${STATE.user.is_premium ? `
+            <!-- Developer API Key Section -->
+            <section class="bg-surface border border-white/5 rounded-2xl p-5 shadow-lg relative overflow-hidden mt-6">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                        <span class="material-symbols-outlined text-sm">code</span>
+                    </div>
+                    <div>
+                        <h2 class="text-on-surface font-bold text-sm tracking-wide">Developer API Key</h2>
+                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold opacity-80 mt-0.5">External Bot Access</p>
+                    </div>
+                </div>
+                <p class="text-xs text-on-surface-variant leading-relaxed mb-4">
+                    Authenticate external scripts and bots against our REST API. Keep this key secret.
+                </p>
+                <div class="space-y-3">
+                    ${STATE.user.developer_api_key ? `
+                        <div class="relative">
+                            <input type="text" readonly value="${STATE.user.developer_api_key}" id="dev-api-key-input" class="w-full bg-background border border-white/10 rounded-lg py-2.5 px-3 pr-10 text-xs text-on-surface focus:outline-none focus:border-primary/50 text-center tracking-widest font-mono" />
+                            <button onclick="copyDeveloperApiKey()" class="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors p-1" title="Copy to clipboard">
+                                <span class="material-symbols-outlined text-sm">content_copy</span>
+                            </button>
+                        </div>
+                        <button onclick="generateDeveloperApiKey()" class="w-full py-2 bg-white/5 hover:bg-white/10 text-on-surface text-xs font-bold rounded-lg transition-colors border border-white/10">
+                            Regenerate Key
+                        </button>
+                    ` : `
+                        <button onclick="generateDeveloperApiKey()" class="w-full h-11 bg-gradient-to-r from-primary to-[#3cd7ff] text-background font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                            <span class="material-symbols-outlined text-lg">vpn_key</span>
+                            <span>Generate API Key</span>
+                        </button>
+                    `}
+                </div>
+            </section>
+            ` : ''}
+
             <!-- Logout Link -->
             <button onclick="handleLogout()" class="w-full py-3 bg-red-950/20 text-error font-bold rounded-lg border border-error/30 hover:bg-red-950/40 text-center cursor-pointer mt-section-gap">
                 Logout Session
@@ -6934,3 +6972,31 @@ if (!window.adminLogsPollerInitialized) {
     }, 5000);
     window.adminLogsPollerInitialized = true;
 }
+
+
+window.generateDeveloperApiKey = async function(e) {
+    if(!confirm("Are you sure you want to generate a new Developer API Key? Any existing key will be invalidated instantly.")) return;
+    try {
+        const btn = window.event?.currentTarget || e?.currentTarget;
+        if(btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">autorenew</span><span>Generating...</span>';
+        
+        const res = await apiRequest('/settings/developer-api-key/generate', 'POST');
+        if (res && res.developer_api_key) {
+            STATE.user.developer_api_key = res.developer_api_key;
+            showToast("API Key Generated Successfully!", "success");
+            renderView();
+        }
+    } catch(err) {
+        showToast("Error generating API key", "error");
+        renderView();
+    }
+};
+
+window.copyDeveloperApiKey = function() {
+    const input = document.getElementById('dev-api-key-input');
+    if(input) {
+        input.select();
+        document.execCommand('copy');
+        showToast("Copied to clipboard!", "success");
+    }
+};

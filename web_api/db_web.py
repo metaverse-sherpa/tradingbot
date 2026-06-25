@@ -33,6 +33,13 @@ def get_web_user_by_google_id(google_id):
         row = c.fetchone()
         return _decrypt_user_keys(dict(row)) if row else None
 
+def get_web_user_by_developer_api_key(api_key):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT * FROM WebUsers WHERE developer_api_key = ?', (api_key,))
+        row = c.fetchone()
+        return _decrypt_user_keys(dict(row)) if row else None
+
 def get_web_user_by_id(user_id):
     with db_session() as conn:
         c = conn.cursor()

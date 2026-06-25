@@ -25,6 +25,28 @@ if not firebase_admin._apps:
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        # 1. Developer API Key check
+        developer_api_key = request.headers.get('X-API-Key')
+        if not developer_api_key:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer sk_'):
+                developer_api_key = auth_header.split(' ')[1]
+                
+        if developer_api_key:
+            from web_api.db_web import get_web_user_by_developer_api_key
+            user = get_web_user_by_developer_api_key(developer_api_key)
+            if user:
+                now = int(time.time())
+                expiry = user.get('premium_expiry') or 0
+                if expiry > now:
+                    g.user = user
+                    return f(*args, **kwargs)
+                else:
+                    return jsonify({"error": "API Key is valid but your premium membership has expired."}), 403
+            else:
+                return jsonify({"error": "Invalid API Key."}), 401
+                
+        # 2. Firebase Session Token check
         token = request.cookies.get('session_token')
         
         if not token:
