@@ -4322,7 +4322,7 @@ function renderSettingsView() {
                     </div>
                 </div>
                 <p class="text-xs text-on-surface-variant leading-relaxed mb-4">
-                    Authenticate external scripts and bots against our REST API. Keep this key secret.
+                    Authenticate external scripts and bots against our REST API. Keep this key secret. <a href="/api" target="_blank" class="text-primary hover:underline font-semibold ml-1">View API Docs <span class="material-symbols-outlined text-[10px] align-middle">open_in_new</span></a>
                 </p>
                 <div class="space-y-3">
                     ${STATE.user.developer_api_key ? `
