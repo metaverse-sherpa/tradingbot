@@ -299,7 +299,9 @@ async def run_theoretical_tally_engine(today_opens):
         entry_price = trade['entry_price']
         tp_price = trade['tp_price']
         sl_price = trade['sl_price']
-        position_size = trade['position_size']
+        position_size = trade.get('position_size')
+        if position_size is None:
+            position_size = 1000.0
         
         try:
             db_conn = sqlite3.connect(STOCK_DB_PATH)
