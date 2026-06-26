@@ -811,16 +811,7 @@ def get_combined_weekly_summary_html(is_premium=False,
                 </div>
                 """
             else:
-                section_content += f"""
-                <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-bottom: 25px; text-align: center;">
-                    <h3 style="color: #FF1744; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">⚠️ Exchange Connection Required</h3>
-                    <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
-                        You have Premium Access, but your exchange API keys for {title.lower()} are missing or invalid. Please connect your exchange in the trading console to enable real-time tracking and autopilot execution.
-                    </p>
-                    <a href="https://bot.metaversesherpa.io/#/settings" style="display: inline-block; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Connect Exchange</a>
-                </div>
-                """
-                # Also show hypothetical stats so they can see what they're missing
+                # First show hypothetical stats so they can see what they're missing
                 hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
                 hypo_balance = 1000.0 + hypo_pnl
                 hypo_growth = (hypo_pnl / 1000.0) * 100
@@ -848,6 +839,18 @@ def get_combined_weekly_summary_html(is_premium=False,
                     </p>
                 </div>
                 """
+                
+                # Then show the connection prompt
+                section_content += f"""
+                <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-bottom: 25px; text-align: center;">
+                    <h3 style="color: #FF1744; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">⚠️ Exchange Connection Required</h3>
+                    <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
+                        You have Premium Access, but your exchange API keys for {title.lower()} are missing or invalid. Please connect your exchange in the trading console to enable real-time tracking and autopilot execution.
+                    </p>
+                    <a href="https://bot.metaversesherpa.io/#/settings" style="display: inline-block; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Connect Exchange</a>
+                </div>
+                """
+
         else:
             hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
             hypo_balance = 1000.0 + hypo_pnl
