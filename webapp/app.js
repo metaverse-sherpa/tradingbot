@@ -2598,6 +2598,79 @@ function renderDashboardView() {
     const privacyClass = shouldBlurDollars ? 'privacy-blur' : '';
     const privacyHoverHandlers = shouldBlurDollars ? `onmouseenter="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='none')" onmouseleave="this.querySelectorAll('.privacy-blur').forEach(el => el.style.filter='blur(14px)')"` : '';
 
+    function renderFreeDashboardColumn(type) {
+        const isCryptoType = type === 'crypto';
+        const active_signals = STATE.active_signals || [];
+        const signals = active_signals.filter(s => isCryptoType ? s.symbol && s.symbol.includes('/') : s.symbol && !s.symbol.includes('/'));
+        const count = signals.length;
+        const sorted = [...signals].sort((a, b) => {
+            if (STATE.active_signals_sort_by === 'date') {
+                return (b.open_time || 0) - (a.open_time || 0);
+            } else {
+                return (b.pnl_pct || 0) - (a.pnl_pct || 0);
+            }
+        });
+
+        const signalsHtml = sorted.length === 0 ? `
+            <div class="text-center py-8">
+                <span class="material-symbols-outlined text-on-surface-variant/40 text-5xl mb-3">hourglass_empty</span>
+                <p class="font-body-md text-on-surface font-semibold">No active ${type} signals</p>
+            </div>
+        ` : sorted.map(s => renderSignalCard(s)).join('');
+
+        return `
+            <div class="space-y-4 animate-fade-in">
+                <h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+                    <span>${isCryptoType ? '🪙' : '📈'}</span> ${isCryptoType ? 'Crypto Free Signals' : 'Stock Free Signals'}
+                </h2>
+                
+                <div class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col items-start gap-3">
+                    <h3 class="font-body-lg text-body-lg font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-on-surface-variant">link_off</span> Exchange Not Connected
+                    </h3>
+                    <p class="text-xs text-on-surface-variant leading-relaxed">
+                        Connect your ${type} exchange API to get automated trading and personalized portfolio tracking. Until then, you can view the free Alpha Signals.
+                    </p>
+                    <a href="#/settings" class="mt-2 h-9 px-4 inline-flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
+                        CONNECT ${isCryptoType ? 'CRYPTO' : 'STOCK'} EXCHANGE
+                    </a>
+                </div>
+
+                ${(STATE.is_loading_active_signals || signals.length > 0) ? `
+                <div class="flex items-center justify-between pt-2">
+                    <h3 class="font-bold text-on-surface">🛰️ Active Signals (${count})</h3>
+                    <button onclick="window.toggleActiveSignalsSort()" class="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5 hover:border-primary/30 transition-all text-[10px] font-semibold text-on-surface-variant hover:text-primary active:scale-95" title="Toggle sorting order">
+                        <span class="material-symbols-outlined text-[14px]">${STATE.active_signals_sort_by === 'pnl' ? 'calendar_month' : 'trending_up'}</span>
+                        <span>${STATE.active_signals_sort_by === 'pnl' ? 'Newest' : 'Profitable'}</span>
+                    </button>
+                </div>
+                ` : ''}
+
+                <div class="space-y-stack-gap">
+                    ${STATE.is_loading_active_signals && sorted.length === 0 ? `
+                        <div class="glass-card rounded-xl p-card-padding relative overflow-hidden border border-white/5 bg-gradient-to-r from-surface-container-low/20 to-surface-container/20">
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="h-6 w-32 bg-white/10 rounded-full animate-pulse"></div>
+                                <div class="h-6 w-20 bg-primary/20 rounded-full animate-pulse"></div>
+                            </div>
+                            <div class="h-4 w-40 bg-white/5 rounded-full mb-6 animate-pulse"></div>
+                            <div class="flex justify-between items-center pt-4 border-t border-white/5">
+                                <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                                <div class="h-8 w-24 bg-white/5 rounded-lg animate-pulse"></div>
+                            </div>
+                        </div>
+                    ` : signalsHtml}
+                </div>
+                
+                ${sorted.length === 0 ? `
+                    <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
+                        ${getFreeStatsHtml(false, type)}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
     function renderDashboardColumn(type) {
         const isCryptoType = type === 'crypto';
         const isPremium = STATE.user && STATE.user.is_premium;
@@ -2816,18 +2889,24 @@ function renderDashboardView() {
         `;
     } else {
         // Only one connected
-        const activeType = hasLinkedCrypto ? 'crypto' : 'stock';
         dashboardContent = `
-            <div class="max-w-[500px] mx-auto animate-fade-in">
-                ${renderDashboardColumn(activeType)}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
+                <!-- Crypto Column (Visible on Crypto tab or on Desktop) -->
+                <div class="${isCrypto ? 'block' : 'hidden md:block'}">
+                    ${hasLinkedCrypto ? renderDashboardColumn('crypto') : renderFreeDashboardColumn('crypto')}
+                </div>
+                <!-- Stock Column (Visible on Stock tab or on Desktop) -->
+                <div class="${!isCrypto ? 'block' : 'hidden md:block'}">
+                    ${hasLinkedStock ? renderDashboardColumn('stock') : renderFreeDashboardColumn('stock')}
+                </div>
             </div>
         `;
     }
 
     let mainMaxWidthClass = 'max-w-[500px]';
-    if (hasLinkedCrypto && hasLinkedStock) {
+    if (hasLinkedKeys) {
         mainMaxWidthClass = 'max-w-[500px] md:max-w-[1000px]';
-    } else if (!hasLinkedKeys) {
+    } else {
         mainMaxWidthClass = 'max-w-[500px] lg:max-w-full';
     }
 
@@ -2840,7 +2919,7 @@ function renderDashboardView() {
                     <span class="text-[10px]">${isPremium ? '💎' : '🥈'}</span>
                     <span class="font-label-sm text-label-sm ${isPremium ? 'text-secondary-container' : 'text-primary'}">${isPremium ? 'Premium' : 'Standard'}</span>
                 </div>
-                ${(hasLinkedCrypto && hasLinkedStock) ? `
+                ${(hasLinkedKeys) ? `
                 <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1 md:hidden">
                     <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
                     <button onclick="setDashboardTab('stock')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${!isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Stocks</button>
@@ -3647,7 +3726,7 @@ function renderStatsView() {
         <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Institutional Performance</h2>
             
-            <div class="grid grid-cols-1 ${(hasLinkedCrypto && hasLinkedStock) ? 'md:grid-cols-2' : ''} gap-6">
+            <div class="grid grid-cols-1 ${hasLinkedKeys ? 'md:grid-cols-2' : ''} gap-6">
                 <!-- Crypto Performance Section -->
                 ${hasLinkedCrypto ? `
                 <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 space-y-4">
@@ -3741,7 +3820,20 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
-            ` : ''}
+            ` : `
+            <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Free Stats</h3>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                </div>
+                <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
+                    ${getFreeStatsHtml(true, 'crypto')}
+                </div>
+                <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
+                    CONNECT CRYPTO EXCHANGE
+                </a>
+            </section>
+            `}
             
             <!-- Stocks Performance Section -->
             ${hasLinkedStock ? `
@@ -3836,7 +3928,20 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
-            ` : ''}
+            ` : `
+            <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Free Stats</h3>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                </div>
+                <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
+                    ${getFreeStatsHtml(true, 'stock')}
+                </div>
+                <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
+                    CONNECT STOCK EXCHANGE
+                </a>
+            </section>
+            `}
             </div>
         </main>
     `;
