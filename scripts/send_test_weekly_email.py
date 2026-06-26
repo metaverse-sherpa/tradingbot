@@ -130,7 +130,7 @@ async def main_async(args):
         crypto_open_trades=None,
         crypto_hypothetical_data=crypto_hypothetical,
     )
-    subject_free = f"🏔️ [TEST - FREE] Metaverse Sherpa Weekly Audit - {date_str}"
+    subject_free = f"🏔️ [TEST - FREE] Metaverse Sherpa Weekly Summary - {date_str}"
     send_alert_email(args.to, subject_free, html_free)
     logger.info(f"✅ FREE version queued for {args.to}")
 
@@ -147,7 +147,7 @@ async def main_async(args):
         crypto_open_trades=crypto_trades,
         crypto_hypothetical_data=crypto_hypothetical,
     )
-    subject_premium = f"🏔️ [TEST - PREMIUM] Metaverse Sherpa Weekly Audit - {date_str}"
+    subject_premium = f"🏔️ [TEST - PREMIUM] Metaverse Sherpa Weekly Summary - {date_str}"
     send_alert_email(args.to, subject_premium, html_premium)
     logger.info(f"✅ PREMIUM version queued for {args.to}")
 
@@ -164,7 +164,7 @@ async def main_async(args):
         crypto_open_trades=None,
         crypto_hypothetical_data=crypto_hypothetical,
     )
-    subject_no_exch = f"🏔️ [TEST - PREMIUM NO EXCHANGE] Metaverse Sherpa Weekly Audit - {date_str}"
+    subject_no_exch = f"🏔️ [TEST - PREMIUM NO EXCHANGE] Metaverse Sherpa Weekly Summary - {date_str}"
     send_alert_email(args.to, subject_no_exch, html_premium_no_exch)
     logger.info(f"✅ PREMIUM (No Exchange) version queued for {args.to}")
 

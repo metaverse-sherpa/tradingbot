@@ -600,7 +600,7 @@ async def weekly_combined_email_engine(application):
                             crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto")
                         
                 if ru.get("email"):
-                    subject = f"🏔️ Metaverse Sherpa Weekly Audit - {datetime.now(tz).strftime('%Y-%m-%d')}"
+                    subject = f"🏔️ Metaverse Sherpa Weekly Summary - {datetime.now(tz).strftime('%Y-%m-%d')}"
                     html_content = get_combined_weekly_summary_html(
                         is_premium=is_prem,
                         has_stock_exchange=has_stock_exch,

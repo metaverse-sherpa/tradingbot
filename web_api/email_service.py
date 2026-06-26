@@ -901,7 +901,7 @@ def get_combined_weekly_summary_html(is_premium=False,
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="color-scheme" content="light dark">
         <meta name="supported-color-schemes" content="light dark">
-        <title>Sherpa Weekly Audit</title>
+        <title>Sherpa Weekly Summary</title>
         <style>
             :root {{
                 color-scheme: light dark;
