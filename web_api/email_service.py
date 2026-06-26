@@ -817,6 +817,35 @@ def get_combined_weekly_summary_html(is_premium=False,
                     <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
                         You have Premium Access, but your exchange API keys for {title.lower()} are missing or invalid. Please connect your exchange in the trading console to enable real-time tracking and autopilot execution.
                     </p>
+                    <a href="https://bot.metaversesherpa.io/#/settings" style="display: inline-block; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Connect Exchange</a>
+                </div>
+                """
+                # Also show hypothetical stats so they can see what they're missing
+                hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
+                hypo_balance = 1000.0 + hypo_pnl
+                hypo_growth = (hypo_pnl / 1000.0) * 100
+                
+                wins = hypothetical_data.get("wins", 0)
+                losses = hypothetical_data.get("losses", 0)
+                win_rate = hypothetical_data.get("win_rate", 0.0)
+                
+                pnl_color = "#00C853" if hypo_pnl >= 0 else "#FF1744"
+                sign = "+" if hypo_pnl >= 0 else ""
+                
+                section_content += f"""
+                <div style="background-color: #1a222e; border-radius: 8px; border: 1px dashed {accent_color}; padding: 20px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; right: 0; background-color: {accent_color}; color: #000; font-size: 9px; font-weight: bold; padding: 3px 10px; border-bottom-left-radius: 8px; text-transform: uppercase;">Hypothetical</div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">Simulated Portfolio Equity</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${hypo_balance:,.2f} USD</div>
+                    <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
+                        Cumulative Performance: {sign}{hypo_growth:.2f}% ({sign}${hypo_pnl:,.2f})
+                    </div>
+                    <div style="font-size: 13px; color: #8892b0; margin-top: 10px;">
+                        <b>Win Rate:</b> {win_rate:.1f}% ({wins} W | {losses} L)
+                    </div>
+                    <p style="font-size: 11px; color: #8892b0; margin: 15px 0 0 0; font-style: italic;">
+                        * This is a simulation of what your {title.lower()} portfolio would look like with our automated fractional execution (starting from a $1,000 base). Connect your exchange to see your real performance!
+                    </p>
                 </div>
                 """
         else:

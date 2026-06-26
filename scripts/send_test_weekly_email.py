@@ -151,6 +151,23 @@ async def main_async(args):
     send_alert_email(args.to, subject_premium, html_premium)
     logger.info(f"✅ PREMIUM version queued for {args.to}")
 
+    # --- PREMIUM (No Exchange) version ---
+    logger.info("📧 Generating PREMIUM (No Exchange) version...")
+    html_premium_no_exch = get_combined_weekly_summary_html(
+        is_premium=True,
+        has_stock_exchange=False,
+        stock_portfolio_data=None,
+        stock_open_trades=None,
+        stock_hypothetical_data=stock_hypothetical,
+        has_crypto_exchange=False,
+        crypto_portfolio_data=None,
+        crypto_open_trades=None,
+        crypto_hypothetical_data=crypto_hypothetical,
+    )
+    subject_no_exch = f"🏔️ [TEST - PREMIUM NO EXCHANGE] Metaverse Sherpa Weekly Audit - {date_str}"
+    send_alert_email(args.to, subject_no_exch, html_premium_no_exch)
+    logger.info(f"✅ PREMIUM (No Exchange) version queued for {args.to}")
+
     # Wait for the email worker thread to flush
     logger.info("⏳ Waiting for email queue to flush...")
     time.sleep(8)
