@@ -754,6 +754,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
         if (response.status === 401) {
             localStorage.removeItem('session_token'); document.cookie = "session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
             if (window.location.hash !== '#/login' && window.location.hash !== '#/register' && window.location.hash !== '#/landing' && window.location.hash !== '#/' && window.location.hash !== '#/help') {
+                sessionStorage.setItem('redirect_after_login', window.location.hash);
                 // Unauthorized → redirect to landing
                 STATE.user = null;
                 navigate('#/landing');
@@ -951,7 +952,9 @@ async function handleGoogleCredentialResponse(response) {
                 showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
                 localStorage.removeItem('referred_by');
             }
-            navigate('#/dashboard');
+            const redirect = sessionStorage.getItem('redirect_after_login') || '#/dashboard';
+            sessionStorage.removeItem('redirect_after_login');
+            navigate(redirect);
         }
     } catch (error) {
         STATE.google_verifying = false;
@@ -1020,7 +1023,9 @@ async function handleRoute() {
             const profile = await apiRequest('/user/profile');
             if (profile) {
                 STATE.user = profile;
-                navigate('#/dashboard');
+                const redirect = sessionStorage.getItem('redirect_after_login') || '#/dashboard';
+                sessionStorage.removeItem('redirect_after_login');
+                navigate(redirect);
                 return;
             }
         } catch (e) {
@@ -5626,7 +5631,9 @@ async function handleEmailLogin(e) {
         }
         await setupZKKeys(email, password);
         showToast("Welcome back, Sherpa trader!");
-        navigate('#/dashboard');
+        const redirect = sessionStorage.getItem('redirect_after_login') || '#/dashboard';
+        sessionStorage.removeItem('redirect_after_login');
+        navigate(redirect);
     } catch (error) {
         showToast(error.message, "error");
     }
@@ -5687,7 +5694,9 @@ async function handleEmailRegister(e) {
                 showToast("Referral successfully applied! Welcome to Metaverse Sherpa.");
                 localStorage.removeItem('referred_by');
             }
-            navigate('#/dashboard');
+            const redirect = sessionStorage.getItem('redirect_after_login') || '#/dashboard';
+            sessionStorage.removeItem('redirect_after_login');
+            navigate(redirect);
         }
     } catch (error) {
         showToast(error.message, "error");
