@@ -405,7 +405,8 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
     if not stock_opened:
         stock_opened_rows = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active stock positions today.</td></tr>'
     else:
-        for s in stock_opened:
+        stock_opened_sorted = sorted(stock_opened, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+        for s in stock_opened_sorted:
             sym = s['symbol']
             pnl_pct = s.get('current_pnl_pct', 0.0)
             daily_pnl_pct = s.get('daily_pnl_pct', 0.0)
@@ -413,6 +414,8 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
             daily_pnl_color = "#00C853" if daily_pnl_pct >= 0 else "#FF1744"
+            pnl_weight = "bold" if pnl_pct >= 0 else "normal"
+            daily_pnl_weight = "bold" if daily_pnl_pct >= 0 else "normal"
             
             pnl_str = f"{pnl_pct:+.2f}%"
             daily_pnl_str = f"{daily_pnl_pct:+.2f}%"
@@ -422,9 +425,9 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             dir_emoji = "📈" if is_long else "📉"
             sym_html = f'<a href="https://marketmasters.ai/stocks/{sym}" style="color: {color_accent_stock}; text-decoration: none;">{dir_emoji} {sym}</a>'
             
-            total_pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
-            daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
-            target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
+            total_pnl_display = f'<span style="color: {pnl_color}; font-weight: {pnl_weight};">{pnl_str}</span>'
+            daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: {daily_pnl_weight};">{daily_pnl_str}</span>'
+            target_pnl_display = f'<span style="color: #FFFFFF;">{target_str}</span>'
 
             stock_opened_rows += f"""
             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
@@ -485,7 +488,8 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
     if not crypto_opened:
         crypto_opened_rows = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No active crypto positions.</td></tr>'
     else:
-        for s in crypto_opened:
+        crypto_opened_sorted = sorted(crypto_opened, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+        for s in crypto_opened_sorted:
             sym = s['symbol']
             clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
             pnl_pct = s.get('current_pnl_pct', 0.0)
@@ -494,14 +498,16 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             
             pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
             daily_pnl_color = "#00C853" if daily_pnl_pct >= 0 else "#FF1744"
+            pnl_weight = "bold" if pnl_pct >= 0 else "normal"
+            daily_pnl_weight = "bold" if daily_pnl_pct >= 0 else "normal"
             
             pnl_str = f"{pnl_pct:+.2f}%"
             daily_pnl_str = f"{daily_pnl_pct:+.2f}%"
             target_str = f"+{target_tp_pct:.1f}%"
             
-            total_pnl_display = f'<span style="color: {pnl_color}; font-weight: bold;">{pnl_str}</span>'
-            daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: bold;">{daily_pnl_str}</span>'
-            target_pnl_display = f'<span style="color: #00C853; font-weight: bold;">{target_str}</span>'
+            total_pnl_display = f'<span style="color: {pnl_color}; font-weight: {pnl_weight};">{pnl_str}</span>'
+            daily_pnl_display = f'<span style="color: {daily_pnl_color}; font-weight: {daily_pnl_weight};">{daily_pnl_str}</span>'
+            target_pnl_display = f'<span style="color: #FFFFFF;">{target_str}</span>'
             
             is_long = s.get('side', '').upper() in ['BUY', 'LONG']
             dir_emoji = "📈" if is_long else "📉"
@@ -744,13 +750,16 @@ def get_combined_weekly_summary_html(is_premium=False,
                 if not open_trades:
                     open_rows = f'<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No open {title.lower()} positions currently.</td></tr>'
                 else:
-                    for t in open_trades:
+                    open_trades_sorted = sorted(open_trades, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+                    for t in open_trades_sorted:
                         pnl_pct = t.get("current_pnl_pct", 0.0)
                         daily_pnl_pct = t.get("daily_pnl_pct", 0.0)
                         target_pnl_pct = t.get("target_pnl_pct", 0.0)
                         
                         t_pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
                         daily_pnl_color = "#00C853" if daily_pnl_pct >= 0 else "#FF1744"
+                        t_pnl_weight = "bold" if pnl_pct >= 0 else "normal"
+                        daily_pnl_weight = "bold" if daily_pnl_pct >= 0 else "normal"
                         
                         sym = t['symbol']
                         clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
@@ -765,18 +774,18 @@ def get_combined_weekly_summary_html(is_premium=False,
                             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
                                 <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
                                 <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">Entry: ${t['entry_price']:.4f}<br>SL: ${t['sl_price']:.4f}<br>TP: ${t['tp_price']:.4f}</td>
-                                <td style="padding: 12px 10px; font-weight: bold; color: {daily_pnl_color}; font-size: 13px; width: 15%;">{daily_pnl_pct:+.2f}%</td>
-                                <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px; width: 15%;">{pnl_pct:+.2f}%</td>
-                                <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px; width: 15%;">+{target_pnl_pct:.1f}%</td>
+                                <td style="padding: 12px 10px; font-weight: {daily_pnl_weight}; color: {daily_pnl_color}; font-size: 13px; width: 15%;">{daily_pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; font-weight: {t_pnl_weight}; color: {t_pnl_color}; font-size: 13px; width: 15%;">{pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 15%;">+{target_pnl_pct:.1f}%</td>
                             </tr>
                             """
                         else:
                             open_rows += f"""
                             <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
                                 <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
-                                <td style="padding: 12px 10px; font-weight: bold; color: {daily_pnl_color}; font-size: 13px; width: 20%;">{daily_pnl_pct:+.2f}%</td>
-                                <td style="padding: 12px 10px; font-weight: bold; color: {t_pnl_color}; font-size: 13px; width: 20%;">{pnl_pct:+.2f}%</td>
-                                <td style="padding: 12px 10px; color: #00C853; font-weight: bold; font-size: 13px; width: 20%;">+{target_pnl_pct:.1f}%</td>
+                                <td style="padding: 12px 10px; font-weight: {daily_pnl_weight}; color: {daily_pnl_color}; font-size: 13px; width: 20%;">{daily_pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; font-weight: {t_pnl_weight}; color: {t_pnl_color}; font-size: 13px; width: 20%;">{pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 20%;">+{target_pnl_pct:.1f}%</td>
                             </tr>
                             """
                 

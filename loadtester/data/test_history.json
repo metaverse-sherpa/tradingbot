@@ -28,34 +28,6 @@
         "peak_memory": 36.99
     },
     {
-        "id": "run_1782384338",
-        "timestamp": 1782384338.878051,
-        "duration": 38.37,
-        "status": "idle",
-        "success_count": 6,
-        "failure_count": 2,
-        "latencies_count": 24,
-        "errors": [
-            {
-                "timestamp": 1782384371.393457,
-                "worker_id": 2,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384375.460098,
-                "worker_id": 3,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 26,
-        "peak_cpu": 80.7,
-        "peak_memory": 36.99
-    },
-    {
         "id": "run_1782384394",
         "timestamp": 1782384394.4850519,
         "duration": 73.98,
@@ -625,5 +597,18 @@
         "screenshots_count": 60,
         "peak_cpu": 86.7,
         "peak_memory": 37.71
+    },
+    {
+        "id": "run_1782402495",
+        "timestamp": 1782402495.823332,
+        "duration": 534.92,
+        "status": "completed",
+        "success_count": 100,
+        "failure_count": 0,
+        "latencies_count": 400,
+        "errors": [],
+        "screenshots_count": 400,
+        "peak_cpu": 87.5,
+        "peak_memory": 37.32
     }
 ]

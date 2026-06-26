@@ -3,8 +3,8 @@
     "concurrency": 100,
     "duration": 60,
     "ramp_up": 10,
-    "premium_ratio": 0.2,
-    "max_active_browsers": 15,
+    "premium_ratio": 0.7,
+    "max_active_browsers": 10,
     "routes": [
         {
             "action": "navigate",
