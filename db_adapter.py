@@ -219,16 +219,27 @@ def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0):
         conn = None
         try:
             conn = pg_pool.getconn()
+            try:
+                conn.rollback()
+            except BaseException:
+                pass
             conn.autocommit = False
             adapter = PgConnectionAdapter(conn)
             yield adapter
             conn.commit()
-        except Exception as e:
+        except BaseException as e:
             if conn:
-                conn.rollback()
+                try:
+                    conn.rollback()
+                except BaseException:
+                    pass
             raise e
         finally:
             if conn:
+                try:
+                    conn.rollback()
+                except BaseException:
+                    pass
                 pg_pool.putconn(conn)
     else:
         # Fallback to standard SQLite connection
