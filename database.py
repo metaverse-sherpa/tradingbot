@@ -2145,7 +2145,7 @@ def get_theoretical_stats_by_strategy(strategy_name):
         c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open' AND pnl_usdt > 0", (strategy_name,))
         wins = c.fetchone()[0]
         
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open' AND pnl_usdt <= 0", (strategy_name,))
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open' AND pnl_usdt < 0", (strategy_name,))
         losses = c.fetchone()[0]
         
         c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE strategy = ? AND status != 'open'", (strategy_name,))
