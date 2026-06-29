@@ -7,7 +7,7 @@ A production-ready, multi-tenant Telegram trading bot and companion web dashboar
 ## 🚀 Key Features
 
 *   **Multi-Tenant Telegram Interface**: Secure `/setup` or `/reset` flows. Each tenant runs autonomously using their own credentials.
-*   **Multi-Exchange Engine**: Real-time integration with Blofin, Binance, MEXC, Bitget, and **Coinbase Advanced (CDP API Keys)** via CCXT.
+*   **Multi-Exchange Engine**: Real-time integration with Blofin, Binance, MEXC, Bitget, Coinbase Advanced (CDP API Keys), and **Bybit (Perpetual Futures)** via CCXT.
 *   **Equities Integration**: Automated stock trading using the Alpaca API driven by the **Sherpa Velocity Pullback** strategy.
 *   **Lightweight Web SPA**: A highly responsive premium web dashboard featuring glassmorphic designs, real-time position status, and inline technical charting.
 *   **Military-Grade Encryption**: Fernet symmetric encryption key encrypts exchange API keys/passwords at rest in the SQLite database.
@@ -161,6 +161,47 @@ If running on GCP, the bot can securely load credentials from Google Secret Mana
 1.  **Create Secrets**: In the GCP Console under **Security > Secret Manager**, create secrets for sensitive keys (e.g., `ALPACA_API_KEY`, `ALPACA_API_SECRET`, `TELEGRAM_BOT_TOKEN`).
 2.  **IAM Role**: Assign the **Secret Manager Secret Accessor** role to your VM's default service account.
 3.  **Local Fallback**: Outside of GCP (during local testing), the system automatically falls back to values defined inside your local `.env` file.
+
+---
+
+## 🌐 Bybit Proxy Routing & UK Oracle VM Setup
+
+Bybit restricts trading and API requests originating from US IP addresses. To bypass this geo-block, all Bybit API traffic (both synchronous and asynchronous) is routed through a dedicated Squid proxy server hosted on an Oracle Cloud Infrastructure (OCI) VM in London, UK.
+
+### 1. Oracle VM Proxy Instance
+*   **Provider**: Oracle Cloud (Free Tier)
+*   **Location**: London (UK)
+*   **Operating System**: Ubuntu 22.04 LTS
+*   **Public IP**: `130.162.186.47`
+*   **Proxy Protocol/Port**: Squid Proxy on port `3128`
+
+### 2. Squid Configuration on Oracle VM
+To setup the forwarding proxy on the Oracle instance:
+1.  Install Squid:
+    ```bash
+    sudo apt update && sudo apt install squid -y
+    ```
+2.  Configure `/etc/squid/squid.conf` to restrict access strictly to the production GCP VM IP:
+    ```text
+    # Define ACL for your production GCP VPS
+    acl gcp_vps src GCP_VM_PUBLIC_IP/32
+
+    # Allow access from the GCP VPS
+    http_access allow gcp_vps
+
+    # Deny all other access
+    http_access deny all
+    ```
+3.  Restart Squid to apply rules:
+    ```bash
+    sudo systemctl restart squid
+    ```
+
+### 3. VPS Bot Integration
+*   The codebase utilizes centralized CCXT monkey-patching in `database.py` that intercepts all `ccxt.bybit` (sync) and `ccxt.async_support.bybit` (async) instantiations.
+*   **Default Fallback**: Automatically routes via `http://130.162.186.47:3128`.
+*   **Override**: Set the `BYBIT_PROXY` environment variable (either in GCP Secret Manager or locally in `.env`) to override the proxy IP/port dynamically (e.g. `BYBIT_PROXY=http://130.162.186.47:3128`).
+*   **Bybit API IP Whitelisting**: On the Bybit exchange console, the API key is configured to restrict access to the UK VM's public IP (`130.162.186.47`), ensuring strict credential security.
 
 ---
 
