@@ -606,10 +606,14 @@ def init_db():
             ("bingx_futures_type", "TEXT DEFAULT 'standard'"),
             ("coinbase_sandbox", "INTEGER DEFAULT 1")
         ]
+        conn.commit()
         for col_name, col_def in cols:
             if col_name not in existing_cols:
-                try: c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
-                except: pass
+                try:
+                    c.execute(f"ALTER TABLE Users ADD COLUMN {col_name} {col_def}")
+                    conn.commit()
+                except:
+                    conn.rollback()
             
         # Backward-compatible data migration
         try:
@@ -657,7 +661,7 @@ def init_db():
             """)
             conn.commit()
         except Exception as migration_err:
-            pass
+            conn.rollback()
         
         # 💎 Institutional Config Table
         if "Config" not in existing_tables:
@@ -678,8 +682,11 @@ def init_db():
         c.execute("PRAGMA table_info(GiftCodes)")
         existing_gift_cols = {row['name'] for row in c.fetchall()}
         if "target_username" not in existing_gift_cols:
-            try: c.execute("ALTER TABLE GiftCodes ADD COLUMN target_username TEXT")
-            except: pass
+            try:
+                c.execute("ALTER TABLE GiftCodes ADD COLUMN target_username TEXT")
+                conn.commit()
+            except:
+                conn.rollback()
         
         # Set default master wallet if not exists
         c.execute("SELECT 1 FROM Config WHERE key = 'master_usdt_wallet'")
@@ -735,8 +742,11 @@ def init_db():
         }
         for col_name, col_def in alpaca_cols.items():
             if col_name not in existing_alpaca_cols:
-                try: c.execute(f"ALTER TABLE AlpacaActiveTrades ADD COLUMN {col_name} {col_def}")
-                except: pass
+                try:
+                    c.execute(f"ALTER TABLE AlpacaActiveTrades ADD COLUMN {col_name} {col_def}")
+                    conn.commit()
+                except:
+                    conn.rollback()
                 
         c.execute("PRAGMA table_info(WebUsers)")
         existing_webusers_cols = {row['name'] for row in c.fetchall()}
@@ -746,8 +756,11 @@ def init_db():
         }
         for col_name, col_def in webusers_cols.items():
             if col_name not in existing_webusers_cols:
-                try: c.execute(f"ALTER TABLE WebUsers ADD COLUMN {col_name} {col_def}")
-                except: pass
+                try:
+                    c.execute(f"ALTER TABLE WebUsers ADD COLUMN {col_name} {col_def}")
+                    conn.commit()
+                except:
+                    conn.rollback()
 
                       
         # Set default theoretical balance
@@ -830,13 +843,18 @@ def init_db():
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:
-                try: c.execute(f"ALTER TABLE WebUsers ADD COLUMN {col_name} {col_def}")
-                except: pass
+                try:
+                    c.execute(f"ALTER TABLE WebUsers ADD COLUMN {col_name} {col_def}")
+                    conn.commit()
+                except:
+                    conn.rollback()
 
         # Migrate all users from realtime to daily frequency to optimize Resend limits
         try:
             c.execute("UPDATE WebUsers SET email_frequency = 'daily' WHERE email_frequency = 'realtime'")
+            conn.commit()
         except Exception as e:
+            conn.rollback()
             import logging
             logging.getLogger(__name__).error(f"Migration error (realtime to daily): {e}")
 
@@ -1097,7 +1115,9 @@ def set_active(chat_id, is_active):
         # Sync to WebUsers if linked
         try:
             c.execute("UPDATE WebUsers SET is_active = ? WHERE telegram_chat_id = ?", (val, chat_id))
+            conn.commit()
         except Exception as e:
+            conn.rollback()
             print(f"Sync to WebUsers status failed: {e}")
 
 def update_user_preference(chat_id, key, value):
