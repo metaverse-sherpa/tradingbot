@@ -438,16 +438,36 @@ async def run():
                         await ex.close()
                 except Exception as e:
                     futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
+                    e_str = str(e)
                     log.error("Position sync failed for %s on exchange %s (%s futures): %s",
                               user.get('telegram_chat_id') or f"web_{user.get('web_user_id')}",
                               user.get('exchange_id', 'blofin'),
                               futures_type,
-                              e)
-                    try:
-                        from utils_error import send_telegram_alert
-                        send_telegram_alert("Crypto Trading Engine (Position Sync)", e)
-                    except Exception:
-                        pass
+                              e_str)
+                              
+                    auth_keywords = [
+                        "AuthenticationError", "PermissionDenied", "403 Forbidden", "401 Unauthorized",
+                        "10024", "Unmatched IP", "regulatory restrictions", "Invalid API-key", "Invalid API Key"
+                    ]
+                    if any(k.lower() in e_str.lower() for k in auth_keywords):
+                        chat_id = user.get('telegram_chat_id')
+                        web_user_id = user.get('web_user_id')
+                        database.invalidate_exchange_credentials(chat_id=chat_id, web_user_id=web_user_id)
+                        ex_id = user.get('exchange_id', 'exchange').capitalize()
+                        user_id_str = str(chat_id) if chat_id else f"Web_{web_user_id}"
+                        
+                        try:
+                            from utils_error import send_telegram_alert
+                            error_msg = f"User {user_id_str} API Key unlinked due to authentication failure.\\nExchange: {ex_id}\\nReason: {e_str}"
+                            send_telegram_alert("API Key Auto-Revoked (Trading Engine)", error_msg, tb_string="")
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            from utils_error import send_telegram_alert
+                            send_telegram_alert("Crypto Trading Engine (Position Sync)", e)
+                        except Exception:
+                            pass
 
         await asyncio.gather(*(sync_user_pos(u) for u in active_users))
 

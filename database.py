@@ -1120,6 +1120,40 @@ def set_active(chat_id, is_active):
             conn.rollback()
             print(f"Sync to WebUsers status failed: {e}")
 
+def invalidate_exchange_credentials(chat_id=None, web_user_id=None):
+    """
+    Clears exchange API credentials and sets user is_active=0 when an unrecoverable auth error is detected.
+    Handles both Users (Telegram) and WebUsers synchronization.
+    """
+    if not chat_id and not web_user_id:
+        return
+        
+    with db_session() as conn:
+        c = conn.cursor()
+        if chat_id:
+            c.execute("""
+                UPDATE Users 
+                SET blofin_api_key = NULL, blofin_api_secret = NULL, blofin_api_password = NULL, is_active = 0
+                WHERE telegram_chat_id = ?
+            """, (chat_id,))
+            c.execute("""
+                UPDATE WebUsers 
+                SET api_key = NULL, api_secret = NULL, api_password = NULL, is_active = 0
+                WHERE telegram_chat_id = ?
+            """, (chat_id,))
+        elif web_user_id:
+            c.execute("""
+                UPDATE WebUsers 
+                SET api_key = NULL, api_secret = NULL, api_password = NULL, is_active = 0
+                WHERE id = ?
+            """, (web_user_id,))
+            c.execute("""
+                UPDATE Users 
+                SET blofin_api_key = NULL, blofin_api_secret = NULL, blofin_api_password = NULL, is_active = 0
+                WHERE web_user_id = ?
+            """, (web_user_id,))
+        conn.commit()
+
 def update_user_preference(chat_id, key, value):
     with db_session() as conn:
         c = conn.cursor()
