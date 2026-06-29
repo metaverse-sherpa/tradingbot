@@ -2722,6 +2722,17 @@ function renderDashboardView() {
         const typeStartingCapital = typeBalance - typePnlVal;
         const typePnlPct = typeStats.overall_pnl_pct !== undefined ? typeStats.overall_pnl_pct : (typeStartingCapital > 0 ? (typePnlVal / typeStartingCapital) * 100 : 0);
 
+        let cryptoTitle = 'Crypto Equity';
+        if (isCryptoType && STATE.user && STATE.user.has_exchange_keys) {
+            const exchangeId = STATE.user.exchange_id || 'blofin';
+            let exchangeDisplay = 'Blofin';
+            if (exchangeId === 'coinbase') exchangeDisplay = 'Coinbase Advanced';
+            else if (exchangeId === 'coinbaseexchange') exchangeDisplay = 'Coinbase Exchange';
+            else if (exchangeId === 'bingx') exchangeDisplay = 'BingX';
+            else exchangeDisplay = exchangeId.charAt(0).toUpperCase() + exchangeId.slice(1);
+            cryptoTitle = `Crypto Equity (${exchangeDisplay})`;
+        }
+
         return `
             <div class="space-y-4">
                 <h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
@@ -2733,7 +2744,7 @@ function renderDashboardView() {
                     <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 blur-3xl rounded-full pointer-events-none"></div>
                     <div class="relative z-10 pointer-events-none">
                         <p class="font-label-md text-label-md text-on-surface-variant mb-1 flex items-center gap-1.5">
-                            <span>${isCryptoType ? 'Crypto Equity' : 'Stock Equity'}</span>
+                            <span>${isCryptoType ? cryptoTitle : 'Stock Equity'}</span>
                             <button onclick="event.stopPropagation(); window.forceRefreshSegment('${type}')" class="p-1 -m-1 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center text-primary cursor-pointer pointer-events-auto" title="Force Refresh">
                                 <span class="material-symbols-outlined text-sm">sync</span>
                             </button>
