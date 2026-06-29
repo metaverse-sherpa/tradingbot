@@ -1150,7 +1150,7 @@ def invalidate_exchange_credentials(chat_id=None, web_user_id=None):
             c.execute("""
                 UPDATE Users 
                 SET blofin_api_key = NULL, blofin_api_secret = NULL, blofin_api_password = NULL, is_active = 0
-                WHERE web_user_id = ?
+                WHERE telegram_chat_id = (SELECT telegram_chat_id FROM WebUsers WHERE id = ?)
             """, (web_user_id,))
         conn.commit()
 
