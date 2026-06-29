@@ -76,7 +76,7 @@ def check_payment():
             
             with database.db_session() as conn:
                 c = conn.cursor()
-                c.execute("UPDATE WebUsers SET premium_expiry = ?, premium_expired_notified = 0, premium_warning_notified = FALSE WHERE id = ?", (new_expiry, user["id"]))
+                c.execute("UPDATE WebUsers SET premium_expiry = ?, premium_expired_notified = '0', premium_warning_notified = '0' WHERE id = ?", (new_expiry, user["id"]))
                 if credits > 0:
                     c.execute("UPDATE WebUsers SET referral_credits = max(0, referral_credits - 20) WHERE id = ?", (user["id"],))
                     
