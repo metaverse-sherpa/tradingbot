@@ -4105,6 +4105,7 @@ function renderSettingsView() {
                                             <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('mexc', 'MEXC')">MEXC</div>
                                             <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('bitget', 'Bitget')">Bitget</div>
                                             <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('bingx', 'BingX')">BingX</div>
+                                            <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('bybit', 'Bybit')">Bybit</div>
                                             <div class="px-4 py-3 hover:bg-white/10 cursor-pointer text-sm text-on-surface rounded transition-colors" onclick="window.selectExchange('coinbase', 'Coinbase Advanced (CDP keys)')">Coinbase Advanced (CDP keys)</div>
                                             ` : ''}
                                             ${!hasLinkedStock ? `
@@ -4133,6 +4134,12 @@ function renderSettingsView() {
                                         <span class="material-symbols-outlined text-sm">info</span> BingX Requirement
                                     </span>
                                     <p>Metaverse Sherpa connects to BingX using <strong>Perpetual Futures</strong>. Please make sure your API key has <strong>Read</strong> and <strong>Perpetual Futures Trading</strong> permissions enabled, and your funds are in your Perpetual Futures account.</p>
+                                </div>
+                                <div id="bybit-uta-field-container" class="p-3 bg-primary/10 rounded-lg border border-primary/20 text-xs text-on-surface-variant space-y-1 hidden">
+                                    <span class="font-bold text-primary flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-sm">info</span> Bybit Requirement
+                                    </span>
+                                    <p>Metaverse Sherpa connects to Bybit using standard derivatives or <strong>Unified Trading Account (UTA)</strong>. Ensure your API Key has <strong>Read-Write</strong> permissions for <strong>Contract/Derivatives</strong>.</p>
                                 </div>
                                 <div id="coinbase-advanced-field-container" class="p-3 bg-primary/10 rounded-lg border border-primary/20 text-xs text-on-surface-variant space-y-1 hidden">
                                     <span class="font-bold text-primary flex items-center gap-1">
@@ -5985,6 +5992,7 @@ window.toggleExchangeFields = function() {
     const pwdDiv = document.getElementById('pwd-field-container');
     const endpointDiv = document.getElementById('endpoint-field-container');
     const bingxDiv = document.getElementById('bingx-futures-field-container');
+    const bybitDiv = document.getElementById('bybit-uta-field-container');
     
     if (pwdDiv) {
         if (['blofin', 'bitget'].includes(exId)) {
@@ -6016,6 +6024,14 @@ window.toggleExchangeFields = function() {
             bingxDiv.classList.remove('hidden');
         } else {
             bingxDiv.classList.add('hidden');
+        }
+    }
+    
+    if (bybitDiv) {
+        if (exId === 'bybit') {
+            bybitDiv.classList.remove('hidden');
+        } else {
+            bybitDiv.classList.add('hidden');
         }
     }
     

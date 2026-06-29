@@ -27,6 +27,7 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
         [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
         [InlineKeyboardButton("🟦 BingX", callback_data="setex_bingx")],
+        [InlineKeyboardButton("⬛ Bybit", callback_data="setex_bybit")],
         [InlineKeyboardButton("🪙 Coinbase Advanced", callback_data="setex_coinbase")],
         [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
         [InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]
@@ -237,14 +238,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try: await update.effective_message.delete()
         except: pass
 
-        if context.user_data.get('exchange_id') == 'coinbase':
-            # Coinbase doesn't use a passphrase, upsert directly and complete
+        exchange_id = context.user_data.get('exchange_id')
+        if exchange_id in ('coinbase', 'bybit'):
+            # Coinbase and Bybit don't use a passphrase, upsert directly and complete
             database.upsert_user(
                 chat_id, 
                 context.user_data['api_key'],
                 context.user_data['api_secret'],
                 "",
-                exchange_id='coinbase',
+                exchange_id=exchange_id,
                 is_active=True
             )
             
@@ -260,21 +262,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     user_display = f"<a href=\"https://t.me/{username_clean}\">{safe_username}</a>"
                 else:
                     user_display = "No Username"
+                
+                exchange_name = "Coinbase" if exchange_id == 'coinbase' else "Bybit"
                 act_msg = (
-                    "💎 <b>Institutional Access Activated (Coinbase)!</b>\n\n"
+                    f"💎 <b>Institutional Access Activated ({exchange_name})!</b>\n\n"
                     f"User: <b>{safe_name}</b> ({user_display})\n"
                     f"ID: <code>{chat_id}</code>\n\n"
-                    "🚀 <i>Member has configured Coinbase API and is now LIVE in the engine.</i>"
+                    f"🚀 <i>Member has configured {exchange_name} API and is now LIVE in the engine.</i>"
                 )
                 await context.bot.send_message(chat_id=SUPER_ADMIN_ID, text=act_msg, parse_mode="HTML")
             except Exception as e:
-                logger.error(f"Error sending Coinbase Activation admin alert: {e}")
+                logger.error(f"Error sending Activation admin alert: {e}")
             
             context.user_data.clear()
             keyboard = [[InlineKeyboardButton("💰 Check My Balance", callback_data="check_balance_setup")]]
             await update.effective_message.reply_text(
                 "🎊 *Setup Complete!*\n\n"
-                "The Sherpa is now tracking your Coinbase account. Trading will begin on the next engine cycle.\n\n"
+                f"The Sherpa is now tracking your {exchange_name} account. Trading will begin on the next engine cycle.\n\n"
                 "Tap the button below to verify your connection and check your trading funds.", 
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode="Markdown"

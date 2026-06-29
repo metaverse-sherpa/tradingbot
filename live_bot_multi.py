@@ -338,8 +338,20 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
                 params['tdMode'] = 'isolated' # Bitget specific override
             elif exchange.id == 'bingx':
                 params['positionSide'] = 'LONG' if signal["side"] == "buy" else 'SHORT'
+            elif exchange.id == 'bybit':
+                params['takeProfit'] = float(exchange.price_to_precision(symbol, tp))
+                params['stopLoss'] = float(exchange.price_to_precision(symbol, sl))
+                params['positionIdx'] = 0  # Default to One-Way Mode
             
-        await exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
+        try:
+            await exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
+        except Exception as e:
+            if exchange.id == 'bybit' and 'position idx not match position mode' in str(e).lower():
+                log.info("ℹ️ Retrying Bybit order for %s in Hedge Mode (positionIdx)", symbol)
+                params['positionIdx'] = 1 if signal["side"] == "buy" else 2
+                await exchange.create_order(symbol, "limit", order_side, size, limit_price, params=params)
+            else:
+                raise e
             
         log.info("✅ Order placed for %s on %s", symbol, exchange.id)
         return {"symbol": symbol.split("/")[0], "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}

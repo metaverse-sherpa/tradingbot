@@ -324,6 +324,8 @@ def process_exchange_trades_for_symbol(trades, exchange_id):
         reported_pnl = None
         if exchange_id == 'blofin':
             reported_pnl = info.get("fillPnl")
+        elif exchange_id == 'bybit':
+            reported_pnl = info.get("execPnl")
         else:
             reported_pnl = info.get("realizedPnl")
             
@@ -399,6 +401,8 @@ def get_exchange_balance_params(exchange_id, futures_type='perpetual'):
         return {"type": "swap"}     # Perpetual Swap
     elif exchange_id == 'binance':
         return {"type": "future"}   # USDⓈ-M Futures (UMFUTURE)
+    elif exchange_id == 'bybit':
+        return {"type": "swap"}     # Unified Trading Account Swap
     return {"type": "futures"}      # Fallback (e.g. Blofin)
 
 

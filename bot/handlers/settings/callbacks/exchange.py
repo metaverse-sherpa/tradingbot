@@ -39,6 +39,7 @@ async def handle_exchange_callback(query, update: Update, context: ContextTypes.
             [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
             [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
             [InlineKeyboardButton("🟦 BingX", callback_data="setex_bingx")],
+            [InlineKeyboardButton("⬛ Bybit", callback_data="setex_bybit")],
             [InlineKeyboardButton("🪙 Coinbase Advanced", callback_data="setex_coinbase")],
             [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
             [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
@@ -116,6 +117,15 @@ async def handle_exchange_callback(query, update: Update, context: ContextTypes.
                 "3️⃣ Grant **'Advanced Trade (Trade & Read)'** permissions.\n"
                 "4️⃣ Note that Coinbase US futures leverage is set by margin requirements rather than a direct multiplier.\n\n"
                 "Please paste your **Coinbase API Key Name** (e.g. `organizations/123/apiKeys/abc-123`):"
+            )
+        elif exchange_id == 'bybit':
+            guide = (
+                "⬛ *Bybit API Setup*\n\n"
+                "1️⃣ Go to **API Management** on Bybit.\n"
+                "2️⃣ Create a System-Generated API Key.\n"
+                "3️⃣ Enable **'Contract'** and **'Orders'** permissions.\n"
+                "4️⃣ (Optional) Whitelist the VPS IP for security.\n\n"
+                "Please paste your **Bybit API Key** below:"
             )
         else:
             guide = (
