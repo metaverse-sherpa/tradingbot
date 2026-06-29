@@ -43,6 +43,10 @@ def test_bybit_connection(api_key, api_secret, api_password=None):
         return True
     except Exception as e:
         print(f"\n❌ Connection Failed: {e}")
+        print("\n--- Detailed Error Info ---")
+        print(f"Exception Type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         return False
     finally:
         try:
