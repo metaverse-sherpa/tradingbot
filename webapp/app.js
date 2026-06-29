@@ -450,7 +450,7 @@ window.forceRefreshSegment = function(segment) {
     
     updateViewIfOnDashboard();
     
-    const balancePromise = apiRequest(`/user/balance?segment=${segment}`)
+    const balancePromise = apiRequest(`/user/balance?segment=${segment}&bypass_cache=true`)
         .then(bal => {
             if (bal) {
                 if (segment === 'crypto') {
@@ -464,7 +464,7 @@ window.forceRefreshSegment = function(segment) {
             console.error(`Failed to refresh balance for ${segment}:`, err);
         });
         
-    const statsPromise = apiRequest(`/user/stats?segment=${segment}`)
+    const statsPromise = apiRequest(`/user/stats?segment=${segment}&bypass_cache=true`)
         .then(stats => {
             if (stats && stats[segment]) {
                 if (!STATE.stats) STATE.stats = {};
@@ -479,7 +479,7 @@ window.forceRefreshSegment = function(segment) {
             console.error(`Failed to refresh stats for ${segment}:`, err);
         });
         
-    const openTradesPromise = apiRequest(`/trades/open?segment=${segment}`)
+    const openTradesPromise = apiRequest(`/trades/open?segment=${segment}&bypass_cache=true`)
         .then(open => {
             if (open) {
                 STATE.open_trades = STATE.open_trades.filter(t => t.type !== segment).concat(open);
