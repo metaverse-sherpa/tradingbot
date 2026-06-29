@@ -5859,40 +5859,81 @@ async function handleExchangeSetup(e) {
     const key = document.getElementById('api-key').value;
     const secret = document.getElementById('api-secret').value;
     
-    let res;
-    if (exId === 'alpaca') {
-        const endpoint = document.getElementById('alpaca-endpoint').value;
-        res = await apiRequest('/settings/alpaca', 'POST', {
-            api_key: key,
-            api_secret: secret,
-            endpoint: endpoint
-        });
-    } else {
-        const pwd = document.getElementById('api-password').value;
-        const cbSandboxEl = document.getElementById('coinbase-sandbox');
-        const cbSandbox = cbSandboxEl ? cbSandboxEl.checked : true;
-        res = await apiRequest('/settings/exchange', 'POST', {
-            exchange_id: exId,
-            api_key: key,
-            api_secret: secret,
-            api_password: pwd,
-            bingx_futures_type: 'perpetual',
-            coinbase_sandbox: cbSandbox
-        });
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    let origLabel = "Save Keys";
+    if (submitBtn) {
+        origLabel = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">refresh</span>Saving...';
+        submitBtn.disabled = true;
     }
     
-    if (res) {
-        if (STATE.user) {
-            if (exId === 'alpaca') {
-                STATE.user.has_alpaca_keys = true;
+    let res;
+    try {
+        if (exId === 'alpaca') {
+            const endpoint = document.getElementById('alpaca-endpoint').value;
+            res = await apiRequest('/settings/alpaca', 'POST', {
+                api_key: key,
+                api_secret: secret,
+                endpoint: endpoint
+            });
+        } else {
+            const pwd = document.getElementById('api-password').value;
+            const cbSandboxEl = document.getElementById('coinbase-sandbox');
+            const cbSandbox = cbSandboxEl ? cbSandboxEl.checked : true;
+            res = await apiRequest('/settings/exchange', 'POST', {
+                exchange_id: exId,
+                api_key: key,
+                api_secret: secret,
+                api_password: pwd,
+                bingx_futures_type: 'perpetual',
+                coinbase_sandbox: cbSandbox
+            });
+        }
+        
+        if (res) {
+            showToast("Saving keys and testing connection...");
+            const segment = exId === 'alpaca' ? 'stock' : 'crypto';
+            const testResult = await apiRequest(`/settings/test-connection?segment=${segment}`);
+            
+            if (testResult && testResult.success) {
+                if (STATE.user) {
+                    if (exId === 'alpaca') {
+                        STATE.user.has_alpaca_keys = true;
+                    } else {
+                        STATE.user.has_exchange_keys = true;
+                        STATE.user.exchange_id = exId;
+                    }
+                }
+                showToast(`✅ ${(segment === 'crypto' ? testResult.exchange : 'Alpaca')} connection successful!`);
+                if (testResult.note) setTimeout(() => showToast(`ℹ️ ${testResult.note}`, 'info'), 1500);
+                if (segment === 'crypto') STATE.crypto_auth_success = true;
+                if (segment === 'stock') STATE.stock_auth_success = true;
+                STATE.editing_exchange = null;
+                handleRoute();
             } else {
-                STATE.user.has_exchange_keys = true;
-                STATE.user.exchange_id = exId;
+                const errMsg = (testResult && testResult.error) || 'Unknown error';
+                const hint = testResult && testResult.hint;
+                showToast(`❌ Connection failed: ${errMsg}`, 'error');
+                if (hint) setTimeout(() => showToast(`💡 ${hint}`, 'info'), 1500);
+                
+                // Revert keys since they failed
+                await apiRequest(exId === 'alpaca' ? '/settings/alpaca' : '/settings/exchange', 'DELETE');
+                if (STATE.user) {
+                    if (exId === 'alpaca') {
+                        STATE.user.has_alpaca_keys = false;
+                        STATE.stock_auth_success = false;
+                    } else {
+                        STATE.user.has_exchange_keys = false;
+                        STATE.crypto_auth_success = false;
+                    }
+                }
             }
         }
-        showToast("Exchange keys saved successfully!");
-        STATE.editing_exchange = null;
-        handleRoute();
+    } finally {
+        if (submitBtn) {
+            submitBtn.innerHTML = origLabel;
+            submitBtn.disabled = false;
+        }
     }
 }
 
