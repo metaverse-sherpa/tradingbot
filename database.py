@@ -10,11 +10,18 @@ from dotenv import load_dotenv
 # Disable fetchCurrencies globally in CCXT to prevent the library from querying private wallet endpoints
 # (such as wallets/v1/capital/config/getall on BingX) which require Account Transfer/Wallet permissions.
 # This allows balance syncing and trading to succeed using only Read and Futures permissions.
+# Also, route Bybit traffic through the London Squid proxy to bypass US geo-blocking.
 try:
     _original_async_init = ccxt.Exchange.__init__
     def _new_async_init(self, *args, **kwargs):
         _original_async_init(self, *args, **kwargs)
         self.has['fetchCurrencies'] = False
+        if self.id == 'bybit':
+            proxy_url = os.getenv('BYBIT_PROXY') or 'http://130.162.186.47:3128'
+            self.proxies = {
+                'http': proxy_url,
+                'https': proxy_url,
+            }
     ccxt.Exchange.__init__ = _new_async_init
 except Exception as patch_err:
     pass
@@ -24,6 +31,12 @@ try:
     def _new_sync_init(self, *args, **kwargs):
         _original_sync_init(self, *args, **kwargs)
         self.has['fetchCurrencies'] = False
+        if self.id == 'bybit':
+            proxy_url = os.getenv('BYBIT_PROXY') or 'http://130.162.186.47:3128'
+            self.proxies = {
+                'http': proxy_url,
+                'https': proxy_url,
+            }
     ccxt_sync.Exchange.__init__ = _new_sync_init
 except Exception as patch_err:
     pass
