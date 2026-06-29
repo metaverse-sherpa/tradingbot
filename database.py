@@ -1755,13 +1755,13 @@ def add_premium_days(chat_id, days):
     
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = FALSE, premium_warning_notified = FALSE, had_premium_before = TRUE WHERE telegram_chat_id = ?", (new_expiry, chat_id))
+        c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = 0, premium_warning_notified = FALSE, had_premium_before = 1 WHERE telegram_chat_id = ?", (new_expiry, chat_id))
 
 def revoke_premium(chat_id):
     """Revokes a user's premium status immediately."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("UPDATE Users SET premium_expiry = 0, premium_expired_notified = TRUE, premium_warning_notified = TRUE WHERE telegram_chat_id = ?", (chat_id,))
+        c.execute("UPDATE Users SET premium_expiry = 0, premium_expired_notified = 1, premium_warning_notified = TRUE WHERE telegram_chat_id = ?", (chat_id,))
 
 def get_referral_stats(chat_id):
     """Returns the total number of referrals for a user."""
@@ -1782,7 +1782,7 @@ def get_expired_unnotified_users():
     now = int(time.time())
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT telegram_chat_id FROM Users WHERE premium_expiry > 0 AND premium_expiry < ? AND premium_expired_notified = FALSE", (now,))
+        c.execute("SELECT telegram_chat_id FROM Users WHERE premium_expiry > 0 AND premium_expiry < ? AND premium_expired_notified = 0", (now,))
         return [row[0] for row in c.fetchall()]
 
 def set_premium_expired_notified(chat_id, value=True):
@@ -1830,7 +1830,7 @@ def get_expired_unnotified_web_users(now_ts):
         c.execute('''
             SELECT id, telegram_chat_id, email, full_name, premium_expiry 
             FROM WebUsers 
-            WHERE premium_expiry > 0 AND premium_expiry < ? AND (premium_expired_notified = FALSE OR premium_expired_notified IS NULL)
+            WHERE premium_expiry > 0 AND premium_expiry < ? AND (premium_expired_notified = 0 OR premium_expired_notified IS NULL)
         ''', (now_ts,))
         return [dict(row) for row in c.fetchall()]
 
@@ -2091,7 +2091,7 @@ def redeem_gift_code(chat_id, code, current_username=None):
         current_expiry = u_row['premium_expiry'] if u_row else 0
         
         new_expiry = max(current_expiry, current_time) + (days * 86400)
-        c.execute('UPDATE Users SET premium_expiry = ?, premium_expired_notified = FALSE, premium_warning_notified = FALSE WHERE telegram_chat_id = ?', (new_expiry, chat_id))
+        c.execute('UPDATE Users SET premium_expiry = ?, premium_expired_notified = 0, premium_warning_notified = FALSE WHERE telegram_chat_id = ?', (new_expiry, chat_id))
         c.execute('UPDATE GiftCodes SET is_used = 1 WHERE code = ?', (code,))
         
     return True, f"✅ Success! You have been granted {days} days of Premium Institutional access."
@@ -2139,7 +2139,7 @@ def redeem_gift_code_web(web_user_id, code):
         # 4. Grant premium in WebUsers
         current_time = int(time.time())
         new_expiry = max(w_expiry, current_time) + (days * 86400)
-        c.execute('UPDATE WebUsers SET premium_expiry = ?, premium_expired_notified = FALSE, premium_warning_notified = FALSE WHERE id = ?', (new_expiry, web_user_id))
+        c.execute('UPDATE WebUsers SET premium_expiry = ?, premium_expired_notified = 0, premium_warning_notified = FALSE WHERE id = ?', (new_expiry, web_user_id))
         
         # 5. Sync to linked Users table (Bot) if linked
         if telegram_chat_id:
@@ -2147,7 +2147,7 @@ def redeem_gift_code_web(web_user_id, code):
             u_row = c.fetchone()
             current_expiry = u_row['premium_expiry'] if u_row else 0
             new_bot_expiry = max(current_expiry, current_time) + (days * 86400)
-            c.execute('UPDATE Users SET premium_expiry = ?, premium_expired_notified = FALSE, premium_warning_notified = FALSE WHERE telegram_chat_id = ?', (new_bot_expiry, telegram_chat_id))
+            c.execute('UPDATE Users SET premium_expiry = ?, premium_expired_notified = 0, premium_warning_notified = FALSE WHERE telegram_chat_id = ?', (new_bot_expiry, telegram_chat_id))
             
         # 6. Mark as used
         c.execute('UPDATE GiftCodes SET is_used = 1 WHERE code = ?', (code,))

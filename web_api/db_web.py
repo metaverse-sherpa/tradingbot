@@ -480,9 +480,9 @@ def award_premium_referral_on_upgrade(referee_id):
             new_expiry = current_expiry + (30 * 24 * 60 * 60)
             
             if web_user_id:
-                c.execute("UPDATE WebUsers SET premium_expiry = ?, premium_expired_notified = FALSE, premium_warning_notified = FALSE WHERE id = ?", (new_expiry, web_user_id))
+                c.execute("UPDATE WebUsers SET premium_expiry = ?, premium_expired_notified = 0, premium_warning_notified = FALSE WHERE id = ?", (new_expiry, web_user_id))
             if tg_chat_id:
-                c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = FALSE, premium_warning_notified = FALSE WHERE telegram_chat_id = ?", (new_expiry, tg_chat_id))
+                c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = 0, premium_warning_notified = FALSE WHERE telegram_chat_id = ?", (new_expiry, tg_chat_id))
                 
             # Notify referrer of reward extension
             if tg_chat_id:
