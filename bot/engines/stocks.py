@@ -20,15 +20,15 @@ async def alpaca_equities_engine(application):
     """
     import live_bot_multi_alpaca
 
-    logger.info("🦙 Starting Alpaca Stocks Daily Scheduler (9:31 AM EST)...")
+    logger.debug("🦙 Starting Alpaca Stocks Daily Scheduler (9:31 AM EST)...")
     
     # Run cache catch-up update on scheduler startup in a non-blocking background task
     async def run_startup_cache_update():
         try:
-            logger.info("🏔️ Startup: Checking and updating stock daily cache...")
+            logger.debug("🏔️ Startup: Checking and updating stock daily cache...")
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, live_bot_multi_alpaca.update_stock_daily_cache)
-            logger.info("🏔️ Startup: Stock daily cache check/update completed.")
+            logger.debug("🏔️ Startup: Stock daily cache check/update completed.")
         except Exception as startup_err:
             logger.error(f"Error checking daily stock cache on startup: {startup_err}")
 
@@ -45,18 +45,18 @@ async def alpaca_equities_engine(application):
                 target += timedelta(days=1)
                 
             wait_time = (target - now).total_seconds()
-            logger.info(f"Alpaca Stocks Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            logger.debug(f"Alpaca Stocks Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             
             await asyncio.sleep(wait_time)
             
-            logger.info("🦙 Waking up! Running daily stock swing execution...")
+            logger.debug("🦙 Waking up! Running daily stock swing execution...")
             await live_bot_multi_alpaca.main()
             
             # Prevent double-fire by sleeping 60 seconds
             await asyncio.sleep(60)
             
         except asyncio.CancelledError:
-            logger.info("🦙 Alpaca Stocks Daily Scheduler task cancelled.")
+            logger.debug("🦙 Alpaca Stocks Daily Scheduler task cancelled.")
             break
         except Exception as e:
             logger.error(f"🦙 Alpaca Stocks Daily Scheduler error: {e}")
@@ -67,7 +67,7 @@ async def alpaca_fractional_monitor_engine(application):
     Monitors active fractional stock trades via Alpaca Data API.
     Checks if the recent High or Low crossed TP/SL, and executes an exit.
     """
-    logger.info("🦙 Starting Alpaca Fractional Shares Monitor Task (5m Loop)...")
+    logger.debug("🦙 Starting Alpaca Fractional Shares Monitor Task (5m Loop)...")
     
     while True:
         try:
@@ -171,7 +171,7 @@ async def alpaca_fractional_monitor_engine(application):
                                     send_telegram_alert(f"Engine Error (Stock Exit Failed) [{user_info}]", e)
                                     
         except asyncio.CancelledError:
-            logger.info("🦙 Alpaca Monitor task cancelled.")
+            logger.debug("🦙 Alpaca Monitor task cancelled.")
             break
         except Exception as e:
             logger.error(f"Alpaca monitor error: {e}")
@@ -183,7 +183,7 @@ async def alpaca_fractional_monitor_engine(application):
 
 async def alpaca_hourly_sync_engine(application):
     import live_bot_multi_alpaca
-    logger.info("🦙 Starting Alpaca Hourly Sync Engine...")
+    logger.debug("🦙 Starting Alpaca Hourly Sync Engine...")
     
     while True:
         try:
@@ -194,21 +194,21 @@ async def alpaca_hourly_sync_engine(application):
             target = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
             wait_time = (target - now).total_seconds()
             
-            logger.info(f"Hourly Sync sleeping for {wait_time:.1f}s until {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            logger.debug(f"Hourly Sync sleeping for {wait_time:.1f}s until {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             await asyncio.sleep(wait_time)
             
             now = datetime.now(tz)
             # Only run during market hours (9:30 AM to 4:00 PM EST)
             # Since it runs on the hour, active times are 10:00, 11:00, 12:00, 13:00, 14:00, 15:00, 16:00
             if now.weekday() < 5 and (9 < now.hour <= 16):
-                logger.info("🦙 Waking up! Running hourly portfolio sync...")
+                logger.debug("🦙 Waking up! Running hourly portfolio sync...")
                 await live_bot_multi_alpaca.run_hourly_portfolio_sync()
             else:
-                logger.info("Hourly Sync: Market is closed or outside active hours. Skipping.")
+                logger.debug("Hourly Sync: Market is closed or outside active hours. Skipping.")
                 
             await asyncio.sleep(60) # Prevent double firing
         except asyncio.CancelledError:
-            logger.info("🦙 Alpaca Hourly Sync Engine task cancelled.")
+            logger.debug("🦙 Alpaca Hourly Sync Engine task cancelled.")
             break
         except Exception as e:
             logger.error(f"Alpaca Hourly Sync error: {e}")

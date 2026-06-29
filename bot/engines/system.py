@@ -14,7 +14,7 @@ async def premium_expiration_engine(application):
     Daily loop to check and alert users whose premium has expired.
     Checks once every 12 hours.
     """
-    logger.info("⏳ Starting Premium Expiration Engine (12h Loop)...")
+    logger.debug("⏳ Starting Premium Expiration Engine (12h Loop)...")
     
     while True:
         try:
@@ -48,7 +48,7 @@ async def premium_expiration_engine(application):
             await asyncio.sleep(43200)
             
         except asyncio.CancelledError:
-            logger.info("⏳ Premium Expiration Engine cancelled.")
+            logger.debug("⏳ Premium Expiration Engine cancelled.")
             break
         except Exception as e:
             logger.error(f"⏳ Premium Expiration Engine error: {e}")
@@ -314,7 +314,7 @@ async def daily_combined_email_engine(application):
     Also handles recording daily portfolio snapshots.
     """
     import utils_gcp
-    logger.info("⏳ Starting Daily Combined Email Engine...")
+    logger.debug("⏳ Starting Daily Combined Email Engine...")
     
     while True:
         try:
@@ -329,10 +329,10 @@ async def daily_combined_email_engine(application):
                 target += timedelta(days=1)
                 
             wait_time = (target - now).total_seconds()
-            logger.info(f"Daily Combined Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            logger.debug(f"Daily Combined Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             await asyncio.sleep(wait_time)
             
-            logger.info("📧 Compiling daily combined signals summary...")
+            logger.debug("📧 Compiling daily combined signals summary...")
             now_ms = int(time.time() * 1000)
             # If it's Monday, we want to look back 4 days (to Thursday 18:00) to capture weekend closures
             days_back = 4 if now.weekday() == 0 else 1
@@ -398,7 +398,7 @@ async def daily_combined_email_engine(application):
                                 logger.error(f"Error saving portfolio balance history: {db_err}")
 
             if not stock_signals and not crypto_signals:
-                logger.info("No trading signals to summarize. Skipping daily emails.")
+                logger.debug("No trading signals to summarize. Skipping daily emails.")
                 await asyncio.sleep(60)
                 continue
                 
@@ -538,7 +538,7 @@ async def daily_combined_email_engine(application):
             await asyncio.sleep(60)
             
         except asyncio.CancelledError:
-            logger.info("⏳ Daily Combined Email Engine cancelled.")
+            logger.debug("⏳ Daily Combined Email Engine cancelled.")
             break
         except Exception as e:
             logger.error(f"⏳ Daily Combined Email Engine error: {e}")
@@ -553,7 +553,7 @@ async def weekly_combined_email_engine(application):
     Weekly loop to compile and email weekly combined audits to all users.
     Runs on Fridays at 18:00 (6:00 PM) EST.
     """
-    logger.info("⏳ Starting Weekly Combined Email Engine...")
+    logger.debug("⏳ Starting Weekly Combined Email Engine...")
     
     while True:
         try:
@@ -566,10 +566,10 @@ async def weekly_combined_email_engine(application):
                 days_ahead += 7
             target = (now + timedelta(days=days_ahead)).replace(hour=18, minute=0, second=0, microsecond=0)
             wait_time = (target - now).total_seconds()
-            logger.info(f"Weekly Combined Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            logger.debug(f"Weekly Combined Email Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             await asyncio.sleep(wait_time)
             
-            logger.info("📧 Compiling weekly combined audits...")
+            logger.debug("📧 Compiling weekly combined audits...")
             from web_api.db_web import get_users_for_weekly_processing
             from web_api.email_service import send_alert_email, get_combined_weekly_summary_html
             
@@ -618,7 +618,7 @@ async def weekly_combined_email_engine(application):
             await asyncio.sleep(60)
             
         except asyncio.CancelledError:
-            logger.info("⏳ Weekly Combined Email Engine cancelled.")
+            logger.debug("⏳ Weekly Combined Email Engine cancelled.")
             break
         except Exception as e:
             logger.error(f"⏳ Weekly Combined Email Engine error: {e}")

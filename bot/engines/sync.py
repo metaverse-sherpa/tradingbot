@@ -16,7 +16,7 @@ async def sync_engine(application):
     - Updates the database with their current equity to ensure PnL stats in the UI are accurate.
     - Uses asyncio.gather for parallel network requests to prevent blocking.
     """
-    logger.info("📡 Starting Sentinel Sync Task (60s Notifications)...")
+    logger.debug("📡 Starting Sentinel Sync Task (60s Notifications)...")
     while True:
         try:
             active_users = database.get_all_active_users()

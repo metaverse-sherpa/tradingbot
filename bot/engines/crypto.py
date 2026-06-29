@@ -27,7 +27,7 @@ async def theory_trades_resolution_engine(application):
     Checks open theoretical (free) signals and resolves them if the current price (high/low of 1m candle)
     crosses TP/SL targets. Only queries market data for active symbols to prevent server strain.
     """
-    logger.info("📡 Starting Theoretical Trades Resolution Task (60s loop)...")
+    logger.debug("📡 Starting Theoretical Trades Resolution Task (60s loop)...")
     while True:
         try:
             await asyncio.sleep(60)
@@ -182,7 +182,7 @@ async def signal_engine(application):
        c. Places market limit orders with calculated risk constraints via CCXT.
        d. Broadcasts entry notifications with dynamically generated neon charts.
     """
-    logger.info("🏔️ Starting Sherpa Signal Task (15m Precision)...")
+    logger.debug("🏔️ Starting Sherpa Signal Task (15m Precision)...")
     mdm = live_bot_multi.MarketDataManager()
     try:
         while True:
@@ -191,7 +191,7 @@ async def signal_engine(application):
                 now = time.time()
                 seconds_past_mark = now % 900
                 wait_time = 900 - seconds_past_mark + 30
-                logger.info(f"Sherpa Sleeping {wait_time:.1f}s until next candle close...")
+                logger.debug(f"Sherpa Sleeping {wait_time:.1f}s until next candle close...")
                 await asyncio.sleep(wait_time)
 
                 # Reset MDM cache for the new cycle
@@ -479,5 +479,5 @@ async def signal_engine(application):
                 
                 await asyncio.sleep(60)
     finally:
-        logger.info("🏔️ Closing Sherpa Signal Task Market Data Manager...")
+        logger.debug("🏔️ Closing Sherpa Signal Task Market Data Manager...")
         await mdm.close()
