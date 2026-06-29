@@ -8,6 +8,8 @@ def _decrypt_user_keys(user):
     """Decrypt all encrypted API key fields on a user dict in-place."""
     if not user:
         return user
+    if "hide_dollars" in user and user["hide_dollars"] is not None:
+        user["hide_dollars"] = bool(user["hide_dollars"])
     for field in _ENCRYPTED_KEY_FIELDS:
         if user.get(field):
             try:
@@ -47,6 +49,8 @@ def get_web_user_by_id(user_id):
         row = c.fetchone()
         if row:
             user = dict(row)
+            if "hide_dollars" in user and user["hide_dollars"] is not None:
+                user["hide_dollars"] = bool(user["hide_dollars"])
             # Decrypt exchange keys if they exist
             for key_field in ("api_key", "api_secret", "api_password", "alpaca_api_key", "alpaca_api_secret"):
                 if user.get(key_field):

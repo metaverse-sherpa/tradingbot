@@ -129,9 +129,9 @@ def profile():
     
     # Sync hide_dollars setting from Telegram user if linked, otherwise default to True
     if tg_user:
-        user["hide_dollars"] = tg_user.get("hide_dollars") if tg_user.get("hide_dollars") is not None else True
+        user["hide_dollars"] = bool(tg_user.get("hide_dollars") if tg_user.get("hide_dollars") is not None else True)
     else:
-        user["hide_dollars"] = user.get("hide_dollars") if user.get("hide_dollars") is not None else True
+        user["hide_dollars"] = bool(user.get("hide_dollars") if user.get("hide_dollars") is not None else True)
     
     # Indicate if keys are configured (masking the actual keys)
     user["has_exchange_keys"] = bool((tg_user or {}).get("api_key") or user.get("api_key"))
