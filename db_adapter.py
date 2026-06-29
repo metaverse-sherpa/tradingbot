@@ -101,6 +101,10 @@ def translate_query(sql):
     sql = re.sub(r"\bINTEGER PRIMARY KEY\s+AUTOINCREMENT\b", "SERIAL PRIMARY KEY", sql, flags=re.IGNORECASE)
     sql = re.sub(r"\bINTEGER PRIMARY KEY\b", "SERIAL PRIMARY KEY" if "id" in sql.lower() else "INTEGER PRIMARY KEY", sql, flags=re.IGNORECASE)
 
+    # Convert BOOLEAN DEFAULT 0/1 to FALSE/TRUE for Postgres
+    sql = re.sub(r"\bBOOLEAN\s+DEFAULT\s+0\b", "BOOLEAN DEFAULT FALSE", sql, flags=re.IGNORECASE)
+    sql = re.sub(r"\bBOOLEAN\s+DEFAULT\s+1\b", "BOOLEAN DEFAULT TRUE", sql, flags=re.IGNORECASE)
+
     return sql
 
 
