@@ -18,10 +18,7 @@ try:
         self.has['fetchCurrencies'] = False
         if self.id == 'bybit':
             proxy_url = os.getenv('BYBIT_PROXY') or 'http://130.162.186.47:3128'
-            self.proxies = {
-                'http': proxy_url,
-                'https': proxy_url,
-            }
+            self.aiohttp_proxy = proxy_url
     ccxt.Exchange.__init__ = _new_async_init
 except Exception as patch_err:
     pass
