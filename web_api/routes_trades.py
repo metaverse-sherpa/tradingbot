@@ -197,7 +197,7 @@ def get_balance():
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_balance():
             client = database.get_exchange_client(merged_user, is_async=False)
-            client.timeout = 4000
+            client.timeout = 10000
             try:
                 futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
@@ -240,7 +240,7 @@ def get_balance():
                     pass
 
         db_fallback = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
-        balance_crypto, crypto_auth_success = run_with_timeout(fetch_crypto_balance, 6.0, (db_fallback, False))
+        balance_crypto, crypto_auth_success = run_with_timeout(fetch_crypto_balance, 15.0, (db_fallback, False))
     elif not segment or segment == 'crypto':
         balance_crypto, crypto_auth_success = float((tg_user or {}).get("equity") or user.get("equity") or 0.0), False
             
@@ -336,7 +336,7 @@ def get_stats():
     if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
         def fetch_crypto_stats():
             client = database.get_exchange_client(merged_user, is_async=False)
-            client.timeout = 4000
+            client.timeout = 10000
             try:
                 open_count = 0
                 unrealized = 0.0
@@ -374,7 +374,7 @@ def get_stats():
                 try: client.close()
                 except: pass
 
-        open_count, unrealized, live_bal = run_with_timeout(fetch_crypto_stats, 6.0, (0, 0.0, 0.0))
+        open_count, unrealized, live_bal = run_with_timeout(fetch_crypto_stats, 15.0, (0, 0.0, 0.0))
         crypto_open_count = open_count
         crypto_unrealized = unrealized
         if live_bal > 0:
@@ -736,7 +736,7 @@ def get_open_trades():
         def fetch_crypto_open_trades():
             trades = []
             client = database.get_exchange_client(merged_user, is_async=False)
-            client.timeout = 4000
+            client.timeout = 10000
             try:
                 try:
                     positions = client.fetch_positions()
@@ -785,7 +785,7 @@ def get_open_trades():
                 except Exception:
                     pass
 
-        crypto_open_trades = run_with_timeout(fetch_crypto_open_trades, 6.0, [])
+        crypto_open_trades = run_with_timeout(fetch_crypto_open_trades, 15.0, [])
         open_positions.extend(crypto_open_trades)
         
     with RESPONSE_CACHE_LOCK:
@@ -884,7 +884,7 @@ def get_trades_history():
                 
                 async def fetch_my_trades_async():
                     client = database.get_exchange_client(merged_user, is_async=True)
-                    client.timeout = 5000
+                    client.timeout = 10000
                     try:
                         await client.load_markets()
                         
