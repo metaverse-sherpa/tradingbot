@@ -14,6 +14,7 @@ async def premium_expiration_engine(application):
     Daily loop to check and alert users whose premium has expired.
     Checks once every 12 hours.
     """
+    from bot.config import SUPER_ADMIN_ID
     logger.debug("⏳ Starting Premium Expiration Engine (12h Loop)...")
     
     while True:
@@ -21,29 +22,73 @@ async def premium_expiration_engine(application):
             # Short initial delay to not block startup
             await asyncio.sleep(10)
             
-            expired_users = database.get_expired_unnotified_users()
-            if expired_users:
-                logger.info(f"📬 Found {len(expired_users)} users whose premium expired. Sending alerts...")
-                
-                msg = (
-                    "⚠️ *Your Premium Access Has Expired!*\n\n"
-                    "Your Metaverse Sherpa autopilot has been paused, and live trade execution is no longer active for your account.\n\n"
-                    "However, you will continue to receive free trading signals directly in Telegram!\n\n"
-                    "To reactivate auto-trading across all your assets and return to autopilot mode, please renew your Premium Access by typing /settings or /premium."
-                )
-                
-                for chat_id in expired_users:
+            now_ts = int(time.time())
+            
+            # Helper to send admin alerts
+            async def notify_admins(admin_msg):
+                admin_ids = database.get_all_admins()
+                if str(SUPER_ADMIN_ID) not in [str(a) for a in admin_ids]:
+                    admin_ids.append(SUPER_ADMIN_ID)
+                for a_id in set(admin_ids):
                     try:
-                        await application.bot.send_message(
-                            chat_id=chat_id,
-                            text=msg,
-                            parse_mode="Markdown"
-                        )
-                        database.set_premium_expired_notified(chat_id, True)
-                        logger.info(f"Notified {chat_id} of expiration.")
+                        await application.bot.send_message(chat_id=a_id, text=admin_msg, parse_mode="Markdown")
                     except Exception as e:
-                        logger.error(f"Failed to send expiration notice to {chat_id}: {e}")
-                        
+                        logger.error(f"Failed to send admin notification to {a_id}: {e}")
+
+            # 1. Telegram Users - Expiration Warnings (24h)
+            warning_users = database.get_premium_warning_users(now_ts)
+            for u in warning_users:
+                chat_id = u['telegram_chat_id']
+                try:
+                    msg = "⚠️ *Premium Expiraton Warning!*\n\nYour Metaverse Sherpa premium access will expire in less than 24 hours. Please renew your Premium Access by typing /settings or /premium to avoid service interruption."
+                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                    database.set_premium_warning_notified(chat_id, True)
+                    
+                    admin_msg = f"🔔 *Premium Expiring Soon (1 day)*\nUser: {u.get('full_name', '')} (@{u.get('username', 'none')})\nTelegram ID: `{chat_id}`"
+                    await notify_admins(admin_msg)
+                except Exception as e:
+                    logger.error(f"Failed to send warning to {chat_id}: {e}")
+
+            # 2. Telegram Users - Expiration
+            expired_users = database.get_expired_unnotified_users()
+            for chat_id in expired_users:
+                try:
+                    u_row = database.get_user(chat_id)
+                    msg = (
+                        "⚠️ *Your Premium Access Has Expired!*\n\n"
+                        "Your Metaverse Sherpa autopilot has been paused, and live trade execution is no longer active for your account.\n\n"
+                        "However, you will continue to receive free trading signals directly in Telegram!\n\n"
+                        "To reactivate auto-trading across all your assets and return to autopilot mode, please renew your Premium Access by typing /settings or /premium."
+                    )
+                    await application.bot.send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                    database.set_premium_expired_notified(chat_id, True)
+                    logger.info(f"Notified {chat_id} of expiration.")
+                    
+                    admin_msg = f"🔴 *Premium Expired*\nUser: {u_row.get('full_name', '')} (@{u_row.get('username', 'none')})\nTelegram ID: `{chat_id}`"
+                    await notify_admins(admin_msg)
+                except Exception as e:
+                    logger.error(f"Failed to send expiration notice to {chat_id}: {e}")
+
+            # 3. Web-Only Users - Expiration Warnings (24h)
+            warning_web_users = database.get_premium_warning_web_users(now_ts)
+            for w in warning_web_users:
+                try:
+                    database.set_web_premium_warning_notified(w['id'], True)
+                    admin_msg = f"🔔 *Web User Premium Expiring Soon (1 day)*\nEmail: {w.get('email', 'none')}\nTelegram ID: `{w.get('telegram_chat_id', 'None')}`"
+                    await notify_admins(admin_msg)
+                except Exception as e:
+                    logger.error(f"Failed to process web user warning {w['id']}: {e}")
+
+            # 4. Web-Only Users - Expiration
+            expired_web_users = database.get_expired_unnotified_web_users(now_ts)
+            for w in expired_web_users:
+                try:
+                    database.set_web_premium_expired_notified(w['id'], True)
+                    admin_msg = f"🔴 *Web User Premium Expired*\nEmail: {w.get('email', 'none')}\nTelegram ID: `{w.get('telegram_chat_id', 'None')}`"
+                    await notify_admins(admin_msg)
+                except Exception as e:
+                    logger.error(f"Failed to process web user expiration {w['id']}: {e}")
+
             # Sleep 12 hours
             await asyncio.sleep(43200)
             
