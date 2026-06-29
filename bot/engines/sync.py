@@ -23,7 +23,21 @@ async def handle_auth_failure(user, exception_str, application):
         database.invalidate_exchange_credentials(chat_id=chat_id, web_user_id=web_user_id)
         
         ex_id = user.get('exchange_id', 'exchange').capitalize()
-        user_id_str = str(chat_id) if chat_id else f"Web_{web_user_id}"
+        
+        email = user.get('email')
+        username = user.get('username')
+        id_parts = []
+        if chat_id:
+            tg_str = f"Telegram ID: {chat_id}"
+            if username:
+                tg_str += f" (@{username})"
+            id_parts.append(tg_str)
+        if web_user_id:
+            id_parts.append(f"Web User ID: {web_user_id}")
+        if email:
+            id_parts.append(f"Email: {email}")
+        
+        user_id_str = " | ".join(id_parts) if id_parts else "Unknown User"
         
         # Notify admins using global exception handler formatting
         error_msg = f"User {user_id_str} API Key unlinked due to authentication failure.\\nExchange: {ex_id}\\nReason: {exception_str}"

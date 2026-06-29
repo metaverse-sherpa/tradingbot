@@ -1026,6 +1026,7 @@ def get_user_from_web_row(row):
         "referral_credits": row.get('referral_credits') or 0.0,
         "full_name": row.get('full_name'),
         "username": None,
+        "email": row.get('email'),
         "is_admin": False,
         "custom_equity_type": row.get('custom_equity_type') or 'all',
         "custom_equity_value": row.get('custom_equity_value'),
