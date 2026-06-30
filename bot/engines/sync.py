@@ -106,7 +106,19 @@ async def sync_engine(application):
                                         usdc_bal = balance.get('USDC', {})
                                         if not isinstance(usd_bal, dict): usd_bal = {}
                                         if not isinstance(usdc_bal, dict): usdc_bal = {}
-                                        equity = float(usd_bal.get("total") or usd_bal.get("free") or balance.get("free", {}).get("USD") or balance.get("total", {}).get("USD") or 0.0) + float(usdc_bal.get("total") or usdc_bal.get("free") or balance.get("free", {}).get("USDC") or balance.get("total", {}).get("USDC") or 0.0)
+                                        total_usd = float(usd_bal.get("total") or usd_bal.get("free") or balance.get("free", {}).get("USD") or balance.get("total", {}).get("USD") or 0.0)
+                                        
+                                        # Try to fetch total USD from CFM balance summary to include pending deposits/futures balance
+                                        try:
+                                            cfm = await user_ex.v3PrivateGetBrokerageCfmBalanceSummary()
+                                            val_str = cfm.get('balance_summary', {}).get('total_usd_balance', {}).get('value')
+                                            if val_str:
+                                                total_usd = float(val_str)
+                                        except Exception:
+                                            pass
+                                            
+                                        total_usdc = float(usdc_bal.get("total") or usdc_bal.get("free") or balance.get("free", {}).get("USDC") or balance.get("total", {}).get("USDC") or 0.0)
+                                        equity = total_usd + total_usdc
                                     else:
                                         asset = 'USDT'
                                         equity = float(balance.get(asset, {}).get("total", 0) or balance.get(asset, {}).get("free", 0) or 0.0)

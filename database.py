@@ -1455,8 +1455,22 @@ async def update_user_stats_from_engine(chat_id, equity, exchange, application, 
             has_active = False
 
         # Optimization: If the user currently has no active positions AND had no open positions recorded in the DB,
-        # skip fetching trade history entirely since no trade could have closed.
-        if not has_active and not user.get('has_open_positions', False):
+        # skip fetching trade history entirely since no trade could have closed (unless history_cache is empty).
+        cache_empty = False
+        try:
+            with db_session() as conn:
+                c = conn.cursor()
+                if chat_id:
+                    c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (chat_id,))
+                else:
+                    c.execute("SELECT history_cache FROM WebUsers WHERE id = ?", (web_user_id,))
+                row = c.fetchone()
+                if not row or not row[0]:
+                    cache_empty = True
+        except:
+            pass
+
+        if not has_active and not user.get('has_open_positions', False) and not cache_empty:
             with db_session() as conn:
                 c = conn.cursor()
                 if chat_id:

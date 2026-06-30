@@ -501,11 +501,12 @@ window.forceRefreshSegment = function(segment) {
 
 window.refreshTradesHistory = function() {
     showToast("Refreshing closed trade history...", "info");
-    apiRequest('/trades/history')
+    apiRequest('/trades/history?bypass_cache=true')
         .then(hist => {
             if (hist) {
                 STATE.history = hist;
                 showToast("Trade history refreshed!", "success");
+                window.forceRefreshSegment(STATE.dashboard_tab);
                 if (STATE.current_view === 'trades' || STATE.current_view === 'history') {
                     renderView();
                 }
@@ -3518,7 +3519,12 @@ function renderHistoryView() {
         ${renderHeader()}
         <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] mx-auto">
             <div class="flex items-center gap-6 justify-between">
-                <h2 class="font-headline-sm text-headline-sm text-on-surface whitespace-nowrap">📜 History</h2>
+                <div class="flex items-center gap-2">
+                    <h2 class="font-headline-sm text-headline-sm text-on-surface whitespace-nowrap">📜 History</h2>
+                    <button onclick="window.refreshTradesHistory()" class="p-1 hover:bg-white/10 rounded-full transition-colors active:scale-95 flex items-center justify-center inline-flex align-middle" title="Force Refresh History (bypass cache)">
+                        <span class="material-symbols-outlined text-lg text-on-surface-variant">refresh</span>
+                    </button>
+                </div>
                 ${(STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys) ? `
                 <div class="glass-card rounded-full flex overflow-hidden border border-white/10 p-1">
                     <button onclick="setDashboardTab('crypto')" class="px-4 py-1.5 rounded-full font-label-sm transition-colors duration-200 ${isCrypto ? 'bg-primary text-on-primary shadow-[0_0_12px_rgba(168,232,255,0.4)]' : 'text-on-surface-variant hover:text-on-surface'}">Crypto</button>
@@ -5862,6 +5868,7 @@ async function handleExchangeSetup(e) {
     const exId = document.getElementById('exchange-id').value;
     const key = document.getElementById('api-key').value;
     const secret = document.getElementById('api-secret').value;
+    const hadKeysBefore = STATE.user ? (exId === 'alpaca' ? STATE.user.has_alpaca_keys : STATE.user.has_exchange_keys) : false;
     
     const submitBtn = e.target.querySelector('button[type="submit"]');
     let origLabel = "Save Keys";
@@ -5889,7 +5896,7 @@ async function handleExchangeSetup(e) {
                 api_key: key,
                 api_secret: secret,
                 api_password: pwd,
-                bingx_futures_type: 'perpetual',
+                bingx_futures_type: document.getElementById('bingx-futures-type')?.value,
                 coinbase_sandbox: cbSandbox
             });
         }
@@ -5919,16 +5926,18 @@ async function handleExchangeSetup(e) {
                 const hint = testResult && testResult.hint;
                 showToast(`❌ Connection failed: ${errMsg}`, 'error');
                 if (hint) setTimeout(() => showToast(`💡 ${hint}`, 'info'), 1500);
-                
-                // Revert keys since they failed
-                await apiRequest(exId === 'alpaca' ? '/settings/alpaca' : '/settings/exchange', 'DELETE');
-                if (STATE.user) {
-                    if (exId === 'alpaca') {
-                        STATE.user.has_alpaca_keys = false;
-                        STATE.stock_auth_success = false;
-                    } else {
-                        STATE.user.has_exchange_keys = false;
-                        STATE.crypto_auth_success = false;
+                // Revert keys if this was the initial setup since they failed
+                if (!hadKeysBefore) {
+                    await apiRequest(exId === 'alpaca' ? '/settings/alpaca' : '/settings/exchange', 'DELETE');
+                    if (STATE.user) {
+                        if (exId === 'alpaca') {
+                            STATE.user.has_alpaca_keys = false;
+                            STATE.stock_auth_success = false;
+                        } else {
+                            STATE.user.has_exchange_keys = false;
+                            STATE.user.exchange_id = null;
+                            STATE.crypto_auth_success = false;
+                        }
                     }
                 }
             }

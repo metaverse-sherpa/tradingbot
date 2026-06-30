@@ -203,17 +203,23 @@ def get_balance():
                 bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
                 bal = client.fetch_balance(params=bal_params)
                 if crypto_exchange_id == 'coinbase':
-                    # Coinbase: spot balance 'total' = Primary USD
-                    # 'used' = margin locked in open derivatives positions (part of same wallet total)
-                    # The Derivatives sub-wallet is separate but we use 'total' which CCXT aggregates
                     usd_bal = bal.get('USD', {})
                     usdc_bal = bal.get('USDC', {})
                     if not isinstance(usd_bal, dict): usd_bal = {}
                     if not isinstance(usdc_bal, dict): usdc_bal = {}
                     total_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
                     total_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
+                    
+                    # Try to fetch total USD from CFM balance summary to include pending deposits/futures balance
+                    try:
+                        cfm = client.v3PrivateGetBrokerageCfmBalanceSummary()
+                        val_str = cfm.get('balance_summary', {}).get('total_usd_balance', {}).get('value')
+                        if val_str:
+                            total_usd = float(val_str)
+                    except Exception:
+                        pass
+                        
                     free_asset = total_usd + total_usdc
-                    # print(f"[DEBUG] Coinbase spot balance: usd={total_usd:.2f} usdc={total_usdc:.2f} total={free_asset:.2f}", flush=True)
                 else:
                     asset = 'USDT'
                     asset_bal = bal.get(asset, {})
@@ -361,6 +367,15 @@ def get_stats():
                         if not isinstance(usdc_bal, dict): usdc_bal = {}
                         total_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
                         total_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
+                        
+                        try:
+                            cfm = client.v3PrivateGetBrokerageCfmBalanceSummary()
+                            val_str = cfm.get('balance_summary', {}).get('total_usd_balance', {}).get('value')
+                            if val_str:
+                                total_usd = float(val_str)
+                        except Exception:
+                            pass
+                            
                         live_bal = total_usd + total_usdc
                     else:
                         asset = 'USDT'

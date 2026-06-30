@@ -114,7 +114,7 @@ def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password
         c = conn.cursor()
         c.execute('''
             UPDATE WebUsers
-            SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?
+            SET exchange_id = ?, api_key = ?, api_secret = ?, api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?, history_cache = NULL, has_open_positions = 0
             WHERE id = ?
         ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', cb_sb_val, user_id))
         
@@ -125,7 +125,7 @@ def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password
             try:
                 c.execute('''
                     UPDATE Users
-                    SET exchange_id = ?, blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?
+                    SET exchange_id = ?, blofin_api_key = ?, blofin_api_secret = ?, blofin_api_password = ?, bingx_futures_type = ?, coinbase_sandbox = ?, history_cache = NULL, has_open_positions = 0
                     WHERE telegram_chat_id = ?
                 ''', (exchange_id, encrypt(api_key), encrypt(api_secret), encrypt(api_password), bingx_futures_type or 'standard', cb_sb_val, row[0]))
             except Exception as e:
