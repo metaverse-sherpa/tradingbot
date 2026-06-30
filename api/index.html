@@ -471,9 +471,9 @@
                 group: 'Settings',
                 auth: true,
                 title: 'Configure Crypto Keys',
-                description: 'Saves encrypted credentials for Blofin, BingX, Bybit, or Coinbase.',
+                description: 'Saves encrypted credentials for Blofin, BingX, or Coinbase.',
                 params: [
-                    { name: 'exchange_id', type: 'string', required: true, source: 'body', desc: 'Selected exchange name (blofin, bingx, bybit, coinbase)', default: 'blofin' },
+                    { name: 'exchange_id', type: 'string', required: true, source: 'body', desc: 'Selected exchange name (blofin, bingx, coinbase)', default: 'blofin' },
                     { name: 'api_key', type: 'string', required: true, source: 'body', desc: 'API Key', default: '' },
                     { name: 'api_secret', type: 'string', required: true, source: 'body', desc: 'API Secret / Private PEM Key', default: '' },
                     { name: 'api_password', type: 'string', required: false, source: 'body', desc: 'API passphrase / password', default: '' },

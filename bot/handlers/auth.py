@@ -27,7 +27,6 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
         [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
         [InlineKeyboardButton("🟦 BingX", callback_data="setex_bingx")],
-        [InlineKeyboardButton("⬛ Bybit", callback_data="setex_bybit")],
         [InlineKeyboardButton("🪙 Coinbase Advanced", callback_data="setex_coinbase")],
         [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
         [InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]
@@ -239,8 +238,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: pass
 
         exchange_id = context.user_data.get('exchange_id')
-        if exchange_id in ('coinbase', 'bybit'):
-            # Coinbase and Bybit don't use a passphrase, upsert directly and complete
+        if exchange_id == 'coinbase':
+            # Coinbase doesn't use a passphrase, upsert directly and complete
             database.upsert_user(
                 chat_id, 
                 context.user_data['api_key'],
@@ -263,7 +262,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     user_display = "No Username"
                 
-                exchange_name = "Coinbase" if exchange_id == 'coinbase' else "Bybit"
+                exchange_name = "Coinbase"
                 act_msg = (
                     f"💎 <b>Institutional Access Activated ({exchange_name})!</b>\n\n"
                     f"User: <b>{safe_name}</b> ({user_display})\n"

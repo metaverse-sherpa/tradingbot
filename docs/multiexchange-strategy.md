@@ -7,7 +7,7 @@ This document outlines the architectural changes required to transform the bot f
 ### 🏦 Database Update
 *   **Column**: `exchange_id` (TEXT) added to `Users` table.
 *   **Default**: `blofin`.
-*   **Purpose**: Stores the CCXT exchange identifier (e.g., `binance`, `mexc`, `bybit`).
+*   **Purpose**: Stores the CCXT exchange identifier (e.g., `binance`, `mexc`, `bingx`).
 
 ### 🛠️ Universal Exchange Factory
 Instead of hardcoding Blofin, we will implement an internal "Factory" function:
@@ -37,7 +37,7 @@ Different exchanges have different "Dialects" for the same token:
 ### C. Divergent Order Logic (CRITICAL)
 The way SL/TP is handled varies wildly across the CCXT ecosystem:
 *   **Integrated (Blofin)**: Single call with `params={'stopLoss': ...}`.
-*   **Fragmented (Binance/Bybit/MEXC)**: Requires **Entry + SL Order + TP Order**. 
+*   **Fragmented (Binance/MEXC)**: Requires **Entry + SL Order + TP Order**. 
 *   **Solution**: We must implement an `AtomicOrder` class that handles the sequence:
     1. Place Market/Limit Entry.
     2. Await fill confirmation.
@@ -122,4 +122,3 @@ To ensure 100% functionality, users must follow these exchange-specific steps wh
 1.  **Blofin** (Already Live)
 2.  **Binance** (Most Requested)
 3.  **MEXC** (Popular for Low Fees/Small Caps)
-4.  **Bybit** (Institutional Favorite)

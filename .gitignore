@@ -76,3 +76,4 @@ loadtester/data/test_history.json
 firebase-adminsdk.json
 csv/emails-sent-1782291907206.csv
 scripts/ssh-key-2026-06-29.key
+scripts/bybit-germany-proxy-key.pem
