@@ -10,6 +10,19 @@ from dotenv import load_dotenv
 # Disable fetchCurrencies globally in CCXT to prevent the library from querying private wallet endpoints
 # (such as wallets/v1/capital/config/getall on BingX) which require Account Transfer/Wallet permissions.
 # This allows balance syncing and trading to succeed using only Read and Futures permissions.
+
+# Force IPv4 in aiohttp to prevent aiohappyeyeballs from crashing on unroutable IPv6 addresses
+import socket
+import aiohttp
+try:
+    _orig_tcp_init = aiohttp.TCPConnector.__init__
+    def _new_tcp_init(self, *args, **kwargs):
+        kwargs['family'] = socket.AF_INET
+        _orig_tcp_init(self, *args, **kwargs)
+    aiohttp.TCPConnector.__init__ = _new_tcp_init
+except Exception:
+    pass
+
 try:
     _original_async_init = ccxt.Exchange.__init__
     def _new_async_init(self, *args, **kwargs):
