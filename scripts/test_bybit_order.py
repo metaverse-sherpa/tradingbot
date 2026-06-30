@@ -35,10 +35,23 @@ def run_test_order():
     print("=== Bybit Test Order Script ===")
     user, user_desc = find_bybit_user()
     if not user:
-        print("❌ Error: No active Bybit credentials found in the database.")
-        return
-
-    print(f"Found active Bybit credentials for: {user_desc}")
+        print("No active Bybit credentials found in the database.")
+        print("Please enter Bybit API credentials manually:")
+        api_key = input("API Key: ").strip()
+        api_secret = input("API Secret: ").strip()
+        api_password = input("Passphrase (optional, press Enter if none): ").strip()
+        if not api_key or not api_secret:
+            print("❌ Error: API Key and API Secret are required.")
+            return
+        user = {
+            "api_key": api_key,
+            "api_secret": api_secret,
+            "api_password": api_password,
+            "exchange_id": "bybit"
+        }
+        user_desc = "Manual Input"
+    else:
+        print(f"Found active Bybit credentials for: {user_desc}")
     
     # Instantiate the client (automatically routes through the London Squid proxy)
     client = database.get_exchange_client(user, is_async=False)
