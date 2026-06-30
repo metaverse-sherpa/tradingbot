@@ -1314,15 +1314,12 @@ async function handleRoute() {
                 }
             }).catch(err => console.error("Error loading premium stats:", err));
             
-            const hasLinkedKeys = STATE.user.has_exchange_keys || STATE.user.has_alpaca_keys;
-            if (!hasLinkedKeys) {
-                apiRequest('/stats/free').then(freeStats => {
-                    if (freeStats) {
-                        STATE.free_stats = freeStats;
-                        if (STATE.current_view === 'stats') renderView();
-                    }
-                }).catch(err => console.error("Error loading free stats for premium user:", err));
-            }
+            apiRequest('/stats/free').then(freeStats => {
+                if (freeStats) {
+                    STATE.free_stats = freeStats;
+                    if (STATE.current_view === 'stats') renderView();
+                }
+            }).catch(err => console.error("Error loading free stats for premium user:", err));
         } else {
             apiRequest('/stats/free').then(freeStats => {
                 if (freeStats) {
@@ -3756,45 +3753,47 @@ function renderStatsView() {
                 <!-- Crypto Column -->
                 <div class="flex flex-col space-y-6">
                 ${hasLinkedCrypto ? `
-                <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Performance</h3>
-                    <span class="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold capitalize">${(STATE.user && STATE.user.has_exchange_keys && STATE.user.exchange_id) ? STATE.user.exchange_id : 'Live API'}</span>
-                </div>
-                
-                <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
-                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
-                        ${showLoadingStats ? `
-                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
-                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
-                        </div>
-                        ` : `
-                        <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
-                        <p class="text-[10px] mt-0.5">&nbsp;</p>
-                        `}
+                <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 flex flex-col justify-between min-h-[242px]">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Performance</h3>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold capitalize">${(STATE.user && STATE.user.has_exchange_keys && STATE.user.exchange_id) ? STATE.user.exchange_id : 'Live API'}</span>
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
-                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
-                        ${showLoadingStats ? `
-                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
-                            <span class="material-symbols-outlined text-tertiary text-lg animate-spin">sync</span>
+                    
+                    <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                        <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
+                            ${showLoadingStats ? `
+                            <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                                <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                            </div>
+                            ` : `
+                            <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${crypto.portfolio_value.toFixed(2)}</p>
+                            <p class="text-[10px] mt-0.5">&nbsp;</p>
+                            `}
                         </div>
-                        ` : `
-                        <p class="text-sm font-bold text-tertiary mt-1">${crypto.win_rate.toFixed(1)}%</p>
-                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${crypto.wins}W / ${crypto.losses}L)</p>
-                        `}
-                    </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
-                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
-                        ${showLoadingStats ? `
-                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
-                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                        <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
+                            ${showLoadingStats ? `
+                            <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                                <span class="material-symbols-outlined text-tertiary text-lg animate-spin">sync</span>
+                            </div>
+                            ` : `
+                            <p class="text-sm font-bold text-tertiary mt-1">${crypto.win_rate.toFixed(1)}%</p>
+                            <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${crypto.wins}W / ${crypto.losses}L)</p>
+                            `}
                         </div>
-                        ` : `
-                        <p class="text-sm font-bold ${crypto.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${crypto.overall_pnl_pct >= 0 ? '+' : ''}${crypto.overall_pnl_pct.toFixed(2)}%</p>
-                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${crypto.overall_pnl >= 0 ? '+' : ''}$${crypto.overall_pnl.toFixed(2)})</p>
-                        `}
+                        <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
+                            ${showLoadingStats ? `
+                            <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                                <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                            </div>
+                            ` : `
+                            <p class="text-sm font-bold ${crypto.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${crypto.overall_pnl_pct >= 0 ? '+' : ''}${crypto.overall_pnl_pct.toFixed(2)}%</p>
+                            <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${crypto.overall_pnl >= 0 ? '+' : ''}$${crypto.overall_pnl.toFixed(2)})</p>
+                            `}
+                        </div>
                     </div>
                 </div>
                 
@@ -3850,17 +3849,19 @@ function renderStatsView() {
                 ${getFreeStatsHtml(true, 'crypto')}
             ` : `
             <div class="w-full space-y-6">
-                ${getFreeStatsHtml(true, 'crypto')}
-                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Live Stats</h3>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col justify-between min-h-[242px]">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Live Stats</h3>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                        </div>
+                        <p class="text-xs text-on-surface-variant leading-relaxed">Connect your crypto exchange to track your live portfolio and automated trades.</p>
                     </div>
-                    <p class="text-xs text-on-surface-variant">Connect your crypto exchange to track your live portfolio and automated trades.</p>
-                    <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
+                    <a href="#/settings" class="mt-4 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full shrink-0">
                         CONNECT CRYPTO EXCHANGE
                     </a>
                 </section>
+                ${getFreeStatsHtml(true, 'crypto')}
             </div>
             `}
             </div>
@@ -3868,45 +3869,47 @@ function renderStatsView() {
             <!-- Stocks Column -->
             <div class="flex flex-col space-y-6">
             ${hasLinkedStock ? `
-            <section class="glass-card rounded-xl p-card-padding border-t-2 border-secondary-container/40 space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Performance</h3>
-                    <span class="text-xs px-2.5 py-1 rounded-full bg-secondary-container/10 text-secondary-container font-bold">Alpaca Live</span>
-                </div>
-                
-                <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
-                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
-                        ${showLoadingStats ? `
-                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
-                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
-                        </div>
-                        ` : `
-                        <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
-                        <p class="text-[10px] mt-0.5">&nbsp;</p>
-                        `}
+            <section class="glass-card rounded-xl p-card-padding border-t-2 border-secondary-container/40 flex flex-col justify-between min-h-[242px]">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Performance</h3>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-secondary-container/10 text-secondary-container font-bold">Alpaca Live</span>
                     </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
-                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
-                        ${showLoadingStats ? `
-                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
-                            <span class="material-symbols-outlined text-tertiary text-lg animate-spin">sync</span>
+                    
+                    <div class="grid grid-cols-3 gap-2 text-center" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                        <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Portf Value</p>
+                            ${showLoadingStats ? `
+                            <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                                <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                            </div>
+                            ` : `
+                            <p class="text-sm font-bold text-on-surface mt-1" ${inlineBlur}>$${stock.portfolio_value.toFixed(2)}</p>
+                            <p class="text-[10px] mt-0.5">&nbsp;</p>
+                            `}
                         </div>
-                        ` : `
-                        <p class="text-sm font-bold text-tertiary mt-1">${stock.win_rate.toFixed(1)}%</p>
-                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${stock.wins}W / ${stock.losses}L)</p>
-                        `}
-                    </div>
-                    <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
-                        <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
-                        ${showLoadingStats ? `
-                        <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
-                            <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                        <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Win Rate</p>
+                            ${showLoadingStats ? `
+                            <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                                <span class="material-symbols-outlined text-tertiary text-lg animate-spin">sync</span>
+                            </div>
+                            ` : `
+                            <p class="text-sm font-bold text-tertiary mt-1">${stock.win_rate.toFixed(1)}%</p>
+                            <p class="text-[10px] font-normal text-on-surface-variant mt-0.5">(${stock.wins}W / ${stock.losses}L)</p>
+                            `}
                         </div>
-                        ` : `
-                        <p class="text-sm font-bold ${stock.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${stock.overall_pnl_pct >= 0 ? '+' : ''}${stock.overall_pnl_pct.toFixed(2)}%</p>
-                        <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${stock.overall_pnl >= 0 ? '+' : ''}$${stock.overall_pnl.toFixed(2)})</p>
-                        `}
+                        <div class="bg-surface-container rounded-lg p-2 flex flex-col justify-center min-h-[72px]">
+                            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Cum PnL</p>
+                            ${showLoadingStats ? `
+                            <div class="flex items-center justify-center py-1.5 animate-pulse mt-1">
+                                <span class="material-symbols-outlined text-primary text-lg animate-spin">sync</span>
+                            </div>
+                            ` : `
+                            <p class="text-sm font-bold ${stock.overall_pnl >= 0 ? 'text-tertiary' : 'text-error'} mt-1">${stock.overall_pnl_pct >= 0 ? '+' : ''}${stock.overall_pnl_pct.toFixed(2)}%</p>
+                            <p class="text-[10px] font-normal text-on-surface-variant mt-0.5" ${inlineBlur}>(${stock.overall_pnl >= 0 ? '+' : ''}$${stock.overall_pnl.toFixed(2)})</p>
+                            `}
+                        </div>
                     </div>
                 </div>
                 
@@ -3959,20 +3962,22 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
-                ${getFreeStatsHtml(true, 'stock')}
+            ${getFreeStatsHtml(true, 'stock')}
             ` : `
             <div class="w-full space-y-6">
-                ${getFreeStatsHtml(true, 'stock')}
-                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Live Stats</h3>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col justify-between min-h-[242px]">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Live Stats</h3>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                        </div>
+                        <p class="text-xs text-on-surface-variant leading-relaxed">Connect your Alpaca account to track your live portfolio and automated trades.</p>
                     </div>
-                    <p class="text-xs text-on-surface-variant">Connect your Alpaca account to track your live portfolio and automated trades.</p>
-                    <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
+                    <a href="#/settings" class="mt-4 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full shrink-0">
                         CONNECT STOCK EXCHANGE
                     </a>
                 </section>
+                ${getFreeStatsHtml(true, 'stock')}
             </div>
             `}
             </div>
