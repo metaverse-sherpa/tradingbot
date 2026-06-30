@@ -3607,14 +3607,22 @@ function renderHistoryView() {
     `;
 }
 
-function getFreeStatsHtml(showHeader = false) {
+function getFreeStatsHtml(showHeader = false, type = 'all') {
     if (!STATE.free_stats || !STATE.free_stats.strategies) {
         return `<div class="text-center p-8 text-on-surface-variant">Loading stats...</div>`;
     }
 
     const isDesktop = window.innerWidth >= 1024; // lg breakpoint
+    
+    // Filter strategies based on type
+    let filteredStrategies = STATE.free_stats.strategies;
+    if (type === 'crypto') {
+        filteredStrategies = filteredStrategies.filter(s => !s.name.toLowerCase().includes('pullback'));
+    } else if (type === 'stock') {
+        filteredStrategies = filteredStrategies.filter(s => s.name.toLowerCase().includes('pullback'));
+    }
 
-    let strategiesHtml = STATE.free_stats.strategies.map(s => {
+    let strategiesHtml = filteredStrategies.map(s => {
         const icon = STRATEGY_ICONS[s.name] || "📈";
         const guideId = `guide-${s.name.replace(/\s+/g, '-')}`;
         
@@ -3659,10 +3667,10 @@ function getFreeStatsHtml(showHeader = false) {
     return `
         ${showHeader ? `
         <div class="flex items-center gap-3 mt-4 mb-4 text-left">
-            <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Forward Testing Stats</h2>
+            <h2 class="font-headline-sm text-headline-sm text-on-surface">🧪 Free Signal Stats</h2>
         </div>
         ` : ''}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 w-full">
+        <div class="grid grid-cols-1 ${filteredStrategies.length > 1 ? 'lg:grid-cols-2' : ''} gap-4 lg:gap-6 w-full">
             ${strategiesHtml}
         </div>
     `;
@@ -3744,8 +3752,9 @@ function renderStatsView() {
         <main class="w-full pt-20 px-container-margin pb-24 space-y-section-gap max-w-[500px] md:max-w-5xl mx-auto">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">📊 Institutional Performance</h2>
             
-            <div class="grid grid-cols-1 ${hasLinkedKeys ? 'md:grid-cols-2' : ''} gap-6">
-                <!-- Crypto Performance Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start w-full">
+                <!-- Crypto Column -->
+                <div class="flex flex-col space-y-6">
                 ${hasLinkedCrypto ? `
                 <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 space-y-4">
                 <div class="flex justify-between items-center">
@@ -3838,22 +3847,26 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
+                ${getFreeStatsHtml(true, 'crypto')}
             ` : `
-            <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Free Stats</h3>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
-                </div>
-                <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
-                    ${getFreeStatsHtml(true, 'crypto')}
-                </div>
-                <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
-                    CONNECT CRYPTO EXCHANGE
-                </a>
-            </section>
+            <div class="w-full space-y-6">
+                ${getFreeStatsHtml(true, 'crypto')}
+                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Live Stats</h3>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">Connect your crypto exchange to track your live portfolio and automated trades.</p>
+                    <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
+                        CONNECT CRYPTO EXCHANGE
+                    </a>
+                </section>
+            </div>
             `}
+            </div>
             
-            <!-- Stocks Performance Section -->
+            <!-- Stocks Column -->
+            <div class="flex flex-col space-y-6">
             ${hasLinkedStock ? `
             <section class="glass-card rounded-xl p-card-padding border-t-2 border-secondary-container/40 space-y-4">
                 <div class="flex justify-between items-center">
@@ -3946,20 +3959,23 @@ function renderStatsView() {
                 </div>
                 `}
             </section>
+                ${getFreeStatsHtml(true, 'stock')}
             ` : `
-            <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Free Stats</h3>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
-                </div>
-                <div class="text-center py-2 flex flex-col items-center justify-center animate-fade-in w-full">
-                    ${getFreeStatsHtml(true, 'stock')}
-                </div>
-                <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
-                    CONNECT STOCK EXCHANGE
-                </a>
-            </section>
+            <div class="w-full space-y-6">
+                ${getFreeStatsHtml(true, 'stock')}
+                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Live Stats</h3>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-on-surface-variant font-bold border border-white/10">Unconnected</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">Connect your Alpaca account to track your live portfolio and automated trades.</p>
+                    <a href="#/settings" class="mt-2 h-9 px-4 flex items-center justify-center bg-white/5 border border-white/10 text-on-surface font-bold text-xs tracking-wider rounded-lg hover:bg-white/10 transition-colors w-full">
+                        CONNECT STOCK EXCHANGE
+                    </a>
+                </section>
+            </div>
             `}
+            </div>
             </div>
         </main>
     `;
