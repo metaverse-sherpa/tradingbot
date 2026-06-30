@@ -22,7 +22,7 @@ def find_bybit_user():
     # 2. Search Telegram Users table
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT telegram_chat_id, full_name FROM Users WHERE api_key IS NOT NULL AND exchange_id = 'bybit'")
+        c.execute("SELECT telegram_chat_id, full_name FROM Users WHERE blofin_api_key IS NOT NULL AND exchange_id = 'bybit'")
         rows = c.fetchall()
         for r in rows:
             user = database.get_user(r[0])
