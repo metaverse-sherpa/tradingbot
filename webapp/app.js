@@ -3753,7 +3753,7 @@ function renderStatsView() {
                 <!-- Crypto Column -->
                 <div class="flex flex-col space-y-6">
                 ${hasLinkedCrypto ? `
-                <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 flex flex-col justify-between min-h-[242px]">
+                <section class="glass-card rounded-xl p-card-padding border-t-2 border-primary/40 flex flex-col justify-between min-h-[260px]">
                 <div class="space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Performance</h3>
@@ -3849,7 +3849,7 @@ function renderStatsView() {
                 ${getFreeStatsHtml(true, 'crypto')}
             ` : `
             <div class="w-full space-y-6">
-                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col justify-between min-h-[242px]">
+                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col justify-between min-h-[260px]">
                     <div class="space-y-4">
                         <div class="flex justify-between items-center">
                             <h3 class="font-bold text-on-surface flex items-center gap-2">🪙 Crypto Live Stats</h3>
@@ -3869,7 +3869,7 @@ function renderStatsView() {
             <!-- Stocks Column -->
             <div class="flex flex-col space-y-6">
             ${hasLinkedStock ? `
-            <section class="glass-card rounded-xl p-card-padding border-t-2 border-secondary-container/40 flex flex-col justify-between min-h-[242px]">
+            <section class="glass-card rounded-xl p-card-padding border-t-2 border-secondary-container/40 flex flex-col justify-between min-h-[260px]">
                 <div class="space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Performance</h3>
@@ -3965,7 +3965,7 @@ function renderStatsView() {
             ${getFreeStatsHtml(true, 'stock')}
             ` : `
             <div class="w-full space-y-6">
-                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col justify-between min-h-[242px]">
+                <section class="glass-card rounded-xl p-card-padding border border-white/10 bg-surface-container/30 flex flex-col justify-between min-h-[260px]">
                     <div class="space-y-4">
                         <div class="flex justify-between items-center">
                             <h3 class="font-bold text-on-surface flex items-center gap-2">🦙 Stocks Live Stats</h3>
