@@ -164,15 +164,15 @@ If running on GCP, the bot can securely load credentials from Google Secret Mana
 
 ---
 
-## 🌐 Bybit Proxy Routing & UK Oracle VM Setup
+## 🌐 Bybit Proxy Routing & Germany Oracle VM Setup
 
-Bybit restricts trading and API requests originating from US IP addresses. To bypass this geo-block, all Bybit API traffic (both synchronous and asynchronous) is routed through a dedicated Squid proxy server hosted on an Oracle Cloud Infrastructure (OCI) VM in London, UK.
+Bybit restricts trading and API requests originating from US IP addresses. To bypass this geo-block, all Bybit API traffic (both synchronous and asynchronous) is routed through a dedicated Squid proxy server hosted on an Oracle Cloud Infrastructure (OCI) VM in Frankfurt, Germany.
 
 ### 1. Oracle VM Proxy Instance
 *   **Provider**: Oracle Cloud (Free Tier)
-*   **Location**: London (UK)
+*   **Location**: Frankfurt (Germany)
 *   **Operating System**: Ubuntu 22.04 LTS
-*   **Public IP**: `130.162.186.47`
+*   **Public IP**: `3.125.234.28`
 *   **Proxy Protocol/Port**: Squid Proxy on port `3128`
 
 ### 2. Squid Configuration on Oracle VM
@@ -199,9 +199,9 @@ To setup the forwarding proxy on the Oracle instance:
 
 ### 3. VPS Bot Integration
 *   The codebase utilizes centralized CCXT monkey-patching in `database.py` that intercepts all `ccxt.bybit` (sync) and `ccxt.async_support.bybit` (async) instantiations.
-*   **Default Fallback**: Automatically routes via `http://130.162.186.47:3128`.
-*   **Override**: Set the `BYBIT_PROXY` environment variable (either in GCP Secret Manager or locally in `.env`) to override the proxy IP/port dynamically (e.g. `BYBIT_PROXY=http://130.162.186.47:3128`).
-*   **Bybit API IP Whitelisting**: On the Bybit exchange console, the API key is configured to restrict access to the UK VM's public IP (`130.162.186.47`), ensuring strict credential security.
+*   **Default Fallback**: Automatically routes via `http://3.125.234.28:3128`.
+*   **Override**: Set the `BYBIT_PROXY` environment variable (either in GCP Secret Manager or locally in `.env`) to override the proxy IP/port dynamically (e.g. `BYBIT_PROXY=http://3.125.234.28:3128`).
+*   **Bybit API IP Whitelisting**: On the Bybit exchange console, the API key is configured to restrict access to the Germany VM's public IP (`3.125.234.28`), ensuring strict credential security.
 
 ---
 

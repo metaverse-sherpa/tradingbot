@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import database
 
-PROXY_IP = "130.162.186.47"
+PROXY_IP = "3.125.234.28"
 PROXY_PORT = "3128"
 PROXY_URL = f"http://{PROXY_IP}:{PROXY_PORT}"
 
