@@ -20,7 +20,7 @@ async def handle_auth_failure(user, exception_str, application):
         chat_id = user.get('telegram_chat_id')
         web_user_id = user.get('web_user_id')
         
-        database.invalidate_exchange_credentials(chat_id=chat_id, web_user_id=web_user_id)
+        # database.invalidate_exchange_credentials(chat_id=chat_id, web_user_id=web_user_id)
         
         ex_id = user.get('exchange_id', 'exchange').capitalize()
         
@@ -40,16 +40,15 @@ async def handle_auth_failure(user, exception_str, application):
         user_id_str = " | ".join(id_parts) if id_parts else "Unknown User"
         
         # Notify admins using global exception handler formatting
-        error_msg = f"User {user_id_str} API Key unlinked due to authentication failure.\\nExchange: {ex_id}\\nReason: {exception_str}"
+        error_msg = f"User {user_id_str} API Key authentication failure.\\nExchange: {ex_id}\\nReason: {exception_str}"
         logger.warning(error_msg)
-        send_telegram_alert("API Key Auto-Revoked", error_msg, tb_string="")
+        send_telegram_alert("API Key Auth Error", error_msg, tb_string="")
         
         # Notify user if they are a telegram user
         if chat_id and application:
             user_msg = (
-                f"⚠️ **API Key Revoked**\\n\\n"
-                f"We couldn't connect to your **{ex_id}** exchange account. "
-                f"Your API credentials have been unlinked for your security and to prevent background errors.\\n\\n"
+                f"⚠️ **API Key Connection Error**\\n\\n"
+                f"We couldn't connect to your **{ex_id}** exchange account.\\n\\n"
                 f"**Reason:** `{exception_str}`\\n\\n"
                 f"Please verify your API Key and Secret, ensure the IPs are correctly whitelisted, and add them again via the /keys command or Web App.\\n\\n"
                 f"If you believe this is an error, please take a screenshot of this message and notify the system admins for support."

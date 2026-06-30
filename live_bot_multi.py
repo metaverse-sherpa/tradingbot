@@ -443,7 +443,7 @@ async def run():
                     if any(k.lower() in e_str.lower() for k in auth_keywords):
                         chat_id = user.get('telegram_chat_id')
                         web_user_id = user.get('web_user_id')
-                        database.invalidate_exchange_credentials(chat_id=chat_id, web_user_id=web_user_id)
+                        # database.invalidate_exchange_credentials(chat_id=chat_id, web_user_id=web_user_id)
                         ex_id = user.get('exchange_id', 'exchange').capitalize()
                         
                         email = user.get('email')
@@ -463,8 +463,8 @@ async def run():
                         
                         try:
                             from utils_error import send_telegram_alert
-                            error_msg = f"User {user_id_str} API Key unlinked due to authentication failure.\\nExchange: {ex_id}\\nReason: {e_str}"
-                            send_telegram_alert("API Key Auto-Revoked (Trading Engine)", error_msg, tb_string="")
+                            error_msg = f"User {user_id_str} API Key authentication failure.\\nExchange: {ex_id}\\nReason: {e_str}"
+                            send_telegram_alert("API Key Auth Error (Trading Engine)", error_msg, tb_string="")
                         except Exception:
                             pass
                     else:
