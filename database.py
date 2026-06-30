@@ -11,17 +11,15 @@ from dotenv import load_dotenv
 # (such as wallets/v1/capital/config/getall on BingX) which require Account Transfer/Wallet permissions.
 # This allows balance syncing and trading to succeed using only Read and Futures permissions.
 
-# Force IPv4 in aiohttp to prevent aiohappyeyeballs from crashing on unroutable IPv6 addresses
+# Force IPv4 globally for all python socket connections
+# This prevents both aiohttp and requests (used by CCXT) from routing traffic over IPv6,
+# which causes "IP not whitelisted" errors on exchanges.
 import socket
-import aiohttp
-try:
-    _orig_tcp_init = aiohttp.TCPConnector.__init__
-    def _new_tcp_init(self, *args, **kwargs):
-        kwargs['family'] = socket.AF_INET
-        _orig_tcp_init(self, *args, **kwargs)
-    aiohttp.TCPConnector.__init__ = _new_tcp_init
-except Exception:
-    pass
+
+_orig_getaddrinfo = socket.getaddrinfo
+def _patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return _orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+socket.getaddrinfo = _patched_getaddrinfo
 
 try:
     _original_async_init = ccxt.Exchange.__init__
