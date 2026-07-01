@@ -141,7 +141,9 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-            await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+            query.data = "strategy_menu"
+            from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
+            await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
             
     elif query.data == "set_strat_valk":
         if "Valkyrie Elite Scalper" in disabled:
@@ -165,19 +167,23 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-            await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+            query.data = "strategy_menu"
+            from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
+            await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
             
     elif query.data == "set_strat_crypto_pause":
-        await query.answer()
+        await query.answer("⏸️ Crypto strategy has been Paused!", show_alert=False)
         database.update_user_crypto_strategy(chat_id, "None")
-        msg = "⏸️ Crypto strategy has been *Paused*!"
-        await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+        query.data = "strategy_menu"
+        from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
+        await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
         
     elif query.data == "set_strat_stock_pause":
-        await query.answer()
+        await query.answer("⏸️ Stock strategy has been Paused!", show_alert=False)
         database.update_user_stock_strategy(chat_id, "None")
-        msg = "⏸️ Stock strategy has been *Paused*!"
-        await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+        query.data = "strategy_menu"
+        from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
+        await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
         
     elif query.data == "set_strat_svp":
         if "Sherpa Velocity Pullback" in disabled:
@@ -201,8 +207,9 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         else:
             database.update_user_stock_strategy(chat_id, "Sherpa Velocity Pullback")
-            msg = "✅ Stock strategy set to: *Sherpa Velocity Pullback* (Alpaca Stocks) 🦙📈"
-            await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id))
+            query.data = "strategy_menu"
+            from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
+            await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
             
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
