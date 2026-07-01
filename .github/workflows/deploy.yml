@@ -27,6 +27,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             
+            echo "📦 Installing updated dependencies..."
+            /home/gilesasp/tradingbot/venv/bin/pip install -r requirements.txt
+            
             echo "🔄 Gracefully reloading Sherpa Web API..."
             sudo systemctl reload webapi
 
