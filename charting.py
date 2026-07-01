@@ -67,8 +67,6 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         rs = avg_gain / (avg_loss + 1e-10)
         df['rsi'] = 100 - (100 / (1 + rs))
         rsi_label = "RSI (3)"
-        rsi_high_line = 90
-        rsi_low_line = 10
     else:
         # RSI(14) with EWM (matching ValkyrieEliteScalper in strategies.py)
         rsi_period = 14
@@ -77,8 +75,6 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         rs = avg_gain / (avg_loss.replace(0, np.nan))
         df['rsi'] = 100 - (100 / (1 + rs))
         rsi_label = "RSI (14)"
-        rsi_high_line = 70
-        rsi_low_line = 30
 
     # Calculate EMAs and BBs
     df["ema_50"] = df["close"].ewm(span=50, adjust=False).mean()
@@ -97,8 +93,8 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     # Add RSI panel (explicitly set ylim=(0, 100) and secondary_y=False to ensure correct scale)
     ap.append(mpf.make_addplot(df['rsi'], panel=1, color='#FF9800', ylabel=rsi_label, ylim=(0, 100), secondary_y=False))
     # RSI overbought/oversold lines
-    ap.append(mpf.make_addplot(pd.Series(rsi_high_line, index=df.index), panel=1, color='#FF1744', linestyle='--', width=0.8, alpha=0.5, ylim=(0, 100), secondary_y=False))
-    ap.append(mpf.make_addplot(pd.Series(rsi_low_line, index=df.index), panel=1, color='#00C853', linestyle='--', width=0.8, alpha=0.5, ylim=(0, 100), secondary_y=False))
+    ap.append(mpf.make_addplot(pd.Series(70, index=df.index), panel=1, color='#FF1744', linestyle='-', width=1.5, alpha=1.0, ylim=(0, 100), secondary_y=False))
+    ap.append(mpf.make_addplot(pd.Series(30, index=df.index), panel=1, color='#00C853', linestyle='-', width=1.5, alpha=1.0, ylim=(0, 100), secondary_y=False))
 
     # Add a marker (star/arrow) on the entry day
     if open_ts > 0:
