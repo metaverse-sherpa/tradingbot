@@ -118,13 +118,15 @@ def sanitize_params(params):
         has_numpy = False
 
     def convert_val(v):
+        if isinstance(v, bool):
+            return 1 if v else 0
         if has_numpy:
             if isinstance(v, (np.float64, np.float32)):
                 return float(v)
             if isinstance(v, (np.int64, np.int32, np.int16, np.int8)):
                 return int(v)
             if isinstance(v, np.bool_):
-                return bool(v)
+                return 1 if bool(v) else 0
         # Fallback check by type name for safety
         tname = type(v).__name__
         if 'float' in tname and tname != 'float':
