@@ -17,7 +17,9 @@ import utils_gcp
 # Initialize Database on Startup
 database.init_db()
 
-app = Flask(__name__, static_folder='webapp', static_url_path='')
+USE_REACT = os.getenv("SERVE_REACT_APP", "0") == "1"
+static_dir = 'webapp-react/dist' if USE_REACT else 'webapp'
+app = Flask(__name__, static_folder=static_dir, static_url_path='')
 # Configure Flask session secret
 app.secret_key = utils_gcp.get_secret("FLASK_SECRET_KEY") or "metaverse-sherpa-secret-key"
 
@@ -51,9 +53,20 @@ app.register_blueprint(trades_bp)
 app.register_blueprint(premium_bp)
 
 # ----------------- Serve Frontend -----------------
-@app.route('/')
-def serve_index():
-    return app.send_static_file('index.html')
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_index(path):
+    if path.startswith('api') or path.startswith('favicon'):
+        from flask import abort
+        abort(404)
+        
+    if USE_REACT:
+        return app.send_static_file('index.html')
+    else:
+        if path == '':
+            return app.send_static_file('index.html')
+        from flask import abort
+        abort(404)
 
 from web_api.auth import require_auth, require_premium, require_auth_web, require_premium_web
 
