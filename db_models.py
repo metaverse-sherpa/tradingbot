@@ -3,7 +3,7 @@ from sqlalchemy import MetaData, Table, Column, Integer, String, Float, Boolean
 metadata_obj = MetaData()
 
 users_table = Table(
-    'Users',
+    'users',
     metadata_obj,
     Column('telegram_chat_id', Integer, primary_key=True),
     Column('blofin_api_key', String),
@@ -49,7 +49,7 @@ users_table = Table(
 )
 
 webusers_table = Table(
-    'WebUsers',
+    'webusers',
     metadata_obj,
     Column('id', Integer, primary_key=True, autoincrement=True),
     Column('email', String, unique=True, nullable=False),
@@ -100,7 +100,7 @@ webusers_table = Table(
 )
 
 theoretical_trades_table = Table(
-    'TheoreticalTrades',
+    'theoreticaltrades',
     metadata_obj,
     Column('id', Integer, primary_key=True, autoincrement=True),
     Column('symbol', String),
@@ -119,7 +119,7 @@ theoretical_trades_table = Table(
 )
 
 alpaca_active_trades_table = Table(
-    'AlpacaActiveTrades',
+    'alpacaactivetrades',
     metadata_obj,
     Column('id', Integer, primary_key=True, autoincrement=True),
     Column('telegram_chat_id', Integer),
@@ -138,7 +138,7 @@ alpaca_active_trades_table = Table(
 )
 
 portfolio_balance_history_table = Table(
-    'PortfolioBalanceHistory',
+    'portfoliobalancehistory',
     metadata_obj,
     Column('id', Integer, primary_key=True, autoincrement=True),
     Column('user_id', Integer, nullable=False),
@@ -148,14 +148,14 @@ portfolio_balance_history_table = Table(
 )
 
 config_table = Table(
-    'Config',
+    'config',
     metadata_obj,
     Column('key', String, primary_key=True),
     Column('value', String),
 )
 
 gift_codes_table = Table(
-    'GiftCodes',
+    'giftcodes',
     metadata_obj,
     Column('code', String, primary_key=True),
     Column('target_chat_id', Integer),
