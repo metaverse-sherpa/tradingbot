@@ -261,3 +261,37 @@ def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0):
             raise e
         finally:
             conn.close()
+
+from sqlalchemy import create_engine
+
+sa_engine = None
+
+def init_sa_engine(sqlite_db_path):
+    global sa_engine
+    if sa_engine is not None:
+        return sa_engine
+    
+    if USE_POSTGRES:
+        db_url = DATABASE_URL
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        
+        sa_engine = create_engine(
+            db_url,
+            pool_size=30,
+            max_overflow=10,
+            pool_pre_ping=True
+        )
+    else:
+        sa_engine = create_engine(
+            f"sqlite:///{sqlite_db_path}",
+            connect_args={"timeout": 30.0}
+        )
+    return sa_engine
+
+@contextmanager
+def sa_db_session(sqlite_db_path):
+    engine = init_sa_engine(sqlite_db_path)
+    with engine.begin() as conn:
+        yield conn
+

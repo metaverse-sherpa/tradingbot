@@ -56,7 +56,9 @@ from contextlib import contextmanager
 # Cache Coinbase portfolio UUID per user (keyed by api_key prefix) - doesn't change
 _COINBASE_PORTFOLIO_ID_CACHE = {}
 
-from db_adapter import db_session_adapter
+from db_adapter import db_session_adapter, sa_db_session
+from sqlalchemy import select, update, insert, delete
+from db_models import users_table, webusers_table
 
 @contextmanager
 def db_session():
@@ -900,12 +902,11 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
             ''', (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username))
 
 def get_user(chat_id):
-    with db_session() as conn:
-        c = conn.cursor()
-        c.execute('SELECT * FROM Users WHERE telegram_chat_id = ?', (chat_id,))
-        row = c.fetchone()
+    with sa_db_session(DB_PATH) as conn:
+        stmt = select(users_table).where(users_table.c.telegram_chat_id == chat_id)
+        row = conn.execute(stmt).fetchone()
     if row:
-        row_dict = dict(row)
+        row_dict = dict(row._mapping)
         def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
         return {
             "api_key": decrypt(row_dict.get('blofin_api_key')),
@@ -1108,16 +1109,14 @@ def get_all_active_stock_users():
     return active_users
 
 def set_active(chat_id, is_active):
-    with db_session() as conn:
-        c = conn.cursor()
-        val = 1 if is_active else 0
-        c.execute("UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?", (val, chat_id))
+    with sa_db_session(DB_PATH) as conn:
+        stmt1 = update(users_table).where(users_table.c.telegram_chat_id == chat_id).values(is_active=is_active)
+        conn.execute(stmt1)
         # Sync to WebUsers if linked
         try:
-            c.execute("UPDATE WebUsers SET is_active = ? WHERE telegram_chat_id = ?", (val, chat_id))
-            conn.commit()
+            stmt2 = update(webusers_table).where(webusers_table.c.telegram_chat_id == chat_id).values(is_active=is_active)
+            conn.execute(stmt2)
         except Exception as e:
-            conn.rollback()
             print(f"Sync to WebUsers status failed: {e}")
 
 def invalidate_exchange_credentials(chat_id=None, web_user_id=None):
