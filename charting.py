@@ -101,9 +101,9 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         entry_time = pd.to_datetime(open_ts, unit='ms')
         if entry_time.tz is not None:
             entry_time = entry_time.tz_localize(None)
-        entry_mask = (df.index >= entry_time)
+        entry_mask = (df.index <= entry_time)
         if entry_mask.any():
-            entry_idx = df[entry_mask].index[0]
+            entry_idx = df[entry_mask].index[-1]
             marker_prices = pd.Series(np.nan, index=df.index)
             is_long = side.upper() in ['LONG', 'BUY', 'L']
             if is_long:
@@ -145,7 +145,14 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
 
     # 2. Define the R:R lines logic (Only start from open_ts)
     start_time = pd.to_datetime(open_ts, unit='ms')
-    where_mask = (df.index >= start_time)
+    if start_time.tz is not None:
+        start_time = start_time.tz_localize(None)
+    past_candles = df.index[df.index <= start_time]
+    if len(past_candles) > 0:
+        actual_start_time = past_candles[-1]
+        where_mask = (df.index >= actual_start_time)
+    else:
+        where_mask = (df.index >= start_time)
     
     # If the trade is brand new or open_ts is in the future (fewer than 8 candles match),
     # draw the R:R lines across the entire chart so they are beautifully visible!
