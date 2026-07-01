@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import logging
+logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
 # Use a non-interactive backend to save RAM and avoid VPS issues
 matplotlib.use('Agg')

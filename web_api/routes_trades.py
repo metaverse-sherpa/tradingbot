@@ -11,6 +11,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import logging
+logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
 BINANCE_SESSION = requests.Session()
 
