@@ -141,9 +141,13 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-            query.data = "strategy_menu"
+        else:
+            class MockQuery:
+                def __init__(self, q, d): self._q = q; self.data = d
+                def __getattr__(self, name): return getattr(self._q, name)
+            mock_query = MockQuery(query, "strategy_menu")
             from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
-            await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
+            await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
             
     elif query.data == "set_strat_valk":
         if "Valkyrie Elite Scalper" in disabled:
@@ -167,23 +171,32 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-            query.data = "strategy_menu"
+            class MockQuery:
+                def __init__(self, q, d): self._q = q; self.data = d
+                def __getattr__(self, name): return getattr(self._q, name)
+            mock_query = MockQuery(query, "strategy_menu")
             from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
-            await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
+            await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
             
     elif query.data == "set_strat_crypto_pause":
         await query.answer("⏸️ Crypto strategy has been Paused!", show_alert=False)
         database.update_user_crypto_strategy(chat_id, "None")
-        query.data = "strategy_menu"
+        class MockQuery:
+            def __init__(self, q, d): self._q = q; self.data = d
+            def __getattr__(self, name): return getattr(self._q, name)
+        mock_query = MockQuery(query, "strategy_menu")
         from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
-        await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
+        await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
         
     elif query.data == "set_strat_stock_pause":
         await query.answer("⏸️ Stock strategy has been Paused!", show_alert=False)
         database.update_user_stock_strategy(chat_id, "None")
-        query.data = "strategy_menu"
+        class MockQuery:
+            def __init__(self, q, d): self._q = q; self.data = d
+            def __getattr__(self, name): return getattr(self._q, name)
+        mock_query = MockQuery(query, "strategy_menu")
         from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
-        await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
+        await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
         
     elif query.data == "set_strat_svp":
         if "Sherpa Velocity Pullback" in disabled:
@@ -207,9 +220,12 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         else:
             database.update_user_stock_strategy(chat_id, "Sherpa Velocity Pullback")
-            query.data = "strategy_menu"
+            class MockQuery:
+                def __init__(self, q, d): self._q = q; self.data = d
+                def __getattr__(self, name): return getattr(self._q, name)
+            mock_query = MockQuery(query, "strategy_menu")
             from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
-            await handle_strategies_callback(query, update, context, database.get_user(chat_id), chat_id)
+            await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
             
     elif query.data == "set_strat_soon":
         await query.answer("🚧 This strategy is coming soon!", show_alert=True)
