@@ -3123,26 +3123,14 @@ function renderTradesView() {
                                     </span>
                                 </div>
                                 <div class="relative w-full bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[220px]">
-                                    <div id="chart-loading-trade-${trade.id}" class="absolute inset-0 p-4 font-mono text-[10px] text-primary/80 bg-[#0b0f19]/90 flex flex-col justify-start gap-1 text-left overflow-y-auto scrollbar-thin select-none">
-                                        <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1.5">
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="w-2 h-2 rounded-full bg-error/80"></span>
-                                                <span class="w-2 h-2 rounded-full bg-warning/80"></span>
-                                                <span class="w-2 h-2 rounded-full bg-success/80"></span>
+                                    <div id="chart-loading-trade-${trade.id}" class="absolute inset-0 bg-[#0b0f19]/90 flex flex-col items-center justify-center select-none z-10">
+                                        <div class="relative flex items-center justify-center mb-4">
+                                            <div class="absolute inset-0 w-12 h-12 bg-primary/20 rounded-full animate-ping"></div>
+                                            <div class="w-12 h-12 bg-gradient-to-tr from-primary/40 to-primary/10 border border-primary/30 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,229,255,0.2)]">
+                                                <span class="material-symbols-outlined text-primary animate-spin">sync</span>
                                             </div>
-                                            <span class="text-[9px] text-on-surface-variant/40">sherpa_analyst_agent.py</span>
                                         </div>
-                                        <div class="space-y-1">
-                                            <div class="text-on-surface/90 font-semibold">&gt; python3 sherpa_analyst_agent.py --symbol ${trade.symbol} --side ${trade.side}</div>
-                                            <div class="text-primary/70 animate-pulse">[0.5s] Sourcing exchange order books and historical candles...</div>
-                                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 1.5s; opacity: 0;">[1.8s] Candlestick series downloaded (150 periods). Analyzing patterns...</div>
-                                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 3.5s; opacity: 0;">[3.2s] Slicing indicator overlays: 20/50/200 EMA + Bollinger Bands...</div>
-                                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 5.5s; opacity: 0;">[5.0s] Mapping trade plan: entry ($${entry.toFixed(4)}), tp ($${tp.toFixed(4)}), sl ($${sl.toFixed(4)})...</div>
-                                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 7.2s; opacity: 0;">[7.2s] Calculating Risk/Reward ratio and trade trajectory progress...</div>
-                                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 9.5s; opacity: 0;">[9.5s] Constructing Matplotlib dynamic layout canvas with dark theme...</div>
-                                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 12.0s; opacity: 0;">[12.0s] Compiling chart canvas assets & rendering price action lines...</div>
-                                            <div class="text-primary/50 animate-pulse" style="animation: reveal-log 0.2s forwards, pulse 1.5s infinite; animation-delay: 15.0s; opacity: 0;">[15.0s] Completing high-resolution plot generation on backend...</div>
-                                        </div>
+                                        <div class="text-[10px] font-bold tracking-widest uppercase text-primary/80 animate-pulse">Rendering Chart...</div>
                                     </div>
                                     <img src="/api/trades/chart?symbol=${encodeURIComponent(trade.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${trade.side}&open_ts=${trade.open_time}&type=${trade.type}&current_price=${trade.mark_price || 0}&strategy=${encodeURIComponent(trade.strategy || '')}" 
                                          onload="const l = document.getElementById('chart-loading-trade-${trade.id}'); if(l)l.remove(); const s = document.getElementById('chart-status-trade-${trade.id}'); if(s)s.remove(); this.classList.remove('hidden');" 
@@ -4927,26 +4915,14 @@ function renderSignalCard(sig, isLanding = false) {
                     </span>
                 </div>
                 <div class="relative w-full bg-surface-container rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[220px]">
-                    <div id="chart-loading-sig-${sig.id}" class="absolute inset-0 p-4 font-mono text-[10px] text-primary/80 bg-[#0b0f19]/90 flex flex-col justify-start gap-1 text-left overflow-y-auto scrollbar-thin select-none">
-                        <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1.5">
-                            <div class="flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-error/80"></span>
-                                <span class="w-2 h-2 rounded-full bg-warning/80"></span>
-                                <span class="w-2 h-2 rounded-full bg-success/80"></span>
+                    <div id="chart-loading-sig-${sig.id}" class="absolute inset-0 bg-[#0b0f19]/90 flex flex-col items-center justify-center select-none z-10">
+                        <div class="relative flex items-center justify-center mb-4">
+                            <div class="absolute inset-0 w-12 h-12 bg-primary/20 rounded-full animate-ping"></div>
+                            <div class="w-12 h-12 bg-gradient-to-tr from-primary/40 to-primary/10 border border-primary/30 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,229,255,0.2)]">
+                                <span class="material-symbols-outlined text-primary animate-spin">sync</span>
                             </div>
-                            <span class="text-[9px] text-on-surface-variant/40">sherpa_analyst_agent.py</span>
                         </div>
-                        <div class="space-y-1">
-                            <div class="text-on-surface/90 font-semibold">&gt; python3 sherpa_analyst_agent.py --symbol ${sig.symbol} --side ${sideStr}</div>
-                            <div class="text-primary/70 animate-pulse">[0.5s] Sourcing exchange order books and historical candles...</div>
-                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 1.5s; opacity: 0;">[1.8s] Candlestick series downloaded (150 periods). Analyzing patterns...</div>
-                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 3.5s; opacity: 0;">[3.2s] Slicing indicator overlays: 20/50/200 EMA + Bollinger Bands...</div>
-                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 5.5s; opacity: 0;">[5.0s] Mapping trade plan: entry ($${entry.toFixed(4)}), tp ($${tp.toFixed(4)}), sl ($${sl.toFixed(4)})...</div>
-                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 7.2s; opacity: 0;">[7.2s] Calculating Risk/Reward ratio and trade trajectory progress...</div>
-                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 9.5s; opacity: 0;">[9.5s] Constructing Matplotlib dynamic layout canvas with dark theme...</div>
-                            <div class="text-primary/60" style="animation: reveal-log 0.2s forwards; animation-delay: 12.0s; opacity: 0;">[12.0s] Compiling chart canvas assets & rendering price action lines...</div>
-                            <div class="text-primary/50 animate-pulse" style="animation: reveal-log 0.2s forwards, pulse 1.5s infinite; animation-delay: 15.0s; opacity: 0;">[15.0s] Completing high-resolution plot generation on backend...</div>
-                        </div>
+                        <div class="text-[10px] font-bold tracking-widest uppercase text-primary/80 animate-pulse">Rendering Chart...</div>
                     </div>
                     <img src="/api/trades/chart?symbol=${encodeURIComponent(sig.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${sideStr}&open_ts=${sig.open_time || 0}&type=${sig.symbol && sig.symbol.includes('/') ? 'crypto' : 'stock'}&current_price=${mark}&strategy=${encodeURIComponent(sig.strategy || '')}" 
                          onload="const l = document.getElementById('chart-loading-sig-${sig.id}'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-${sig.id}'); if(s)s.remove(); this.classList.remove('hidden');" 
