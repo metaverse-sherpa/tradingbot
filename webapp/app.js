@@ -5974,6 +5974,9 @@ async function handleExchangeSetup(e) {
 async function toggleBotStatus(currentStatus) {
     const res = await apiRequest('/settings/status', 'POST', { is_active: !currentStatus });
     if (res) {
+        if (STATE.user) {
+            STATE.user.is_active = !currentStatus;
+        }
         showToast(`Autopilot ${!currentStatus ? 'started' : 'stopped'} successfully`);
         handleRoute();
     }
