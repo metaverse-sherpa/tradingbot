@@ -91,7 +91,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     ap = []
     
     # Add RSI panel (explicitly set ylim=(0, 100) and secondary_y=False to ensure correct scale)
-    ap.append(mpf.make_addplot(df['rsi'], panel=1, color='#FF9800', ylabel=rsi_label, ylim=(0, 100), secondary_y=False))
+    ap.append(mpf.make_addplot(df['rsi'], panel=1, color='#FF9800', ylabel=rsi_label, ylim=(0, 100), secondary_y=False, width=1.0))
     # RSI overbought/oversold lines
     ap.append(mpf.make_addplot(pd.Series(70, index=df.index), panel=1, color='#FF1744', linestyle='-', width=1.5, alpha=1.0, ylim=(0, 100), secondary_y=False))
     ap.append(mpf.make_addplot(pd.Series(30, index=df.index), panel=1, color='#00C853', linestyle='-', width=1.5, alpha=1.0, ylim=(0, 100), secondary_y=False))
