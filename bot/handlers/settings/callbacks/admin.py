@@ -433,7 +433,8 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
                             side_str,
                             open_ts=open_ts,
                             timeframe=tf,
-                            currency=curr
+                            currency=curr,
+                            strategy=strat
                         )
                     except Exception as chart_err:
                         logger.error(f"Free chart generation failed for {sym}: {chart_err}")

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 # Use a non-interactive backend to save RAM and avoid VPS issues
 matplotlib.use('Agg')
 
-def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="15M", currency="USDT", current_price=0.0):
+def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="15M", currency="USDT", current_price=0.0, strategy=""):
     """
     Generates a high-contrast Neon chart where TP/SL/Entry lines only start from open_ts.
     """
@@ -26,8 +26,6 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     df.index = pd.to_datetime(df['timestamp'], unit='ms')
     if df.index.tz is not None:
         df.index = df.index.tz_localize(None)
-
-    df = df.tail(30).copy()
 
     # Incorporate live price into the chart
     if current_price > 0:
@@ -51,9 +49,38 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
              df.loc[df.index[-1], 'high'] = max(df.loc[df.index[-1], 'high'], current_price)
              df.loc[df.index[-1], 'low'] = min(df.loc[df.index[-1], 'low'], current_price)
     
-    # 1. Calculate Indicators & Setup Vibrant Neon Addplots
+    # 1. Calculate Indicators on Full DataFrame
+    strategy_lower = strategy.lower()
+
+    # Calculate RSI
+    delta = df['close'].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+    rs = avg_gain / avg_loss
+    df['rsi'] = 100 - (100 / (1 + rs))
+
+    # Calculate EMAs and BBs
+    df["ema_50"] = df["close"].ewm(span=50, adjust=False).mean()
+    df["ema_200"] = df["close"].ewm(span=200, adjust=False).mean()
+    df["bb_mid"] = df["close"].rolling(window=20).mean()
+    std = df["close"].rolling(window=20).std()
+    df["bb_up"] = df["bb_mid"] + (2 * std)
+    df["bb_low"] = df["bb_mid"] - (2 * std)
+
+    # NOW slice the dataframe for plotting
+    df = df.tail(30).copy()
+
+    # Setup Vibrant Neon Addplots
     ap = []
     
+    # Add RSI panel
+    ap.append(mpf.make_addplot(df['rsi'], panel=1, color='#FF9800', ylabel='RSI (14)'))
+    # RSI overbought/oversold lines
+    ap.append(mpf.make_addplot([70]*len(df), panel=1, color='#FF1744', linestyle='--', width=0.8, alpha=0.5))
+    ap.append(mpf.make_addplot([30]*len(df), panel=1, color='#00C853', linestyle='--', width=0.8, alpha=0.5))
+
     # Add a marker (star/arrow) on the entry day
     if open_ts > 0:
         entry_time = pd.to_datetime(open_ts, unit='ms')
@@ -85,19 +112,12 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
 
     fb_bb = None
     
-    if timeframe == "1D":
-        df["ema_50"] = df["close"].ewm(span=50, adjust=False).mean()
-        df["ema_200"] = df["close"].ewm(span=200, adjust=False).mean()
+    if "sherpa velocity" in strategy_lower or timeframe == "1D":
         # Add EMA 50 (Vibrant Neon Cyan)
         ap.append(mpf.make_addplot(df["ema_50"], color='#00E5FF', alpha=0.8, width=1.2))
         # Add EMA 200 (Vibrant Neon Purple/Magenta)
         ap.append(mpf.make_addplot(df["ema_200"], color='#D500F9', alpha=0.8, width=1.2))
-    else:
-        df["bb_mid"] = df["close"].rolling(window=20).mean()
-        std = df["close"].rolling(window=20).std()
-        df["bb_up"] = df["bb_mid"] + (2 * std)
-        df["bb_low"] = df["bb_mid"] - (2 * std)
-        
+    elif "valkyrie" in strategy_lower or timeframe != "1D":
         # Bollinger Bands - Upper/Lower (Vibrant Cyan, thicker)
         ap.append(mpf.make_addplot(df["bb_up"], color='#00E5FF', alpha=0.5, width=1.2))
         ap.append(mpf.make_addplot(df["bb_low"], color='#00E5FF', alpha=0.5, width=1.2))
@@ -163,12 +183,13 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     kwargs = dict(
         type='candle',
         style=style,
-        title=f"\n{symbol} ({side}) - {timeframe} Strategy Setup",
+        title=f"\n{symbol} ({side}) - {timeframe} Setup" + (f" | {strategy}" if strategy else ""),
         ylabel=f'Price ({currency})',
         addplot=ap,
         volume=False,
         figratio=(16,10),
         figscale=0.9,
+        panel_ratios=(4, 1),
         returnfig=True
     )
     
@@ -191,11 +212,10 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     # --- 4. Premium Visual Assembly ---
     try:
         import media_gen
-        progress_box = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, current_price if current_price > 0 else df['close'].iloc[-1], width=1024)
+        prog_img = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, current_price if current_price > 0 else df['close'].iloc[-1], width=1024, return_image=True)
         
         from PIL import Image
         chart_img = Image.open(buf).convert("RGBA")
-        prog_img = Image.open(progress_box).convert("RGBA")
         
         # Scale progress box to match chart width
         scale = chart_img.width / prog_img.width
@@ -209,8 +229,9 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         
         combined.convert("RGB").save(filepath, "JPEG", quality=90)
         chart_img.close(); prog_img.close(); combined.close()
-        os.remove(progress_box)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Visual assembly failed: {e}")
 
     return filepath

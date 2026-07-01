@@ -255,7 +255,7 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     
     return save_path
 
-def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024):
+def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024, return_image=False):
     """
     Generates a premium horizontal progress bar box to be appended below charts.
     """
@@ -336,6 +336,9 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     # Header
     draw.text((width // 2, 30), "TRADE PROGRESS", font=font_sub, fill=(150, 150, 150, 255), anchor="mm")
     
+    if return_image:
+        return img
+
     save_path = os.path.join("pnl_cards", f"progress_{symbol.replace('/', '_')}.png")
     img.save(save_path)
     img.close()

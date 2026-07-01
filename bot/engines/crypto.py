@@ -271,7 +271,8 @@ async def signal_engine(application):
                                  tp,
                                  sl,
                                  side_str,
-                                 open_ts=open_ts
+                                 open_ts=open_ts,
+                                 strategy=strategy_name
                             )
                         except Exception as chart_err:
                             logger.error(f"Forward test chart generation failed: {chart_err}")
@@ -430,7 +431,7 @@ async def signal_engine(application):
                                                                 )
                                                                 try:
                                                                     df = await mdm.fetch_ohlcv(symbol, timeframe='15m')
-                                                                    chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=int(time.time() * 1000))
+                                                                    chart_file = await asyncio.to_thread(charting.generate_trade_chart, res['symbol'], df, res['entry'], res['tp'], res['sl'], side_str, open_ts=int(time.time() * 1000), strategy=strategy_name)
                                                                     is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
                                                                     keyboard = get_nav_buttons(True, is_admin=is_admin)
                                                                     with open(chart_file, 'rb') as photo:

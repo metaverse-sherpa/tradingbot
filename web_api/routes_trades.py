@@ -12,6 +12,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+BINANCE_SESSION = requests.Session()
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STOCK_DB_PATH = os.path.join(ROOT_DIR, "data", "stock_daily_cache.db")
 
@@ -666,14 +668,20 @@ def get_open_trades():
                                 tp_price = float(row[0] or 0.0)
                                 sl_price = float(row[1] or 0.0)
                                 open_time = int(row[2] or 0)
+                                strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                             else:
                                 # Fallback: Check TheoreticalTrades for active signal data
-                                c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE symbol = ? AND status = 'open' LIMIT 1", (p.get("symbol"),))
+                                c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE symbol = ? AND status = 'open' LIMIT 1", (p.get("symbol"),))
                                 row_t = c.fetchone()
                                 if row_t:
                                     tp_price = float(row_t[0] or 0.0)
                                     sl_price = float(row_t[1] or 0.0)
                                     open_time = int(row_t[2] or 0)
+                                    strategy = row_t[3] or merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
+                                else:
+                                    strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
+                    except Exception as db_err:
+                        strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                     except Exception as db_err:
                         print(f"Alpaca DB lookup error: {db_err}")
 
@@ -705,7 +713,8 @@ def get_open_trades():
                         "roe": float(p.get("unrealized_plpc", 0)) * 100,
                         "tp_price": tp_price,
                         "sl_price": sl_price,
-                        "open_time": open_time
+                        "open_time": open_time,
+                        "strategy": strategy
                     })
             return trades
 
@@ -730,7 +739,8 @@ def get_open_trades():
                         "roe": 0.0,
                         "tp_price": float(t.get("tp_price", 0.0) or 0.0),
                         "sl_price": float(t.get("sl_price", 0.0) or 0.0),
-                        "open_time": int(t.get("open_time", 0) or 0)
+                        "open_time": int(t.get("open_time", 0) or 0),
+                        "strategy": merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                     })
         except Exception as e:
             print(f"Alpaca local fallback error: {e}")
@@ -770,13 +780,17 @@ def get_open_trades():
                                  import re
                                  symbol_clean = re.sub(r'^(\d+)', '', symbol_clean)
                                  symbol_clean = symbol_clean.replace('TONCOIN', 'TON')
-                                 c.execute("SELECT tp_price, sl_price, open_time FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
+                                 c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
                                  row = c.fetchone()
                                  if row:
                                      tp_price = float(row[0] or 0.0)
                                      sl_price = float(row[1] or 0.0)
                                      open_time = int(row[2] or 0)
+                                     strategy = row[3] or merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
+                                 else:
+                                     strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                         except Exception as db_err:
+                            strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                             print(f"Crypto DB lookup error: {db_err}")
 
                         trades.append({
@@ -791,7 +805,8 @@ def get_open_trades():
                             "roe": float(pos.get("percentage") or 0),
                             "tp_price": tp_price,
                             "sl_price": sl_price,
-                            "open_time": open_time
+                            "open_time": open_time,
+                            "strategy": strategy
                         })
                 return trades
             finally:
@@ -2225,6 +2240,7 @@ def get_trade_chart():
         
     side = request.args.get("side", "LONG").upper()
     trade_type = request.args.get("type", "crypto")
+    strategy = request.args.get("strategy", "")
 
     if not symbol:
         return "Symbol required", 400
@@ -2235,7 +2251,7 @@ def get_trade_chart():
     # Time-bucket to 5-minute intervals
     time_bucket = int(time.time() // 300)
     
-    cache_key = f"{symbol}_{entry}_{tp}_{sl}_{side}_{price_pct_bucket}_{time_bucket}"
+    cache_key = f"{symbol}_{entry}_{tp}_{sl}_{side}_{price_pct_bucket}_{time_bucket}_{strategy}"
     
     with CHART_MEM_CACHE_LOCK:
         cached = CHART_MEM_CACHE.get(cache_key)
@@ -2274,13 +2290,13 @@ def get_trade_chart():
                 # Sourcing OHLCV from Binance public API is fast (less than 1s) and avoids CCXT overhead
                 clean_sym = symbol.split(":")[0].replace("/", "")
                 endpoints = [
-                    f"https://api.binance.com/api/v3/klines?symbol={clean_sym}&interval=15m&limit=100",
-                    f"https://api.binance.us/api/v3/klines?symbol={clean_sym}&interval=15m&limit=100"
+                    f"https://api.binance.com/api/v3/klines?symbol={clean_sym}&interval=15m&limit=250",
+                    f"https://api.binance.us/api/v3/klines?symbol={clean_sym}&interval=15m&limit=250"
                 ]
                 klines_data = None
                 for url in endpoints:
                     try:
-                        resp = requests.get(url, timeout=3)
+                        resp = BINANCE_SESSION.get(url, timeout=3)
                         if resp.status_code == 200:
                             klines_data = resp.json()
                             break
@@ -2333,7 +2349,8 @@ def get_trade_chart():
             side=side,
             open_ts=open_ts,
             timeframe=timeframe,
-            current_price=current_price
+            current_price=current_price,
+            strategy=strategy
         )
         
         # Read the generated chart image bytes

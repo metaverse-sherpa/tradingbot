@@ -3144,7 +3144,7 @@ function renderTradesView() {
                                             <div class="text-primary/50 animate-pulse" style="animation: reveal-log 0.2s forwards, pulse 1.5s infinite; animation-delay: 15.0s; opacity: 0;">[15.0s] Completing high-resolution plot generation on backend...</div>
                                         </div>
                                     </div>
-                                    <img src="/api/trades/chart?symbol=${encodeURIComponent(trade.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${trade.side}&open_ts=${trade.open_time}&type=${trade.type}&current_price=${trade.mark_price || 0}" 
+                                    <img src="/api/trades/chart?symbol=${encodeURIComponent(trade.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${trade.side}&open_ts=${trade.open_time}&type=${trade.type}&current_price=${trade.mark_price || 0}&strategy=${encodeURIComponent(trade.strategy || '')}" 
                                          onload="const l = document.getElementById('chart-loading-trade-${trade.id}'); if(l)l.remove(); const s = document.getElementById('chart-status-trade-${trade.id}'); if(s)s.remove(); this.classList.remove('hidden');" 
                                          class="w-full h-auto block hidden" alt="Trade Chart" />
                                 </div>
@@ -4948,7 +4948,7 @@ function renderSignalCard(sig, isLanding = false) {
                             <div class="text-primary/50 animate-pulse" style="animation: reveal-log 0.2s forwards, pulse 1.5s infinite; animation-delay: 15.0s; opacity: 0;">[15.0s] Completing high-resolution plot generation on backend...</div>
                         </div>
                     </div>
-                    <img src="/api/trades/chart?symbol=${encodeURIComponent(sig.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${sideStr}&open_ts=${sig.open_time || 0}&type=${sig.symbol && sig.symbol.includes('/') ? 'crypto' : 'stock'}&current_price=${mark}" 
+                    <img src="/api/trades/chart?symbol=${encodeURIComponent(sig.symbol)}&entry=${entry}&tp=${tp}&sl=${sl}&side=${sideStr}&open_ts=${sig.open_time || 0}&type=${sig.symbol && sig.symbol.includes('/') ? 'crypto' : 'stock'}&current_price=${mark}&strategy=${encodeURIComponent(sig.strategy || '')}" 
                          onload="const l = document.getElementById('chart-loading-sig-${sig.id}'); if(l)l.remove(); const s = document.getElementById('chart-status-sig-${sig.id}'); if(s)s.remove(); this.classList.remove('hidden');" 
                          class="w-full h-auto block hidden" alt="Signal Chart" />
                 </div>

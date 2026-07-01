@@ -1159,7 +1159,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         side,
                                         open_ts=open_ts,
                                         timeframe="1D",
-                                        currency="USD"
+                                        currency="USD",
+                                        strategy=user.get('active_stock_strategy', 'Sherpa Velocity Pullback')
                                     )
                                     if not is_mkt_open and chart_path and os.path.exists(chart_path):
                                         os.makedirs("data/cached_charts", exist_ok=True)
@@ -1285,7 +1286,8 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     side,
                                     open_ts=0,
                                     timeframe="15M",
-                                    currency="USDT"
+                                    currency="USDT",
+                                    strategy=user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                                 )
                                 
                                 kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]

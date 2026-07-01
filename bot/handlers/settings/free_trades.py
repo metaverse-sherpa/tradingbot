@@ -228,7 +228,8 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                         side_str,
                         open_ts=open_ts,
                         timeframe=tf,
-                        currency=curr
+                        currency=curr,
+                        strategy=strat
                     )
                     
                     if is_stock(sym) and not is_mkt_open and chart_file and os.path.exists(chart_file):
