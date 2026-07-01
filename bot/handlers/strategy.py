@@ -46,15 +46,22 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
     if crypto_row:
         keyboard.append(crypto_row)
-    keyboard.append([InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")])
-    
-    if svp_active:
-        keyboard.append([
-            InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"),
-            InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause")
-        ])
+        
+    if active_crypto == "None":
+        keyboard.append([InlineKeyboardButton("▶️ Resume Crypto Strategy", callback_data="set_strat_crypto_pause")])
     else:
-        keyboard.append([InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause")])
+        keyboard.append([InlineKeyboardButton("⏸️ Pause Crypto Strategy", callback_data="set_strat_crypto_pause")])
+    
+    stock_row = []
+    if svp_active:
+        stock_row.append(InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"))
+    
+    if active_stock == "None":
+        stock_row.append(InlineKeyboardButton("▶️ Resume Stock Strategy", callback_data="set_strat_stock_pause"))
+    else:
+        stock_row.append(InlineKeyboardButton("⏸️ Pause Stock Strategy", callback_data="set_strat_stock_pause"))
+        
+    keyboard.append(stock_row)
         
     keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -178,8 +185,15 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
             
     elif query.data == "set_strat_crypto_pause":
-        await query.answer("⏸️ Crypto strategy has been Paused!", show_alert=False)
-        database.update_user_crypto_strategy(chat_id, "None")
+        user_db = database.get_user(chat_id)
+        current_strat = user_db.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
+        if current_strat == "None":
+            database.update_user_crypto_strategy(chat_id, "Valkyrie Elite Scalper")
+            await query.answer("▶️ Crypto strategy Resumed!", show_alert=False)
+        else:
+            database.update_user_crypto_strategy(chat_id, "None")
+            await query.answer("⏸️ Crypto strategy Paused!", show_alert=False)
+            
         class MockQuery:
             def __init__(self, q, d): self._q = q; self.data = d
             def __getattr__(self, name): return getattr(self._q, name)
@@ -188,8 +202,29 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
         
     elif query.data == "set_strat_stock_pause":
-        await query.answer("⏸️ Stock strategy has been Paused!", show_alert=False)
-        database.update_user_stock_strategy(chat_id, "None")
+        user_db = database.get_user(chat_id)
+        current_strat = user_db.get('active_stock_strategy', 'None')
+        if current_strat == "None":
+            if not user_db.get('alpaca_api_key') or not user_db.get('alpaca_api_secret') or not user_db.get('alpaca_endpoint'):
+                context.user_data['exchange_id'] = 'alpaca'
+                context.user_data['setup_step'] = 101
+                guide = (
+                    "🦙 *Alpaca API Setup Required*\n\n"
+                    "To run the **Sherpa Velocity Pullback** stock strategy, you must first connect your Alpaca trading account.\n\n"
+                    "Please paste your **Alpaca API Endpoint Base URL** below to begin setup:\n"
+                    "• Paper Trading: `https://paper-api.alpaca.markets`\n"
+                    "• Live Trading: `https://api.alpaca.markets`"
+                )
+                await query.answer()
+                await safe_edit_text(update, context, guide)
+                return
+            else:
+                database.update_user_stock_strategy(chat_id, "Sherpa Velocity Pullback")
+                await query.answer("▶️ Stock strategy Resumed!", show_alert=False)
+        else:
+            database.update_user_stock_strategy(chat_id, "None")
+            await query.answer("⏸️ Stock strategy Paused!", show_alert=False)
+            
         class MockQuery:
             def __init__(self, q, d): self._q = q; self.data = d
             def __getattr__(self, name): return getattr(self._q, name)

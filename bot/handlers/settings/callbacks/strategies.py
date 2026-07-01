@@ -49,7 +49,11 @@ async def handle_strategies_callback(query, update: Update, context: ContextType
         stock_row = []
         if "Sherpa Velocity Pullback" not in disabled:
             stock_row.append(InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"))
-        stock_row.append(InlineKeyboardButton("⏸️ Pause Stock Strategy" + (" (Paused)" if active_stock == "None" else ""), callback_data="set_strat_stock_pause"))
+        
+        if active_stock == "None":
+            stock_row.append(InlineKeyboardButton("▶️ Resume Stock Strategy", callback_data="set_strat_stock_pause"))
+        else:
+            stock_row.append(InlineKeyboardButton("⏸️ Pause Stock Strategy", callback_data="set_strat_stock_pause"))
 
         keyboard = [
             [InlineKeyboardButton("🏔️ Preview My Performance", callback_data="run_backtest")],
@@ -58,7 +62,11 @@ async def handle_strategies_callback(query, update: Update, context: ContextType
         ]
         if crypto_row:
             keyboard.append(crypto_row)
-        keyboard.append([InlineKeyboardButton("⏸️ Pause Crypto Strategy" + (" (Paused)" if active_crypto == "None" else ""), callback_data="set_strat_crypto_pause")])
+            
+        if active_crypto == "None":
+            keyboard.append([InlineKeyboardButton("▶️ Resume Crypto Strategy", callback_data="set_strat_crypto_pause")])
+        else:
+            keyboard.append([InlineKeyboardButton("⏸️ Pause Crypto Strategy", callback_data="set_strat_crypto_pause")])
         keyboard.append(stock_row)
         keyboard.append([InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")])
         keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
