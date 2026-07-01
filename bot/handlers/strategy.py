@@ -141,7 +141,6 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(keyboard))
         else:
-        else:
             class MockQuery:
                 def __init__(self, q, d): self._q = q; self.data = d
                 def __getattr__(self, name): return getattr(self._q, name)
