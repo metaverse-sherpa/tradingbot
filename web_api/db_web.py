@@ -245,7 +245,7 @@ def update_web_user_symbols(user_id, symbols_str):
 def update_web_user_status(user_id, is_active):
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('UPDATE WebUsers SET is_active = ? WHERE id = ?', (is_active, user_id))
+        c.execute('UPDATE WebUsers SET is_active = ? WHERE id = ?', (1 if is_active else 0, user_id))
         
         # Sync to Telegram bot if linked
         c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
