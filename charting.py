@@ -54,14 +54,31 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     # 1. Calculate Indicators on Full DataFrame
     strategy_lower = strategy.lower()
 
-    # Calculate RSI
+    # Calculate RSI based on strategy
     delta = df['close'].diff()
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
-    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
-    rs = avg_gain / avg_loss
-    df['rsi'] = 100 - (100 / (1 + rs))
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    
+    if "sherpa" in strategy_lower or timeframe == "1D":
+        # RSI(3) with simple rolling average (matching SherpaVelocityPullback in strategies.py)
+        rsi_period = 3
+        avg_gain = gain.rolling(window=rsi_period).mean()
+        avg_loss = loss.rolling(window=rsi_period).mean()
+        rs = avg_gain / (avg_loss + 1e-10)
+        df['rsi'] = 100 - (100 / (1 + rs))
+        rsi_label = "RSI (3)"
+        rsi_high_line = 90
+        rsi_low_line = 10
+    else:
+        # RSI(14) with EWM (matching ValkyrieEliteScalper in strategies.py)
+        rsi_period = 14
+        avg_gain = gain.ewm(span=rsi_period, adjust=False).mean()
+        avg_loss = loss.ewm(span=rsi_period, adjust=False).mean()
+        rs = avg_gain / (avg_loss.replace(0, np.nan))
+        df['rsi'] = 100 - (100 / (1 + rs))
+        rsi_label = "RSI (14)"
+        rsi_high_line = 70
+        rsi_low_line = 30
 
     # Calculate EMAs and BBs
     df["ema_50"] = df["close"].ewm(span=50, adjust=False).mean()
@@ -77,11 +94,11 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     # Setup Vibrant Neon Addplots
     ap = []
     
-    # Add RSI panel
-    ap.append(mpf.make_addplot(df['rsi'], panel=1, color='#FF9800', ylabel='RSI (14)'))
+    # Add RSI panel (explicitly set ylim=(0, 100) and secondary_y=False to ensure correct scale)
+    ap.append(mpf.make_addplot(df['rsi'], panel=1, color='#FF9800', ylabel=rsi_label, ylim=(0, 100), secondary_y=False))
     # RSI overbought/oversold lines
-    ap.append(mpf.make_addplot([70]*len(df), panel=1, color='#FF1744', linestyle='--', width=0.8, alpha=0.5))
-    ap.append(mpf.make_addplot([30]*len(df), panel=1, color='#00C853', linestyle='--', width=0.8, alpha=0.5))
+    ap.append(mpf.make_addplot(pd.Series(rsi_high_line, index=df.index), panel=1, color='#FF1744', linestyle='--', width=0.8, alpha=0.5, ylim=(0, 100), secondary_y=False))
+    ap.append(mpf.make_addplot(pd.Series(rsi_low_line, index=df.index), panel=1, color='#00C853', linestyle='--', width=0.8, alpha=0.5, ylim=(0, 100), secondary_y=False))
 
     # Add a marker (star/arrow) on the entry day
     if open_ts > 0:
@@ -125,6 +142,8 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         ap.append(mpf.make_addplot(df["bb_low"], color='#00E5FF', alpha=0.5, width=1.2))
         # Bollinger Mid (Subtle Dashed Cyan)
         ap.append(mpf.make_addplot(df["bb_mid"], color='#00E5FF', alpha=0.3, width=0.8, linestyle='--'))
+        # Add EMA 200 (Vibrant Neon Purple/Magenta) for Valkyrie since it filters based on it
+        ap.append(mpf.make_addplot(df["ema_200"], color='#D500F9', alpha=0.8, width=1.2))
         
         fb_bb = dict(y1=df["bb_up"].values, y2=df["bb_low"].values, color='#00E5FF', alpha=0.05)
 
