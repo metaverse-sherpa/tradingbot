@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Copy, Filter, RefreshCw, Terminal } from 'lucide-react';
+import { Copy, Filter, Terminal } from 'lucide-react';
 import api from '../lib/api';
 import { useToast } from './Toast';
 
