@@ -19,6 +19,7 @@ pytz
 
 # Web Application & API Dependencies
 flask
+flask-socketio
 flask-cors
 pyjwt
 bcrypt
