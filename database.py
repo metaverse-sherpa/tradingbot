@@ -39,13 +39,14 @@ try:
 except Exception as patch_err:
     pass
 
-load_dotenv()
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(env_path)
 
 import utils_gcp
 ENCRYPTION_KEY = utils_gcp.get_secret("ENCRYPTION_KEY", fallback_env_key="ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
     ENCRYPTION_KEY = Fernet.generate_key().decode()
-    with open(".env", "a") as f:
+    with open(env_path, "a") as f:
         f.write(f"\nENCRYPTION_KEY={ENCRYPTION_KEY}\n")
 
 
@@ -983,15 +984,21 @@ def get_user_from_web_row(row):
     api_key = None
     if row.get('api_key'):
         try: api_key = decrypt(row['api_key'])
-        except: api_key = row['api_key']
+        except Exception as e:
+            print(f"[DECRYPT ERROR] Failed to decrypt api_key for web user {row.get('id', '?')}: {e}")
+            api_key = row['api_key']
     api_secret = None
     if row.get('api_secret'):
         try: api_secret = decrypt(row['api_secret'])
-        except: api_secret = row['api_secret']
+        except Exception as e:
+            print(f"[DECRYPT ERROR] Failed to decrypt api_secret for web user {row.get('id', '?')}: {e}")
+            api_secret = row['api_secret']
     api_password = None
     if row.get('api_password'):
         try: api_password = decrypt(row['api_password'])
-        except: api_password = row['api_password']
+        except Exception as e:
+            print(f"[DECRYPT ERROR] Failed to decrypt api_password for web user {row.get('id', '?')}: {e}")
+            api_password = row['api_password']
     alpaca_api_key = None
     if row.get('alpaca_api_key'):
         try: alpaca_api_key = decrypt(row['alpaca_api_key'])

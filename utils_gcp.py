@@ -5,7 +5,8 @@ from google.cloud import secretmanager
 from dotenv import load_dotenv
 
 # Ensure local .env is loaded before any secret resolution to prevent GCP timeouts in local/VPS environments
-load_dotenv()
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(env_path)
 
 logger = logging.getLogger("SecretManager")
 
