@@ -4,6 +4,10 @@ from database import db_session, encrypt, decrypt
 
 _ENCRYPTED_KEY_FIELDS = ("api_key", "api_secret", "api_password", "alpaca_api_key", "alpaca_api_secret")
 
+import threading
+_USER_BY_EMAIL_CACHE = {}
+_USER_BY_EMAIL_CACHE_LOCK = threading.Lock()
+
 def _decrypt_user_keys(user):
     """Decrypt all encrypted API key fields on a user dict in-place."""
     if not user:
@@ -22,11 +26,25 @@ def _decrypt_user_keys(user):
     return user
 
 def get_web_user_by_email(email):
+    email_clean = email.strip().lower()
+    now = time.time()
+    with _USER_BY_EMAIL_CACHE_LOCK:
+        if email_clean in _USER_BY_EMAIL_CACHE:
+            expiry, cached_user = _USER_BY_EMAIL_CACHE[email_clean]
+            if now < expiry:
+                return cached_user
+
     with db_session() as conn:
         c = conn.cursor()
-        c.execute('SELECT * FROM WebUsers WHERE email = ?', (email.strip().lower(),))
+        c.execute('SELECT * FROM WebUsers WHERE email = ?', (email_clean,))
         row = c.fetchone()
-        return _decrypt_user_keys(dict(row)) if row else None
+        user = _decrypt_user_keys(dict(row)) if row else None
+
+    if user:
+        with _USER_BY_EMAIL_CACHE_LOCK:
+            _USER_BY_EMAIL_CACHE[email_clean] = (now + 5, user)
+            
+    return user
 
 def get_web_user_by_google_id(google_id):
     with db_session() as conn:
@@ -209,6 +227,22 @@ def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
             SET alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?
             WHERE id = ?
         ''', (encrypt(api_key), encrypt(api_secret), endpoint, user_id))
+        
+        # Sync to Telegram bot if linked
+        c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row and row[0]:
+            try:
+                c.execute('''
+                    UPDATE Users
+                    SET alpaca_api_key = ?, alpaca_api_secret = ?, alpaca_endpoint = ?
+                    WHERE telegram_chat_id = ?
+                ''', (encrypt(api_key), encrypt(api_secret), endpoint, row[0]))
+            except Exception as e:
+                print(f"Telegram sync error for Alpaca keys: {e}")
+                from utils_error import send_telegram_alert
+                user_info = f"Web User: {user_id}, TG: {row[0]}"
+                send_telegram_alert(f"DB Sync Error (Alpaca Keys) [{user_info}]", e)
     update_web_user_status(user_id, 1)
 
 def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, email_notifications=1, email_frequency='realtime', browser_notifications=1):

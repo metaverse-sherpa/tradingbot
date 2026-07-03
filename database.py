@@ -188,6 +188,15 @@ def get_exchange_client(user, is_async=True):
         },
         "enableRateLimit": True,
     }
+    
+    # Check if we should route CCXT requests through the local VPS proxy tunnel
+    import os
+    if os.environ.get("USE_VPS_PROXY") == "1":
+        config["proxies"] = {
+            'http': 'socks5h://127.0.0.1:1080',
+            'https': 'socks5h://127.0.0.1:1080'
+        }
+
     if ex_id == 'coinbase':
         config['options']['fetchBalance'] = 'v3PrivateGetBrokerageAccounts'
         if is_async:
@@ -1875,7 +1884,7 @@ def award_premium_referral(referrer_id):
     return check_and_award_referral_bonus(referrer_id)
 
 def update_position_status(chat_id, has_active, web_user_id=None):
-    """Updates the has_open_positions flag in the database."""
+    """Updates the has_open_positions flag in the database and clears the user's cache."""
     with db_session() as conn:
         c = conn.cursor()
         if chat_id:
@@ -1884,8 +1893,12 @@ def update_position_status(chat_id, has_active, web_user_id=None):
                 c.execute("UPDATE WebUsers SET has_open_positions = ? WHERE telegram_chat_id = ?", (1 if has_active else 0, chat_id))
             except:
                 pass
-        elif web_user_id:
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{chat_id}%",))
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{chat_id}",))
+        if web_user_id:
             c.execute("UPDATE WebUsers SET has_open_positions = ? WHERE id = ?", (1 if has_active else 0, web_user_id))
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{web_user_id}%",))
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{web_user_id}",))
 
 def update_user_strategy(chat_id, strategy_name):
     """Updates the user's active trading strategy."""
@@ -1894,7 +1907,7 @@ def update_user_strategy(chat_id, strategy_name):
         c.execute("UPDATE Users SET strategy = ? WHERE telegram_chat_id = ?", (strategy_name, chat_id))
 
 def set_history_cache(chat_id, trades, web_user_id=None):
-    """Stores the last 10 trades as a JSON blob."""
+    """Stores the last 10 trades as a JSON blob and invalidates user cache."""
     import json
     with db_session() as conn:
         c = conn.cursor()
@@ -1905,8 +1918,12 @@ def set_history_cache(chat_id, trades, web_user_id=None):
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Failed to sync WebUsers history_cache: {e}")
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{chat_id}%",))
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{chat_id}",))
         elif web_user_id:
             c.execute("UPDATE WebUsers SET history_cache = ? WHERE id = ?", (json.dumps(trades), web_user_id))
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{web_user_id}%",))
+            c.execute("DELETE FROM SharedResponseCache WHERE cache_key LIKE ?", (f"%:{web_user_id}",))
 
 def clear_history_cache(chat_id, web_user_id=None):
     """Clears the trade history cache."""

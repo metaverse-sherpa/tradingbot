@@ -30,6 +30,19 @@ jobs:
             echo "📦 Installing updated dependencies..."
             /home/gilesasp/tradingbot/venv/bin/pip install -r requirements.txt
             
+            echo "🏗️ Building React Frontend..."
+            cd /home/gilesasp/tradingbot/webapp-react
+            npm install
+            npm run build
+            cd /home/gilesasp/tradingbot
+            
+            echo "⚙️ Applying NGINX configuration..."
+            bash update_nginx.sh
+            
+            echo "🔄 Enabling autostart for backend services..."
+            sudo systemctl enable webapi
+            sudo systemctl enable tradingbot
+            
             echo "🔄 Gracefully reloading Sherpa Web API..."
             sudo systemctl reload webapi
 

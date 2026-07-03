@@ -243,6 +243,45 @@ def admin_generate_gift():
         print(f"Error generating admin gift: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+@premium_bp.route('/api/admin/users', methods=['GET'])
+@require_auth
+def admin_users():
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    try:
+        c = database.get_db().cursor()
+        c.execute('''
+            SELECT id, email, full_name, is_premium, premium_expiry, created_at, telegram_chat_id 
+            FROM WebUsers 
+            ORDER BY created_at DESC 
+            LIMIT 100
+        ''')
+        rows = c.fetchall()
+        
+        users_list = []
+        for row in rows:
+            users_list.append({
+                "id": row[0],
+                "email": row[1],
+                "name": row[2] or "Unknown",
+                "is_premium": bool(row[3]),
+                "premium_expiry": row[4],
+                "joined": row[5],
+                "telegram_chat_id": row[6]
+            })
+            
+        return jsonify({"users": users_list}), 200
+    except Exception as e:
+        print(f"Error fetching admin users: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
 @premium_bp.route('/api/admin/logs', methods=['GET'])
 @require_auth
 def admin_logs():

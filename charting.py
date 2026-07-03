@@ -257,5 +257,6 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         import traceback
         traceback.print_exc()
         print(f"Visual assembly failed: {e}")
+        raise e
 
     return filepath

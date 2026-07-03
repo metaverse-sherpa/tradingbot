@@ -41,6 +41,27 @@ def is_us_market_open():
         print(f"Error checking market hours: {e}")
         return True # Default to True so updates aren't blocked if timezone check fails
 
+def time_until_us_market_opens():
+    """Returns the total seconds until the US stock market next opens (9:30 AM ET on the next valid trading day)."""
+    import datetime
+    import pytz
+    tz_et = pytz.timezone('US/Eastern')
+    now_et = datetime.datetime.now(tz_et)
+    
+    market_start = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    
+    # If it's a weekday and before 9:30 AM today, market opens later today
+    if now_et.weekday() < 5 and now_et < market_start:
+        return (market_start - now_et).total_seconds()
+        
+    # Otherwise, find the next valid weekday at 9:30 AM
+    next_day = now_et + datetime.timedelta(days=1)
+    while next_day.weekday() >= 5: # Skip weekends
+        next_day += datetime.timedelta(days=1)
+        
+    next_market_start = next_day.replace(hour=9, minute=30, second=0, microsecond=0)
+    return (next_market_start - now_et).total_seconds()
+
 def is_stock(symbol):
     """Determines if a symbol is a stock ticker."""
     symbol_str = str(symbol).upper()
@@ -171,7 +192,7 @@ def get_balance():
     segment = request.args.get("segment") # 'crypto' or 'stock'
     bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     
-    # Check cache
+    # Check cache BEFORE loading user credentials from DB!
     now = time.time()
     cache_key = ("balance", user_id, segment)
     with RESPONSE_CACHE_LOCK:
@@ -181,10 +202,7 @@ def get_balance():
                 return jsonify(cached_data), 200
 
     tg_user = _get_telegram_user(user)
-    balance_crypto = 0.0
-    balance_stock = 0.0
     
-    # Merge credentials
     merged_user = {}
     if user:
         merged_user.update(user)
@@ -193,6 +211,11 @@ def get_balance():
             if v is not None and v != "":
                 merged_user[k] = v
                 
+    db_has_open = bool(merged_user.get("has_open_positions"))
+
+    balance_crypto = 0.0
+    balance_stock = 0.0
+    
     crypto_api_key = merged_user.get("api_key")
     crypto_api_secret = merged_user.get("api_secret")
     crypto_exchange_id = merged_user.get("exchange_id", "blofin")
@@ -255,15 +278,14 @@ def get_balance():
         balance_crypto, crypto_auth_success = float((tg_user or {}).get("equity") or user.get("equity") or 0.0), False
             
     # 2. Query live Stock balance (Alpaca)
-    # Use linked Telegram user's Alpaca keys if available
-    if tg_user and tg_user.get("alpaca_api_key"):
-        alpaca_key = tg_user.get("alpaca_api_key")
-        alpaca_secret = tg_user.get("alpaca_api_secret")
-        alpaca_user = tg_user
-    else:
-        alpaca_key = user.get("alpaca_api_key")
-        alpaca_secret = user.get("alpaca_api_secret")
-        alpaca_user = user
+    alpaca_key = merged_user.get("alpaca_api_key")
+    alpaca_secret = merged_user.get("alpaca_api_secret")
+    alpaca_endpoint = merged_user.get("alpaca_endpoint")
+    alpaca_user = {
+        "alpaca_api_key": alpaca_key,
+        "alpaca_api_secret": alpaca_secret,
+        "alpaca_endpoint": alpaca_endpoint
+    }
     
     if (not segment or segment == 'stock') and alpaca_key and alpaca_secret:
         def fetch_stock_balance():
@@ -292,7 +314,15 @@ def get_balance():
         }
     
     with RESPONSE_CACHE_LOCK:
-        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, response_data)
+        if segment == 'crypto':
+            ttl = 900
+        elif segment == 'stock':
+            ttl = 900 if is_us_market_open() else time_until_us_market_opens()
+        else:
+            ttl_stock = 900 if is_us_market_open() else time_until_us_market_opens()
+            ttl = min(900, ttl_stock)
+            
+        RESPONSE_CACHE[cache_key] = (now + ttl, response_data)
         
     return jsonify(response_data), 200
 
@@ -304,16 +334,35 @@ def get_stats():
     segment = request.args.get("segment") # 'crypto' or 'stock'
     bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     
-    # Check cache
+    # Check cache BEFORE loading user credentials from DB!
     now = time.time()
     cache_key = ("stats", user_id, segment)
+    db_has_open = bool(user.get("has_open_positions"))
     with RESPONSE_CACHE_LOCK:
         if not bypass_cache and cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
-            if now < expiry:
+            
+            # Check if cache matches the DB's has_open_positions state (which only tracks Crypto)
+            if segment == 'stock':
+                is_stale = False
+            else:
+                cache_crypto_open = cached_data.get("crypto", {}).get("open_positions", 0) > 0
+                is_stale = db_has_open != cache_crypto_open
+            
+            if now < expiry and not is_stale:
                 return jsonify(cached_data), 200
 
     tg_user = _get_telegram_user(user) or user
+    
+    merged_user = {}
+    if user:
+        merged_user.update(user)
+    if tg_user:
+        for k, v in tg_user.items():
+            if v is not None and v != "":
+                merged_user[k] = v
+                
+    db_has_open = bool(merged_user.get("has_open_positions"))
     
     # 1. Crypto Stats
     crypto_wins = tg_user.get("wins", tg_user.get("total_wins", 0))
@@ -592,7 +641,15 @@ def get_stats():
         response_data.pop("crypto", None)
         
     with RESPONSE_CACHE_LOCK:
-        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, response_data)
+        if segment == 'crypto' or (not segment and 'stock' not in response_data):
+            ttl = 900
+        elif segment == 'stock' or (not segment and 'crypto' not in response_data):
+            ttl = 900 if is_us_market_open() else time_until_us_market_opens()
+        else:
+            ttl_stock = 900 if is_us_market_open() else time_until_us_market_opens()
+            ttl = min(900, ttl_stock)
+            
+        RESPONSE_CACHE[cache_key] = (now + ttl, response_data)
         
     return jsonify(response_data), 200
 
@@ -604,13 +661,25 @@ def get_open_trades():
     segment = request.args.get("segment") # 'crypto' or 'stock'
     bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     
-    # Check cache
+    # Check cache BEFORE loading user credentials from DB!
     now = time.time()
     cache_key = ("open_trades", user_id, segment)
+    db_has_open = bool(user.get("has_open_positions"))
     with RESPONSE_CACHE_LOCK:
         if not bypass_cache and cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
-            if now < expiry:
+            
+            # Smart Cache Invalidation: db_has_open ONLY tracks crypto.
+            if segment == 'stock':
+                is_stale = False
+            elif segment == 'crypto':
+                cache_crypto_open = len(cached_data) > 0
+                is_stale = db_has_open != cache_crypto_open
+            else:
+                cache_crypto_open = len([t for t in cached_data if t.get('type') == 'crypto']) > 0
+                is_stale = db_has_open != cache_crypto_open
+            
+            if now < expiry and not is_stale:
                 return jsonify(cached_data), 200
 
     open_positions = []
@@ -625,6 +694,8 @@ def get_open_trades():
             if v is not None and v != "":
                 merged_user[k] = v
                 
+    db_has_open = bool(merged_user.get("has_open_positions"))
+
     # Determine the chat_id to use for Alpaca trade queries
     if tg_user:
         trade_chat_id = user["telegram_chat_id"]
@@ -795,16 +866,31 @@ def get_open_trades():
                             strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                             print(f"Crypto DB lookup error: {db_err}")
 
+                        entry_price = float(pos.get("entryPrice") or 0)
+                        mark_price = float(pos.get("markPrice") or 0)
+                        unrealized_pnl = float(pos.get("unrealizedPnl") or 0)
+                        roe = float(pos.get("percentage") or 0)
+                        side_str = pos.get("side", "").upper()
+                        
+                        if entry_price > 0 and mark_price > 0:
+                            is_long = side_str in ['LONG', 'BUY']
+                            raw_pct = ((mark_price - entry_price) / entry_price) * 100 if is_long else ((entry_price - mark_price) / entry_price) * 100
+                            roe = raw_pct * 20
+                            
+                            if unrealized_pnl == 0:
+                                pnl_raw = mark_price - entry_price if is_long else entry_price - mark_price
+                                unrealized_pnl = abs(contracts) * pnl_raw
+
                         trades.append({
                             "id": pos.get("id", f"crypto-{pos.get('symbol')}"),
                             "type": "crypto",
                             "symbol": pos.get("symbol"),
-                            "side": pos.get("side", "").upper(),
+                            "side": side_str,
                             "qty": abs(contracts),
-                            "entry_price": float(pos.get("entryPrice") or 0),
-                            "mark_price": float(pos.get("markPrice") or 0),
-                            "unrealized_pnl": float(pos.get("unrealizedPnl") or 0),
-                            "roe": float(pos.get("percentage") or 0),
+                            "entry_price": entry_price,
+                            "mark_price": mark_price,
+                            "unrealized_pnl": unrealized_pnl,
+                            "roe": roe,
                             "tp_price": tp_price,
                             "sl_price": sl_price,
                             "open_time": open_time,
@@ -821,7 +907,19 @@ def get_open_trades():
         open_positions.extend(crypto_open_trades)
         
     with RESPONSE_CACHE_LOCK:
-        RESPONSE_CACHE[cache_key] = (now + CACHE_TTL_SECONDS, open_positions)
+        has_crypto = any(t['type'] == 'crypto' for t in open_positions)
+        has_stock = any(t['type'] == 'stock' for t in open_positions)
+        
+        if segment == 'crypto' or (not segment and not has_stock):
+            ttl = 900 if has_crypto else 2592000
+        elif segment == 'stock' or (not segment and not has_crypto):
+            ttl = 900 if is_us_market_open() else time_until_us_market_opens()
+        else:
+            ttl_crypto = 900 if has_crypto else 2592000
+            ttl_stock = 900 if is_us_market_open() else time_until_us_market_opens()
+            ttl = min(ttl_crypto, ttl_stock)
+            
+        RESPONSE_CACHE[cache_key] = (now + ttl, open_positions)
         
     return jsonify(open_positions), 200
 
@@ -860,6 +958,13 @@ def get_trades_history():
                 for tr in cached:
                     is_stk = is_stock(tr.get("symbol", ""))
                     tr["type"] = "stock" if is_stk else "crypto"
+                    
+                    # Normalize PnL fields for frontend
+                    tr["pnl_raw"] = float(tr.get("pnl_raw") or tr.get("net_pnl") or tr.get("realizedPnl") or 0)
+                    tr["pnl_pct"] = float(tr.get("pnl_pct") or tr.get("roe_val") or tr.get("percentage") or 0)
+                    if "close_time" not in tr and "timestamp" in tr:
+                        tr["close_time"] = tr["timestamp"]
+                    
                     history.append(tr)
             except Exception as e:
                 pass
@@ -874,6 +979,10 @@ def get_trades_history():
                     for tr in cached:
                         is_stk = is_stock(tr.get("symbol", ""))
                         tr["type"] = "stock" if is_stk else "crypto"
+                        tr["pnl_raw"] = float(tr.get("pnl_raw") or tr.get("net_pnl") or tr.get("realizedPnl") or 0)
+                        tr["pnl_pct"] = float(tr.get("pnl_pct") or tr.get("roe_val") or tr.get("percentage") or 0)
+                        if "close_time" not in tr and "timestamp" in tr:
+                            tr["close_time"] = tr["timestamp"]
                         history.append(tr)
                 except Exception as e:
                     pass
@@ -890,6 +999,10 @@ def get_trades_history():
                             for tr in cached:
                                 is_stk = is_stock(tr.get("symbol", ""))
                                 tr["type"] = "stock" if is_stk else "crypto"
+                                tr["pnl_raw"] = float(tr.get("pnl_raw") or tr.get("net_pnl") or tr.get("realizedPnl") or 0)
+                                tr["pnl_pct"] = float(tr.get("pnl_pct") or tr.get("roe_val") or tr.get("percentage") or 0)
+                                if "close_time" not in tr and "timestamp" in tr:
+                                    tr["close_time"] = tr["timestamp"]
                                 history.append(tr)
                 except Exception as e:
                     pass
@@ -1240,6 +1353,17 @@ def run_backtest():
     strategy = data.get("strategy", "Mean Reversion Scalper")
     capital = float(data.get("capital", 10000.0))
     risk_pct = float(data.get("risk_pct", 1.5))
+    period_str = data.get("period", "Last 1 Year")
+    
+    years = 1
+    if "3 Years" in period_str:
+        years = 3
+    elif "5 Years" in period_str:
+        years = 5
+        
+    from datetime import datetime, timedelta
+    end_dt = datetime.now()
+    start_dt = end_dt - timedelta(days=years*365)
     
     user = g.user
     user_id = user.get("email") or str(user.get("id"))
@@ -1261,6 +1385,7 @@ def run_backtest():
             t["entry_dt"] = datetime.fromisoformat(t["entry_date"])
             t["exit_dt"] = datetime.fromisoformat(t["exit_date"])
             
+        strategy_trades = [t for t in strategy_trades if t["entry_dt"] >= start_dt]
         strategy_trades.sort(key=lambda x: x["entry_dt"])
         
         events = []
@@ -1345,8 +1470,8 @@ def run_backtest():
                 verbose=False,
                 initial_cash=capital,
                 pct_per_trade=risk_decimal,
-                start_date="2021-05-19",
-                end_date="2026-05-19"
+                start_date=start_dt.strftime("%Y-%m-%d"),
+                end_date=end_dt.strftime("%Y-%m-%d")
             )
             
             final_equity = metrics["final_equity"]
@@ -1395,7 +1520,7 @@ def run_backtest():
         
         theme_color = "#00E5FF" if strategy == "Sherpa Velocity Pullback" else "cyan"
         ax1.plot(df_eq.index, df_eq["equity"], color=theme_color, linewidth=2)
-        title_years = "5-Year" if strategy == "Sherpa Velocity Pullback" else "3-Year"
+        title_years = f"{years}-Year"
         ax1.set_title(f"Sherpa {title_years} Audit: {user_id}", color="white", fontsize=16, fontweight="bold", pad=15)
         ax1.tick_params(colors="white")
         ax1.grid(True, color="#3a4b5c", alpha=0.3, linestyle=":")
@@ -1672,7 +1797,12 @@ def _update_active_signals_cache():
             
         cache_key = "signals_active"
         with RESPONSE_CACHE_LOCK:
-            RESPONSE_CACHE[cache_key] = (time.time() + CACHE_TTL_SECONDS, signals)
+            has_crypto = any(not is_stock(s.get("symbol", "")) for s in signals)
+            if has_crypto or is_us_market_open():
+                ttl = 900
+            else:
+                ttl = time_until_us_market_opens()
+            RESPONSE_CACHE[cache_key] = (time.time() + ttl, signals)
         return signals
     except Exception as e:
         import traceback
@@ -1689,21 +1819,32 @@ def get_active_signals():
     cache_key = "signals_active"
     now = time.time()
     
+    force_refresh = request.args.get('force') == 'true'
+    
     # Quick lock check: If we have cached active signals, return them
-    with RESPONSE_CACHE_LOCK:
-        if cache_key in RESPONSE_CACHE:
-            expiry, cached_data = RESPONSE_CACHE[cache_key]
-            if now < expiry:
-                disabled = database.get_disabled_strategies()
-                filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
-                return jsonify(filtered_data), 200
+    if not force_refresh:
+        with RESPONSE_CACHE_LOCK:
+            if cache_key in RESPONSE_CACHE:
+                expiry, cached_data = RESPONSE_CACHE[cache_key]
+                if now < expiry:
+                    disabled = database.get_disabled_strategies()
+                    filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+                    return jsonify(filtered_data), 200
                 
-    # Cache is empty or expired. Trigger background update if not running.
+    # Cache is empty, expired, or force refresh requested. Trigger background update if not running.
     with SIGNALS_ACTIVE_UPDATING_LOCK:
         is_updating = SIGNALS_ACTIVE_UPDATING
         if not is_updating:
             SIGNALS_ACTIVE_UPDATING = True
             threading.Thread(target=_update_active_signals_cache).start()
+            is_updating = True
+            
+    if force_refresh:
+        # Wait up to 5 seconds for the background thread to finish
+        for _ in range(10):
+            if not SIGNALS_ACTIVE_UPDATING:
+                break
+            time.sleep(0.5)
             
     # If the cache had expired data, return it immediately while it refreshes in the background
     with RESPONSE_CACHE_LOCK:
@@ -1729,7 +1870,12 @@ def get_active_signals():
         signals = []
         
     with RESPONSE_CACHE_LOCK:
-        RESPONSE_CACHE[cache_key] = (now + 15, signals)
+        has_crypto = any(not is_stock(s.get("symbol", "")) for s in signals)
+        if has_crypto or is_us_market_open():
+            ttl = 900
+        else:
+            ttl = time_until_us_market_opens()
+        RESPONSE_CACHE[cache_key] = (now + ttl, signals)
         
     return jsonify(signals), 200
 
@@ -1737,12 +1883,23 @@ def get_active_signals():
 def get_closed_signals():
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' ORDER BY close_time DESC LIMIT 50")
-        rows = c.fetchall()
-    signals = [dict(r) for r in rows]
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND symbol LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
+        crypto_rows = c.fetchall()
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND symbol NOT LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
+        stock_rows = c.fetchall()
+        
+    signals = []
+    for r in crypto_rows:
+        d = dict(r)
+        if d.get("pnl_pct") is not None:
+            d["pnl_pct"] *= 20
+        signals.append(d)
+    for r in stock_rows:
+        signals.append(dict(r))
+    signals.sort(key=lambda x: x.get('close_time', 0), reverse=True)
     
     disabled = database.get_disabled_strategies()
-    signals = [s for s in signals if s.get("strategy") not in disabled][:10]
+    signals = [s for s in signals if s.get("strategy") not in disabled]
     
     if not signals:
         signals = [
@@ -1873,7 +2030,7 @@ def _update_free_stats_cache():
         
         cache_key = "stats_free"
         with RESPONSE_CACHE_LOCK:
-            RESPONSE_CACHE[cache_key] = (time.time() + 15, response_data)  # Cache for 15 seconds
+            RESPONSE_CACHE[cache_key] = (time.time() + 900, response_data)  # Cache for 15 minutes
         return response_data
     except Exception as e:
         import traceback
@@ -1889,6 +2046,7 @@ def get_free_stats():
     global STATS_FREE_UPDATING
     cache_key = "stats_free"
     now = time.time()
+    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     
     cached_data = None
     has_cache = False
@@ -1898,7 +2056,7 @@ def get_free_stats():
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             has_cache = True
-            is_expired = (now >= expiry)
+            is_expired = bypass_cache or (now >= expiry)
             
     if has_cache:
         if is_expired:
@@ -1939,7 +2097,7 @@ def share_card():
     card_type = request.args.get("type", "stats") # stats, trade, signal
     user = g.user
     ref_id = user.get("telegram_chat_id") or user.get("id")
-    ref_link = user.get("invite_link") or f"https://bot.metaversesherpa.io/#/register?ref={ref_id}"
+    ref_link = user.get("invite_link") or f"https://bot.metaversesherpa.io/login?ref={ref_id}"
     hide_dollars = user.get("hide_dollars", True)
     
     

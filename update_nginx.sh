@@ -7,7 +7,7 @@ upstream webapi_backend {
 server {
     server_name bot.metaversesherpa.io;
 
-    root /home/gilesasp/tradingbot/webapp;
+    root /home/gilesasp/tradingbot/webapp-react/dist;
     index index.html;
 
     location / {

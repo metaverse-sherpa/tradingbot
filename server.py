@@ -7,6 +7,7 @@ os.environ['MPLCONFIGDIR'] = os.path.join(os.path.dirname(os.path.abspath(__file
 
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 # Add root folder to path so imports work perfectly
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -40,6 +41,13 @@ CORS(
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"]
 )
+
+# Initialize SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+def broadcast_trade_update(trade_data):
+    """Broadcasts trade updates to connected clients via WebSockets."""
+    socketio.emit('trade_update', trade_data)
 
 # ----------------- Register Blueprints -----------------
 from web_api.routes_auth import auth_bp
@@ -198,4 +206,4 @@ def handle_exception(e):
 # Start Flask Server
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5001))
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)

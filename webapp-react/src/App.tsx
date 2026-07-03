@@ -1,37 +1,91 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 
-const Dashboard: React.FC = () => {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center">
-      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.37)] max-w-2xl w-full">
-        <h2 className="text-3xl font-bold text-[#f3f4f6] mb-4">Welcome back, Trader.</h2>
-        <p className="text-gray-400 mb-8 leading-relaxed">
-          The React SPA migration is in progress. The data stores and UI shell have been scaffolded with Zustand and Tailwind CSS v4.
-        </p>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-[#1f2028] border border-[#2e303a] rounded-xl p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <p className="text-xs text-cyan-400 uppercase tracking-widest font-bold mb-2">Total Equity</p>
-            <p className="text-2xl font-mono text-white">$0.00</p>
-          </div>
-          <div className="bg-[#1f2028] border border-[#2e303a] rounded-xl p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-            <p className="text-xs text-emerald-400 uppercase tracking-widest font-bold mb-2">Active Positions</p>
-            <p className="text-2xl font-mono text-white">0</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import Dashboard from './components/Dashboard';
+import Settings from './components/Settings';
+import StatsPage from './components/StatsPage';
+import SignalsPage from './components/SignalsPage';
+import TradesPage from './components/TradesPage';
+import StrategiesPage from './components/StrategiesPage';
+import BacktestsPage from './components/BacktestsPage';
+import PremiumPage from './components/PremiumPage';
+import ReferralsPage from './components/ReferralsPage';
+import AdminPage from './components/AdminPage';
+import LogsPage from './components/LogsPage';
+import HelpPage from './components/HelpPage';
+import LandingPage from './components/LandingPage';
+import LoginPage from './components/LoginPage';
+import { useEffect } from 'react';
+import { auth } from './lib/firebase';
+import { onIdTokenChanged } from 'firebase/auth';
+import api from './lib/api';
+import { useAuthStore } from './store/useStore';
 
 const App: React.FC = () => {
+  const { setUser, isAuthenticated, isLoading } = useAuthStore();
+  
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      if (user) {
+        const syncUser = async () => {
+          try {
+            // Sync with backend
+            const res = await api.post('/auth/sync', {});
+            const finalUser = { ...res.data.user, avatar_url: user.photoURL || res.data.user.avatar_url };
+            setUser(finalUser);
+          } catch (e) {
+            console.error("Auth sync failed", e);
+            setUser(null);
+          }
+        };
+        syncUser();
+        // Background polling for global user updates every 15 mins
+        interval = setInterval(syncUser, 15 * 60 * 1000);
+      } else {
+        setUser(null);
+        if (interval) clearInterval(interval);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      if (interval) clearInterval(interval);
+    };
+  }, [setUser]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0b0e14] text-white flex items-center justify-center font-sans">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
+          <Route index element={<LandingPage />} />
+          <Route path="login" element={!isAuthenticated ? <LoginPage /> : <Dashboard />} />
+          {isAuthenticated && (
+            <>
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="stats" element={<StatsPage />} />
+              <Route path="signals" element={<SignalsPage />} />
+              <Route path="trades" element={<TradesPage />} />
+              <Route path="strategies" element={<StrategiesPage />} />
+              <Route path="backtests" element={<BacktestsPage />} />
+              <Route path="premium" element={<PremiumPage />} />
+              <Route path="referrals" element={<ReferralsPage />} />
+              <Route path="admin" element={<AdminPage />} />
+              <Route path="logs" element={<LogsPage />} />
+              <Route path="help" element={<HelpPage />} />
+            </>
+          )}
+          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -64,11 +64,12 @@ tradingbot/
 │   ├── routes_settings.py       # Route blueprint: user API key storage, risk settings
 │   └── routes_trades.py         # Route blueprint: positions, balance history, charts
 │
-├── webapp/                      # Single-Page Frontend Application (SPA)
-│   ├── app.js                   # Main application controller (view logic & API routing)
-│   ├── index.html               # Main index containing the UI structure
-│   ├── input.css / output.css   # Tailwind CSS source styling sheets
-│   └── tailwind.config.js       # Tailwind setup and custom color configurations
+├── webapp-react/                # React Single-Page Application (SPA)
+│   ├── src/                     # React components, pages, and store logic
+│   ├── public/                  # Static assets and index.html
+│   ├── package.json             # NPM dependencies and build scripts
+│   ├── tailwind.config.js       # Tailwind setup and custom color configurations
+│   └── vite.config.ts           # Vite build tool configuration
 │
 ├── data/                        # Local SQLite Database Files (WAL Mode)
 │   ├── bot_users.db             # Active database for user settings & API keys
@@ -141,7 +142,16 @@ Initialize the data directory (the SQLite databases will be automatically create
 mkdir -p data results pnl_cards
 ```
 
-### 6. Environment Configurations (`.env`)
+### 6. Build the React Webapp
+Navigate into the React webapp directory to install NPM dependencies and compile the production build bundle. This requires Node.js (which you installed in step 3).
+```bash
+cd ~/tradingbot/webapp-react
+npm install
+npm run build
+cd ~/tradingbot
+```
+
+### 7. Environment Configurations (`.env`)
 Copy `.env.copy` to `.env` and fill in the configuration values:
 ```bash
 cp .env.copy .env
@@ -199,6 +209,11 @@ Use the following commands to manage the production services on your VPS.
 ```bash
 cd ~/tradingbot
 git pull
+# Build the React webapp
+cd webapp-react
+npm install
+npm run build
+cd ..
 # Run service restart commands after pulling changes
 sudo systemctl restart tradingbot
 screen -S webapp -X quit 2>/dev/null

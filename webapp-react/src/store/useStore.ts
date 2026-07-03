@@ -1,24 +1,47 @@
 import { create } from 'zustand'
 
 export interface User {
-  id: number;
+  id?: number;
   email: string;
-  full_name: string;
-  is_active: boolean;
+  full_name?: string | null;
+  uid?: string;
+  premium_expiry?: number;
+  is_premium?: boolean;
+  is_admin?: boolean;
+  is_active?: boolean;
+  avatar_url?: string | null;
+  telegram_chat_id?: number | null;
+  has_exchange_keys?: boolean;
+  has_alpaca_keys?: boolean;
+  exchange_id?: string;
+  alpaca_endpoint?: string;
+  active_crypto_strategy?: string;
+  active_stock_strategy?: string;
+  risk_pct?: number;
+  stock_risk_pct?: number;
+  hide_dollars?: boolean;
+  email_notifications?: boolean;
+  email_frequency?: string;
+  browser_notifications?: boolean;
+  invite_link?: string;
+  referral_count?: number;
+  referral_credits?: number;
+  developer_api_key?: string | null;
+  disabled_strategies?: string[];
 }
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  login: (userData: User) => void;
-  logout: () => void;
+  isLoading: boolean;
+  setUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
-  login: (userData) => set({ user: userData, isAuthenticated: true }),
-  logout: () => set({ user: null, isAuthenticated: false }),
+  isLoading: true,
+  setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
 }))
 
 interface PositionState {
@@ -39,4 +62,17 @@ interface HistoryState {
 export const useHistoryStore = create<HistoryState>((set) => ({
   trades: [],
   setTrades: (trades) => set({ trades }),
+}))
+
+interface DashboardState {
+  activeTab: 'crypto' | 'stock';
+  setTab: (tab: 'crypto' | 'stock') => void;
+}
+
+export const useDashboardStore = create<DashboardState>((set) => ({
+  activeTab: (localStorage.getItem('preferredCategoryTab') as 'crypto' | 'stock') || 'crypto',
+  setTab: (tab) => {
+    localStorage.setItem('preferredCategoryTab', tab);
+    set({ activeTab: tab });
+  },
 }))

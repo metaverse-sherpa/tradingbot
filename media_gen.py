@@ -272,7 +272,10 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
         font_main = font_sub = ImageFont.load_default()
 
     # Calculate ROE
-    roe = ((current - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - current) / entry * 100)
+    if entry > 0:
+        roe = ((current - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - current) / entry * 100)
+    else:
+        roe = 0.0
     # Local definitions to bypass bot.config import which triggers slow GCP Secret Manager lookups
     is_stock = lambda s: str(s).upper() and "/" not in str(s).upper() and ":" not in str(s).upper() and "USDT" not in str(s).upper()
     CRYPTO_LEVERAGE = 20.0
@@ -309,8 +312,12 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     draw.text((get_x(entry), bar_y + 40), "ENTRY", font=font_sub, fill=(200, 200, 200, 255), anchor="mm")
     
     # SL/TP Percentages
-    sl_roe = ((sl - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - sl) / entry * 100)
-    tp_roe = ((tp - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - tp) / entry * 100)
+    if entry > 0:
+        sl_roe = ((sl - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - sl) / entry * 100)
+        tp_roe = ((tp - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - tp) / entry * 100)
+    else:
+        sl_roe = 0.0
+        tp_roe = 0.0
     
     if not is_stock(symbol):
         sl_roe *= CRYPTO_LEVERAGE
