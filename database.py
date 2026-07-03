@@ -179,9 +179,9 @@ def get_exchange_client(user, is_async=True):
     if ex_id == 'alpaca':
         ex_id = 'blofin'
     config = {
-        "apiKey": user.get("api_key", ""),
-        "secret": user.get("api_secret", ""),
-        "password": user.get("api_password", ""),
+        "apiKey": user.get("api_key") or "",
+        "secret": user.get("api_secret") or "",
+        "password": user.get("api_password") or "NOT_SET",
         "options": {
             "defaultType": "swap",
             "adjustForTimeDifference": False if ex_id == 'coinbase' else True

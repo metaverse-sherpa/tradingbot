@@ -125,7 +125,8 @@ def profile():
     
     # Convert enabled_symbols string back to array
     def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
-    user["enabled_symbols"] = (user.get("enabled_symbols") or def_syms).split(",")
+    syms = user.get("enabled_symbols") or def_syms
+    user["enabled_symbols"] = syms.split(",") if isinstance(syms, str) else syms
     
     # Determine premium level
     now = int(time.time())
