@@ -50,12 +50,20 @@ async def alpaca_ws_client():
         try:
             async with websockets.connect(uri) as websocket:
                 logger.info("Connected to Alpaca WebSocket.")
-                auth_msg = {
-                    "action": "auth",
-                    "key": "YOUR_KEY",
-                    "secret": "YOUR_SECRET"
-                }
-                # await websocket.send(json.dumps(auth_msg)) # Requires actual keys
+                from web_api.utils_gcp import get_secret
+                alpaca_key = get_secret("ALPACA_API_KEY")
+                alpaca_secret = get_secret("ALPACA_API_SECRET")
+                
+                if alpaca_key and alpaca_secret:
+                    auth_msg = {
+                        "action": "auth",
+                        "key": alpaca_key,
+                        "secret": alpaca_secret
+                    }
+                    await websocket.send(json.dumps(auth_msg))
+                else:
+                    logger.warning("Alpaca WS Error: No API keys configured. Disabling Alpaca WS.")
+                    return # Exit the background task if no keys are found
                 
                 async for message in websocket:
                     # TODO: Process ticker updates
