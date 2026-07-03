@@ -64,8 +64,8 @@ jobs:
             sudo systemctl enable webapi
             sudo systemctl enable tradingbot
             
-            echo "🔄 Gracefully reloading Sherpa Web API..."
-            sudo systemctl reload webapi
+            echo "🔄 Restarting Sherpa Web API..."
+            sudo systemctl restart webapi
 
             echo "🔄 Restarting Sherpa Trading Bot..."
             sudo systemctl restart tradingbot
