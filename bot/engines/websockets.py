@@ -50,7 +50,7 @@ async def alpaca_ws_client():
         try:
             async with websockets.connect(uri) as websocket:
                 logger.info("Connected to Alpaca WebSocket.")
-                from web_api.utils_gcp import get_secret
+                from utils_gcp import get_secret
                 alpaca_key = get_secret("ALPACA_API_KEY")
                 alpaca_secret = get_secret("ALPACA_API_SECRET")
                 

@@ -13,18 +13,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'webapp-react/**'
+            deps:
+              - 'requirements.txt'
+            backend:
+              - 'bot/**'
+              - 'web_api/**'
+              - '*.py'
+              - 'requirements.txt'
+
       - name: Setup Node.js
+        if: steps.filter.outputs.frontend == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Build React Frontend
+        if: steps.filter.outputs.frontend == 'true'
         run: |
           cd webapp-react
           npm install
           npm run build
 
       - name: Copy frontend dist to VPS
+        if: steps.filter.outputs.frontend == 'true'
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.VPS_IP }}
@@ -54,20 +71,15 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             
-            echo "📦 Installing updated dependencies..."
-            /home/gilesasp/tradingbot/venv/bin/pip install -r requirements.txt
+            if [ "${{ steps.filter.outputs.deps }}" == "true" ]; then
+              echo "📦 Installing updated dependencies..."
+              /home/gilesasp/tradingbot/venv/bin/pip install -r requirements.txt
+            fi
             
-            echo "⚙️ Applying NGINX configuration..."
-            bash update_nginx.sh
-            
-            echo "🔄 Enabling autostart for backend services..."
-            sudo systemctl enable webapi
-            sudo systemctl enable tradingbot
-            
-            echo "🔄 Restarting Sherpa Web API..."
-            sudo systemctl restart webapi
-
-            echo "🔄 Restarting Sherpa Trading Bot..."
-            sudo systemctl restart tradingbot
+            if [ "${{ steps.filter.outputs.backend }}" == "true" ]; then
+              echo "🔄 Restarting backend services..."
+              sudo systemctl restart webapi
+              sudo systemctl restart tradingbot
+            fi
             
             echo "✅ Deployment Successful."
