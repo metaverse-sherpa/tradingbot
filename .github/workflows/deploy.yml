@@ -23,6 +23,9 @@ jobs:
             echo "🕵️‍♂️ Starting Institutional Deployment..."
             cd /home/gilesasp/tradingbot
             
+            echo "🔧 Fixing repository permissions..."
+            sudo chown -R gilesasp:gilesasp /home/gilesasp/tradingbot
+            
             echo "📥 Synchronizing with GitHub HEAD (Hard Reset)..."
             git fetch origin main
             git reset --hard origin/main
