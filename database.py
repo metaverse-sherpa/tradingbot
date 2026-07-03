@@ -189,13 +189,7 @@ def get_exchange_client(user, is_async=True):
         "enableRateLimit": True,
     }
     
-    # Check if we should route CCXT requests through the local VPS proxy tunnel
-    import os
-    if os.environ.get("USE_VPS_PROXY") == "1":
-        config["proxies"] = {
-            'http': 'socks5h://127.0.0.1:1080',
-            'https': 'socks5h://127.0.0.1:1080'
-        }
+
 
     if ex_id == 'coinbase':
         config['options']['fetchBalance'] = 'v3PrivateGetBrokerageAccounts'
