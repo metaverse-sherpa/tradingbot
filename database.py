@@ -1088,8 +1088,8 @@ def get_all_active_users():
                             # Preserve web-specific fields
                             formatted_web_user['web_user_id'] = web_user.get('id')
                             formatted_web_user['email'] = web_user.get('email')
-                    except Exception:
-                        pass
+                    except Exception as merge_err:
+                        print(f"[MERGE ERROR] Failed to merge TG user {tg_id} into WebUser {web_user.get('id')}: {merge_err}")
                 
                 active_users.append(formatted_web_user)
         except Exception as e:
@@ -1132,8 +1132,8 @@ def get_all_active_stock_users():
                                     formatted_web_user[k] = v
                             formatted_web_user['web_user_id'] = web_user.get('id')
                             formatted_web_user['email'] = web_user.get('email')
-                    except Exception:
-                        pass
+                    except Exception as merge_err:
+                        print(f"[MERGE ERROR] Failed to merge TG user {tg_id} into WebUser {web_user.get('id')}: {merge_err}")
                 
                 active_users.append(formatted_web_user)
         except Exception as e:
