@@ -1073,6 +1073,24 @@ def get_all_active_users():
                 if tg_id:
                     active_tg_ids_from_web.add(tg_id)
                 formatted_web_user = get_user_from_web_row(web_user)
+                
+                # Merge with Telegram Users record if linked, so that the
+                # most-recent API keys are used regardless of which table
+                # they were saved to.  This mirrors the merge logic used by
+                # the web frontend's balance/trade endpoints.
+                if tg_id:
+                    try:
+                        tg_user = get_user(int(tg_id))
+                        if tg_user:
+                            for k, v in tg_user.items():
+                                if v is not None and v != "":
+                                    formatted_web_user[k] = v
+                            # Preserve web-specific fields
+                            formatted_web_user['web_user_id'] = web_user.get('id')
+                            formatted_web_user['email'] = web_user.get('email')
+                    except Exception:
+                        pass
+                
                 active_users.append(formatted_web_user)
         except Exception as e:
             print(f"Error querying WebUsers in get_all_active_users: {e}")
@@ -1104,6 +1122,19 @@ def get_all_active_stock_users():
                 if tg_id:
                     active_tg_ids_from_web.add(tg_id)
                 formatted_web_user = get_user_from_web_row(web_user)
+                
+                if tg_id:
+                    try:
+                        tg_user = get_user(int(tg_id))
+                        if tg_user:
+                            for k, v in tg_user.items():
+                                if v is not None and v != "":
+                                    formatted_web_user[k] = v
+                            formatted_web_user['web_user_id'] = web_user.get('id')
+                            formatted_web_user['email'] = web_user.get('email')
+                    except Exception:
+                        pass
+                
                 active_users.append(formatted_web_user)
         except Exception as e:
             print(f"Error querying WebUsers in get_all_active_stock_users: {e}")

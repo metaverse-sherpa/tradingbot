@@ -14,7 +14,8 @@ async def handle_auth_failure(user, exception_str, application):
     """
     auth_keywords = [
         "AuthenticationError", "PermissionDenied", "403 Forbidden", "401 Unauthorized",
-        "10024", "Unmatched IP", "regulatory restrictions", "Invalid API-key", "Invalid API Key"
+        "10024", "Unmatched IP", "regulatory restrictions", "Invalid API-key", "Invalid API Key",
+        "Access key does not exist"
     ]
     if any(k.lower() in exception_str.lower() for k in auth_keywords):
         chat_id = user.get('telegram_chat_id')
