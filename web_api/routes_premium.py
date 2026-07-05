@@ -256,14 +256,15 @@ def admin_users():
         return jsonify({"error": "Unauthorized"}), 403
         
     try:
-        c = database.get_db().cursor()
-        c.execute('''
-            SELECT id, email, full_name, is_premium, premium_expiry, created_at, telegram_chat_id 
-            FROM WebUsers 
-            ORDER BY created_at DESC 
-            LIMIT 100
-        ''')
-        rows = c.fetchall()
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute('''
+                SELECT id, email, full_name, is_premium, premium_expiry, created_at, telegram_chat_id 
+                FROM WebUsers 
+                ORDER BY created_at DESC 
+                LIMIT 100
+            ''')
+            rows = c.fetchall()
         
         users_list = []
         for row in rows:
