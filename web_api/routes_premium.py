@@ -174,7 +174,7 @@ def admin_deployment():
     user = g.user
     tg_user = _get_telegram_user(user)
     
-    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
     
     if not is_admin:
@@ -212,7 +212,7 @@ def admin_generate_gift():
     user = g.user
     tg_user = _get_telegram_user(user)
     
-    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
     
     if not is_admin:
@@ -332,7 +332,7 @@ def admin_logs():
     user = g.user
     tg_user = _get_telegram_user(user)
     
-    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
     
     if not is_admin:
@@ -362,7 +362,7 @@ def admin_restart():
     user = g.user
     tg_user = _get_telegram_user(user)
     
-    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
     
     if not is_admin:
@@ -391,7 +391,7 @@ def admin_restart():
 def get_admin_config():
     user = g.user
     tg_user = _get_telegram_user(user)
-    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
     if not is_admin:
         return jsonify({"error": "Unauthorized"}), 403
@@ -404,7 +404,7 @@ def get_admin_config():
 def update_admin_config():
     user = g.user
     tg_user = _get_telegram_user(user)
-    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
     if not is_admin:
         return jsonify({"error": "Unauthorized"}), 403
