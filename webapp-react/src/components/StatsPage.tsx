@@ -272,7 +272,7 @@ const StatsPage: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2">
             <BarChart2 className="text-cyan-400" />
-            Institutional Performance
+            Alpha Signal Stats
           </h2>
           <button
             onClick={() => fetchStats(true)}
@@ -305,7 +305,7 @@ const StatsPage: React.FC = () => {
         <div className="md:hidden w-full space-y-8">
           {categoryTab === 'crypto' ? (
             <>
-              {isPremium ? (hasCryptoExchange ? renderCryptoPerformance() : renderExchangePlaceholder('crypto')) : null}
+
               {cryptoFreeStats.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -320,7 +320,7 @@ const StatsPage: React.FC = () => {
             </>
           ) : (
             <>
-              {isPremium ? (hasStockExchange ? renderStockPerformance() : renderExchangePlaceholder('stock')) : null}
+
               {stockFreeStats.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -339,7 +339,7 @@ const StatsPage: React.FC = () => {
         {/* Desktop View */}
         <div className="hidden md:grid md:grid-cols-2 gap-6">
           <div className="space-y-8">
-            {isPremium ? (hasCryptoExchange ? renderCryptoPerformance() : renderExchangePlaceholder('crypto')) : null}
+
             {cryptoFreeStats.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -353,7 +353,7 @@ const StatsPage: React.FC = () => {
             )}
           </div>
           <div className="space-y-8">
-            {isPremium ? (hasStockExchange ? renderStockPerformance() : renderExchangePlaceholder('stock')) : null}
+
             {stockFreeStats.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
