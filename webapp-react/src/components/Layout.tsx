@@ -11,6 +11,9 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
+  const hasLinkedCrypto = Boolean(user?.has_exchange_keys);
+  const hasLinkedStock = Boolean(user?.has_alpaca_keys);
+  const showAdvancedTabs = isPremium && hasLinkedCrypto && hasLinkedStock;
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +31,7 @@ const Layout: React.FC = () => {
     try {
       await api.post('/auth/logout');
       await logoutUser();
+      setProfileOpen(false);
       navigate('/login');
     } catch (e) {
       console.error('Logout failed', e);
@@ -105,22 +109,24 @@ const Layout: React.FC = () => {
               <LayoutDashboard size={20} className="md:w-4 md:h-4" />
               <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Dashboard</span>
             </Link>
-            {isPremium && (
+            {showAdvancedTabs && (
               <Link to="/trades" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/trades' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
                 <TrendingUp size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Trades</span>
               </Link>
             )}
-            {isPremium && (
+            {showAdvancedTabs && (
               <Link to="/signals" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/signals' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
                 <Activity size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Signals</span>
               </Link>
             )}
-            <Link to="/stats" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/stats' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-              <BarChart2 size={20} className="md:w-4 md:h-4" />
-              <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Stats</span>
-            </Link>
+            {showAdvancedTabs && (
+              <Link to="/stats" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/stats' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
+                <BarChart2 size={20} className="md:w-4 md:h-4" />
+                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Stats</span>
+              </Link>
+            )}
             {!isPremium && (
               <Link to="/premium" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/premium' ? 'text-yellow-500 md:bg-yellow-500/20' : 'text-gray-500 hover:text-yellow-500 md:text-gray-400 md:hover:bg-white/5'}`}>
                 <Crown size={20} className="md:w-4 md:h-4" />

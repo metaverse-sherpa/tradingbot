@@ -4,14 +4,10 @@ import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'rec
 import { Activity, Clock, Settings, Zap, Target, Loader2, RefreshCcw } from 'lucide-react';
 import { useDashboardStore, useAuthStore } from '../store/useStore';
 import api from '../lib/api';
-import SignalsPage from './SignalsPage';
-
-// Removed dummyData
 
 const Dashboard: React.FC = () => {
   const { activeTab, setTab } = useDashboardStore();
   const { user } = useAuthStore();
-  const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
   const hideDollars = user?.hide_dollars;
 
   const navigate = useNavigate();
@@ -20,6 +16,8 @@ const Dashboard: React.FC = () => {
   const [stockData, setStockData] = useState({ bal: 0, open: 0, wins: 0, losses: 0, pnl: 0, pnl_pct: 0, chart: [] as {value: number, x: string}[] });
   const [cryptoSignalCount, setCryptoSignalCount] = useState(0);
   const [stockSignalCount, setStockSignalCount] = useState(0);
+  const [activeSignals, setActiveSignals] = useState<any[]>([]);
+  const [freeStats, setFreeStats] = useState<any[]>([]);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
@@ -36,18 +34,21 @@ const Dashboard: React.FC = () => {
     setLoading(true);
 
     try {
-      const [cBal, sBal, cStats, sStats, signalsRes, histRes] = await Promise.all([
+      const [cBal, sBal, cStats, sStats, signalsRes, histRes, freeStatsRes] = await Promise.all([
         api.get(`/user/balance?segment=crypto${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { crypto_balance: 0 } })),
         api.get(`/user/balance?segment=stock${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { stock_balance: 0 } })),
         api.get(`/user/stats?segment=crypto${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { open_positions: 0, wins: 0, losses: 0 } })),
         api.get(`/user/stats?segment=stock${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { open_positions: 0, wins: 0, losses: 0 } })),
         api.get(`/signals/active${bypassCache ? '?force=true' : ''}`).catch(() => ({ data: [] })),
-        api.get('/user/balance-history').catch(() => ({ data: [] }))
+        api.get('/user/balance-history').catch(() => ({ data: [] })),
+        api.get('/stats/free').catch(() => ({ data: { strategies: [] } }))
       ]);
 
       const signals = signalsRes.data || [];
       const balHist = histRes.data || [];
       
+      setActiveSignals(signals);
+      setFreeStats(freeStatsRes.data?.strategies || []);
       setCryptoSignalCount(signals.filter((s: any) => s.symbol && s.symbol.includes('/')).length);
       setStockSignalCount(signals.filter((s: any) => s.symbol && !s.symbol.includes('/')).length);
 
@@ -220,9 +221,78 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  if (!isPremium) {
-    return <SignalsPage />;
-  }
+  const renderFreeColumn = (type: 'crypto' | 'stock') => {
+    const isCrypto = type === 'crypto';
+    const accentColor = isCrypto ? 'text-cyan-400' : 'text-amber-400';
+    const typeSignals = activeSignals.filter((s: any) => isCrypto ? s.symbol && s.symbol.includes('/') : s.symbol && !s.symbol.includes('/'));
+    const sortedSignals = [...typeSignals].sort((a, b) => (b.pnl_pct || 0) - (a.pnl_pct || 0));
+    const typeStrategies = freeStats.filter((s: any) => isCrypto ? !s.name.toLowerCase().includes('pullback') : s.name.toLowerCase().includes('pullback'));
+
+    return (
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
+          {isCrypto ? '🪙 Crypto Free Signals' : '📈 Stock Free Signals'}
+        </h2>
+        
+        <div className="bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-5 shadow-lg relative overflow-hidden group">
+          <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+            <Settings size={18} className="text-gray-400" /> Exchange Not Connected
+          </h3>
+          <p className="text-sm text-gray-400 mb-4 leading-relaxed">
+            Connect your {type} exchange API to get automated trading and personalized portfolio tracking. Until then, you can view the free Alpha Signals.
+          </p>
+          <button 
+            onClick={() => navigate('/settings')}
+            className="w-full py-2.5 bg-white/5 border border-white/10 text-white font-bold text-xs tracking-wider rounded-xl hover:bg-white/10 transition-colors"
+          >
+            CONNECT {isCrypto ? 'CRYPTO' : 'STOCK'} EXCHANGE
+          </button>
+        </div>
+
+        {typeStrategies.length > 0 && (
+          <div className="space-y-3 mt-4">
+            {typeStrategies.map((s: any, idx: number) => (
+              <div key={idx} className="bg-[#1b1f2c]/50 border border-white/5 rounded-xl p-4">
+                <h3 className="font-bold text-white text-sm mb-2">{s.name}</h3>
+                <div className="text-sm space-y-1">
+                  <p className="text-gray-400">• Win Rate: <span className={accentColor + " font-medium"}>{(s.win_rate || 0).toFixed(1)}%</span> ({s.wins} W | {s.losses} L)</p>
+                  <p className="text-gray-400">• Realized PnL: <span className={`font-medium ${s.realized_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{s.realized_pct >= 0 ? '+' : ''}{(s.realized_pct || 0).toFixed(2)}%</span></p>
+                  <p className="text-gray-400">• Unrealized PnL: <span className={`font-medium ${(s.unrealized_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{(s.unrealized_pct || 0) >= 0 ? '+' : ''}{(s.unrealized_pct || 0).toFixed(2)}%</span></p>
+                  <p className="text-gray-400">• Active Signals: <span className={accentColor + " font-medium"}>{s.active_count}</span></p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-4">
+          <h3 className="font-bold text-white flex items-center gap-2">
+             🛰️ Active Signals <span className="text-sm text-gray-500 font-normal">({typeSignals.length})</span>
+          </h3>
+        </div>
+
+        <div className="space-y-3">
+          {sortedSignals.length === 0 ? (
+            <div className="text-center py-8">
+               <p className="text-sm text-gray-400">No active {type} signals</p>
+            </div>
+          ) : (
+            sortedSignals.map((s: any, idx: number) => (
+               <div key={idx} className="bg-[#1b1f2c]/50 border border-white/5 rounded-xl p-3 flex justify-between items-center">
+                 <div>
+                   <div className="font-bold text-white text-sm">{s.symbol?.split('/')[0]} <span className="text-xs text-gray-500">{s.side?.toUpperCase()}</span></div>
+                   <div className="text-xs text-gray-400">{s.strategy}</div>
+                 </div>
+                 <div className={`text-sm font-bold ${s.pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                   {s.pnl_pct >= 0 ? '+' : ''}{(s.pnl_pct || 0).toFixed(2)}%
+                 </div>
+               </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="flex-1 w-full flex flex-col">
@@ -248,12 +318,12 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in w-full max-w-7xl mx-auto">
         {(isDesktop || activeTab === 'crypto') && (
           <div className="w-full">
-            {renderColumn('crypto', cryptoData, cryptoSignalCount)}
+            {(!user?.has_exchange_keys) ? renderFreeColumn('crypto') : renderColumn('crypto', cryptoData, cryptoSignalCount)}
           </div>
         )}
         {(isDesktop || activeTab === 'stock') && (
           <div className="w-full">
-            {renderColumn('stock', stockData, stockSignalCount)}
+            {(!user?.has_alpaca_keys) ? renderFreeColumn('stock') : renderColumn('stock', stockData, stockSignalCount)}
           </div>
         )}
       </div>
