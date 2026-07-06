@@ -589,7 +589,7 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
             <p style="font-size: 12px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
                 You are receiving free signals but trades are not being executed automatically. Upgrade to <b>Premium Access</b> to unlock automated fractional execution and see exact entry/SL/TP parameters in real time.
             </p>
-            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
+            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #ffffff; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
         </div>
         """
 
@@ -892,7 +892,7 @@ def get_combined_weekly_summary_html(is_premium=False,
             <p style="font-size: 12px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
                 Stop leaving money on the table. Upgrade to <b>Premium Access</b> today to turn those hypothetical returns into reality with automated execution.
             </p>
-            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #FFFFFF !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
+            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #ffffff; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
         </div>
         """
         
