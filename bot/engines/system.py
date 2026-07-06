@@ -457,8 +457,8 @@ async def daily_combined_email_engine(application):
                                 
                         pub_key = ru.get("public_key")
                         if pub_key:
-                            encrypted_crypto = database.encrypt_with_public_key(pub_key, str(crypto_equity)) if crypto_linked else ""
-                            encrypted_stock = database.encrypt_with_public_key(pub_key, str(stock_equity)) if stock_linked else ""
+                            encrypted_crypto = database.encrypt(str(crypto_equity)) if crypto_linked else ""
+                            encrypted_stock = database.encrypt(str(stock_equity)) if stock_linked else ""
                             try:
                                 with database.db_session() as conn:
                                     c = conn.cursor()

@@ -56,7 +56,10 @@ const Dashboard: React.FC = () => {
       setFreeStats(freeStatsRes.data?.strategies || []);
 
       const buildChartData = (type: 'crypto' | 'stock', bal: number) => {
-        const rawPoints = balHist.map((item: any) => ({ x: item.timestamp, y: type === 'crypto' ? item.crypto : item.stock }));
+        const rawPoints = balHist
+            .map((item: any) => ({ x: item.timestamp, y: type === 'crypto' ? item.crypto : item.stock }))
+            .filter((p: any) => p.y && p.y > 0);
+            
         if (rawPoints.length >= 2) return rawPoints.map((p: any) => ({ 
             value: p.y, 
             x: new Date(p.x * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) 
