@@ -259,9 +259,11 @@ def admin_users():
         with database.db_session() as conn:
             c = conn.cursor()
             c.execute('''
-                SELECT id, email, full_name, premium_expiry, created_at, telegram_chat_id 
-                FROM WebUsers 
-                ORDER BY created_at DESC 
+                SELECT u1.id, u1.email, u1.full_name, u1.premium_expiry, u1.created_at, u1.telegram_chat_id, u1.referred_by, u2.email as referrer_email, t.username as telegram_username 
+                FROM WebUsers u1
+                LEFT JOIN WebUsers u2 ON u1.referred_by = u2.id
+                LEFT JOIN Users t ON u1.telegram_chat_id = t.telegram_chat_id
+                ORDER BY u1.created_at DESC 
                 LIMIT 100
             ''')
             rows = c.fetchall()
@@ -279,12 +281,49 @@ def admin_users():
                 "is_premium": bool(expiry > now),
                 "premium_expiry": row[3],
                 "joined": joined_str,
-                "telegram_chat_id": row[5]
+                "telegram_chat_id": row[5],
+                "referred_by": row[6],
+                "referrer_email": row[7],
+                "telegram_username": row[8]
             })
             
         return jsonify({"users": users_list}), 200
     except Exception as e:
         print(f"Error fetching admin users: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@premium_bp.route('/api/admin/users/<int:user_id>/premium', methods=['PUT'])
+@require_auth
+def admin_update_premium(user_id):
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    data = request.json
+    new_expiry = data.get("premium_expiry")
+    if new_expiry is None:
+        return jsonify({"error": "premium_expiry is required"}), 400
+        
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("UPDATE WebUsers SET premium_expiry = ? WHERE id = ?", (new_expiry, user_id))
+            
+            c.execute("SELECT telegram_chat_id FROM WebUsers WHERE id = ?", (user_id,))
+            row = c.fetchone()
+            if row and row[0]:
+                c.execute("UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?", (new_expiry, row[0]))
+                
+            conn.commit()
+            
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print(f"Error updating premium expiry: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 @premium_bp.route('/api/admin/logs', methods=['GET'])

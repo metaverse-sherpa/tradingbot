@@ -11,6 +11,54 @@ const AdminPage: React.FC = () => {
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loadingFaqs, setLoadingFaqs] = useState(false);
   const [editingFaq, setEditingFaq] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
+
+  const handleSaveUserPremium = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      await api.put(`/admin/users/${editingUser.id}/premium`, {
+        premium_expiry: editingUser.new_premium_expiry
+      });
+      setEditingUser(null);
+      fetchUsers();
+    } catch (error) {
+      console.error('Failed to update premium expiry', error);
+      alert('Failed to update premium expiry');
+    }
+  };
+
+  const hierarchicalUsers = React.useMemo(() => {
+    const userMap = new Map();
+    users.forEach(u => userMap.set(u.id, u));
+
+    const childrenMap = new Map();
+    users.forEach(u => {
+      const parentId = u.referred_by;
+      if (parentId) {
+        if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
+        childrenMap.get(parentId).push(u);
+      }
+    });
+
+    const flatList: any[] = [];
+    const visited = new Set();
+
+    const addNode = (u: any, depth: number) => {
+      if (visited.has(u.id)) return;
+      visited.add(u.id);
+      flatList.push({ ...u, depth });
+      const children = childrenMap.get(u.id) || [];
+      children.forEach((child: any) => addNode(child, depth + 1));
+    };
+
+    const roots = users.filter(u => !u.referred_by || !userMap.has(u.referred_by));
+    roots.forEach(u => addNode(u, 0));
+
+    users.forEach(u => addNode(u, 0));
+
+    return flatList;
+  }, [users]);
 
   const fetchUsers = async () => {
     try {
@@ -146,6 +194,8 @@ const AdminPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-white/10">
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Email</th>
+                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Referred By</th>
+                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Telegram</th>
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Plan</th>
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Joined</th>
@@ -154,15 +204,37 @@ const AdminPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {loading ? (
-                    <tr><td colSpan={5} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
+                    <tr><td colSpan={7} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
                   ) : (
-                    users.map(u => (
+                    hierarchicalUsers.map(u => (
                       <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-4 px-4 text-sm text-white font-medium">{u.email}</td>
+                        <td className="py-4 px-4 text-sm text-white font-medium">
+                          <div style={{ paddingLeft: `${u.depth * 1.5}rem` }} className="flex items-center gap-2">
+                            {u.depth > 0 && <span className="text-gray-500 text-xs">↳</span>}
+                            {u.email}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-400">{u.referrer_email || '-'}</td>
+                        <td className="py-4 px-4 text-sm text-cyan-400 font-mono">
+                          {u.telegram_username ? (
+                            <a href={`https://t.me/${u.telegram_username.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                              {u.telegram_username.startsWith('@') ? u.telegram_username : `@${u.telegram_username}`}
+                            </a>
+                          ) : (
+                            u.telegram_chat_id ? String(u.telegram_chat_id) : <span className="text-gray-500 italic">None</span>
+                          )}
+                        </td>
                         <td className="py-4 px-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${u.is_premium ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
-                            {u.is_premium ? 'Premium' : 'Free'}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className={`w-max px-2 py-1 rounded text-xs font-bold ${u.is_premium ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
+                              {u.is_premium ? 'Premium' : 'Free'}
+                            </span>
+                            {u.is_premium && u.premium_expiry > 0 && (
+                              <span className="text-gray-500 text-xs mt-1">
+                                Exp: {new Date(u.premium_expiry * 1000).toISOString().slice(0, 10)}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 px-4">
                           <span className="flex items-center gap-2 text-sm text-emerald-400">
@@ -172,7 +244,11 @@ const AdminPage: React.FC = () => {
                         </td>
                         <td className="py-4 px-4 text-sm text-gray-400">{u.joined?.slice(0, 10)}</td>
                         <td className="py-4 px-4 text-right">
-                          <button className="text-cyan-400 hover:text-cyan-300 text-sm font-bold transition-colors">Edit</button>
+                          <button 
+                            onClick={() => setEditingUser({ ...u, new_premium_expiry: u.premium_expiry || 0 })}
+                            className="text-cyan-400 hover:text-cyan-300 text-sm font-bold transition-colors">
+                            Edit
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -269,6 +345,48 @@ const AdminPage: React.FC = () => {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1b1f2c] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-4">Edit Premium Expiry</h3>
+            <p className="text-gray-400 mb-6 text-sm">Editing <span className="text-cyan-400">{editingUser.email}</span></p>
+            
+            <form onSubmit={handleSaveUserPremium} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Expiration Date</label>
+                <input
+                  type="date"
+                  value={editingUser.new_premium_expiry > 0 ? new Date(editingUser.new_premium_expiry * 1000).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) {
+                      setEditingUser({ ...editingUser, new_premium_expiry: 0 });
+                    } else {
+                      const ts = Math.floor(new Date(val).getTime() / 1000);
+                      setEditingUser({ ...editingUser, new_premium_expiry: ts });
+                    }
+                  }}
+                  className="w-full bg-[#131620] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 font-mono"
+                  style={{ colorScheme: 'dark' }}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Clear the date to revert to Free Plan.
+                </p>
+              </div>
+              
+              <div className="flex gap-4 pt-4">
+                <button type="submit" className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl transition-colors">
+                  Save Changes
+                </button>
+                <button type="button" onClick={() => setEditingUser(null)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-xl transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

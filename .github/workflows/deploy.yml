@@ -48,7 +48,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "webapp-react/dist/*"
-          target: "/home/gilesasp/tradingbot/webapp-react/dist"
+          target: "/home/gilesasp/tradingbot/webapp-react/releases/${{ github.sha }}"
           strip_components: 2
 
       - name: Institutional Deploy via SSH to GCP
@@ -71,6 +71,20 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             
+            if [ "${{ steps.filter.outputs.frontend }}" == "true" ]; then
+              echo "🔄 Updating frontend symlink for zero-downtime deployment..."
+              cd /home/gilesasp/tradingbot/webapp-react
+              # If dist is a directory and not a symlink, back it up
+              if [ ! -L dist ] && [ -d dist ]; then
+                mv dist dist_backup_$(date +%s)
+              fi
+              # Create symlink to the new release
+              ln -sfn releases/${{ github.sha }} dist
+              # Keep only the last 5 releases to save space
+              cd releases && ls -1t | tail -n +6 | xargs -r rm -rf || true
+              cd /home/gilesasp/tradingbot
+            fi
+            
             if [ "${{ steps.filter.outputs.deps }}" == "true" ]; then
               echo "📦 Installing updated dependencies..."
               /home/gilesasp/tradingbot/venv/bin/pip install -r requirements.txt
@@ -78,7 +92,7 @@ jobs:
             
             if [ "${{ steps.filter.outputs.backend }}" == "true" ]; then
               echo "🔄 Restarting backend services..."
-              sudo systemctl restart webapi
+              sudo systemctl reload webapi
               sudo systemctl restart tradingbot
             fi
             
