@@ -163,6 +163,7 @@ def update_web_user_keys(user_id, exchange_id, api_key, api_secret, api_password
                 user_info = f"Web User: {user_id}, TG: {row[0]}"
                 send_telegram_alert(f"DB Sync Error (Exchange Keys) [{user_info}]", e)
     update_web_user_status(user_id, 1)
+    invalidate_cache_by_user_id(user_id)
 
 def delete_web_user_keys(user_id):
     with db_session() as conn:
@@ -257,6 +258,7 @@ def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
                 user_info = f"Web User: {user_id}, TG: {row[0]}"
                 send_telegram_alert(f"DB Sync Error (Alpaca Keys) [{user_info}]", e)
     update_web_user_status(user_id, 1)
+    invalidate_cache_by_user_id(user_id)
 
 def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, email_notifications=1, email_frequency='realtime', browser_notifications=1):
     with db_session() as conn:
