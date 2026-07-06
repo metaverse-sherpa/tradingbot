@@ -21,6 +21,11 @@ database.init_db()
 USE_REACT = os.getenv("SERVE_REACT_APP", "0") == "1"
 static_dir = 'webapp-react/dist' if USE_REACT else 'webapp'
 app = Flask(__name__, static_folder=static_dir, static_url_path='')
+
+import logging
+app.logger.setLevel(logging.INFO)
+app.logger.info("🚀 WebAPI Service Starting Up / Reloading...")
+
 # Configure Flask session secret
 app.secret_key = utils_gcp.get_secret("FLASK_SECRET_KEY") or "metaverse-sherpa-secret-key"
 
