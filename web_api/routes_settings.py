@@ -199,10 +199,20 @@ def get_balance_history():
         
     history = []
     for r in rows:
+        try:
+            crypto = float(database.decrypt(r[1])) if r[1] else 0
+        except Exception:
+            crypto = 0
+            
+        try:
+            stock = float(database.decrypt(r[2])) if r[2] else 0
+        except Exception:
+            stock = 0
+            
         history.append({
             "timestamp": r[0],
-            "encrypted_crypto_balance": r[1],
-            "encrypted_stock_balance": r[2]
+            "crypto": crypto,
+            "stock": stock
         })
     return jsonify(history), 200
 
