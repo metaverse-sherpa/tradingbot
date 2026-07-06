@@ -8,6 +8,17 @@ import threading
 _USER_BY_EMAIL_CACHE = {}
 _USER_BY_EMAIL_CACHE_LOCK = threading.Lock()
 
+def invalidate_cache_by_user_id(user_id):
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT email FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row:
+            email_clean = row[0].strip().lower()
+            with _USER_BY_EMAIL_CACHE_LOCK:
+                if email_clean in _USER_BY_EMAIL_CACHE:
+                    del _USER_BY_EMAIL_CACHE[email_clean]
+
 def _decrypt_user_keys(user):
     """Decrypt all encrypted API key fields on a user dict in-place."""
     if not user:
@@ -185,6 +196,7 @@ def delete_web_user_keys(user_id):
                 from utils_error import send_telegram_alert
                 user_info = f"Web User: {user_id}, TG: {tg_chat_id}"
                 send_telegram_alert(f"DB Sync Error (Delete Crypto Keys) [{user_info}]", e)
+    invalidate_cache_by_user_id(user_id)
 
 def delete_web_user_alpaca_keys(user_id):
     with db_session() as conn:
@@ -218,6 +230,7 @@ def delete_web_user_alpaca_keys(user_id):
                 from utils_error import send_telegram_alert
                 user_info = f"Web User: {user_id}, TG: {tg_chat_id}"
                 send_telegram_alert(f"DB Sync Error (Delete Alpaca Keys) [{user_info}]", e)
+    invalidate_cache_by_user_id(user_id)
 
 def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
     with db_session() as conn:
