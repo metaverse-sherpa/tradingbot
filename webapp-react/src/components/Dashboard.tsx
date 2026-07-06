@@ -12,6 +12,7 @@ const Dashboard: React.FC = () => {
 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [signalsLoading, setSignalsLoading] = useState(true);
   const [cryptoData, setCryptoData] = useState({ bal: 0, open: 0, wins: 0, losses: 0, pnl: 0, pnl_pct: 0, chart: [] as {value: number, x: string}[] });
   const [stockData, setStockData] = useState({ bal: 0, open: 0, wins: 0, losses: 0, pnl: 0, pnl_pct: 0, chart: [] as {value: number, x: string}[] });
   const [cryptoSignalCount, setCryptoSignalCount] = useState(0);
@@ -36,25 +37,23 @@ const Dashboard: React.FC = () => {
 
   const fetchData = async (bypassCache = false) => {
     setLoading(true);
+    setSignalsLoading(true);
 
     try {
-      const [cBal, sBal, cStats, sStats, signalsRes, histRes, freeStatsRes] = await Promise.all([
+      const signalsPromise = api.get(`/signals/active${bypassCache ? '?force=true' : ''}`).catch(() => ({ data: [] }));
+
+      const [cBal, sBal, cStats, sStats, histRes, freeStatsRes] = await Promise.all([
         api.get(`/user/balance?segment=crypto${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { crypto_balance: 0 } })),
         api.get(`/user/balance?segment=stock${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { stock_balance: 0 } })),
         api.get(`/user/stats?segment=crypto${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { open_positions: 0, wins: 0, losses: 0 } })),
         api.get(`/user/stats?segment=stock${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { open_positions: 0, wins: 0, losses: 0 } })),
-        api.get(`/signals/active${bypassCache ? '?force=true' : ''}`).catch(() => ({ data: [] })),
         api.get('/user/balance-history').catch(() => ({ data: [] })),
         api.get('/stats/free').catch(() => ({ data: { strategies: [] } }))
       ]);
 
-      const signals = signalsRes.data || [];
       const balHist = histRes.data || [];
       
-      setActiveSignals(signals);
       setFreeStats(freeStatsRes.data?.strategies || []);
-      setCryptoSignalCount(signals.filter((s: any) => s.symbol && s.symbol.includes('/')).length);
-      setStockSignalCount(signals.filter((s: any) => s.symbol && !s.symbol.includes('/')).length);
 
       const buildChartData = (type: 'crypto' | 'stock', bal: number) => {
         const rawPoints = balHist.map((item: any) => ({ x: item.timestamp, y: type === 'crypto' ? item.crypto : item.stock }));
@@ -100,10 +99,21 @@ const Dashboard: React.FC = () => {
           pnl_pct: sStats.data?.stock?.overall_pnl_pct || 0,
           chart: sChart
         });
+        
+        setLoading(false);
+
+        const signalsRes = await signalsPromise;
+        const signals = signalsRes.data || [];
+        
+        setActiveSignals(signals);
+        setCryptoSignalCount(signals.filter((s: any) => s.symbol && s.symbol.includes('/')).length);
+        setStockSignalCount(signals.filter((s: any) => s.symbol && !s.symbol.includes('/')).length);
+        
       } catch (e) {
         console.error('Error fetching dashboard data', e);
       } finally {
         setLoading(false);
+        setSignalsLoading(false);
       }
   };
 
@@ -218,7 +228,9 @@ const Dashboard: React.FC = () => {
             className="col-span-2 bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group"
           >
             <Zap className={`${accentColor} group-hover:text-white transition-colors`} size={18} />
-            <span className="text-sm font-semibold text-gray-300 group-hover:text-white">Alpha Signals ({signalCount})</span>
+            <span className="text-sm font-semibold text-gray-300 group-hover:text-white flex items-center gap-1">
+              Alpha Signals {signalsLoading ? <Loader2 className="animate-spin text-gray-500 size-3" /> : <span className="text-gray-400 font-normal">({signalCount})</span>}
+            </span>
           </button>
         </div>
       </div>
@@ -276,7 +288,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {loading ? (
+          {signalsLoading ? (
             <div className="text-center py-8 flex flex-col items-center justify-center">
               <Loader2 className="animate-spin text-cyan-400 size-8 mb-3 mx-auto" />
               <p className="text-sm text-gray-400 animate-pulse">Your Sherpa is scouting the market for live signals...</p>
