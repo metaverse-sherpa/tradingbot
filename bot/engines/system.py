@@ -223,7 +223,9 @@ async def fetch_premium_crypto_stats(tg_user):
         "weekly_pnl_usd": weekly_pnl_usd
     }
 
-async def fetch_premium_open_trades(tg_user, asset_class):
+async def fetch_premium_open_trades(tg_user, asset_class, stock_prices_cache=None, crypto_prices_cache=None):
+    if stock_prices_cache is None: stock_prices_cache = {}
+    if crypto_prices_cache is None: crypto_prices_cache = {}
     open_positions = []
     
     if asset_class == "stock":
@@ -237,6 +239,25 @@ async def fetch_premium_open_trades(tg_user, asset_class):
                     lambda: database.make_alpaca_request(tg_user, "GET", "/v2/positions")
                 )
                 if isinstance(positions, list):
+                    syms_to_fetch = [p.get("symbol") for p in positions if p.get("symbol") not in stock_prices_cache]
+                    if syms_to_fetch:
+                        try:
+                            import utils_gcp
+                            alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY") or os.getenv("ALPACA_API_KEY")
+                            alpaca_secret = utils_gcp.get_secret("ALPACA_API_SECRET") or os.getenv("ALPACA_API_SECRET")
+                            if alpaca_key and alpaca_secret:
+                                headers = {"APCA-API-KEY-ID": alpaca_key, "APCA-API-SECRET-KEY": alpaca_secret}
+                                sym_str = ",".join(syms_to_fetch)
+                                resp = requests.get(f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}", headers=headers, timeout=3)
+                                if resp.status_code == 200:
+                                    for sym, snapshot in resp.json().items():
+                                        curr = snapshot.get('latestTrade', {}).get('p', 0.0)
+                                        daily_open = snapshot.get('dailyBar', {}).get('o', 0.0)
+                                        d_change = ((curr - daily_open) / daily_open) * 100 if daily_open > 0 else 0.0
+                                        stock_prices_cache[sym] = d_change
+                        except Exception as pe:
+                            logger.error(f"Error fetching stock prices for weekly digest: {pe}")
+                            
                     for p in positions:
                         tp_price = 0.0
                         sl_price = 0.0
@@ -263,7 +284,9 @@ async def fetch_premium_open_trades(tg_user, asset_class):
                         entry_price = float(p.get("avg_entry_price", 0.0) or 0.0)
                         current_price = float(p.get("current_price", 0.0) or 0.0)
                         roe = float(p.get("unrealized_plpc", 0.0) or 0.0) * 100
-                        intraday_roe = float(p.get("unrealized_intraday_plpc", 0.0) or 0.0) * 100
+                        side = p.get("side", "long")
+                        daily_change = stock_prices_cache.get(p.get("symbol"), 0.0)
+                        intraday_roe = daily_change if side.lower() in ['buy', 'long'] else -daily_change
                         
                         open_positions.append({
                             "symbol": p.get("symbol"),
@@ -336,13 +359,21 @@ async def fetch_premium_open_trades(tg_user, asset_class):
                             
                             entry_price = float(pos.get("entryPrice", 0.0) or 0.0)
                             tp_price_val = tp_price or entry_price
+                            side = pos.get('side', 'long')
+                            sym = pos.get("symbol", "")
+                            clean = sym.split(':')[0].replace('/', '')
+                            clean_hyphen = sym.split(':')[0].replace('/', '-')
+                            
+                            daily_change = crypto_prices_cache.get(clean, crypto_prices_cache.get(clean_hyphen, 0.0))
+                            intraday_roe = daily_change if side.lower() in ['buy', 'long'] else -daily_change
+                            
                             open_positions.append({
-                                "symbol": pos.get("symbol"),
+                                "symbol": sym,
                                 "entry_price": entry_price,
                                 "sl_price": sl_price,
                                 "tp_price": tp_price_val,
                                 "current_pnl_pct": float(pos.get("percentage") or 0.0),
-                                "daily_pnl_pct": 0.0,
+                                "daily_pnl_pct": intraday_roe * CRYPTO_LEVERAGE,
                                 "target_pnl_pct": abs(((tp_price_val - entry_price) / entry_price) * 100) * CRYPTO_LEVERAGE if entry_price > 0 else 0.0,
                                 "open_time": open_time
                             })
@@ -622,6 +653,26 @@ async def weekly_combined_email_engine(application):
             stock_hypothetical_data = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
             crypto_hypothetical_data = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
             
+            stock_prices_cache = {}
+            crypto_prices_cache = {}
+            try:
+                r = requests.get("https://api.binance.us/api/v3/ticker/24hr", timeout=2)
+                if r.status_code != 200:
+                    r = requests.get("https://api.binance.com/api/v3/ticker/24hr", timeout=2)
+                if r.status_code == 200:
+                    crypto_prices_cache.update({item['symbol']: float(item['priceChangePercent']) for item in r.json()})
+                    
+                resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
+                if resp.status_code == 200:
+                    for item in resp.json().get('data', []):
+                        curr = float(item.get('last', 0))
+                        open24 = float(item.get('open24h', curr))
+                        change = ((curr - open24) / open24) * 100 if open24 > 0 else 0.0
+                        crypto_prices_cache[item['instId']] = change
+            except Exception as e:
+                logger.error(f"Error pre-fetching crypto prices: {e}")
+                
+            
             for ru in weekly_users:
                 is_prem = ru.get("is_premium_user", False)
                 has_stock_exch = ru.get("has_stock_exchange", False)
@@ -639,10 +690,10 @@ async def weekly_combined_email_engine(application):
                     if tg_user:
                         if has_stock_exch:
                             stock_portfolio_data = await fetch_weekly_stock_stats(tg_user)
-                            stock_open_trades = await fetch_premium_open_trades(tg_user, "stock")
+                            stock_open_trades = await fetch_premium_open_trades(tg_user, "stock", stock_prices_cache, crypto_prices_cache)
                         if has_crypto_exch:
                             crypto_portfolio_data = await fetch_premium_crypto_stats(tg_user)
-                            crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto")
+                            crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto", stock_prices_cache, crypto_prices_cache)
                         
                 if ru.get("email"):
                     subject = f"🏔️ Metaverse Sherpa Weekly Summary - {datetime.now(tz).strftime('%Y-%m-%d')}"
