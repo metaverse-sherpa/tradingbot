@@ -4,19 +4,13 @@ import { BarChart2, Share2, Beaker, RefreshCcw } from 'lucide-react';
 import api from '../lib/api';
 import LoadingDisplay from './LoadingDisplay';
 import SharePnLModal from './SharePnLModal';
-import { useAuthStore, useDashboardStore } from '../store/useStore';
+import { useDashboardStore } from '../store/useStore';
 
 const StatsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const [shareStat, setShareStat] = useState<{stat: any, type: string} | null>(null);
-  const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
-  const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
-  
-  const hasCryptoExchange = !!user?.has_exchange_keys;
-  const hasStockExchange = !!user?.has_alpaca_keys;
 
-  const hideDollars = user?.hide_dollars;
+  const [shareStat, setShareStat] = useState<{stat: any, type: string} | null>(null);
+  const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
   const [userStats, setUserStats] = useState<any>(null);
   const [freeStats, setFreeStats] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,10 +40,7 @@ const StatsPage: React.FC = () => {
 
 
 
-  const formatCurrency = (val: number): React.ReactNode => {
-    if (hideDollars) return <span className="blur-sm opacity-70 select-none pointer-events-none">$***,***.**</span>;
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
-  };
+
 
   const formatPercent = (val: number) => {
     return `${(val || 0) > 0 ? '+' : ''}${(val || 0).toFixed(2)}%`;
@@ -67,141 +58,7 @@ const StatsPage: React.FC = () => {
 
 
 
-  const crypto = userStats?.crypto || {};
-  const stock = userStats?.stock || {};
-
-  const renderCryptoPerformance = () => (
-    <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg flex flex-col justify-between">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="font-bold text-white flex items-center gap-2">
-          <span className="text-xl">🪙</span> Crypto Performance
-        </h3>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-400 font-bold capitalize">
-          Blofin
-        </span>
-      </div>
-      
-      <div className="grid grid-cols-3 gap-2 text-center mb-4">
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Portf Value</p>
-          <p className="text-sm font-bold text-white">{formatCurrency(crypto.portfolio_value)}</p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Win Rate</p>
-          <p className={`text-sm font-bold ${crypto.win_rate >= 50 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {(crypto.win_rate || 0).toFixed(2)}%
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1">({crypto.wins || 0}W / {crypto.losses || 0}L)</p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Cum PNL</p>
-          <p className={`text-sm font-bold ${crypto.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatPercent(crypto.overall_pnl_pct)}
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1">({formatCurrency(crypto.overall_pnl)})</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div 
-          onClick={() => navigate('/trades?status=active&category=crypto')}
-          className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center cursor-pointer hover:bg-[#1a1e2a] transition-colors"
-        >
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1"># Open</p>
-          <p className="text-lg font-bold text-white">{crypto.open_positions || 0}</p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unrealized PNL</p>
-          <p className={`text-sm font-bold ${crypto.unrealized_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatCurrency(crypto.unrealized_pnl)}
-          </p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Net PNL</p>
-          <p className={`text-sm font-bold ${(crypto.overall_pnl + (crypto.unrealized_pnl || 0)) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatCurrency(crypto.overall_pnl + (crypto.unrealized_pnl || 0))}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStockPerformance = () => (
-    <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg flex flex-col justify-between">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="font-bold text-white flex items-center gap-2">
-          <span className="text-xl">🦙</span> Stocks Performance
-        </h3>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-500 font-bold capitalize">
-          Alpaca Live
-        </span>
-      </div>
-      
-      <div className="grid grid-cols-3 gap-2 text-center mb-4">
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Portf Value</p>
-          <p className="text-sm font-bold text-white">{formatCurrency(stock.portfolio_value)}</p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Win Rate</p>
-          <p className={`text-sm font-bold ${stock.win_rate >= 50 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {(stock.win_rate || 0).toFixed(2)}%
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1">({stock.wins || 0}W / {stock.losses || 0}L)</p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Cum PNL</p>
-          <p className={`text-sm font-bold ${stock.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatPercent(stock.overall_pnl_pct)}
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1">({formatCurrency(stock.overall_pnl)})</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div 
-          onClick={() => navigate('/trades?status=active&category=stock')}
-          className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center cursor-pointer hover:bg-[#1a1e2a] transition-colors"
-        >
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1"># Open</p>
-          <p className="text-lg font-bold text-white">{stock.open_positions || 0}</p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unrealized PNL</p>
-          <p className={`text-sm font-bold ${stock.unrealized_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatCurrency(stock.unrealized_pnl)}
-          </p>
-        </div>
-        <div className="bg-[#131620] rounded-xl p-3 flex flex-col justify-center">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Net PNL</p>
-          <p className={`text-sm font-bold ${(stock.overall_pnl + stock.unrealized_pnl) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatCurrency(stock.overall_pnl + stock.unrealized_pnl)}
-          </p>
-        </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderExchangePlaceholder = (type: 'crypto' | 'stock') => {
-    const isCrypto = type === 'crypto';
-    return (
-      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg flex flex-col justify-center items-center text-center min-h-[224px]">
-         <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${isCrypto ? 'from-cyan-400 to-blue-500' : 'from-amber-400 to-orange-500'} shadow-[0_0_15px_rgba(${isCrypto ? '34,211,238' : '245,158,11'},0.3)] border border-white/20 relative overflow-hidden flex items-center justify-center mb-4`}>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-50 mix-blend-overlay"></div>
-            <span className="text-xl font-black text-white mix-blend-overlay">{isCrypto ? 'C' : 'S'}</span>
-         </div>
-         <p className="text-gray-300 font-bold mb-2">Exchange Not Connected</p>
-         <p className="text-xs text-gray-500 mb-5 max-w-xs leading-relaxed">Connect your {type} exchange API to get automated trading and personalized portfolio tracking.</p>
-         <button 
-           onClick={() => navigate('/settings')}
-           className="w-full py-2.5 bg-white/5 border border-white/10 text-white font-bold text-[10px] tracking-widest rounded-xl hover:bg-white/10 transition-colors uppercase"
-         >
-           CONNECT {isCrypto ? 'CRYPTO' : 'STOCK'} EXCHANGE
-         </button>
-      </div>
-    );
-  };
+  // Removed performance rendering logic to simplify the page
 
   const cryptoFreeStats = freeStats.filter(s => !s.name.includes('Sherpa'));
   const stockFreeStats = freeStats.filter(s => s.name.includes('Sherpa'));
