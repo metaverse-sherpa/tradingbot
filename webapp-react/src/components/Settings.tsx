@@ -575,6 +575,7 @@ const Settings: React.FC = () => {
         <div className="space-y-6">
 
           {/* Privacy & UI Settings */}
+          {isPremium && user?.has_exchange_keys && (
           <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-yellow-500/20 rounded-xl">
@@ -595,6 +596,7 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </div>
+          )}
 
           {/* Notifications */}
           <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
@@ -648,6 +650,7 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Strategy & Risk */}
+          {isPremium && user?.has_exchange_keys && (
           <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-emerald-500/20 rounded-xl">
@@ -728,6 +731,7 @@ const Settings: React.FC = () => {
               </div>
             </div>
           </div>
+          )}
 
           {/* Admin Gift Center */}
           {user?.is_admin && (
