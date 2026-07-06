@@ -13,7 +13,7 @@ const Layout: React.FC = () => {
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
   const hasLinkedCrypto = Boolean(user?.has_exchange_keys);
   const hasLinkedStock = Boolean(user?.has_alpaca_keys);
-  const showAdvancedTabs = isPremium && hasLinkedCrypto && hasLinkedStock;
+  const showAdvancedTabs = isPremium && (hasLinkedCrypto || hasLinkedStock);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 

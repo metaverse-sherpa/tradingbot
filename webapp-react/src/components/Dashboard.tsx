@@ -27,7 +27,11 @@ const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchData(false), 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async (bypassCache = false) => {
