@@ -413,7 +413,7 @@ const Settings: React.FC = () => {
                   )}
 
                   {(!user?.has_exchange_keys || !user?.has_alpaca_keys) && (
-                    <div className="pt-4 border-t border-white/10 space-y-4 animate-fade-in">
+                    <form onSubmit={(e) => handleSaveApiKeys(e, exchangePlatform === 'alpaca' ? 'stock' : 'crypto')} className="pt-4 border-t border-white/10 space-y-4 animate-fade-in">
                       <h4 className="text-md font-bold text-white">
                         🔌 Connect {(!user?.has_exchange_keys && !user?.has_alpaca_keys) ? 'Exchange' : (user?.has_exchange_keys ? 'Stocks Platform' : 'Crypto Exchange')}
                       </h4>
@@ -470,7 +470,7 @@ const Settings: React.FC = () => {
                         {['blofin', 'bitget'].includes(exchangePlatform) && (
                           <div className="space-y-1">
                             <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Passphrase</label>
-                            <input type="password" value={apiPassword} onChange={e => setApiPassword(e.target.value)} placeholder="Passphrase" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
+                            <input type="password" value={apiPassword} onChange={e => setApiPassword(e.target.value)} placeholder="Passphrase" autoComplete="new-password" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
                           </div>
                         )}
 
@@ -492,11 +492,11 @@ const Settings: React.FC = () => {
                           </div>
                         )}
 
-                        <button onClick={(e) => handleSaveApiKeys(e, exchangePlatform === 'alpaca' ? 'stock' : 'crypto')} disabled={isSavingExchange || !apiKey || !apiSecret} className="w-full h-11 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 mt-2">
+                        <button type="submit" disabled={isSavingExchange || !apiKey || !apiSecret} className="w-full h-11 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 mt-2">
                           {isSavingExchange ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} Save Keys
                         </button>
                       </div>
-                    </div>
+                    </form>
                   )}
                 </div>
               </details>
