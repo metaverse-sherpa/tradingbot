@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Diamond } from 'lucide-react';
+import { Diamond, Copy, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../store/useStore';
 import { useToast } from './Toast';
 import api from '../lib/api';
@@ -47,20 +47,45 @@ const PremiumPage: React.FC = () => {
         </h2>
       </div>
 
-      {/* Status Box */}
-      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
-        <div className="flex items-center gap-3 mb-2">
-          <Diamond className="text-blue-400" size={20} fill="currentColor" />
-          <h3 className="text-lg font-bold text-white">Premium autopilot</h3>
+      {/* Benefits Box */}
+      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-6 shadow-lg shadow-blue-900/10 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-6 opacity-5">
+          <Diamond size={120} />
         </div>
-        <p className="text-xs text-gray-400 mb-6">
-          Unlocks full autonomous execution directly linked to your exchange API. Active 24/7.
-        </p>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <Diamond className="text-blue-400" size={24} fill="currentColor" />
+            <h3 className="text-xl font-bold text-white tracking-wide">Premium Autopilot</h3>
+          </div>
+          
+          <div className="space-y-4 mb-8 mt-6">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="text-emerald-400 mt-0.5 shrink-0" size={18} />
+              <p className="text-sm text-gray-300"><strong className="text-white">Enhanced Alpha Signals:</strong> Receive highly precise signals that include specific Entry Prices, Take Profit (TP), and Stop Loss (SL) targets.</p>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="text-emerald-400 mt-0.5 shrink-0" size={18} />
+              <p className="text-sm text-gray-300"><strong className="text-white">Exchange Integration:</strong> Connect directly to top crypto exchanges (Blofin, Binance, MexC) and stock brokerages (Alpaca).</p>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="text-emerald-400 mt-0.5 shrink-0" size={18} />
+              <p className="text-sm text-gray-300"><strong className="text-white">Hands-Free Automation:</strong> Unlock 24/7 autonomous trade execution. Let our algorithms manage your positions while you sleep.</p>
+            </div>
 
-        <div className="text-center pt-6 border-t border-white/5">
-          <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Membership Status</div>
-          <div className="text-lg font-bold text-gray-300 tracking-wider">
-            {user?.is_premium || user?.is_admin ? 'PREMIUM (ACTIVE)' : 'STANDARD TIER (READ ONLY)'}
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="text-emerald-400 mt-0.5 shrink-0" size={18} />
+              <p className="text-sm text-gray-300"><strong className="text-white">Priority Support:</strong> Direct access to the Metaverse Sherpa team for technical assistance and algorithmic guidance.</p>
+            </div>
+          </div>
+
+          <div className="text-center pt-6 border-t border-white/5 bg-black/20 -mx-6 -mb-6 p-6">
+            <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Membership Status</div>
+            <div className="text-lg font-bold text-gray-300 tracking-wider">
+              {user?.is_premium || user?.is_admin ? 'PREMIUM (ACTIVE)' : 'STANDARD TIER (READ ONLY)'}
+            </div>
           </div>
         </div>
       </div>
