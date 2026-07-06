@@ -455,15 +455,15 @@ const Settings: React.FC = () => {
 
                         <div className="space-y-1">
                           <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">API Key</label>
-                          <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="API Key" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
+                          <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="API Key" autoComplete="off" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
                         </div>
                         
                         <div className="space-y-1">
                           <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">API Secret</label>
                           {exchangePlatform === 'coinbase' ? (
-                            <textarea value={apiSecret} onChange={e => setApiSecret(e.target.value)} rows={4} className="w-full bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-cyan-500 font-mono text-[10px]" placeholder="-----BEGIN EC PRIVATE KEY-----\n..." />
+                            <textarea value={apiSecret} onChange={e => setApiSecret(e.target.value)} rows={4} autoComplete="off" className="w-full bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-cyan-500 font-mono text-[10px]" />
                           ) : (
-                            <input type="password" value={apiSecret} onChange={e => setApiSecret(e.target.value)} placeholder="API Secret" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
+                            <input type="password" value={apiSecret} onChange={e => setApiSecret(e.target.value)} placeholder="API Secret" autoComplete="new-password" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
                           )}
                         </div>
 
