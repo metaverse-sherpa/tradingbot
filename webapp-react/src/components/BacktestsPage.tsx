@@ -23,7 +23,7 @@ const CustomSelect = ({ value, onChange, options }: { value: string, onChange: (
       <button 
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full bg-[#1f2028] border border-[#2e303a] rounded-xl px-4 py-3 text-white flex justify-between items-center focus:outline-none focus:border-cyan-500 transition-colors"
+        className="w-full bg-[#1f2028] border border-[#2e303a] rounded-xl px-4 py-2 md:py-3 text-sm md:text-base text-white flex justify-between items-center focus:outline-none focus:border-cyan-500 transition-colors"
       >
         {value}
         <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -119,26 +119,26 @@ const BacktestsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 w-full max-w-5xl mx-auto space-y-8">
+    <div className="flex-1 w-full max-w-5xl mx-auto space-y-4 md:space-y-8">
       
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4 md:mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-[#f3f4f6]">Backtester</h2>
-          <p className="text-gray-400 mt-2">Simulate strategy performance over historical market data.</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#f3f4f6]">Backtester</h2>
+          <p className="text-xs md:text-sm text-gray-400 mt-1 md:mt-2">Simulate strategy performance over historical market data.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         
         {/* Configuration Panel */}
-        <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg h-fit space-y-6">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Settings2 size={20} className="text-cyan-400" /> Configuration
+        <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-4 md:p-6 shadow-lg h-fit space-y-4 md:space-y-6">
+          <h3 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+            <Settings2 size={18} className="text-cyan-400" /> Configuration
           </h3>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Strategy</label>
+              <label className="block text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 md:mb-2">Strategy</label>
               <CustomSelect 
                 value={strategy}
                 onChange={setStrategy}
@@ -147,7 +147,7 @@ const BacktestsPage: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Time Period</label>
+              <label className="block text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 md:mb-2">Time Period</label>
               <CustomSelect 
                 value={period}
                 onChange={setPeriod}
@@ -156,18 +156,18 @@ const BacktestsPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Initial Capital ($)</label>
+              <label className="block text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 md:mb-2">Initial Capital ($)</label>
               <input 
                 type="number" 
                 value={capital}
                 onChange={(e) => setCapital(Number(e.target.value))}
-                className="w-full bg-[#1f2028] border border-[#2e303a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors" 
+                className="w-full bg-[#1f2028] border border-[#2e303a] rounded-xl px-4 py-2 md:py-3 text-sm md:text-base text-white focus:outline-none focus:border-cyan-500 transition-colors" 
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">Risk % per trade</label>
+                <label className="block text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest">Risk % per trade</label>
                 <span className="text-sm font-bold text-cyan-400">{riskPct.toFixed(1)}%</span>
               </div>
               <input 
@@ -190,11 +190,17 @@ const BacktestsPage: React.FC = () => {
             <button 
               onClick={runBacktest}
               disabled={loading}
-              className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-4">
+              className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 md:py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 md:mt-4 text-sm md:text-base">
               {loading ? <Loader2 size={18} className="animate-spin" /> : <PlayCircle size={18} />} 
               {loading ? 'Running...' : 'Run Backtest'}
             </button>
           </div>
+        </div>
+
+        {/* Mobile scroll hint */}
+        <div className="lg:hidden flex flex-col items-center justify-center text-gray-500 -mt-2 mb-2 animate-bounce">
+          <span className="text-[10px] uppercase tracking-wider mb-1">Scroll down for results</span>
+          <ChevronDown size={14} />
         </div>
 
         {/* Results Panel */}
