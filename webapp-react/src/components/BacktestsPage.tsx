@@ -87,6 +87,15 @@ const BacktestsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (results && !loading && window.innerWidth < 1024) {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [results, loading]);
 
   const runBacktest = async () => {
     setLoading(true);
@@ -204,7 +213,7 @@ const BacktestsPage: React.FC = () => {
         </div>
 
         {/* Results Panel */}
-        <div className="lg:col-span-2 space-y-6">
+        <div ref={resultsRef} className="lg:col-span-2 space-y-6">
           {loading ? (
             <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg min-h-[400px] flex flex-col items-center justify-center">
               <div className="relative w-16 h-16 mb-4">
