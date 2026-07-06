@@ -259,10 +259,24 @@ def admin_users():
         with database.db_session() as conn:
             c = conn.cursor()
             c.execute('''
-                SELECT u1.id, u1.email, u1.full_name, u1.premium_expiry, u1.created_at, u1.telegram_chat_id, u1.referred_by, u2.email as referrer_email, t.username as telegram_username 
+                SELECT 
+                    u1.id, 
+                    u1.email, 
+                    u1.full_name, 
+                    u1.premium_expiry, 
+                    u1.created_at, 
+                    u1.telegram_chat_id, 
+                    COALESCE(u1.referred_by, t.referred_by) as referred_by, 
+                    t.username as telegram_username,
+                    u2.email as referrer_email_by_id,
+                    u3.email as referrer_email_by_tg,
+                    t2.username as referrer_tg_username,
+                    t2.full_name as referrer_tg_fullname
                 FROM WebUsers u1
-                LEFT JOIN WebUsers u2 ON u1.referred_by = u2.id
                 LEFT JOIN Users t ON u1.telegram_chat_id = t.telegram_chat_id
+                LEFT JOIN WebUsers u2 ON COALESCE(u1.referred_by, t.referred_by) = u2.id
+                LEFT JOIN WebUsers u3 ON COALESCE(u1.referred_by, t.referred_by) = u3.telegram_chat_id
+                LEFT JOIN Users t2 ON COALESCE(u1.referred_by, t.referred_by) = t2.telegram_chat_id
                 ORDER BY u1.created_at DESC 
                 LIMIT 100
             ''')
@@ -274,6 +288,12 @@ def admin_users():
         for row in rows:
             expiry = row[3] or 0
             joined_str = datetime.utcfromtimestamp(row[4]).isoformat() if row[4] else ""
+            
+            ref_id = row[6]
+            ref_email = row[8] or row[9]
+            if not ref_email and ref_id:
+                ref_email = f"@{row[10]}" if row[10] else (row[11] or str(ref_id))
+
             users_list.append({
                 "id": row[0],
                 "email": row[1],
@@ -282,9 +302,9 @@ def admin_users():
                 "premium_expiry": row[3],
                 "joined": joined_str,
                 "telegram_chat_id": row[5],
-                "referred_by": row[6],
-                "referrer_email": row[7],
-                "telegram_username": row[8]
+                "referred_by": ref_id,
+                "referrer_email": ref_email,
+                "telegram_username": row[7]
             })
             
         return jsonify({"users": users_list}), 200
