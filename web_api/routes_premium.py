@@ -249,7 +249,7 @@ def admin_users():
     user = g.user
     tg_user = _get_telegram_user(user)
     
-    is_super_admin = (user.get("telegram_chat_id") == 1567788633)
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
     
     if not is_admin:
@@ -259,23 +259,27 @@ def admin_users():
         with database.db_session() as conn:
             c = conn.cursor()
             c.execute('''
-                SELECT id, email, full_name, is_premium, premium_expiry, created_at, telegram_chat_id 
+                SELECT id, email, full_name, premium_expiry, created_at, telegram_chat_id 
                 FROM WebUsers 
                 ORDER BY created_at DESC 
                 LIMIT 100
             ''')
             rows = c.fetchall()
         
+        now = int(time.time())
+        from datetime import datetime
         users_list = []
         for row in rows:
+            expiry = row[3] or 0
+            joined_str = datetime.utcfromtimestamp(row[4]).isoformat() if row[4] else ""
             users_list.append({
                 "id": row[0],
                 "email": row[1],
-                "name": row[2] or "Unknown",
-                "is_premium": bool(row[3]),
-                "premium_expiry": row[4],
-                "joined": row[5],
-                "telegram_chat_id": row[6]
+                "full_name": row[2],
+                "is_premium": bool(expiry > now),
+                "premium_expiry": row[3],
+                "joined": joined_str,
+                "telegram_chat_id": row[5]
             })
             
         return jsonify({"users": users_list}), 200

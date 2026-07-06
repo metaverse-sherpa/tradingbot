@@ -160,3 +160,14 @@ Tracks generated promotional codes for subscription access.
 - `expiry_days` (INTEGER)
 - `is_used` (BOOLEAN)
 - `created_at` (INTEGER)
+
+---
+
+## 8. `FAQs` Table
+Stores dynamic frequently asked questions to be displayed on the Help page.
+
+- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
+- `question` (TEXT) - The FAQ question
+- `answer` (TEXT) - The FAQ answer
+- `order_index` (INTEGER) - Used for custom sorting
+- `created_at` (INTEGER) - Unix timestamp

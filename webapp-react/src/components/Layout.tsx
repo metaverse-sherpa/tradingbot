@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ParticlesBackground from './ParticlesBackground';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, LayoutDashboard, Activity, BarChart2, Crown, Users, Power, HelpCircle, TrendingUp } from 'lucide-react';
+import { Settings, LayoutDashboard, Activity, BarChart2, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert } from 'lucide-react';
 import { logoutUser } from '../lib/firebase';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
@@ -85,6 +85,11 @@ const Layout: React.FC = () => {
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <Users size={16} className="text-emerald-400" /> Refer & Earn
                       </Link>
+                      {user?.is_admin && (
+                        <Link to="/admin" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                          <ShieldAlert size={16} className="text-purple-400" /> Admin
+                        </Link>
+                      )}
                       <div className="h-px bg-white/10 my-1"></div>
                       <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-left">
                         <Power size={16} className="text-rose-400" /> Logout
@@ -131,6 +136,12 @@ const Layout: React.FC = () => {
               <Link to="/premium" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/premium' ? 'text-yellow-500 md:bg-yellow-500/20' : 'text-gray-500 hover:text-yellow-500 md:text-gray-400 md:hover:bg-white/5'}`}>
                 <Crown size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Premium</span>
+              </Link>
+            )}
+            {user?.is_admin && (
+              <Link to="/admin" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/admin' ? 'text-purple-400 md:bg-purple-400/20' : 'text-gray-500 hover:text-purple-400 md:text-gray-400 md:hover:bg-white/5'}`}>
+                <ShieldAlert size={20} className="md:w-4 md:h-4" />
+                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Admin</span>
               </Link>
             )}
             <Link to="/settings" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/settings' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>

@@ -23,7 +23,7 @@ import api from './lib/api';
 import { useAuthStore } from './store/useStore';
 
 const App: React.FC = () => {
-  const { setUser, isAuthenticated, isLoading } = useAuthStore();
+  const { user, setUser, isAuthenticated, isLoading } = useAuthStore();
   
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -80,8 +80,12 @@ const App: React.FC = () => {
               <Route path="backtests" element={<BacktestsPage />} />
               <Route path="premium" element={<PremiumPage />} />
               <Route path="referrals" element={<ReferralsPage />} />
-              <Route path="admin" element={<AdminPage />} />
-              <Route path="logs" element={<LogsPage />} />
+              {user?.is_admin && (
+                <>
+                  <Route path="admin" element={<AdminPage />} />
+                  <Route path="logs" element={<LogsPage />} />
+                </>
+              )}
               <Route path="help" element={<HelpPage />} />
             </>
           )}

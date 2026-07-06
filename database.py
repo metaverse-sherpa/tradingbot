@@ -692,6 +692,16 @@ def init_db():
                 conn.commit()
             except:
                 conn.rollback()
+
+        # ❓ FAQs Table
+        if "FAQs" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS FAQs
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          question TEXT NOT NULL,
+                          answer TEXT NOT NULL,
+                          order_index INTEGER DEFAULT 0,
+                          created_at INTEGER)''')
+
         
         # Set default master wallet if not exists
         c.execute("SELECT 1 FROM Config WHERE key = 'master_usdt_wallet'")

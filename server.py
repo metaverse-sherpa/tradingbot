@@ -54,11 +54,13 @@ from web_api.routes_auth import auth_bp
 from web_api.routes_settings import settings_bp
 from web_api.routes_trades import trades_bp
 from web_api.routes_premium import premium_bp
+from web_api.routes_faq import faq_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(trades_bp)
 app.register_blueprint(premium_bp)
+app.register_blueprint(faq_bp)
 
 # ----------------- Serve Frontend -----------------
 @app.route('/', defaults={'path': ''})

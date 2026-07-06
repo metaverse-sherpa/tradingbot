@@ -77,12 +77,13 @@ def sync_firebase_user():
     if super_admin_id:
         try:
             super_admin_id = int(super_admin_id)
-            if user.get("telegram_chat_id") == super_admin_id or (tg_user and tg_user.get("telegram_chat_id") == super_admin_id):
+            if user.get("telegram_chat_id") == super_admin_id or (tg_user and tg_user.get("telegram_chat_id") == super_admin_id) or user.get("email") == "gilesasp@gmail.com":
                 is_super_admin = True
         except ValueError:
             pass
             
     is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    safe_user["is_admin"] = is_admin
     safe_user["is_premium"] = max_expiry > now or is_admin
     
     # Sync hide_dollars setting
