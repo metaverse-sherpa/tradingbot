@@ -178,9 +178,30 @@ const StatsPage: React.FC = () => {
             {formatCurrency(stock.overall_pnl + stock.unrealized_pnl)}
           </p>
         </div>
+        </div>
       </div>
     </div>
   );
+
+  const renderExchangePlaceholder = (type: 'crypto' | 'stock') => {
+    const isCrypto = type === 'crypto';
+    return (
+      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg flex flex-col justify-center items-center text-center min-h-[224px]">
+         <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${isCrypto ? 'from-cyan-400 to-blue-500' : 'from-amber-400 to-orange-500'} shadow-[0_0_15px_rgba(${isCrypto ? '34,211,238' : '245,158,11'},0.3)] border border-white/20 relative overflow-hidden flex items-center justify-center mb-4`}>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-50 mix-blend-overlay"></div>
+            <span className="text-xl font-black text-white mix-blend-overlay">{isCrypto ? 'C' : 'S'}</span>
+         </div>
+         <p className="text-gray-300 font-bold mb-2">Exchange Not Connected</p>
+         <p className="text-xs text-gray-500 mb-5 max-w-xs leading-relaxed">Connect your {type} exchange API to get automated trading and personalized portfolio tracking.</p>
+         <button 
+           onClick={() => navigate('/settings')}
+           className="w-full py-2.5 bg-white/5 border border-white/10 text-white font-bold text-[10px] tracking-widest rounded-xl hover:bg-white/10 transition-colors uppercase"
+         >
+           CONNECT {isCrypto ? 'CRYPTO' : 'STOCK'} EXCHANGE
+         </button>
+      </div>
+    );
+  };
 
   const cryptoFreeStats = freeStats.filter(s => !s.name.includes('Sherpa'));
   const stockFreeStats = freeStats.filter(s => s.name.includes('Sherpa'));
@@ -284,7 +305,7 @@ const StatsPage: React.FC = () => {
         <div className="md:hidden w-full space-y-8">
           {categoryTab === 'crypto' ? (
             <>
-              {isPremium && hasCryptoExchange && renderCryptoPerformance()}
+              {isPremium ? (hasCryptoExchange ? renderCryptoPerformance() : renderExchangePlaceholder('crypto')) : null}
               {cryptoFreeStats.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -299,7 +320,7 @@ const StatsPage: React.FC = () => {
             </>
           ) : (
             <>
-              {isPremium && hasStockExchange && renderStockPerformance()}
+              {isPremium ? (hasStockExchange ? renderStockPerformance() : renderExchangePlaceholder('stock')) : null}
               {stockFreeStats.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -318,7 +339,7 @@ const StatsPage: React.FC = () => {
         {/* Desktop View */}
         <div className="hidden md:grid md:grid-cols-2 gap-6">
           <div className="space-y-8">
-            {isPremium && hasCryptoExchange && renderCryptoPerformance()}
+            {isPremium ? (hasCryptoExchange ? renderCryptoPerformance() : renderExchangePlaceholder('crypto')) : null}
             {cryptoFreeStats.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -332,7 +353,7 @@ const StatsPage: React.FC = () => {
             )}
           </div>
           <div className="space-y-8">
-            {isPremium && hasStockExchange && renderStockPerformance()}
+            {isPremium ? (hasStockExchange ? renderStockPerformance() : renderExchangePlaceholder('stock')) : null}
             {stockFreeStats.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
