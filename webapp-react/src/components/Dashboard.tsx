@@ -276,7 +276,12 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {sortedSignals.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-8 flex flex-col items-center justify-center">
+              <Loader2 className="animate-spin text-cyan-400 size-8 mb-3 mx-auto" />
+              <p className="text-sm text-gray-400 animate-pulse">Your Sherpa is scouting the market for live signals...</p>
+            </div>
+          ) : sortedSignals.length === 0 ? (
             <div className="text-center py-8">
                <p className="text-sm text-gray-400">No active {type} signals</p>
             </div>
