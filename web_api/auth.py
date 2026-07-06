@@ -47,13 +47,13 @@ def require_auth(f):
                 return jsonify({"error": "Invalid API Key."}), 401
                 
         # 2. Firebase Session Token check
-        token = request.cookies.get('session_token')
-        
+        token = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            
         if not token:
-            # Fallback to Authorization header
-            auth_header = request.headers.get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                token = auth_header.split(' ')[1]
+            token = request.cookies.get('session_token')
         
         if not token:
             return jsonify({"error": "Authentication required"}), 401
@@ -113,13 +113,13 @@ def require_auth_web(f):
     from flask import redirect
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.cookies.get('session_token')
-        
+        token = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            
         if not token:
-            # Fallback to Authorization header
-            auth_header = request.headers.get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                token = auth_header.split(' ')[1]
+            token = request.cookies.get('session_token')
         
         if not token:
             return redirect('/')
