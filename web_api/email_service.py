@@ -932,3 +932,156 @@ def get_combined_weekly_summary_html(is_premium=False,
     </body>
     </html>
     """
+
+
+def _chunk_telegram_message(text, limit=4000):
+    chunks = []
+    while len(text) > limit:
+        split_index = text.rfind('\n', 0, limit)
+        if split_index == -1:
+            split_index = limit
+        chunks.append(text[:split_index])
+        text = text[split_index:].lstrip()
+    if text:
+        chunks.append(text)
+    return chunks
+
+def get_combined_daily_summary_telegram(stock_opened, stock_closed, crypto_opened, crypto_closed, is_premium=False):
+    lines = ["🏔️ <b>Daily Digest</b>\nMetaverse Sherpa Daily Performance Summary\n"]
+    
+    # Stock
+    lines.append("📈 <b>Stock Markets</b>")
+    lines.append("<i>🛰️ Active Positions</i>")
+    if not stock_opened:
+        lines.append("No active stock positions today.")
+    else:
+        stock_opened_sorted = sorted(stock_opened, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+        for s in stock_opened_sorted:
+            sym = s['symbol']
+            pnl_pct = s.get('current_pnl_pct', 0.0)
+            daily_pnl_pct = s.get('daily_pnl_pct', 0.0)
+            target_tp_pct = s.get('target_tp_pct', 0.0)
+            is_long = s.get('side', '').upper() in ['BUY', 'LONG']
+            dir_emoji = "📈" if is_long else "📉"
+            lines.append(f"{dir_emoji} <a href='https://marketmasters.ai/stocks/{sym}'>{sym}</a> | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_tp_pct:.1f}%")
+
+    lines.append("\n<i>🏆 Positions Closed (Last 24 Hours)</i>")
+    if not stock_closed:
+        lines.append("No stock positions resolved today.")
+    else:
+        for s in stock_closed:
+            sym = s['symbol']
+            pnl_pct = s.get('pnl_pct', 0.0)
+            is_long = s.get('side', '').upper() in ['BUY', 'LONG']
+            dir_emoji = "📈" if is_long else "📉"
+            if is_premium:
+                exit_price = s.get('close_price') or 0.0
+                lines.append(f"{dir_emoji} <a href='https://marketmasters.ai/stocks/{sym}'>{sym}</a> | Exited | Entry: ${s.get('entry_price', 0.0):.2f} / Exit: ${exit_price:.2f} | PnL: {pnl_pct:+.2f}%")
+            else:
+                st = "Hit Target" if s.get('status') == 'tp' else "Hit Stop Loss" if s.get('status') == 'sl' else "Closed"
+                lines.append(f"{dir_emoji} <a href='https://marketmasters.ai/stocks/{sym}'>{sym}</a> | {st} | PnL: {pnl_pct:+.2f}%")
+
+    lines.append("")
+    # Crypto
+    lines.append("₿ <b>Crypto Markets</b>")
+    lines.append("<i>🛰️ Active Positions</i>")
+    if not crypto_opened:
+        lines.append("No active crypto positions.")
+    else:
+        crypto_opened_sorted = sorted(crypto_opened, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+        for s in crypto_opened_sorted:
+            sym = s['symbol']
+            clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
+            pnl_pct = s.get('current_pnl_pct', 0.0)
+            daily_pnl_pct = s.get('daily_pnl_pct', 0.0)
+            target_tp_pct = s.get('target_tp_pct', 0.0)
+            is_long = s.get('side', '').upper() in ['BUY', 'LONG']
+            dir_emoji = "📈" if is_long else "📉"
+            lines.append(f"{dir_emoji} <a href='https://marketmasters.ai/currency/{clean_sym}'>{sym}</a> | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_tp_pct:.1f}%")
+
+    lines.append("\n<i>🏆 Positions Closed (Last 24 Hours)</i>")
+    if not crypto_closed:
+        lines.append("No crypto positions resolved today.")
+    else:
+        for s in crypto_closed:
+            sym = s['symbol']
+            clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
+            pnl_pct = s.get('pnl_pct', 0.0)
+            is_long = s.get('side', '').upper() in ['BUY', 'LONG']
+            dir_emoji = "📈" if is_long else "📉"
+            if is_premium:
+                exit_price = s.get('close_price') or 0.0
+                lines.append(f"{dir_emoji} <a href='https://marketmasters.ai/currency/{clean_sym}'>{sym}</a> | Exited | Entry: ${s.get('entry_price', 0.0):.4f} / Exit: ${exit_price:.4f} | PnL: {pnl_pct:+.2f}%")
+            else:
+                st = "Hit Target" if s.get('status') == 'tp' else "Hit Stop Loss" if s.get('status') == 'sl' else "Closed"
+                lines.append(f"{dir_emoji} <a href='https://marketmasters.ai/currency/{clean_sym}'>{sym}</a> | {st} | PnL: {pnl_pct:+.2f}%")
+
+    if not is_premium:
+        lines.append("\n🚀 <b>UNLOCK FULL AUTOPILOT</b>\nUpgrade to <b>Premium Access</b> today to unlock automated fractional execution and see exact entry/SL/TP parameters in real time.\n<a href='https://bot.metaversesherpa.io/#/premium'>Upgrade to Premium Now</a>")
+
+    lines.append("\n<a href='https://bot.metaversesherpa.io'>Access Trading Console</a>")
+    
+    return _chunk_telegram_message("\n".join(lines))
+
+def get_combined_weekly_summary_telegram(is_premium=False, 
+                                     has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
+                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None):
+    lines = ["🏔️ <b>Weekly Update</b>\nMetaverse Sherpa Combined Weekly Performance Summary\n"]
+    
+    def render_section(title, icon, has_exchange, portfolio_data, open_trades, hypothetical_data):
+        section_lines = [f"\n{icon} <b>{title}</b>"]
+        if is_premium:
+            if has_exchange:
+                equity = portfolio_data.get("equity", 0.0)
+                weekly_pnl_pct = portfolio_data.get("weekly_pnl_pct", 0.0)
+                weekly_pnl_usd = portfolio_data.get("weekly_pnl_usd", 0.0)
+                sign = "+" if weekly_pnl_pct >= 0 else ""
+                usd_sign = "+" if weekly_pnl_usd >= 0 else ""
+                
+                if not open_trades:
+                    section_lines.append(f"No open {title.lower()} positions currently.")
+                else:
+                    open_trades_sorted = sorted(open_trades, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+                    for t in open_trades_sorted:
+                        pnl_pct = t.get("current_pnl_pct", 0.0)
+                        daily_pnl_pct = t.get("daily_pnl_pct", 0.0)
+                        target_pnl_pct = t.get("target_pnl_pct", 0.0)
+                        sym = t['symbol']
+                        clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
+                        is_long = t.get('side', '').upper() in ['BUY', 'LONG']
+                        dir_emoji = "📈" if is_long else "📉"
+                        link_base = "stocks" if title == "Stock Markets" else "currency"
+                        display_sym = clean_sym if title != "Stock Markets" else sym
+                        sym_html = f"<a href='https://marketmasters.ai/{link_base}/{display_sym}'>{sym}</a>"
+                        
+                        section_lines.append(f"{dir_emoji} {sym_html} | Entry: ${t['entry_price']:.4f} SL: ${t['sl_price']:.4f} TP: ${t['tp_price']:.4f} | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_pnl_pct:.1f}%")
+                
+                section_lines.append(f"\n<b>Portfolio Equity:</b> ${equity:,.2f} USD")
+                section_lines.append(f"<b>7-Day Performance:</b> {sign}{weekly_pnl_pct:.2f}% ({usd_sign}${weekly_pnl_usd:,.2f})")
+            else:
+                section_lines.append(f"No Exchange Connected. <a href='https://bot.metaversesherpa.io/#/settings'>Connect Exchange</a>")
+        else:
+            hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
+            hypo_balance = 1000.0 + hypo_pnl
+            hypo_growth = (hypo_pnl / 1000.0) * 100
+            wins = hypothetical_data.get("wins", 0)
+            losses = hypothetical_data.get("losses", 0)
+            win_rate = hypothetical_data.get("win_rate", 0.0)
+            sign = "+" if hypo_pnl >= 0 else ""
+            
+            section_lines.append("<i>Hypothetical Premium Access Potential Equity</i>")
+            section_lines.append(f"<b>${hypo_balance:,.2f} USD</b>")
+            section_lines.append(f"Cumulative Performance: {sign}{hypo_growth:.2f}% ({sign}${hypo_pnl:,.2f})")
+            section_lines.append(f"Win Rate: {win_rate:.1f}% ({wins} W | {losses} L)")
+            section_lines.append(f"<i>* This is a simulation of what your {title.lower()} portfolio would look like if you had upgraded to Premium and used our automated fractional execution (starting from a $1,000 base).</i>")
+            
+        return section_lines
+
+    lines.extend(render_section("Stock Markets", "📈", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data))
+    lines.extend(render_section("Crypto Markets", "₿", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data))
+
+    if not is_premium:
+        lines.append("\n🚀 <b>UNLOCK FULL AUTOPILOT</b>\nStop leaving money on the table. Upgrade to <b>Premium Access</b> today to turn those hypothetical returns into reality with automated execution.\n<a href='https://bot.metaversesherpa.io/#/premium'>Upgrade to Premium Now</a>")
+
+    lines.append("\n<a href='https://bot.metaversesherpa.io'>Access Trading Console</a>")
+    return _chunk_telegram_message("\n".join(lines))

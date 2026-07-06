@@ -596,7 +596,7 @@ async def daily_combined_email_engine(application):
                 s['target_tp_pct'] = tp
                 s['daily_pnl_pct'] = (daily_change * CRYPTO_LEVERAGE) if is_long else (-daily_change * CRYPTO_LEVERAGE)
 
-            from web_api.email_service import send_alert_email, get_combined_daily_summary_html
+            from web_api.email_service import send_alert_email, get_combined_daily_summary_html, get_combined_daily_summary_telegram
             daily_mail_users = [ru for ru in daily_users if ru.get("wants_daily_email")]
             if daily_mail_users:
                 subject = f"🏔️ Metaverse Sherpa Daily Digest - {datetime.now(tz).strftime('%Y-%m-%d')}"
@@ -610,6 +610,22 @@ async def daily_combined_email_engine(application):
                         )
                         send_alert_email(ru["email"], subject, html_content)
                 logger.info(f"✅ Daily combined summary emails dispatched to {len(daily_mail_users)} subscribers.")
+            
+            daily_tg_users = [ru for ru in daily_users if ru.get("telegram_chat_id") and ru.get("wants_daily_email")]
+            if daily_tg_users:
+                for ru in daily_tg_users:
+                    is_prem = ru.get("is_premium_user", False)
+                    tg_chunks = get_combined_daily_summary_telegram(
+                        stock_opened, stock_closed, 
+                        crypto_opened, crypto_closed, 
+                        is_premium=is_prem
+                    )
+                    for chunk in tg_chunks:
+                        try:
+                            await application.bot.send_message(chat_id=ru["telegram_chat_id"], text=chunk, parse_mode="HTML", disable_web_page_preview=True)
+                        except Exception as e:
+                            logger.error(f"Failed to send daily Telegram summary to {ru['telegram_chat_id']}: {e}")
+                logger.info(f"✅ Daily combined summary telegram messages dispatched to {len(daily_tg_users)} subscribers.")
             
             await asyncio.sleep(60)
             
@@ -647,7 +663,7 @@ async def weekly_combined_email_engine(application):
             
             logger.debug("📧 Compiling weekly combined audits...")
             from web_api.db_web import get_users_for_weekly_processing
-            from web_api.email_service import send_alert_email, get_combined_weekly_summary_html
+            from web_api.email_service import send_alert_email, get_combined_weekly_summary_html, get_combined_weekly_summary_telegram
             
             weekly_users = get_users_for_weekly_processing()
             stock_hypothetical_data = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
@@ -710,6 +726,24 @@ async def weekly_combined_email_engine(application):
                     )
                     send_alert_email(ru["email"], subject, html_content)
                     
+                if ru.get("telegram_chat_id"):
+                    tg_chunks = get_combined_weekly_summary_telegram(
+                        is_premium=is_prem,
+                        has_stock_exchange=has_stock_exch,
+                        stock_portfolio_data=stock_portfolio_data,
+                        stock_open_trades=stock_open_trades,
+                        stock_hypothetical_data=stock_hypothetical_data,
+                        has_crypto_exchange=has_crypto_exch,
+                        crypto_portfolio_data=crypto_portfolio_data,
+                        crypto_open_trades=crypto_open_trades,
+                        crypto_hypothetical_data=crypto_hypothetical_data
+                    )
+                    for chunk in tg_chunks:
+                        try:
+                            await application.bot.send_message(chat_id=ru["telegram_chat_id"], text=chunk, parse_mode="HTML", disable_web_page_preview=True)
+                        except Exception as e:
+                            logger.error(f"Failed to send weekly Telegram summary to {ru['telegram_chat_id']}: {e}")
+                            
             logger.info(f"✅ Weekly combined summary emails dispatched to {len(weekly_users)} subscribers.")
             await asyncio.sleep(60)
             
