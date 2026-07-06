@@ -1585,6 +1585,7 @@ def run_backtest():
                 "win_rate": round(win_rate, 1),
                 "total_trades": total_trades,
                 "net_pnl": final_equity - capital,
+                "pnl_pct": round(pnl_pct, 2),
                 "profit_factor": round(sharpe, 2),
                 "max_drawdown": max_dd,
                 "chart_url": chart_data_uri,

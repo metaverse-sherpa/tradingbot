@@ -216,7 +216,7 @@ const BacktestsPage: React.FC = () => {
                   <p className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1"><Activity size={14} /> Net PnL</p>
                   <p className={`text-xl font-bold ${results.net_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} flex items-center`}>
                     {results.net_pnl >= 0 ? <ArrowUpRight size={20} className="mr-1" /> : <ArrowDownRight size={20} className="mr-1" />}
-                    {formatCurrency(Math.abs(results.net_pnl))}
+                    {formatCurrency(Math.abs(results.net_pnl))} ({results.net_pnl >= 0 ? '+' : ''}{results.pnl_pct}%)
                   </p>
                 </div>
                 <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-xl p-4">
