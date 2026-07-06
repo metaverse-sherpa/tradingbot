@@ -123,6 +123,7 @@ const LoginPage: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email Address" 
+              autoComplete="username"
               required
               className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
             />
@@ -132,6 +133,7 @@ const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password" 
+                autoComplete="current-password"
                 required
                 className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg pl-4 pr-12 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
               />
@@ -168,6 +170,7 @@ const LoginPage: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email Address" 
+              autoComplete="username"
               required
               className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
             />
@@ -177,6 +180,7 @@ const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Create Password" 
+                autoComplete="new-password"
                 required
                 className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg pl-4 pr-12 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
               />
@@ -211,6 +215,7 @@ const LoginPage: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email Address" 
+              autoComplete="email"
               required
               className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
             />
