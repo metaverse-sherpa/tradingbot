@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/
 
 const firebaseConfig = {
   apiKey: "AIzaSyC5_-c02iid6jrfyzwaMok4O63FP4885LY",
-  authDomain: "tradingbot-bf028.firebaseapp.com",
+  authDomain: "bot.metaversesherpa.io",
   projectId: "tradingbot-bf028",
   storageBucket: "tradingbot-bf028.firebasestorage.app",
   messagingSenderId: "1030598184996",
