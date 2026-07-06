@@ -10,6 +10,17 @@ async def blofin_ws_client():
         try:
             async with websockets.connect(uri) as websocket:
                 logger.info("Connected to Blofin WebSocket.")
+                
+                async def heartbeat():
+                    while True:
+                        try:
+                            await asyncio.sleep(20)
+                            await websocket.send("ping")
+                        except Exception:
+                            break
+                
+                ping_task = asyncio.create_task(heartbeat())
+
                 # Subscribe to a channel, e.g., BTC-USDT ticker
                 sub_msg = {
                     "op": "subscribe",
@@ -17,9 +28,14 @@ async def blofin_ws_client():
                 }
                 await websocket.send(json.dumps(sub_msg))
                 
-                async for message in websocket:
-                    # TODO: Process ticker updates and trigger broadcast if conditions met
-                    pass
+                try:
+                    async for message in websocket:
+                        if message == "pong":
+                            continue
+                        # TODO: Process ticker updates and trigger broadcast if conditions met
+                        pass
+                finally:
+                    ping_task.cancel()
         except Exception as e:
             logger.error(f"Blofin WS Error: {e}. Reconnecting in 5s...")
             await asyncio.sleep(5)

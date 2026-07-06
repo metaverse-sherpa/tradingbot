@@ -1453,6 +1453,11 @@ def run_backtest():
             # Run the actual backtest directly from the database to get 100% exact results!
             from stock_backtester_daily import run_backtest, load_data_from_db
             data_dict = load_data_from_db()
+            
+            engine_strategy = "SuperTrend_Pullback"
+            if strategy == "Sherpa Velocity Pullback":
+                engine_strategy = "Velocity_Pullback"
+                
             best_params = {
                 "rsi_period": 4,
                 "rsi_entry": 26,
@@ -1464,9 +1469,13 @@ def run_backtest():
                 "leverage": 1.6,
                 "rr_ratio": 1.6
             }
+            if engine_strategy == "Velocity_Pullback":
+                best_params["rsi_entry"] = 15
+                best_params["rsi_exit"] = 70
+                
             h_df, t_df, metrics = run_backtest(
                 data_dict,
-                "SuperTrend_Pullback",
+                engine_strategy,
                 best_params,
                 verbose=False,
                 initial_cash=capital,
@@ -1474,6 +1483,9 @@ def run_backtest():
                 start_date=start_dt.strftime("%Y-%m-%d"),
                 end_date=end_dt.strftime("%Y-%m-%d")
             )
+            
+            if not metrics:
+                return jsonify({"error": "Backtest engine failed to execute trades. Starting balance or risk is too low, or no signals were generated."}), 400
             
             final_equity = metrics["final_equity"]
             pnl_pct = metrics["total_pnl_pct"]
