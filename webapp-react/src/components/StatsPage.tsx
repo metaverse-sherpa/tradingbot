@@ -13,8 +13,8 @@ const StatsPage: React.FC = () => {
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
   const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
   
-  const showCryptoColumn = user?.has_exchange_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
-  const showStockColumn = user?.has_alpaca_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
+  const hasCryptoExchange = !!user?.has_exchange_keys;
+  const hasStockExchange = !!user?.has_alpaca_keys;
 
   const hideDollars = user?.hide_dollars;
   const [userStats, setUserStats] = useState<any>(null);
@@ -263,102 +263,28 @@ const StatsPage: React.FC = () => {
         </div>
 
         {/* Mobile Category Tab */}
-        {showCryptoColumn && showStockColumn && (
-          <div className="md:hidden w-full mb-6">
-            <div className="bg-[#1b1f2c]/50 rounded-full p-1 flex border border-white/5 max-w-sm mx-auto">
-              <button
-                onClick={() => setCategoryTab('crypto')}
-                className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'crypto' ? 'bg-cyan-500 text-white shadow-[0_0_12px_rgba(34,211,238,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
-              >
-                Crypto
-              </button>
-              <button
-                onClick={() => setCategoryTab('stock')}
-                className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'stock' ? 'bg-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
-              >
-                Stocks
-              </button>
-            </div>
+        <div className="md:hidden w-full mb-6">
+          <div className="bg-[#1b1f2c]/50 rounded-full p-1 flex border border-white/5 max-w-sm mx-auto">
+            <button
+              onClick={() => setCategoryTab('crypto')}
+              className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'crypto' ? 'bg-cyan-500 text-white shadow-[0_0_12px_rgba(34,211,238,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
+            >
+              Crypto
+            </button>
+            <button
+              onClick={() => setCategoryTab('stock')}
+              className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'stock' ? 'bg-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
+            >
+              Stocks
+            </button>
           </div>
-        )}
+        </div>
 
         {/* Mobile View */}
         <div className="md:hidden w-full space-y-8">
-          {!(showCryptoColumn && showStockColumn) ? (
+          {categoryTab === 'crypto' ? (
             <>
-              {showCryptoColumn && (
-                <>
-                  {isPremium && renderCryptoPerformance()}
-                  {cryptoFreeStats.length > 0 && (
-                    <div>
-                      <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
-                        <Beaker className="text-emerald-400" />
-                        Crypto Alpha Signals
-                      </h2>
-                      <div className="space-y-6">
-                        {cryptoFreeStats.map((stat, idx) => renderFreeStatCard(stat, idx))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              {showStockColumn && (
-                <>
-                  {isPremium && renderStockPerformance()}
-                  {stockFreeStats.length > 0 && (
-                    <div>
-                      <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
-                        <Beaker className="text-emerald-400" />
-                        Stocks Alpha Signals
-                      </h2>
-                      <div className="space-y-6">
-                        {stockFreeStats.map((stat, idx) => renderFreeStatCard(stat, idx))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          ) : (
-            categoryTab === 'crypto' ? (
-              <>
-                {isPremium && renderCryptoPerformance()}
-                {cryptoFreeStats.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
-                      <Beaker className="text-emerald-400" />
-                      Crypto Alpha Signals
-                    </h2>
-                    <div className="space-y-6">
-                      {cryptoFreeStats.map((stat, idx) => renderFreeStatCard(stat, idx))}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                {isPremium && renderStockPerformance()}
-                {stockFreeStats.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
-                      <Beaker className="text-emerald-400" />
-                      Stocks Alpha Signals
-                    </h2>
-                    <div className="space-y-6">
-                      {stockFreeStats.map((stat, idx) => renderFreeStatCard(stat, idx))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )
-          )}
-        </div>
-
-        {/* Desktop View */}
-        <div className={`hidden md:grid gap-6 ${showCryptoColumn && showStockColumn ? 'md:grid-cols-2' : 'md:grid-cols-1 max-w-3xl mx-auto'}`}>
-          {showCryptoColumn && (
-            <div className="space-y-8">
-              {isPremium && renderCryptoPerformance()}
+              {isPremium && hasCryptoExchange && renderCryptoPerformance()}
               {cryptoFreeStats.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -370,11 +296,10 @@ const StatsPage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-          {showStockColumn && (
-            <div className="space-y-8">
-              {isPremium && renderStockPerformance()}
+            </>
+          ) : (
+            <>
+              {isPremium && hasStockExchange && renderStockPerformance()}
               {stockFreeStats.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
@@ -386,8 +311,40 @@ const StatsPage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden md:grid md:grid-cols-2 gap-6">
+          <div className="space-y-8">
+            {isPremium && hasCryptoExchange && renderCryptoPerformance()}
+            {cryptoFreeStats.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
+                  <Beaker className="text-emerald-400" />
+                  Crypto Alpha Signals
+                </h2>
+                <div className="space-y-6">
+                  {cryptoFreeStats.map((stat, idx) => renderFreeStatCard(stat, idx))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="space-y-8">
+            {isPremium && hasStockExchange && renderStockPerformance()}
+            {stockFreeStats.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-[#f3f4f6] flex items-center gap-2 mb-4">
+                  <Beaker className="text-emerald-400" />
+                  Stocks Alpha Signals
+                </h2>
+                <div className="space-y-6">
+                  {stockFreeStats.map((stat, idx) => renderFreeStatCard(stat, idx))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
