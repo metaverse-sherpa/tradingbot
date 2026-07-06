@@ -15,6 +15,9 @@ const TradesPage: React.FC = () => {
   const { user } = useAuthStore();
   const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
   
+  const showCryptoColumn = user?.has_exchange_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
+  const showStockColumn = user?.has_alpaca_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
+
   useEffect(() => {
     if (initialCategory && initialCategory !== categoryTab) {
       setCategoryTab(initialCategory);
@@ -295,22 +298,24 @@ const TradesPage: React.FC = () => {
         </div>
 
         {/* Mobile Category Tab */}
-        <div className="md:hidden w-full px-4 max-w-sm">
-          <div className="bg-[#1b1f2c]/50 rounded-full p-1 flex border border-white/5">
-            <button
-              onClick={() => setCategoryTab('crypto')}
-              className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'crypto' ? 'bg-cyan-500 text-white shadow-[0_0_12px_rgba(34,211,238,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              Crypto ({displayedTrades.filter(t => t.type === 'crypto').length})
-            </button>
-            <button
-              onClick={() => setCategoryTab('stock')}
-              className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'stock' ? 'bg-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              Stocks ({displayedTrades.filter(t => t.type === 'stock').length})
-            </button>
+        {showCryptoColumn && showStockColumn && (
+          <div className="md:hidden w-full px-4 max-w-sm">
+            <div className="bg-[#1b1f2c]/50 rounded-full p-1 flex border border-white/5">
+              <button
+                onClick={() => setCategoryTab('crypto')}
+                className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'crypto' ? 'bg-cyan-500 text-white shadow-[0_0_12px_rgba(34,211,238,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                Crypto ({displayedTrades.filter(t => t.type === 'crypto').length})
+              </button>
+              <button
+                onClick={() => setCategoryTab('stock')}
+                className={`flex-1 py-1.5 text-center rounded-full text-sm font-bold transition-all ${categoryTab === 'stock' ? 'bg-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)]' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                Stocks ({displayedTrades.filter(t => t.type === 'stock').length})
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {displayedTrades.length === 0 ? (
@@ -322,16 +327,19 @@ const TradesPage: React.FC = () => {
         <>
           {/* Mobile: Single column based on category tab */}
           <div className="md:hidden w-full">
-            {categoryTab === 'crypto' 
-              ? renderTradeList('crypto', displayedTrades) 
-              : renderTradeList('stock', displayedTrades)
-            }
+            {!(showCryptoColumn && showStockColumn) ? (
+               showCryptoColumn ? renderTradeList('crypto', displayedTrades) : renderTradeList('stock', displayedTrades)
+            ) : (
+               categoryTab === 'crypto' 
+                 ? renderTradeList('crypto', displayedTrades) 
+                 : renderTradeList('stock', displayedTrades)
+            )}
           </div>
 
-          {/* Desktop: Two columns */}
-          <div className="hidden md:grid md:grid-cols-2 gap-8 w-full">
-            <div>{renderTradeList('crypto', displayedTrades)}</div>
-            <div>{renderTradeList('stock', displayedTrades)}</div>
+          {/* Desktop: Columns */}
+          <div className={`hidden md:grid gap-8 w-full ${showCryptoColumn && showStockColumn ? 'md:grid-cols-2' : 'md:grid-cols-1 max-w-3xl mx-auto'}`}>
+            {showCryptoColumn && <div>{renderTradeList('crypto', displayedTrades)}</div>}
+            {showStockColumn && <div>{renderTradeList('stock', displayedTrades)}</div>}
           </div>
         </>
       )}
