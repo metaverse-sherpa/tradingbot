@@ -248,7 +248,70 @@ async def main():
         tasks.append(delayed_launch(i, is_premium))
 
     await asyncio.gather(*tasks)
+    
+    # Clean up generated test users after successful completion of the load test
+    cleanup_test_users()
+    
     log_event("test_complete", {})
+
+def cleanup_test_users():
+    """
+    Deletes all load-test users created during the run from:
+    1. Firebase Authentication
+    2. Remote PostgreSQL Database (via SSH psql command)
+    """
+    log_event("info", "Cleaning up generated load test users...")
+    
+    # 1. Initialize Firebase Admin SDK
+    try:
+        import firebase_admin
+        from firebase_admin import credentials, auth as firebase_auth
+        
+        cert_path = os.path.abspath("firebase-adminsdk.json")
+        if not firebase_admin._apps:
+            if os.path.exists(cert_path):
+                cred = credentials.Certificate(cert_path)
+                firebase_admin.initialize_app(cred)
+            else:
+                firebase_admin.initialize_app()
+                
+        # List and delete all matching test users
+        deleted_count = 0
+        page = firebase_auth.list_users()
+        while page:
+            uids_to_delete = []
+            for user in page.users:
+                if user.email and user.email.startswith("user_") and user.email.endswith("@metaversesherpa.io"):
+                    uids_to_delete.append(user.uid)
+            
+            for uid in uids_to_delete:
+                try:
+                    firebase_auth.delete_user(uid)
+                    deleted_count += 1
+                except Exception as e:
+                    log_event("warning", f"Failed to delete Firebase user {uid}: {e}")
+            
+            page = page.get_next_page()
+            
+        log_event("info", f"Deleted {deleted_count} test users from Firebase Authentication.")
+    except Exception as e:
+        log_event("error", f"Error cleaning up Firebase users: {e}")
+
+    # 2. Delete users from remote PostgreSQL database via SSH psql command
+    cmd = (
+        "ssh -o StrictHostKeyChecking=no johngiles@35.208.90.255 "
+        "\"PGPASSWORD=0018c695559ba14b172d08308b45c071 psql -U sherpa_admin -d sherpa_prod -h 127.0.0.1 "
+        "-c \\\"DELETE FROM portfoliobalancehistory WHERE user_id IN (SELECT id FROM webusers WHERE email LIKE 'user_%@metaversesherpa.io'); "
+        "DELETE FROM webusers WHERE email LIKE 'user_%@metaversesherpa.io';\\\"\""
+    )
+    try:
+        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+        if res.returncode == 0:
+            log_event("info", "Deleted test users and balance histories from remote PostgreSQL database.")
+        else:
+            log_event("error", f"Failed to delete test users from database: {res.stderr.strip()}")
+    except Exception as e:
+        log_event("error", f"Exception deleting users from database: {e}")
 
 if __name__ == "__main__":
     if sys.platform == 'win32':
