@@ -116,7 +116,7 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                             try:
                                 await page.wait_for_function("() => window.location.pathname.includes('dashboard') || document.querySelector('a[href=\"/settings\"]') !== null", timeout=30000)
                             except Exception as e:
-                                error_text = await page.evaluate("() => { const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
+                                error_text = await page.evaluate("() => { const toast = document.querySelector('div.fixed.bottom-4.right-4'); if (toast && toast.innerText) return toast.innerText.trim(); const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
                                 raise Exception(f"Registration Timeout exceeded. UI Error context: {error_text}")
                             
                             # Record the actual registration API/UI latency BEFORE doing slow SSH database updates and reloading
@@ -139,7 +139,7 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                             try:
                                 await page.wait_for_function("() => window.location.pathname.includes('dashboard') || document.querySelector('a[href=\"/settings\"]') !== null", timeout=30000)
                             except Exception as e:
-                                error_text = await page.evaluate("() => { const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
+                                error_text = await page.evaluate("() => { const toast = document.querySelector('div.fixed.bottom-4.right-4'); if (toast && toast.innerText) return toast.innerText.trim(); const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
                                 raise Exception(f"Login Timeout exceeded. UI Error context: {error_text}")
                         
                         else:
