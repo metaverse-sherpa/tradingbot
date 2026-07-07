@@ -102,17 +102,19 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                         start_time = time.time()
                         
                         if path == "/#/register" or path == "/register":
-                            await page.goto(full_url, wait_until="domcontentloaded")
-                            await page.wait_for_selector("#reg-email", timeout=10000)
+                            # In React UI, go to /login first, then switch to register mode
+                            await page.goto(f"{target_url.rstrip('/')}/login", wait_until="domcontentloaded")
+                            await page.wait_for_selector("text=Create one", timeout=10000)
+                            await page.click("text=Create one")
                             
-                            await page.fill("#reg-name", name)
-                            await page.fill("#reg-email", email)
-                            await page.fill("#reg-password", password)
-                            await page.fill("#reg-password-confirm", password)
+                            # Wait for register form input fields
+                            await page.wait_for_selector("input[placeholder='Email Address']", timeout=10000)
+                            await page.fill("input[placeholder='Email Address']", email)
+                            await page.fill("input[placeholder='Create Password']", password)
                             
-                            await page.click("form#register-form button[type='submit']")
+                            await page.click("button[type='submit']:has-text('Create Account')")
                             try:
-                                await page.wait_for_function("() => window.location.hash.includes('dashboard') || localStorage.getItem('session_token') !== null", timeout=30000)
+                                await page.wait_for_function("() => window.location.pathname.includes('dashboard') || localStorage.getItem('session_token') !== null", timeout=30000)
                             except Exception as e:
                                 error_text = await page.evaluate("() => { const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
                                 raise Exception(f"Registration Timeout exceeded. UI Error context: {error_text}")
@@ -129,20 +131,20 @@ async def run_worker(worker_id, target_url, routes, is_premium, screenshots_dir,
                             start_time = None
                         
                         elif path == "/#/login" or path == "/login":
-                            await page.goto(full_url, wait_until="domcontentloaded")
-                            await page.wait_for_selector("#login-email", timeout=10000)
-                            await page.fill("#login-email", email)
-                            await page.fill("#login-password", password)
-                            await page.click("form#login-form button[type='submit']")
+                            await page.goto(f"{target_url.rstrip('/')}/login", wait_until="domcontentloaded")
+                            await page.wait_for_selector("input[placeholder='Email Address']", timeout=10000)
+                            await page.fill("input[placeholder='Email Address']", email)
+                            await page.fill("input[placeholder='Password']", password)
+                            await page.click("button[type='submit']:has-text('Sign In')")
                             try:
-                                await page.wait_for_function("() => window.location.hash.includes('dashboard')", timeout=30000)
+                                await page.wait_for_function("() => window.location.pathname.includes('dashboard')", timeout=30000)
                             except Exception as e:
                                 error_text = await page.evaluate("() => { const err = document.querySelector('.toast, .alert, .error-message, .text-danger, .text-red-500'); return err ? err.innerText : 'No visible UI error found'; }")
                                 raise Exception(f"Login Timeout exceeded. UI Error context: {error_text}")
                         
                         else:
                             await page.goto(full_url, wait_until="domcontentloaded")
-                            await page.wait_for_selector("#app", timeout=15000)
+                            await page.wait_for_selector("#root", timeout=15000)
                         
                         if start_time is not None:
                             latency = time.time() - start_time

@@ -8,69 +8,22 @@
     "routes": [
         {
             "action": "navigate",
-            "path": "/#/register",
+            "path": "/register",
             "screenshot": true
         },
         {
             "action": "navigate",
-            "path": "/#/dashboard",
+            "path": "/dashboard",
             "screenshot": true
         },
         {
-            "action": "click",
-            "disabled": true,
-            "screenshot": true,
-            "selector": ".glass-card:has(h4) >> nth=0"
-        },
-        {
-            "action": "wait_for_selector",
-            "disabled": true,
-            "screenshot": true,
-            "selector": "img[alt='Signal Chart']",
-            "timeout": 45000
-        },
-        {
             "action": "navigate",
-            "disabled": false,
-            "path": "/#/stats",
+            "path": "/stats",
             "screenshot": true
         },
         {
-            "action": "click",
-            "disabled": true,
-            "screenshot": true,
-            "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')"
-        },
-        {
-            "action": "wait_for_selector",
-            "disabled": true,
-            "screenshot": true,
-            "selector": "img[alt='Equity Curve']",
-            "timeout": 60000
-        },
-        {
             "action": "navigate",
-            "disabled": true,
-            "path": "/#/stats",
-            "screenshot": true
-        },
-        {
-            "action": "click",
-            "disabled": true,
-            "screenshot": true,
-            "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')"
-        },
-        {
-            "action": "wait_for_selector",
-            "disabled": true,
-            "screenshot": true,
-            "selector": "img[alt='Equity Curve']",
-            "timeout": 60000
-        },
-        {
-            "action": "navigate",
-            "disabled": false,
-            "path": "/#/settings",
+            "path": "/settings",
             "screenshot": true
         }
     ]

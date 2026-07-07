@@ -27,16 +27,10 @@ DEFAULT_CONFIG = {
     "premium_ratio": 0.2,
     "max_active_browsers": 4,
     "routes": [
-        {"path": "/#/register", "action": "navigate", "screenshot": True},
-        {"path": "/#/dashboard", "action": "navigate", "screenshot": True},
-        {"action": "click", "selector": ".glass-card:has(h4) >> nth=0", "screenshot": True},
-        {"action": "wait_for_selector", "selector": "img[alt='Signal Chart']", "timeout": 45000},
-        {"path": "/#/stats", "action": "navigate", "screenshot": True},
-        {"action": "click", "selector": ".glass-card:has-text('Valkyrie Elite Scalper') button:has-text('Backtest')", "screenshot": True},
-        {"action": "wait_for_selector", "selector": "img[alt='Equity Curve']", "timeout": 60000},
-        {"path": "/#/stats", "action": "navigate", "screenshot": True},
-        {"action": "click", "selector": ".glass-card:has-text('Sherpa Velocity Pullback') button:has-text('Backtest')", "screenshot": True},
-        {"action": "wait_for_selector", "selector": "img[alt='Equity Curve']", "timeout": 60000}
+        {"path": "/register", "action": "navigate", "screenshot": True},
+        {"path": "/dashboard", "action": "navigate", "screenshot": True},
+        {"path": "/stats", "action": "navigate", "screenshot": True},
+        {"path": "/settings", "action": "navigate", "screenshot": True}
     ]
 }
 
