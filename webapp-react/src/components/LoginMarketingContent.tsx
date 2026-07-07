@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Map, ZoomIn, Lock, ChevronDown, ChevronUp, History, Activity } from 'lucide-react';
 import api from '../lib/api';
+import architectureImg from '../assets/architecture_infographic.png';
 
 const LoginMarketingContent: React.FC = () => {
   const [guideExpanded, setGuideExpanded] = useState(false);
@@ -30,9 +31,9 @@ const LoginMarketingContent: React.FC = () => {
         </h3>
         <div 
           className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-square flex items-center justify-center cursor-zoom-in group/img shadow-lg"
-          onClick={() => window.open('/architecture_infographic.png', '_blank')}
+          onClick={() => window.open(architectureImg, '_blank')}
         >
-          <img src="/architecture_infographic.png" alt="System Architecture Infographic" className="w-full h-full object-cover" />
+          <img src={architectureImg} alt="System Architecture Infographic" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <ZoomIn size={24} className="text-white" />
             <span className="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
@@ -172,6 +173,54 @@ const LoginMarketingContent: React.FC = () => {
             </div>
           )}
         </div>
+      
+
+        <div className="bg-[#1b1f2c]/70 backdrop-blur-xl rounded-xl p-5 border border-white/5 transition-all duration-300 shadow-lg mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-white text-lg font-bold flex items-center gap-2">
+              📈 Sherpa Velocity Pullback
+            </h4>
+          </div>
+          
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <History size={16} className="text-[#3cd7ff]" />
+              <h5 className="text-xs font-bold text-[#3cd7ff] uppercase tracking-wider">5-Year Historical Backtest</h5>
+            </div>
+            <p className="text-[10px] text-gray-400 mb-4 leading-relaxed">
+              These performance metrics are based on <strong>5 years of rigorous historical data</strong>. (Simulated with $10k starting capital on US Equities).
+            </p>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-[#0b0e14]/40 rounded-lg p-2 text-center border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase">Win Rate</div>
+                <div className="text-[#00e676] font-bold text-sm">68.4%</div>
+              </div>
+              <div className="bg-[#0b0e14]/40 rounded-lg p-2 text-center border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase">Total Trades</div>
+                <div className="text-white font-bold text-sm">766</div>
+              </div>
+              <div className="bg-[#0b0e14]/40 rounded-lg p-2 text-center border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase">Pace</div>
+                <div className="text-white font-bold text-sm">0.42/day</div>
+              </div>
+              <div className="bg-[#0b0e14]/40 rounded-lg p-2 text-center border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase">Max Drawdown</div>
+                <div className="text-rose-500 font-bold text-sm">-22.7%</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-4 mt-4 border-t border-white/5 space-y-4 text-left">
+              <div className="space-y-1">
+                <h6 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Philosophy</h6>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Targets short-term oversold pullback cycles on megacap US equities during robust, verified uptrends.
+                </p>
+              </div>
+          </div>
+        </div>
+
       </section>
 
       {/* Live Active Signals Teaser */}
@@ -184,8 +233,8 @@ const LoginMarketingContent: React.FC = () => {
             </div>
           ) : (
             liveSignals.map((signal, idx) => {
-              const blurLevel = idx === 0 ? 'blur-[2px]' : idx === 1 ? 'blur-[3px]' : 'blur-[4px]';
-              const opacity = idx === 0 ? 'opacity-50' : idx === 1 ? 'opacity-30' : 'opacity-20';
+              
+              
               const pnlColor = (signal.unrealized_pnl_pct || 0) >= 0 ? 'text-[#00e676]' : 'text-rose-400';
               const sideColor = signal.side === 'BUY' ? 'text-[#00e676] bg-[#00e676]/20' : 'text-rose-400 bg-rose-500/20';
               const sideText = signal.side === 'BUY' ? 'LONG' : 'SHORT';
@@ -200,7 +249,7 @@ const LoginMarketingContent: React.FC = () => {
               }
               
               return (
-                <div key={idx} className={`bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/5 rounded-xl p-4 ${opacity} ${blurLevel}`}>
+                <div key={idx} className={`bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/5 rounded-xl p-4 opacity-100`}>
                   <div className="flex justify-between items-center mb-2">
                     <a 
                       href={linkUrl} 
@@ -212,8 +261,8 @@ const LoginMarketingContent: React.FC = () => {
                     </a>
                     <span className={`text-xs px-2 py-1 rounded ${sideColor}`}>{sideText}</span>
                   </div>
-                  <div className="text-xs text-gray-400">Entry: Locked</div>
-                  <div className="text-xs text-gray-400">Target: Locked</div>
+                  <div className="text-xs text-gray-400">Entry: <span className="blur-sm select-none text-white/50 font-mono">Locked</span></div>
+                  <div className="text-xs text-gray-400">Target: <span className="blur-sm select-none text-white/50 font-mono">Locked</span></div>
                   <div className={`${pnlColor} font-bold mt-2`}>
                     {(signal.unrealized_pnl_pct || 0) > 0 ? '+' : ''}{(signal.unrealized_pnl_pct || 0).toFixed(2)}% PnL
                   </div>

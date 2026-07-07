@@ -123,6 +123,13 @@ const BacktestsPage: React.FC = () => {
     }
   };
 
+
+  useEffect(() => {
+    if (searchParams.get('run') === 'true' && !loading && !results && !error) {
+      runBacktest();
+    }
+  }, [searchParams, strategy, riskPct, period]);
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
   };

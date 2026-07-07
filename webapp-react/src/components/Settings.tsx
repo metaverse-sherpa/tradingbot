@@ -674,7 +674,7 @@ const Settings: React.FC = () => {
                     ]}
                   />
                   <button 
-                    onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(user?.active_crypto_strategy || 'Valkyrie Elite Scalper')}&risk=${riskPct}`)}
+                    onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(user?.active_crypto_strategy || 'Valkyrie Elite Scalper')}&risk=${riskPct}&run=true`)}
                     className="px-4 bg-[#1f2028] border border-[#2e303a] rounded-xl text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center justify-center"
                     title="Run Backtest"
                   >
@@ -696,7 +696,7 @@ const Settings: React.FC = () => {
                     ]}
                   />
                   <button 
-                    onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(user?.active_stock_strategy || 'Sherpa Velocity Pullback')}&risk=${stockRiskPct}`)}
+                    onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(user?.active_stock_strategy || 'Sherpa Velocity Pullback')}&risk=${stockRiskPct}&run=true`)}
                     className="px-4 bg-[#1f2028] border border-[#2e303a] rounded-xl text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center justify-center"
                     title="Run Backtest"
                   >
@@ -773,8 +773,8 @@ const Settings: React.FC = () => {
                     <div className="bg-black/30 p-3 rounded-lg border border-white/10 space-y-1">
                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">🌐 Web App Link</span>
                       <div className="flex items-center justify-between gap-2">
-                        <input type="text" readOnly value={giftResult.web_gift_url} className="bg-transparent text-xs text-gray-400 font-mono border-none outline-none focus:ring-0 p-0 w-full select-all" />
-                        <button onClick={() => copyToClipboard(giftResult.web_gift_url, "Web link")} className="text-xs text-cyan-400 hover:underline">Copy</button>
+                        <input type="text" readOnly value={`${window.location.origin}/?gift=${giftResult.code}`} className="bg-transparent text-xs text-gray-400 font-mono border-none outline-none focus:ring-0 p-0 w-full select-all" />
+                        <button onClick={() => copyToClipboard(`${window.location.origin}/?gift=${giftResult.code}`, "Web link")} className="text-xs text-cyan-400 hover:underline">Copy</button>
                       </div>
                     </div>
                     <button onClick={() => setGiftResult(null)} className="w-full py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-lg transition-colors border border-white/10">

@@ -7,7 +7,7 @@ const ReferralsPage: React.FC = () => {
   const { showToast } = useToast();
   
   const refId = user?.telegram_chat_id || user?.id || '';
-  const inviteLink = user?.invite_link || `https://bot.metaversesherpa.io/#/register?ref=${refId}`;
+  const inviteLink = `${window.location.origin}/?ref=${refId}`;
   const telegramInviteLink = `https://t.me/metaversesherpa_trading_bot?start=ref_${refId}`;
   
   // Fetch counts/credits from the user object if they exist, otherwise default to 0
