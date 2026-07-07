@@ -275,24 +275,37 @@ def cleanup_test_users():
             else:
                 firebase_admin.initialize_app()
                 
-        # List and delete all matching test users
+        # List and delete all matching test users in batches of 1000
         deleted_count = 0
         page = firebase_auth.list_users()
+        uids_to_delete = []
         while page:
-            uids_to_delete = []
             for user in page.users:
                 if user.email and user.email.startswith("user_") and user.email.endswith("@metaversesherpa.io"):
                     uids_to_delete.append(user.uid)
             
-            for uid in uids_to_delete:
+            while len(uids_to_delete) >= 1000:
+                batch = uids_to_delete[:1000]
                 try:
-                    firebase_auth.delete_user(uid)
-                    deleted_count += 1
+                    res = firebase_auth.delete_users(batch)
+                    deleted_count += res.success_count
+                    if res.failure_count > 0:
+                        log_event("warning", f"Failed to delete {res.failure_count} Firebase users in batch.")
                 except Exception as e:
-                    log_event("warning", f"Failed to delete Firebase user {uid}: {e}")
-            
+                    log_event("error", f"Error in batch delete: {e}")
+                uids_to_delete = uids_to_delete[1000:]
+                
             page = page.get_next_page()
             
+        if uids_to_delete:
+            try:
+                res = firebase_auth.delete_users(uids_to_delete)
+                deleted_count += res.success_count
+                if res.failure_count > 0:
+                    log_event("warning", f"Failed to delete {res.failure_count} Firebase users in final batch.")
+            except Exception as e:
+                log_event("error", f"Error in final batch delete: {e}")
+                
         log_event("info", f"Deleted {deleted_count} test users from Firebase Authentication.")
     except Exception as e:
         log_event("error", f"Error cleaning up Firebase users: {e}")
