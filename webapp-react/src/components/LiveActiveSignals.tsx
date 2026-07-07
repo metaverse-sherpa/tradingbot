@@ -69,7 +69,10 @@ const LiveActiveSignals: React.FC = () => {
           })
         )}
         <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none">
-          <div className="text-center bg-[#1b1f2c]/95 backdrop-blur-md border border-[#3cd7ff]/20 px-5 py-4 rounded-xl max-w-[340px] shadow-[0_0_30px_rgba(60,215,255,0.15)] pointer-events-auto transition-transform hover:scale-105">
+          <div 
+            className="text-center bg-[#1b1f2c]/95 backdrop-blur-md border border-[#3cd7ff]/20 px-5 py-4 rounded-xl max-w-[340px] shadow-[0_0_30px_rgba(60,215,255,0.15)] pointer-events-auto transition-transform hover:scale-105 cursor-pointer"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
             <p className="text-sm text-white font-bold flex items-center justify-center gap-2 mb-2">
               <Lock size={16} className="text-[#3cd7ff]" /> Trade Details Locked
             </p>
