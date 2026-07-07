@@ -421,6 +421,7 @@ async def signal_engine(application):
                                                             if chat_id:
                                                                 database.increment_opened(chat_id)
                                                                 side_icon = "📈" if sig['side'] == 'buy' else "📉"
+                                                                from web_api.disclaimer import NFA_SHORT_MARKDOWN
                                                                 msg = (
                                                                     f"{side_icon} *{strat_name}* SIGNAL!\n\n"
                                                                     f"Symbol: {get_symbol_link(res['symbol'])}\n"
@@ -428,6 +429,7 @@ async def signal_engine(application):
                                                                     f"Entry: `{res['entry']:.8f}`\n"
                                                                     f"TP: `{res['tp']:.8f}`\n"
                                                                     f"SL: `{res['sl']:.8f}`"
+                                                                    f"{NFA_SHORT_MARKDOWN}"
                                                                 )
                                                                 try:
                                                                     df = await mdm.fetch_ohlcv(symbol, timeframe='15m')

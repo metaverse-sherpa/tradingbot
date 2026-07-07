@@ -483,6 +483,7 @@ async def run_theoretical_tally_engine(today_opens):
                     now_ts = int(time.time())
                     now_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
                     
+                    from web_api.disclaimer import NFA_SHORT_MARKDOWN
                     entry_text_before = (
                         "🏔️ *NEW FREE SIGNAL* 🏔️\n"
                         "───────────────────────────────\n"
@@ -499,7 +500,7 @@ async def run_theoretical_tally_engine(today_opens):
                         "Signal time: "
                     )
                     placeholder = now_dt.strftime("%Y-%m-%d %H:%M UTC")
-                    entry_msg = entry_text_before + placeholder
+                    entry_msg = entry_text_before + placeholder + NFA_SHORT_MARKDOWN
                     
                     for target_id in all_targets:
                         await send_telegram_message(target_id, entry_msg)

@@ -9,6 +9,8 @@ from utils_gcp import get_secret
 
 logger = logging.getLogger("email_service")
 
+from web_api.disclaimer import NFA_MEDIUM_HTML, NFA_SHORT_TEXT
+
 # Resend API Key
 RESEND_API_KEY = get_secret("RESEND_API_KEY") or os.getenv("RESEND_API_KEY", "")
 
@@ -377,8 +379,9 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
                 <a href="https://bot.metaversesherpa.io" class="btn-cta">Go To Dashboard</a>
             </div>
             <div class="footer">
-                🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
-                <br><br>
+                🏔️ Metaverse Sherpa Trading Platform
+                {NFA_MEDIUM_HTML}
+                <br>
                 Do you prefer silent hikes in the Metaverse? <br>
                 <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
             </div>
@@ -694,8 +697,9 @@ def get_combined_daily_summary_html(stock_opened, stock_closed, crypto_opened, c
                     <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
                 </div>
                 <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
-                    🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
-                    <br><br>
+                    🏔️ Metaverse Sherpa Trading Platform
+                    {NFA_MEDIUM_HTML}
+                    <br>
                     Do you prefer silent hikes in the Metaverse? <br>
                     <a href="{{UNSUBSCRIBE_LINK}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
                 </div>
@@ -922,8 +926,9 @@ def get_combined_weekly_summary_html(is_premium=False,
                     <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
                 </div>
                 <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
-                    🏔️ Metaverse Sherpa Institutional Trading Platform • Secure Military-Grade Encryption Active
-                    <br><br>
+                    🏔️ Metaverse Sherpa Trading Platform
+                    {NFA_MEDIUM_HTML}
+                    <br>
                     Do you prefer silent hikes in the Metaverse? <br>
                     <a href="{{{{UNSUBSCRIBE_LINK}}}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
                 </div>
@@ -1020,6 +1025,7 @@ def get_combined_daily_summary_telegram(stock_opened, stock_closed, crypto_opene
         lines.append("\n🚀 <b>UNLOCK FULL AUTOPILOT</b>\nUpgrade to <b>Premium Access</b> today to unlock automated fractional execution and see exact entry/SL/TP parameters in real time.\n<a href='https://bot.metaversesherpa.io/#/premium'>Upgrade to Premium Now</a>")
 
     lines.append("\n<a href='https://bot.metaversesherpa.io'>Access Trading Console</a>")
+    lines.append(NFA_SHORT_TEXT)
     
     return _chunk_telegram_message("\n".join(lines))
 
@@ -1084,4 +1090,6 @@ def get_combined_weekly_summary_telegram(is_premium=False,
         lines.append("\n🚀 <b>UNLOCK FULL AUTOPILOT</b>\nStop leaving money on the table. Upgrade to <b>Premium Access</b> today to turn those hypothetical returns into reality with automated execution.\n<a href='https://bot.metaversesherpa.io/#/premium'>Upgrade to Premium Now</a>")
 
     lines.append("\n<a href='https://bot.metaversesherpa.io'>Access Trading Console</a>")
+    lines.append(NFA_SHORT_TEXT)
     return _chunk_telegram_message("\n".join(lines))
+

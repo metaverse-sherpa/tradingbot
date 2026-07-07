@@ -47,9 +47,9 @@ const LoginMarketingContent: React.FC = () => {
             <span className="text-xs px-2.5 py-1 rounded-full bg-[#3cd7ff]/15 text-[#3cd7ff] font-bold border border-[#3cd7ff]/20">💎 Premium Tier</span>
             <span className="text-xs text-[#ffdb3c] font-bold">Automated Autopilot</span>
           </div>
-          <h3 className="font-bold text-white text-base flex items-center gap-2">🤖 Zero-Latency Execution</h3>
+          <h3 className="font-bold text-white text-base flex items-center gap-2">🤖 Hands-Free Autopilot</h3>
           <p className="text-xs text-gray-400 leading-relaxed">
-            Connect exchange APIs (Blofin, Bitget, MEXC, BingX, Binance, Alpaca) to automatically execute every signal with zero latency. Features advanced risk mitigation, Bollinger Bands, volatility squeezes, and up to 20x leverage.
+            Connect your exchange (Blofin, Bitget, MEXC, BingX, Binance, Alpaca) to automatically execute every signal. Features dynamic risk controls and optional leverage up to 20x.
           </p>
         </div>
       </section>
