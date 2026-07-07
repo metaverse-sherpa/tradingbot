@@ -1,5 +1,6 @@
-import React from 'react';
-import { BookOpen, Shield, TrendingUp, History, ZoomIn } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Shield, TrendingUp, History, ZoomIn, Activity } from 'lucide-react';
+import api from '../lib/api';
 
 const strategies = [
   {
@@ -45,6 +46,20 @@ const strategies = [
 ];
 
 const StrategiesPage: React.FC = () => {
+  const [freeStats, setFreeStats] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/stats/free');
+        setFreeStats(res.data?.strategies || []);
+      } catch (e) {
+        console.error('Failed to fetch free stats', e);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">
       
@@ -151,6 +166,29 @@ const StrategiesPage: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Live Stats Section */}
+                {(() => {
+                  const stat = freeStats.find(s => s.name === strat.name);
+                  if (!stat) return null;
+                  const isCrypto = strat.name.includes("Valkyrie");
+                  const accentColor = isCrypto ? 'text-cyan-400' : 'text-amber-400';
+                  
+                  return (
+                    <div className="bg-[#1b1f2c]/50 rounded-xl p-5 mt-6 border border-white/5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Activity size={18} className={accentColor} />
+                        <h5 className={`text-sm font-bold ${accentColor} uppercase tracking-wider`}>Live Alpha Stats</h5>
+                      </div>
+                      <div className="text-sm space-y-1.5">
+                        <p className="text-gray-400">• Win Rate: <span className={accentColor + " font-medium"}>{(stat.win_rate || 0).toFixed(1)}%</span> ({stat.wins} W | {stat.losses} L)</p>
+                        <p className="text-gray-400">• Realized PnL: <span className={`font-medium ${stat.realized_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{stat.realized_pct >= 0 ? '+' : ''}{(stat.realized_pct || 0).toFixed(2)}%</span></p>
+                        <p className="text-gray-400">• Unrealized PnL: <span className={`font-medium ${(stat.unrealized_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{(stat.unrealized_pct || 0) >= 0 ? '+' : ''}{(stat.unrealized_pct || 0).toFixed(2)}%</span></p>
+                        <p className="text-gray-400">• Active Signals: <span className={accentColor + " font-medium"}>{stat.active_count}</span></p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
