@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ParticlesBackground from './ParticlesBackground';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, LayoutDashboard, Activity, BarChart2, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert, BookOpen } from 'lucide-react';
+import { Settings, LayoutDashboard, Activity, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert, BookOpen } from 'lucide-react';
 import { logoutUser } from '../lib/firebase';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
@@ -132,12 +132,7 @@ const Layout: React.FC = () => {
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Signals</span>
               </Link>
             )}
-            {showAdvancedTabs && (
-              <Link to="/stats" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/stats' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-                <BarChart2 size={20} className="md:w-4 md:h-4" />
-                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Stats</span>
-              </Link>
-            )}
+
             {!isPremium && (
               <Link to="/premium" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/premium' ? 'text-yellow-500 md:bg-yellow-500/20' : 'text-gray-500 hover:text-yellow-500 md:text-gray-400 md:hover:bg-white/5'}`}>
                 <Crown size={20} className="md:w-4 md:h-4" />

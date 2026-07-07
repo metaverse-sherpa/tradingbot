@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, Share2, TrendingUp, TrendingDown, ChevronDown, DollarSign, RefreshCcw } from 'lucide-react';
+import { Activity, AlertTriangle, DollarSign, RefreshCcw } from 'lucide-react';
+import TradeCard from './TradeCard';
 import { useLocation } from 'react-router-dom';
 import api from '../lib/api';
 import SharePnLModal from './SharePnLModal';
@@ -92,17 +93,7 @@ const TradesPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const formatTimeAgo = (timestamp: number) => {
-    if (!timestamp) return 'Recent';
-    const timeInSeconds = timestamp > 10000000000 ? Math.floor(timestamp / 1000) : timestamp;
-    const seconds = Math.floor(Date.now() / 1000 - timeInSeconds);
-    if (seconds < 60) return `${Math.max(0, seconds)}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-  };
+  // formatTimeAgo moved to TradeCard.tsx
 
   const sortBy = activeTab === 'active' ? activeSortBy : closedSortBy;
 
@@ -133,102 +124,17 @@ const TradesPage: React.FC = () => {
         
         <div className="space-y-4">
           {typeTrades.map((trade: any, idx: number) => {
-            const isLong = trade.side?.toUpperCase() === 'LONG' || trade.side?.toUpperCase() === 'BUY';
-            const isProfit = (trade.unrealized_pnl >= 0 || trade.pnl_raw >= 0);
-            const pnlColor = isProfit ? 'text-emerald-400' : 'text-rose-400';
-            
-            const roe = activeTab === 'active' ? trade.roe : trade.pnl_pct;
-            const pnlRaw = activeTab === 'active' ? trade.unrealized_pnl : trade.pnl_raw;
-            
-            // Calculate mock % for target if we don't have the exact risk ratio 
-            const leverage = type === 'crypto' ? 20.0 : 1.0;
-            const tp_pct = trade.entry_price > 0 && trade.tp_price > 0 ? Math.abs((trade.tp_price - trade.entry_price) / trade.entry_price * 100) * leverage : 0;
-            const sl_pct = trade.entry_price > 0 && trade.sl_price > 0 ? Math.abs((trade.sl_price - trade.entry_price) / trade.entry_price * 100) * leverage : 0;
-            const targetDollar = trade.qty && trade.tp_price ? Math.abs(trade.tp_price - trade.entry_price) * trade.qty : 0;
-            const isExpanded = expandedTradeId === trade.id;
-            
-            const markPrice = trade.current_price || trade.mark_price || trade.exit_price || 0;
-            const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(trade.symbol || '')}&entry=${trade.entry_price || 0}&tp=${trade.tp_price || 0}&sl=${trade.sl_price || 0}&side=${trade.side || ''}&open_ts=${trade.open_time || trade.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(trade.strategy || '')}`;
-            
-            const isClickable = activeTab === 'active';
-
             return (
-              <div key={`${type}-${activeTab}-${trade.id || 'trade'}-${idx}`} className={`bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-lg relative overflow-hidden transition-all ${isExpanded ? 'ring-1 ring-white/20' : (isClickable ? 'hover:border-white/20 cursor-pointer' : '')}`} onClick={() => isClickable && setExpandedTradeId(isExpanded ? null : trade.id)}>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-sm">
-                      {type === 'stock' ? '🦙' : '🪙'}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white text-lg leading-tight">
-                        {(() => {
-                          const isCryptoTrade = type === 'crypto';
-                          let linkUrl = '';
-                          if (isCryptoTrade) {
-                            const baseSymbol = (trade.symbol || '').replace(/:.*$/, '').replace(/[\/-]/g, '').replace(/USDT?$/i, '').replace(/USD$/i, '');
-                            linkUrl = `https://marketmasters.ai/currency/${baseSymbol}USDT`;
-                          } else {
-                            linkUrl = `https://marketmasters.ai/stocks/${trade.symbol || ''}`;
-                          }
-                          return (
-                            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#3cd7ff] transition-colors underline decoration-white/30 underline-offset-2" onClick={(e) => e.stopPropagation()}>
-                              {(trade.symbol || '').split('/')[0]}
-                            </a>
-                          );
-                        })()}
-                      </h4>
-                      <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
-                        {isLong ? <TrendingUp size={12} className="text-emerald-400"/> : <TrendingDown size={12} className="text-rose-400"/>}
-                        {formatTimeAgo(activeTab === 'closed' ? (trade.close_time || trade.close_timestamp || trade.timestamp || trade.open_time) : (trade.open_time || trade.close_time))}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-right">
-                    <button 
-                      className="text-gray-400 hover:text-white transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShareTrade({ trade, type, roe: roe || 0, pnl: pnlRaw || 0 });
-                      }}
-                    >
-                      <Share2 size={18} />
-                    </button>
-                    <div>
-                      <p className={`font-bold text-lg leading-tight flex items-center justify-end gap-1 ${pnlColor}`}>
-                        {isProfit ? '+' : ''}{roe?.toFixed(2)}% <span className="text-xs text-gray-500 font-normal">of {tp_pct.toFixed(0)}%</span>
-                      </p>
-                      {hideDollars ? (
-                        <p className={`text-xs text-gray-500 mt-1 blur-sm opacity-70 select-none pointer-events-none`}>
-                          +***.** <span className="text-gray-500">/ +***.**</span>
-                        </p>
-                      ) : (
-                        <p className={`text-xs ${pnlColor} mt-1`}>
-                          {isProfit ? '+' : ''}${pnlRaw?.toFixed(2)} <span className="text-gray-500">/ +${targetDollar.toFixed(2)}</span>
-                        </p>
-                      )}
-                    </div>
-                    {isClickable && <ChevronDown size={20} className={`text-gray-500 ml-2 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center mt-6 text-xs text-gray-400 font-mono">
-                  <div>SL: ${(trade.sl_price || 0).toFixed(2)} (-{sl_pct.toFixed(0)}%)</div>
-                  <div>TP: ${(trade.tp_price || 0).toFixed(2)} ({tp_pct.toFixed(0)}%)</div>
-                </div>
-                
-                {isExpanded && (
-                  <div className="mt-6 pt-6 border-t border-white/5 space-y-4 cursor-default" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Market Analysis & Setup</h4>
-                    </div>
-                    <div className="font-bold text-white mb-2">{(trade.symbol || '').split('/')[0]} ({trade.side?.toUpperCase()}) - 1D Setup | {trade.strategy}</div>
-                    <div className="relative w-full bg-[#0b0f19]/50 rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[220px]">
-                      <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
-                    </div>
-                  </div>
-                )}
-              </div>
+              <TradeCard 
+                key={`${type}-${activeTab}-${trade.id || 'trade'}-${idx}`}
+                trade={trade}
+                type={type}
+                activeTab={activeTab}
+                hideDollars={hideDollars}
+                isExpanded={expandedTradeId === trade.id}
+                onToggleExpand={() => activeTab === 'active' && setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
+                onShare={() => setShareTrade({ trade, type, roe: activeTab === 'active' ? trade.roe : trade.pnl_pct || 0, pnl: activeTab === 'active' ? trade.unrealized_pnl : trade.pnl_raw || 0 })}
+              />
             );
           })}
         </div>

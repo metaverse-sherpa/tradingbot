@@ -4,7 +4,6 @@ import Layout from './components/Layout';
 
 import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
-import StatsPage from './components/StatsPage';
 import SignalsPage from './components/SignalsPage';
 import TradesPage from './components/TradesPage';
 import StrategiesPage from './components/StrategiesPage';
@@ -74,7 +73,7 @@ const App: React.FC = () => {
             <>
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="settings" element={<Settings />} />
-              <Route path="stats" element={<StatsPage />} />
+              <Route path="stats" element={<Navigate to="/signals" replace />} />
               <Route path="signals" element={<SignalsPage />} />
               <Route path="trades" element={<TradesPage />} />
               <Route path="backtests" element={<BacktestsPage />} />

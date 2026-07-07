@@ -4,6 +4,8 @@ import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'rec
 import { Activity, Clock, Settings, Zap, Target, Loader2, RefreshCcw } from 'lucide-react';
 import { useDashboardStore, useAuthStore } from '../store/useStore';
 import api from '../lib/api';
+import TradeCard from './TradeCard';
+import SharePnLModal from './SharePnLModal';
 
 const Dashboard: React.FC = () => {
   const { activeTab, setTab } = useDashboardStore();
@@ -19,6 +21,10 @@ const Dashboard: React.FC = () => {
   const [stockSignalCount, setStockSignalCount] = useState(0);
   const [activeSignals, setActiveSignals] = useState<any[]>([]);
   const [freeStats, setFreeStats] = useState<any[]>([]);
+  const [openTrades, setOpenTrades] = useState<any[]>([]);
+  const [openTradesLoading, setOpenTradesLoading] = useState(true);
+  const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
+  const [shareTrade, setShareTrade] = useState<{trade: any, type: 'crypto'|'stock', roe: number, pnl: number} | null>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
@@ -28,16 +34,31 @@ const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchData(true);
+    fetchData();
     
     // Auto-refresh every 30 seconds
     const interval = setInterval(() => fetchData(false), 30000);
     return () => clearInterval(interval);
   }, []);
 
+  const fetchOpenTrades = async (bypassCache = false) => {
+    if (bypassCache || openTrades.length === 0) setOpenTradesLoading(true);
+    try {
+      const openRes = await api.get(`/trades/open${bypassCache ? '?bypass_cache=true' : ''}`);
+      const validOpenTrades = (openRes.data || []).filter((t: any) => !t.id?.startsWith('local-'));
+      setOpenTrades(validOpenTrades);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setOpenTradesLoading(false);
+    }
+  };
+
   const fetchData = async (bypassCache = false) => {
     setLoading(true);
     setSignalsLoading(true);
+
+    fetchOpenTrades(bypassCache);
 
     try {
       const res = await api.get(`/user/dashboard-summary${bypassCache ? '?bypass_cache=true' : ''}`);
@@ -231,6 +252,46 @@ const Dashboard: React.FC = () => {
             </span>
           </button>
         </div>
+
+        {/* Active Trades (Top 5) */}
+        {(() => {
+          if (openTradesLoading) {
+            return (
+              <div className="mt-8 space-y-4">
+                <h3 className="font-bold text-white flex items-center gap-2 mb-4">
+                   ⚡ Live Active Trades <Loader2 className="animate-spin text-gray-500 size-4 ml-2" />
+                </h3>
+              </div>
+            );
+          }
+
+          const typeTrades = openTrades
+            .filter((t: any) => t.type === type)
+            .sort((a, b) => (b.roe || b.pnl_pct || 0) - (a.roe || a.pnl_pct || 0))
+            .slice(0, 5);
+
+          if (typeTrades.length === 0) return null;
+
+          return (
+            <div className="mt-8 space-y-4">
+              <h3 className="font-bold text-white flex items-center gap-2 mb-4">
+                 ⚡ Live Active Trades <span className="text-sm text-gray-500 font-normal">({typeTrades.length})</span>
+              </h3>
+              {typeTrades.map((trade: any, idx: number) => (
+                <TradeCard 
+                  key={`${type}-active-${trade.id || 'trade'}-${idx}`}
+                  trade={trade}
+                  type={type}
+                  activeTab="active"
+                  hideDollars={hideDollars}
+                  isExpanded={expandedTradeId === trade.id}
+                  onToggleExpand={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
+                  onShare={() => setShareTrade({ trade, type, roe: trade.roe || 0, pnl: trade.unrealized_pnl || 0 })}
+                />
+              ))}
+            </div>
+          );
+        })()}
       </div>
     );
   };
@@ -346,6 +407,16 @@ const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {shareTrade && (
+        <SharePnLModal 
+          trade={shareTrade.trade}
+          type={shareTrade.type}
+          roe={shareTrade.roe}
+          pnl={shareTrade.pnl}
+          onClose={() => setShareTrade(null)}
+        />
+      )}
     </div>
   );
 };
