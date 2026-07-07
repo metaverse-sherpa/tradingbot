@@ -40,18 +40,18 @@ const Dashboard: React.FC = () => {
     setSignalsLoading(true);
 
     try {
-      const signalsPromise = api.get(`/signals/active${bypassCache ? '?force=true' : ''}`).catch(() => ({ data: [] }));
+      const res = await api.get(`/user/dashboard-summary${bypassCache ? '?bypass_cache=true' : ''}`);
+      const data = res.data || {};
 
-      const [cBal, sBal, cStats, sStats, histRes, freeStatsRes] = await Promise.all([
-        api.get(`/user/balance?segment=crypto${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { crypto_balance: 0 } })),
-        api.get(`/user/balance?segment=stock${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { stock_balance: 0 } })),
-        api.get(`/user/stats?segment=crypto${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { open_positions: 0, wins: 0, losses: 0 } })),
-        api.get(`/user/stats?segment=stock${bypassCache ? '&bypass_cache=true' : ''}`).catch(() => ({ data: { open_positions: 0, wins: 0, losses: 0 } })),
-        api.get('/user/balance-history').catch(() => ({ data: [] })),
-        api.get('/stats/free').catch(() => ({ data: { strategies: [] } }))
-      ]);
+      const cBal = { data: data.crypto_balance || { crypto_balance: 0 } };
+      const sBal = { data: data.stock_balance || { stock_balance: 0 } };
+      const cStats = { data: data.crypto_stats || { crypto: { open_positions: 0, wins: 0, losses: 0 } } };
+      const sStats = { data: data.stock_stats || { stock: { open_positions: 0, wins: 0, losses: 0 } } };
+      const histRes = { data: data.balance_history || [] };
+      const freeStatsRes = { data: data.free_stats || { strategies: [] } };
+      const signals = data.active_signals || [];
 
-      const balHist = histRes.data || [];
+      const balHist = histRes.data;
       
       setFreeStats(freeStatsRes.data?.strategies || []);
 
@@ -83,41 +83,36 @@ const Dashboard: React.FC = () => {
       const cChart = buildChartData('crypto', cBalAmount);
       const sChart = buildChartData('stock', sBalAmount);
 
-        setCryptoData({
-          bal: cBalAmount,
-          open: cStats.data?.crypto?.open_positions || 0,
-          wins: cStats.data?.crypto?.wins || 0,
-          losses: cStats.data?.crypto?.losses || 0,
-          pnl: cStats.data?.crypto?.overall_pnl || 0,
-          pnl_pct: cStats.data?.crypto?.overall_pnl_pct || 0,
-          chart: cChart
-        });
+      setCryptoData({
+        bal: cBalAmount,
+        open: cStats.data?.crypto?.open_positions || 0,
+        wins: cStats.data?.crypto?.wins || 0,
+        losses: cStats.data?.crypto?.losses || 0,
+        pnl: cStats.data?.crypto?.overall_pnl || 0,
+        pnl_pct: cStats.data?.crypto?.overall_pnl_pct || 0,
+        chart: cChart
+      });
 
-        setStockData({
-          bal: sBalAmount,
-          open: sStats.data?.stock?.open_positions || 0,
-          wins: sStats.data?.stock?.wins || 0,
-          losses: sStats.data?.stock?.losses || 0,
-          pnl: sStats.data?.stock?.overall_pnl || 0,
-          pnl_pct: sStats.data?.stock?.overall_pnl_pct || 0,
-          chart: sChart
-        });
-        
-        setLoading(false);
-
-        const signalsRes = await signalsPromise;
-        const signals = signalsRes.data || [];
-        
-        setActiveSignals(signals);
-        setCryptoSignalCount(signals.filter((s: any) => s.symbol && s.symbol.includes('/')).length);
-        setStockSignalCount(signals.filter((s: any) => s.symbol && !s.symbol.includes('/')).length);
-        
-      } catch (e) {
-        console.error('Error fetching dashboard data', e);
-      } finally {
-        setLoading(false);
-        setSignalsLoading(false);
-      }
+      setStockData({
+        bal: sBalAmount,
+        open: sStats.data?.stock?.open_positions || 0,
+        wins: sStats.data?.stock?.wins || 0,
+        losses: sStats.data?.stock?.losses || 0,
+        pnl: sStats.data?.stock?.overall_pnl || 0,
+        pnl_pct: sStats.data?.stock?.overall_pnl_pct || 0,
+        chart: sChart
+      });
+      
+      setActiveSignals(signals);
+      setCryptoSignalCount(signals.filter((s: any) => s.symbol && s.symbol.includes('/')).length);
+      setStockSignalCount(signals.filter((s: any) => s.symbol && !s.symbol.includes('/')).length);
+      
+    } catch (e) {
+      console.error('Error fetching dashboard data', e);
+    } finally {
+      setLoading(false);
+      setSignalsLoading(false);
+    }
   };
 
   const renderColumn = (type: 'crypto' | 'stock', data: typeof cryptoData, signalCount: number) => {

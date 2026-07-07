@@ -1,201 +1,5 @@
 [
     {
-        "id": "run_1782384394",
-        "timestamp": 1782384394.4850519,
-        "duration": 73.98,
-        "status": "idle",
-        "success_count": 9,
-        "failure_count": 4,
-        "latencies_count": 36,
-        "errors": [
-            {
-                "timestamp": 1782384439.512265,
-                "worker_id": 7,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384439.5152462,
-                "worker_id": 6,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384447.827126,
-                "worker_id": 8,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384447.976521,
-                "worker_id": 9,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 40,
-        "peak_cpu": 12.4,
-        "peak_memory": 36.6
-    },
-    {
-        "id": "run_1782384394",
-        "timestamp": 1782384394.4850519,
-        "duration": 73.98,
-        "status": "idle",
-        "success_count": 9,
-        "failure_count": 4,
-        "latencies_count": 36,
-        "errors": [
-            {
-                "timestamp": 1782384439.512265,
-                "worker_id": 7,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384439.5152462,
-                "worker_id": 6,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384447.827126,
-                "worker_id": 8,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384447.976521,
-                "worker_id": 9,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 40,
-        "peak_cpu": 12.4,
-        "peak_memory": 36.6
-    },
-    {
-        "id": "run_1782384489",
-        "timestamp": 1782384489.7483048,
-        "duration": 86.13,
-        "status": "idle",
-        "success_count": 7,
-        "failure_count": 6,
-        "latencies_count": 28,
-        "errors": [
-            {
-                "timestamp": 1782384521.5788329,
-                "worker_id": 1,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384531.325601,
-                "worker_id": 5,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384531.521473,
-                "worker_id": 6,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384532.6548648,
-                "worker_id": 4,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384553.324529,
-                "worker_id": 7,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384567.575903,
-                "worker_id": 10,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 34,
-        "peak_cpu": 37.7,
-        "peak_memory": 39.26
-    },
-    {
-        "id": "run_1782384489",
-        "timestamp": 1782384489.7483048,
-        "duration": 86.13,
-        "status": "idle",
-        "success_count": 7,
-        "failure_count": 6,
-        "latencies_count": 28,
-        "errors": [
-            {
-                "timestamp": 1782384521.5788329,
-                "worker_id": 1,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384531.325601,
-                "worker_id": 5,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384531.521473,
-                "worker_id": 6,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384532.6548648,
-                "worker_id": 4,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384553.324529,
-                "worker_id": 7,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            },
-            {
-                "timestamp": 1782384567.575903,
-                "worker_id": 10,
-                "path": "/#/register",
-                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
-                "console": "[error] Failed to load resource: the server responded with a status of 400 ()"
-            }
-        ],
-        "screenshots_count": 34,
-        "peak_cpu": 37.7,
-        "peak_memory": 39.26
-    },
-    {
         "id": "run_1782384597",
         "timestamp": 1782384597.6334,
         "duration": 350.7,
@@ -708,5 +512,471 @@
         "screenshots_count": 352,
         "peak_cpu": 59.2,
         "peak_memory": 53.13
+    },
+    {
+        "id": "run_1783423351",
+        "timestamp": 1783423351.14078,
+        "duration": 7.56,
+        "status": "idle",
+        "success_count": 0,
+        "failure_count": 0,
+        "latencies_count": 0,
+        "errors": [],
+        "screenshots_count": 0,
+        "peak_cpu": 6.7,
+        "peak_memory": 37.95
+    },
+    {
+        "id": "run_1783423351",
+        "timestamp": 1783423351.14078,
+        "duration": 7.56,
+        "status": "idle",
+        "success_count": 0,
+        "failure_count": 0,
+        "latencies_count": 0,
+        "errors": [],
+        "screenshots_count": 0,
+        "peak_cpu": 6.7,
+        "peak_memory": 37.95
+    },
+    {
+        "id": "run_1783423363",
+        "timestamp": 1783423363.0684748,
+        "duration": 345.44,
+        "status": "completed",
+        "success_count": 41,
+        "failure_count": 59,
+        "latencies_count": 164,
+        "errors": [
+            {
+                "timestamp": 1783423396.1678138,
+                "worker_id": 0,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423396.528429,
+                "worker_id": 2,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423396.531615,
+                "worker_id": 1,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423397.433277,
+                "worker_id": 6,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423397.505379,
+                "worker_id": 5,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423399.741757,
+                "worker_id": 8,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423407.299391,
+                "worker_id": 9,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423411.2749062,
+                "worker_id": 7,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423416.431814,
+                "worker_id": 10,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423416.83467,
+                "worker_id": 11,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423435.364525,
+                "worker_id": 12,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423437.5316648,
+                "worker_id": 13,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423447.909836,
+                "worker_id": 19,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423447.918237,
+                "worker_id": 18,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423467.608663,
+                "worker_id": 25,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423468.1306381,
+                "worker_id": 26,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423475.742104,
+                "worker_id": 29,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423475.742795,
+                "worker_id": 28,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423484.4450219,
+                "worker_id": 32,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423485.807862,
+                "worker_id": 34,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423491.366121,
+                "worker_id": 35,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423491.3727832,
+                "worker_id": 36,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423518.168329,
+                "worker_id": 44,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423530.562239,
+                "worker_id": 46,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423535.059968,
+                "worker_id": 49,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423535.0709949,
+                "worker_id": 50,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423535.1349802,
+                "worker_id": 47,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423535.322811,
+                "worker_id": 51,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423548.8845818,
+                "worker_id": 54,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423548.885409,
+                "worker_id": 53,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423548.8915079,
+                "worker_id": 52,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423549.326041,
+                "worker_id": 55,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423573.035647,
+                "worker_id": 57,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423580.192184,
+                "worker_id": 58,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423581.060904,
+                "worker_id": 59,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423581.329756,
+                "worker_id": 61,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423592.326497,
+                "worker_id": 66,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423593.346275,
+                "worker_id": 67,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423593.357619,
+                "worker_id": 64,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423605.481017,
+                "worker_id": 70,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423614.354219,
+                "worker_id": 72,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423626.802638,
+                "worker_id": 74,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423627.65216,
+                "worker_id": 76,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423627.7150788,
+                "worker_id": 73,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423638.829561,
+                "worker_id": 79,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423638.86048,
+                "worker_id": 78,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423643.8567748,
+                "worker_id": 80,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423649.526209,
+                "worker_id": 82,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423649.5274591,
+                "worker_id": 83,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423658.1411588,
+                "worker_id": 85,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423671.4341671,
+                "worker_id": 86,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423672.061455,
+                "worker_id": 88,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423672.062273,
+                "worker_id": 87,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423672.3518999,
+                "worker_id": 89,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423687.5592508,
+                "worker_id": 94,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423687.5735319,
+                "worker_id": 93,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423690.129746,
+                "worker_id": 95,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423702.2761128,
+                "worker_id": 97,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            },
+            {
+                "timestamp": 1783423705.32556,
+                "worker_id": 99,
+                "path": "/register",
+                "error": "Registration Timeout exceeded. UI Error context: No visible UI error found",
+                "console": "[error] Failed to load resource: the server responded with a status of 400 ()\n[error] Registration failed FirebaseError: Firebase: Error (auth/too-many-requests).\n    at gs (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:72018)\n    at ds (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:71334)\n    at Ms (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77825)\n    at async Ns (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:77960)\n    at async Bl (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:11:124968)\n    at async onSubmit (https://bot.metaversesherpa.io/assets/index-1f5jl0O2.js:72:34249)"
+            }
+        ],
+        "screenshots_count": 223,
+        "peak_cpu": 55.3,
+        "peak_memory": 63.53
+    },
+    {
+        "id": "run_1783427507",
+        "timestamp": 1783427507.040006,
+        "duration": 260.52,
+        "status": "completed",
+        "success_count": 100,
+        "failure_count": 0,
+        "latencies_count": 400,
+        "errors": [],
+        "screenshots_count": 400,
+        "peak_cpu": 87.9,
+        "peak_memory": 40.2
     }
 ]

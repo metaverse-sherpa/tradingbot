@@ -185,22 +185,15 @@ def profile():
     user["server_time"] = now
     return jsonify(user), 200
 
-@trades_bp.route('/api/user/balance', methods=['GET'])
-@require_auth
-def get_balance():
-    user = g.user
+def get_balance_internal(user, segment=None, bypass_cache=False):
     user_id = user["id"]
-    segment = request.args.get("segment") # 'crypto' or 'stock'
-    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
-    
-    # Check cache BEFORE loading user credentials from DB!
     now = time.time()
     cache_key = ("balance", user_id, segment)
     with RESPONSE_CACHE_LOCK:
         if not bypass_cache and cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             if now < expiry:
-                return jsonify(cached_data), 200
+                return cached_data
 
     tg_user = _get_telegram_user(user)
     
@@ -325,15 +318,19 @@ def get_balance():
             
         RESPONSE_CACHE[cache_key] = (now + ttl, response_data)
         
-    return jsonify(response_data), 200
+    return response_data
 
-@trades_bp.route('/api/user/stats', methods=['GET'])
+@trades_bp.route('/api/user/balance', methods=['GET'])
 @require_auth
-def get_stats():
+def get_balance():
     user = g.user
-    user_id = user["id"]
     segment = request.args.get("segment") # 'crypto' or 'stock'
     bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
+    data = get_balance_internal(user, segment, bypass_cache)
+    return jsonify(data), 200
+
+def get_stats_internal(user, segment=None, bypass_cache=False):
+    user_id = user["id"]
     
     # Check cache BEFORE loading user credentials from DB!
     now = time.time()
@@ -351,7 +348,7 @@ def get_stats():
                 is_stale = db_has_open != cache_crypto_open
             
             if now < expiry and not is_stale:
-                return jsonify(cached_data), 200
+                return cached_data
 
     tg_user = _get_telegram_user(user) or user
     
@@ -652,7 +649,151 @@ def get_stats():
             
         RESPONSE_CACHE[cache_key] = (now + ttl, response_data)
         
-    return jsonify(response_data), 200
+    return response_data
+
+@trades_bp.route('/api/user/stats', methods=['GET'])
+@require_auth
+def get_stats():
+    user = g.user
+    segment = request.args.get("segment") # 'crypto' or 'stock'
+    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
+    data = get_stats_internal(user, segment, bypass_cache)
+    return jsonify(data), 200
+
+def get_free_stats_internal(bypass_cache=False):
+    global STATS_FREE_UPDATING
+    cache_key = "stats_free"
+    now = time.time()
+    
+    cached_data = None
+    has_cache = False
+    is_expired = True
+    
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            has_cache = True
+            is_expired = bypass_cache or (now >= expiry)
+            
+    if has_cache:
+        if is_expired:
+            with STATS_FREE_UPDATING_LOCK:
+                if not STATS_FREE_UPDATING:
+                    STATS_FREE_UPDATING = True
+                    threading.Thread(target=_update_free_stats_cache).start()
+        return cached_data
+        
+    with STATS_FREE_UPDATING_LOCK:
+        if not STATS_FREE_UPDATING:
+            STATS_FREE_UPDATING = True
+            threading.Thread(target=_update_free_stats_cache).start()
+            
+    # Fallback placeholder if cache is empty
+    disabled = database.get_disabled_strategies()
+    strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
+    return {
+        "total_open": 0,
+        "strategies": [{"name": s, "win_rate": 0.0, "wins": 0, "losses": 0, "realized_pct": 0.0, "unrealized_pct": 0.0, "active_count": 0, "active_trades": []} for s in strategy_names]
+    }
+
+def get_active_signals_internal(bypass_cache=False):
+    global SIGNALS_ACTIVE_UPDATING
+    cache_key = "signals_active"
+    now = time.time()
+    
+    # Quick lock check: If we have cached active signals, return them
+    if not bypass_cache:
+        with RESPONSE_CACHE_LOCK:
+            if cache_key in RESPONSE_CACHE:
+                expiry, cached_data = RESPONSE_CACHE[cache_key]
+                if now < expiry:
+                    disabled = database.get_disabled_strategies()
+                    filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+                    return filtered_data
+                
+    # Cache is empty, expired, or force refresh requested. Trigger background update if not running.
+    with SIGNALS_ACTIVE_UPDATING_LOCK:
+        is_updating = SIGNALS_ACTIVE_UPDATING
+        if not is_updating:
+            SIGNALS_ACTIVE_UPDATING = True
+            threading.Thread(target=_update_active_signals_cache).start()
+            
+    # If the cache had expired data, return it immediately while it refreshes in the background
+    with RESPONSE_CACHE_LOCK:
+        if cache_key in RESPONSE_CACHE:
+            expiry, cached_data = RESPONSE_CACHE[cache_key]
+            disabled = database.get_disabled_strategies()
+            filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+            return filtered_data
+            
+    # Fallback query if no cache exists
+    with database.db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, symbol, strategy, side, entry_price, tp_price, sl_price, open_time, status FROM ActiveSignals WHERE status = 'open' ORDER BY open_time DESC")
+        rows = c.fetchall()
+    signals = []
+    for r in rows:
+        signals.append({
+            "id": r[0], "symbol": r[1], "strategy": r[2], "side": r[3],
+            "entry_price": r[4], "tp_price": r[5], "sl_price": r[6],
+            "open_time": r[7], "status": r[8]
+        })
+    if not signals:
+        signals = [
+            {"id": 1, "symbol": "BTC/USDT", "strategy": "Mean Reversion Scalper", "side": "LONG", "entry_price": 63400.0, "tp_price": 64800.0, "sl_price": 62500.0, "open_time": int(time.time()) - 600, "status": "open"}
+        ]
+    return signals
+
+def get_balance_history_internal(user_id):
+    with database.db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT timestamp, encrypted_crypto_balance, encrypted_stock_balance FROM PortfolioBalanceHistory WHERE user_id = ? ORDER BY timestamp ASC', (user_id,))
+        rows = c.fetchall()
+        
+    history = []
+    for r in rows:
+        try:
+            crypto = float(database.decrypt(r[1])) if r[1] else 0
+        except Exception:
+            crypto = 0
+            
+        try:
+            stock = float(database.decrypt(r[2])) if r[2] else 0
+        except Exception:
+            stock = 0
+            
+        history.append({
+            "timestamp": r[0],
+            "crypto": crypto,
+            "stock": stock
+        })
+    return history
+
+@trades_bp.route('/api/user/dashboard-summary', methods=['GET'])
+@require_auth
+def get_dashboard_summary():
+    user = g.user
+    bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
+    
+    crypto_balance = get_balance_internal(user, segment='crypto', bypass_cache=bypass_cache)
+    stock_balance = get_balance_internal(user, segment='stock', bypass_cache=bypass_cache)
+    
+    crypto_stats = get_stats_internal(user, segment='crypto', bypass_cache=bypass_cache)
+    stock_stats = get_stats_internal(user, segment='stock', bypass_cache=bypass_cache)
+    
+    balance_history = get_balance_history_internal(user["id"])
+    free_stats = get_free_stats_internal(bypass_cache=bypass_cache)
+    active_signals = get_active_signals_internal(bypass_cache=bypass_cache)
+    
+    return jsonify({
+        "crypto_balance": crypto_balance,
+        "stock_balance": stock_balance,
+        "crypto_stats": crypto_stats,
+        "stock_stats": stock_stats,
+        "balance_history": balance_history,
+        "free_stats": free_stats,
+        "active_signals": active_signals
+    }), 200
 
 @trades_bp.route('/api/trades/open', methods=['GET'])
 @require_auth
