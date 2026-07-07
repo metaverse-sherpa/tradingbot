@@ -180,6 +180,10 @@ class PgCursorAdapter:
         except Exception:
             return None
 
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
     def close(self):
         self._cursor.close()
 

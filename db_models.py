@@ -164,3 +164,30 @@ gift_codes_table = Table(
     Column('is_used', Boolean, default=False),
     Column('created_at', Integer),
 )
+
+portfolio_positions_table = Table(
+    'portfoliopositions',
+    metadata_obj,
+    Column('id', Integer, primary_key=True, autoincrement=True),
+    Column('user_id', Integer, nullable=False),
+    Column('symbol', String, nullable=False),
+    Column('name', String),
+    Column('category', String, nullable=False),
+    Column('quantity', Float, nullable=False),
+    Column('avg_entry_price', Float, nullable=False),
+    Column('purchase_date', String, nullable=False),
+    Column('dividend_yield', Float, default=0.0),
+    Column('created_at', Integer, nullable=False),
+)
+
+portfolio_analysis_history_table = Table(
+    'portfolioanalysishistory',
+    metadata_obj,
+    Column('id', Integer, primary_key=True, autoincrement=True),
+    Column('user_id', Integer, nullable=False),
+    Column('score', Integer, nullable=False),
+    Column('analysis_text', String, nullable=False),
+    Column('action_plan', String, nullable=False),
+    Column('timestamp', Integer, nullable=False),
+)
+

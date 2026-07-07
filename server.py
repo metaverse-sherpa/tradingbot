@@ -47,6 +47,14 @@ CORS(
     allow_headers=["Content-Type", "Authorization"]
 )
 
+@app.after_request
+def add_header(response):
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+    return response
+
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -60,12 +68,15 @@ from web_api.routes_settings import settings_bp
 from web_api.routes_trades import trades_bp
 from web_api.routes_premium import premium_bp
 from web_api.routes_faq import faq_bp
+from web_api.routes_portfolio import portfolio_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(trades_bp)
 app.register_blueprint(premium_bp)
 app.register_blueprint(faq_bp)
+app.register_blueprint(portfolio_bp)
+
 
 # ----------------- Serve Frontend -----------------
 @app.route('/', defaults={'path': ''})

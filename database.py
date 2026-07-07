@@ -873,6 +873,46 @@ def init_db():
             import logging
             logging.getLogger(__name__).error(f"Migration error (realtime to daily): {e}")
 
+        # 📂 Portfolio Positions & AI Analysis History
+        if "PortfolioPositions" not in existing_tables:
+            try:
+                c.execute('''CREATE TABLE IF NOT EXISTS PortfolioPositions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    symbol TEXT NOT NULL,
+                    name TEXT,
+                    category TEXT NOT NULL,
+                    quantity REAL NOT NULL,
+                    avg_entry_price REAL NOT NULL,
+                    purchase_date TEXT NOT NULL,
+                    dividend_yield REAL DEFAULT 0.0,
+                    created_at INTEGER NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES WebUsers(id) ON DELETE CASCADE
+                )''')
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                import logging
+                logging.getLogger(__name__).error(f"Failed to create PortfolioPositions table: {e}")
+
+        if "PortfolioAnalysisHistory" not in existing_tables:
+            try:
+                c.execute('''CREATE TABLE IF NOT EXISTS PortfolioAnalysisHistory (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    score INTEGER NOT NULL,
+                    analysis_text TEXT NOT NULL,
+                    action_plan TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES WebUsers(id) ON DELETE CASCADE
+                )''')
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                import logging
+                logging.getLogger(__name__).error(f"Failed to create PortfolioAnalysisHistory table: {e}")
+
+
 
 
 def reset_crypto_stats(chat_id):

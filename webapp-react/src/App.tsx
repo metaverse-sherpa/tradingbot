@@ -21,8 +21,11 @@ import { onIdTokenChanged } from 'firebase/auth';
 import api from './lib/api';
 import { useAuthStore } from './store/useStore';
 
+import PortfolioPage from './components/PortfolioPage';
+
 const App: React.FC = () => {
   const { user, setUser, isAuthenticated, isLoading } = useAuthStore();
+  const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000) || !!user?.is_admin;
   
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -79,6 +82,7 @@ const App: React.FC = () => {
               <Route path="backtests" element={<BacktestsPage />} />
               <Route path="premium" element={<PremiumPage />} />
               <Route path="referrals" element={<ReferralsPage />} />
+              <Route path="portfolio" element={isPremium ? <PortfolioPage /> : <Navigate to="/premium" replace />} />
               {user?.is_admin && (
                 <>
                   <Route path="admin" element={<AdminPage />} />
@@ -93,6 +97,7 @@ const App: React.FC = () => {
       </Routes>
     </BrowserRouter>
   );
+
 };
 
 export default App;

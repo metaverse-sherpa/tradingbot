@@ -87,7 +87,7 @@ def update_faq(faq_id):
             WHERE id = ?
         ''', (question, answer, order_index, faq_id))
         
-        if conn.changes() == 0:
+        if c.rowcount == 0:
             return jsonify({"error": "FAQ not found"}), 404
             
         conn.commit()
@@ -104,7 +104,7 @@ def delete_faq(faq_id):
     with db_session() as conn:
         c = conn.cursor()
         c.execute("DELETE FROM FAQs WHERE id = ?", (faq_id,))
-        if conn.changes() == 0:
+        if c.rowcount == 0:
             return jsonify({"error": "FAQ not found"}), 404
         conn.commit()
         

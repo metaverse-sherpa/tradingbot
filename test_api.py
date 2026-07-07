@@ -1,22 +1,35 @@
 import sys
-import json
 sys.path.append('.')
-from web_api.routes_trades import run_backtest
-from flask import Flask, request, g
+from server import app
+from flask import g
+import jwt
 
-app = Flask(__name__)
+app.config['TESTING'] = True
+client = app.test_client()
 
-with app.test_request_context('/api/backtest/run', method='POST', json={
-    "strategy": "Sherpa Velocity Pullback",
-    "capital": 10000,
-    "risk_pct": 2.0,
-    "period": "Last 5 Years"
-}):
-    g.user = {"id": 1, "email": "test@test.com"}
-    response = run_backtest()
-    if isinstance(response, tuple):
-        resp, status = response
-        print(f"Status: {status}")
-        print(resp.get_data(as_text=True))
-    else:
-        print(response)
+with app.app_context():
+    @app.before_request
+    def set_user():
+        g.user = {"id": 1, "premium_expiry": 99999999999}
+        
+    # We must override the require_auth decorator properly or just mock out check_token
+    # Actually, simpler: patch the decorator.
+    
+    # Or just use the right auth token
+    from web_api.config import Config
+    import datetime
+    token = jwt.encode({
+        "user_id": 1,
+        "email": "test@metaversesherpa.io",
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    }, Config.JWT_SECRET, algorithm="HS256")
+    
+    res = client.get('/api/portfolio', headers={"Authorization": f"Bearer {token}"})
+    print(res.status_code)
+    try:
+        data = res.get_json()
+        for p in data['positions']:
+            if p['symbol'] in ['BTC', 'ETH']:
+                print(f"SYMBOL: {p['symbol']}, CATEGORY: {p['category']}")
+    except:
+        print(res.data.decode())

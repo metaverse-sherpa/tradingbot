@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ParticlesBackground from './ParticlesBackground';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, LayoutDashboard, Activity, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert, BookOpen } from 'lucide-react';
+import { Settings, LayoutDashboard, Activity, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert, BookOpen, Briefcase } from 'lucide-react';
 import { logoutUser } from '../lib/firebase';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
@@ -82,6 +82,9 @@ const Layout: React.FC = () => {
                   {/* Dropdown Menu */}
                   {profileOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-[#1f2028] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                      <Link to="/portfolio" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                        <Briefcase size={16} className="text-cyan-400" /> My Portfolio
+                      </Link>
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <Users size={16} className="text-emerald-400" /> Refer & Earn
                       </Link>
