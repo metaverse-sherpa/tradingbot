@@ -18,16 +18,16 @@ const LandingPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto px-6 sm:px-0">
         <button 
           onClick={() => navigate('/dashboard')}
-          className="bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(8,145,178,0.4)] transition-all flex items-center gap-2"
+          className="w-full sm:w-auto bg-[#3cd7ff] hover:bg-white text-black px-6 py-3 md:px-8 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-[0_0_20px_rgba(60,215,255,0.4)] transition-all flex justify-center items-center gap-2 uppercase tracking-wider"
         >
           Enter App <ArrowRight size={20} />
         </button>
         <button 
           onClick={() => navigate('/strategies')}
-          className="bg-[#1b1f2c] border border-white/10 hover:bg-white/5 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all"
+          className="w-full sm:w-auto bg-transparent border-2 border-[#3cd7ff] text-[#3cd7ff] hover:bg-[#3cd7ff]/10 px-6 py-3 md:px-8 md:py-4 rounded-xl font-bold text-base md:text-lg transition-all uppercase tracking-wider flex justify-center items-center"
         >
           View Strategies
         </button>

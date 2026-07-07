@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import LoginMarketingContent from './LoginMarketingContent';
+import ActiveStrategiesCatalog from './ActiveStrategiesCatalog';
+import LiveActiveSignals from './LiveActiveSignals';
 import { signInWithGoogle, auth } from '../lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useToast } from './Toast';
@@ -73,175 +75,195 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 w-full max-w-[420px] mx-auto flex flex-col items-center px-4 py-6 justify-center min-h-screen">
+    <div className="flex-1 w-full lg:max-w-[1100px] mx-auto flex flex-col gap-8 lg:gap-16 px-4 py-8 lg:py-16 min-h-[calc(100vh-80px)]">
       
-      {/* Header Card (Algorithmic Intelligence) */}
-      <div className="relative overflow-hidden w-full rounded-2xl mb-6 p-4 bg-gradient-to-br from-[#3cd7ff]/20 via-[#0c1f30] to-[#00e676]/20 border border-[#3cd7ff]/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
-        <div className="absolute -right-10 -top-10 w-64 h-64 bg-[#3cd7ff]/30 rounded-full blur-[80px] pointer-events-none"></div>
-        <div className="absolute -left-10 -bottom-10 w-64 h-64 bg-[#00e676]/30 rounded-full blur-[80px] pointer-events-none"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#3cd7ff]/10 via-transparent to-transparent pointer-events-none"></div>
-        
-        <div className="relative z-10 flex flex-col items-center">
-          <span className="text-[10px] flex items-center gap-1.5 text-[#3cd7ff]/90 font-bold uppercase tracking-widest bg-[#3cd7ff]/10 px-3 py-1 rounded-full border border-[#3cd7ff]/25 mb-4">
-            <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3cd7ff] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3cd7ff]"></span>
+      {/* Top Row: Login & System Architecture */}
+      <div className="flex flex-col lg:flex-row items-center lg:items-start lg:justify-center gap-8 lg:gap-16 w-full">
+        {/* Left Column: Login / Auth */}
+        <div className="w-full max-w-[420px] flex flex-col gap-6">
+        {/* Header Card (Algorithmic Intelligence) */}
+        <div className="relative overflow-hidden w-full rounded-2xl p-5 bg-gradient-to-br from-[#3cd7ff]/20 via-[#0c1f30] to-[#00e676]/20 border border-[#3cd7ff]/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
+          <div className="absolute -right-10 -top-10 w-64 h-64 bg-[#3cd7ff]/30 rounded-full blur-[80px] pointer-events-none"></div>
+          <div className="absolute -left-10 -bottom-10 w-64 h-64 bg-[#00e676]/30 rounded-full blur-[80px] pointer-events-none"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#3cd7ff]/10 via-transparent to-transparent pointer-events-none"></div>
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <span className="text-[10px] flex items-center gap-1.5 text-[#3cd7ff]/90 font-bold uppercase tracking-widest bg-[#3cd7ff]/10 px-3 py-1 rounded-full border border-[#3cd7ff]/25 mb-4">
+              <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3cd7ff] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3cd7ff]"></span>
+              </span>
+              Algorithmic Intelligence
             </span>
-            Algorithmic Intelligence
-          </span>
-          <h2 className="text-2xl text-center font-bold leading-tight">
-              <span className="text-white">Institutional-Grade</span><br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3cd7ff] to-[#00e676]">Autopilot Trading</span>
-          </h2>
-          <p className="text-xs text-gray-400 font-medium max-w-[360px] leading-relaxed mt-2.5">
-              Summit the markets with real-time autonomous trading setups and zero-latency execution.
+            <h2 className="text-2xl text-center font-bold leading-tight">
+                <span className="text-white">Institutional-Grade</span><br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3cd7ff] to-[#00e676]">Autopilot Trading</span>
+            </h2>
+            <p className="text-xs text-gray-400 font-medium max-w-[360px] leading-relaxed mt-2.5">
+                Summit the markets with real-time autonomous trading setups and zero-latency execution.
+            </p>
+          </div>
+        </div>
+
+        {/* Login Card */}
+        <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border-t-2 border-t-[#3cd7ff]/40 border-l border-r border-b border-white/5 rounded-xl w-full p-5 shadow-[0_0_20px_rgba(60,215,255,0.15)] flex flex-col gap-4">
+          
+          <button 
+            onClick={handleGoogleLogin}
+            className="w-full h-[46px] bg-white hover:bg-gray-50 text-gray-700 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-3 border border-gray-200"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+            <span>Continue with Google</span>
+          </button>
+
+          <div className="flex items-center gap-4 py-1">
+            <div className="flex-1 h-px bg-white/10"></div>
+            <span className="text-xs text-gray-500">or</span>
+            <div className="flex-1 h-px bg-white/10"></div>
+          </div>
+
+          {authMode === 'login' && (
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email Address" 
+                autoComplete="username"
+                required
+                className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
+              />
+              <div className="relative w-full">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password" 
+                  autoComplete="current-password"
+                  required
+                  className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg pl-4 pr-12 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full h-12 bg-[#00e676] hover:bg-[#00c853] text-slate-900 text-sm font-bold rounded-lg transition-all shadow-[0_0_20px_rgba(0,230,118,0.4)] hover:shadow-[0_0_30px_rgba(0,230,118,0.6)] disabled:opacity-50 mt-2"
+              >
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </button>
+              <div className="flex flex-col items-center gap-2 mt-4">
+                <button type="button" onClick={() => setAuthMode('forgot')} className="text-sm font-medium text-[#3cd7ff] hover:opacity-80 transition-opacity">
+                  Forgot password?
+                </button>
+                <p className="text-[11px] text-gray-400 mt-2">
+                  Don't have an account? <button type="button" onClick={() => setAuthMode('register')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity">Create one</button>
+                </p>
+              </div>
+            </form>
+          )}
+
+          {authMode === 'register' && (
+            <form onSubmit={handleEmailRegister} className="space-y-4">
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email Address" 
+                autoComplete="username"
+                required
+                className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
+              />
+              <div className="relative w-full">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create Password" 
+                  autoComplete="new-password"
+                  required
+                  className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg pl-4 pr-12 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full h-12 bg-[#3cd7ff] hover:bg-[#18c4ee] text-slate-900 text-sm font-bold rounded-lg transition-all shadow-[0_0_20px_rgba(60,215,255,0.4)] hover:shadow-[0_0_30px_rgba(60,215,255,0.6)] disabled:opacity-50 mt-2"
+              >
+                {isLoading ? 'Creating...' : 'Create Account'}
+              </button>
+              <div className="flex flex-col items-center gap-2 mt-4">
+                <p className="text-[11px] text-gray-400">
+                  Already have an account? <button type="button" onClick={() => setAuthMode('login')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity">Sign in</button>
+                </p>
+              </div>
+            </form>
+          )}
+
+          {authMode === 'forgot' && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <p className="text-xs text-gray-400 text-center mb-4">Enter your email and we'll send a reset link.</p>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email Address" 
+                autoComplete="email"
+                required
+                className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
+              />
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full h-12 bg-purple-500 hover:bg-purple-400 text-white text-sm font-bold rounded-lg transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] disabled:opacity-50 mt-2"
+              >
+                {isLoading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+              <div className="flex flex-col items-center gap-2 mt-4">
+                <button type="button" onClick={() => setAuthMode('login')} className="text-xs font-bold text-gray-400 hover:text-white transition-colors">
+                  Back to Sign In
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        <footer className="text-center px-4 mt-4">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+              By signing in, you agree to our Terms of Service and Privacy Policy. Institutional grade encryption active.
           </p>
+        </footer>
+      </div>
+
+        {/* Right Column: Marketing Content */}
+        <div className="w-full lg:max-w-[500px]">
+          <LoginMarketingContent />
         </div>
       </div>
 
-      {/* Login Card */}
-      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border-t-2 border-t-[#3cd7ff]/40 border-l border-r border-b border-white/5 rounded-xl w-full p-4 shadow-[0_0_20px_rgba(60,215,255,0.15)] flex flex-col gap-3">
-        
-        <button 
-          onClick={handleGoogleLogin}
-          className="w-full h-[46px] bg-white hover:bg-gray-50 text-gray-700 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-3 border border-gray-200"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-          <span>Continue with Google</span>
-        </button>
-
-        <div className="flex items-center gap-4 py-1">
-          <div className="flex-1 h-px bg-white/10"></div>
-          <span className="text-xs text-gray-500">or</span>
-          <div className="flex-1 h-px bg-white/10"></div>
-        </div>
-
-        {authMode === 'login' && (
-          <form onSubmit={handleEmailLogin} className="space-y-3">
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address" 
-              autoComplete="username"
-              required
-              className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
-            />
-            <div className="relative w-full">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password" 
-                autoComplete="current-password"
-                required
-                className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg pl-4 pr-12 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
-              />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)} 
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full h-12 bg-[#00e676] hover:bg-[#00c853] text-slate-900 text-sm font-bold rounded-lg transition-all shadow-[0_0_20px_rgba(0,230,118,0.4)] hover:shadow-[0_0_30px_rgba(0,230,118,0.6)] disabled:opacity-50 mt-2"
-            >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </button>
-            <div className="flex flex-col items-center gap-1 mt-3">
-              <button type="button" onClick={() => setAuthMode('forgot')} className="text-sm font-medium text-[#3cd7ff] hover:opacity-80 transition-opacity">
-                Forgot password?
-              </button>
-              <p className="text-[11px] text-gray-400">
-                Don't have an account? <button type="button" onClick={() => setAuthMode('register')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity">Create one</button>
-              </p>
-            </div>
-          </form>
-        )}
-
-        {authMode === 'register' && (
-          <form onSubmit={handleEmailRegister} className="space-y-3">
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address" 
-              autoComplete="username"
-              required
-              className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
-            />
-            <div className="relative w-full">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create Password" 
-                autoComplete="new-password"
-                required
-                className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg pl-4 pr-12 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
-              />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)} 
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full h-12 bg-[#3cd7ff] hover:bg-[#18c4ee] text-slate-900 text-sm font-bold rounded-lg transition-all shadow-[0_0_20px_rgba(60,215,255,0.4)] hover:shadow-[0_0_30px_rgba(60,215,255,0.6)] disabled:opacity-50 mt-2"
-            >
-              {isLoading ? 'Creating...' : 'Create Account'}
-            </button>
-            <div className="flex flex-col items-center gap-1 mt-2">
-              <p className="text-[11px] text-gray-400">
-                Already have an account? <button type="button" onClick={() => setAuthMode('login')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity">Sign in</button>
-              </p>
-            </div>
-          </form>
-        )}
-
-        {authMode === 'forgot' && (
-          <form onSubmit={handleForgotPassword} className="space-y-3">
-            <p className="text-xs text-gray-400 text-center mb-4">Enter your email and we'll send a reset link.</p>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address" 
-              autoComplete="email"
-              required
-              className="w-full h-12 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:border-[#3cd7ff] focus:shadow-[0_0_15px_rgba(60,215,255,0.2)] outline-none transition-all placeholder:text-gray-500"
-            />
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full h-12 bg-purple-500 hover:bg-purple-400 text-white text-sm font-bold rounded-lg transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] disabled:opacity-50 mt-2"
-            >
-              {isLoading ? 'Sending...' : 'Send Reset Link'}
-            </button>
-            <div className="flex flex-col items-center gap-1 mt-3">
-              <button type="button" onClick={() => setAuthMode('login')} className="text-xs font-bold text-gray-400 hover:text-white transition-colors">
-                Back to Sign In
-              </button>
-            </div>
-          </form>
-        )}
+      {/* Bottom Row: Active Strategies Catalog */}
+      <div className="w-full">
+        <ActiveStrategiesCatalog />
       </div>
 
-      <LoginMarketingContent />
+      {/* Live Active Signals Row */}
+      <div className="w-full">
+        <LiveActiveSignals />
+      </div>
 
-      <footer className="mt-8 text-center px-4 mb-4">
-        <p className="text-[11px] text-gray-500 leading-relaxed">
-            By signing in, you agree to our Terms of Service and Privacy Policy. Institutional grade encryption active.
-        </p>
-      </footer>
     </div>
   );
 };

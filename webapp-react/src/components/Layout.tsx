@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ParticlesBackground from './ParticlesBackground';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, LayoutDashboard, Activity, BarChart2, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert } from 'lucide-react';
+import { Settings, LayoutDashboard, Activity, BarChart2, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert, BookOpen } from 'lucide-react';
 import { logoutUser } from '../lib/firebase';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
@@ -48,10 +48,10 @@ const Layout: React.FC = () => {
         <nav className="border-b border-white/5 bg-[#131620]/80 backdrop-blur-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <div className="text-white font-bold tracking-widest text-lg flex items-center gap-2">
+              <Link to="/" className="text-white font-bold tracking-widest text-lg flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <img src="/favicon.svg" alt="Metaverse Sherpa" className="w-8 h-8" />
                 Metaverse Sherpa
-              </div>
+              </Link>
               
               {/* Navigation links moved to bottom navbar */}
             </div>
@@ -97,7 +97,13 @@ const Layout: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                location.pathname !== '/login' && (
+                  <Link to="/login" className="bg-[#3cd7ff] hover:bg-white text-black px-4 py-1.5 rounded-lg font-bold text-xs shadow-[0_0_15px_rgba(60,215,255,0.3)] transition-all uppercase tracking-wider">
+                    Login
+                  </Link>
+                )
+              )}
             </div>
           </div>
         </nav>
@@ -136,6 +142,12 @@ const Layout: React.FC = () => {
               <Link to="/premium" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/premium' ? 'text-yellow-500 md:bg-yellow-500/20' : 'text-gray-500 hover:text-yellow-500 md:text-gray-400 md:hover:bg-white/5'}`}>
                 <Crown size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Premium</span>
+              </Link>
+            )}
+            {!showAdvancedTabs && (
+              <Link to="/strategies" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/strategies' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
+                <BookOpen size={20} className="md:w-4 md:h-4" />
+                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Strategies</span>
               </Link>
             )}
             {user?.is_admin && (

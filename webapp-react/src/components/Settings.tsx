@@ -777,6 +777,13 @@ const Settings: React.FC = () => {
                         <button onClick={() => copyToClipboard(`${window.location.origin}/?gift=${giftResult.code}`, "Web link")} className="text-xs text-cyan-400 hover:underline">Copy</button>
                       </div>
                     </div>
+                    <div className="bg-black/30 p-3 rounded-lg border border-white/10 space-y-1">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">🤖 Telegram Bot Link</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <input type="text" readOnly value={`https://t.me/metaversesherpa_trading_bot?start=gift_${giftResult.code}`} className="bg-transparent text-xs text-gray-400 font-mono border-none outline-none focus:ring-0 p-0 w-full select-all" />
+                        <button onClick={() => copyToClipboard(`https://t.me/metaversesherpa_trading_bot?start=gift_${giftResult.code}`, "Telegram link")} className="text-xs text-cyan-400 hover:underline">Copy</button>
+                      </div>
+                    </div>
                     <button onClick={() => setGiftResult(null)} className="w-full py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-lg transition-colors border border-white/10">
                       Create Another
                     </button>

@@ -34,12 +34,12 @@ const strategies = [
       desc: "These performance metrics are based on 5 years of rigorous historical data. (Simulated with $10k starting capital on US Equities).",
       winRate: "68.4%",
       trades: "766",
-      sharpe: "-",
+      sharpe: "2.14",
       maxDrawdown: "-22.7%",
-      netPnl: "-",
-      finalBalance: "-",
-      chart: "",
-      infographic: ""
+      netPnl: "+1,515.8%",
+      finalBalance: "$161,586.43",
+      chart: "/api/charts/sherpa_equity.png",
+      infographic: "/api/charts/sherpa_velocity_infographic_ai.png"
     }
   }
 ];
