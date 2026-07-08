@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { 
-  Sparkles, FileUp, Plus, Edit2, Trash2, Search, ArrowUpRight, 
-  ArrowDownRight, RefreshCw, X, Calendar, Wallet, Check, 
-  AlertCircle, FileText, UploadCloud, ChevronDown 
+  Sparkles, FileUp, Plus, Edit2, Trash2, Search, 
+  RefreshCw, X, Wallet, 
+  UploadCloud, ChevronDown, Zap
 } from 'lucide-react';
 import api from '../lib/api';
-import { useAuthStore } from '../store/useStore';
+
 import { useToast } from './Toast';
 
 const COLORS = ['#3cd7ff', '#00C853', '#8A2BE2', '#FF8C00', '#FF1493', '#00CED1', '#ADFF2F', '#A9A9A9'];
 
 const PortfolioPage: React.FC = () => {
-  const { user } = useAuthStore();
-  const navigate = useNavigate();
   const { showToast } = useToast();
 
   // Positions and general stats
@@ -64,6 +62,10 @@ const PortfolioPage: React.FC = () => {
   const [riskDropdownOpen, setRiskDropdownOpen] = useState(false);
   const [goalDropdownOpen, setGoalDropdownOpen] = useState(false);
 
+  // Active signals and selected signal for modal
+  const [activeSignals, setActiveSignals] = useState<any[]>([]);
+  const [selectedSignal, setSelectedSignal] = useState<any | null>(null);
+
   // Fetch portfolio data
   const fetchPortfolioData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -106,11 +108,22 @@ const PortfolioPage: React.FC = () => {
     }
   };
 
+  // Fetch active signals
+  const fetchActiveSignals = async () => {
+    try {
+      const res = await api.get('/signals/active');
+      setActiveSignals(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch active signals", err);
+    }
+  };
+
   // Mount effects
   useEffect(() => {
     fetchPortfolioData();
     fetchAnalysis();
     fetchNews();
+    fetchActiveSignals();
   }, []);
 
   // AI analysis trigger
@@ -504,7 +517,7 @@ const PortfolioPage: React.FC = () => {
                     paddingAngle={3}
                     dataKey="value"
                   >
-                    {allocations.map((entry, index) => (
+                    {allocations.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -648,7 +661,18 @@ const PortfolioPage: React.FC = () => {
                         {pos.symbol.slice(0, 2)}
                       </span>
                       <div>
-                        <span className="font-bold text-white uppercase block">{pos.symbol}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-white uppercase block">{pos.symbol}</span>
+                          {activeSignals.find(s => s.symbol === pos.symbol) && (
+                            <button
+                              onClick={() => setSelectedSignal(activeSignals.find(s => s.symbol === pos.symbol))}
+                              className="text-amber-400 hover:text-amber-300 transition-colors p-0.5 rounded-full hover:bg-amber-400/10"
+                              title="Active Signal"
+                            >
+                              <Zap size={14} fill="currentColor" />
+                            </button>
+                          )}
+                        </div>
                         <span className="text-[10px] text-gray-500 block max-w-[120px] truncate">{pos.name}</span>
                       </div>
                     </div>
@@ -1062,6 +1086,48 @@ const PortfolioPage: React.FC = () => {
                 {analyzing ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} />}
                 {analyzing ? 'Analyzing...' : 'Run Analysis'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Signal Modal */}
+      {selectedSignal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#0b0d14] border border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-slide-up relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <Zap className="text-amber-400" size={18} fill="currentColor" />
+                Active Signal: {selectedSignal.symbol}
+              </h3>
+              <button 
+                onClick={() => setSelectedSignal(null)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-[#131620] p-3 rounded-xl border border-white/5">
+                <span className="text-xs text-gray-400 font-bold uppercase">Strategy</span>
+                <span className="text-sm font-bold text-white">{selectedSignal.strategy || 'N/A'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-[#131620] p-3 rounded-xl border border-white/5 text-center">
+                  <span className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Entry</span>
+                  <span className="text-sm font-bold text-white">{selectedSignal.entry_price || 'MKT'}</span>
+                </div>
+                <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 text-center">
+                  <span className="text-[10px] text-emerald-500 font-bold uppercase block mb-1">Take Profit</span>
+                  <span className="text-sm font-bold text-emerald-400">{selectedSignal.tp_price || '-'}</span>
+                </div>
+                <div className="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 text-center">
+                  <span className="text-[10px] text-rose-500 font-bold uppercase block mb-1">Stop Loss</span>
+                  <span className="text-sm font-bold text-rose-400">{selectedSignal.sl_price || '-'}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
