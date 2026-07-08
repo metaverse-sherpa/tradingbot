@@ -48,7 +48,7 @@ const Layout: React.FC = () => {
         <nav className="border-b border-white/5 bg-[#131620]/80 backdrop-blur-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link to="/" className="text-white font-bold tracking-widest text-lg flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-white font-bold tracking-widest text-lg flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <img src="/favicon.svg" alt="Metaverse Sherpa" className="w-8 h-8" />
                 Metaverse Sherpa
               </Link>
