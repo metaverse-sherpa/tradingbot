@@ -81,21 +81,31 @@ const Dashboard: React.FC = () => {
             .map((item: any) => ({ x: item.timestamp, y: type === 'crypto' ? item.crypto : item.stock }))
             .filter((p: any) => p.y && p.y > 0);
             
-        if (rawPoints.length >= 2) return rawPoints.map((p: any) => ({ 
+        const actualPoints = rawPoints.map((p: any) => ({ 
             value: p.y, 
             x: new Date(p.x * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) 
         }));
         
-        const baseVal = bal || 5000;
-        const now = Math.floor(Date.now() / 1000);
+        if (actualPoints.length >= 5) return actualPoints;
+        
+        const numDummyPoints = 5 - actualPoints.length;
+        const firstRealPointValue = actualPoints.length > 0 ? actualPoints[0].value : (bal || 5000);
+        const firstRealPointTime = rawPoints.length > 0 ? rawPoints[0].x : Math.floor(Date.now() / 1000);
         const daySec = 86400;
-        return [
-            { value: baseVal * 0.94, x: new Date((now - 4 * daySec) * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) },
-            { value: baseVal * 0.98, x: new Date((now - 3 * daySec) * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) },
-            { value: baseVal * 0.93, x: new Date((now - 2 * daySec) * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) },
-            { value: baseVal * 1.01, x: new Date((now - 1 * daySec) * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) },
-            { value: baseVal, x: new Date(now * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) }
-        ];
+        
+        const dummyPoints = [];
+        const volatility = [0.97, 1.02, 0.98, 0.99, 0.96]; // Random looking factors
+        
+        for (let i = numDummyPoints; i > 0; i--) {
+            const time = firstRealPointTime - (i * daySec);
+            const factor = volatility[i - 1] || 0.95;
+            dummyPoints.push({
+                value: firstRealPointValue * factor,
+                x: new Date(time * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+            });
+        }
+        
+        return [...dummyPoints, ...actualPoints];
       };
 
       const cBalAmount = cBal.data?.crypto_balance || 0;
