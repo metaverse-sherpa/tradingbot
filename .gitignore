@@ -28,6 +28,7 @@ venv/
 !images/*.jpeg
 !webapp/favicon.png
 !webapp/architecture_infographic.png
+!webapp-react/public/architecture_infographic.png
 pnl_cards/
 results/*
 !results/master_audit.png

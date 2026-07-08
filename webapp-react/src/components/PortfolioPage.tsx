@@ -317,14 +317,16 @@ const PortfolioPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-          <button 
-            onClick={() => setConfigModalOpen(true)}
-            disabled={analyzing}
-            className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
-          >
-            {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
-            {analyzing ? 'Analyzing...' : 'AI Analysis'}
-          </button>
+          {positions.length > 0 && (
+            <button 
+              onClick={() => setConfigModalOpen(true)}
+              disabled={analyzing}
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
+            >
+              {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+              {analyzing ? 'Analyzing...' : 'AI Analysis'}
+            </button>
+          )}
           
           <button 
             onClick={() => setCsvModalOpen(true)}
@@ -342,6 +344,33 @@ const PortfolioPage: React.FC = () => {
         </div>
       </div>
 
+      {positions.length === 0 ? (
+        <div className="bg-[#131620] border border-white/5 p-12 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 mt-8 animate-in zoom-in-95 duration-500">
+          <div className="bg-cyan-500/10 p-5 rounded-full text-cyan-400 mb-2 border border-cyan-500/20">
+            <Wallet size={48} />
+          </div>
+          <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">Welcome to your Portfolio</h3>
+          <p className="text-sm text-gray-400 max-w-md leading-relaxed">
+            Import a CSV or add your positions manually to get started. Once you've added your holdings, we'll unlock real-time AI analysis, KPI dashboards, and your automated news feed.
+          </p>
+          <div className="flex gap-4 pt-4">
+            <button 
+              onClick={() => setCsvModalOpen(true)}
+              className="flex items-center justify-center gap-2 bg-[#1f2028] border border-white/10 hover:border-white/20 text-gray-200 px-6 py-3 rounded-xl text-sm font-bold transition-all uppercase tracking-wider"
+            >
+              <FileUp size={16} /> Import CSV
+            </button>
+
+            <button 
+              onClick={openAddModal}
+              className="flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00E676] text-black px-6 py-3 rounded-xl text-sm font-black shadow-[0_0_15px_rgba(0,200,83,0.3)] transition-all uppercase tracking-wider"
+            >
+              <Plus size={16} /> Add Position
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* 🎉 Score Banner */}
       {analysis && (
         <div className="bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300">
@@ -760,6 +789,8 @@ const PortfolioPage: React.FC = () => {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       {/* 📝 Add / Edit Modal */}
       {modalOpen && (
