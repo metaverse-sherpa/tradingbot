@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { 
-  Sparkles, FileUp, Plus, Edit2, Trash2, Search, 
-  RefreshCw, X, Wallet, 
-  UploadCloud, ChevronDown, Zap
+import {
+  Sparkles, FileUp, Plus, Edit2, Trash2, Search,
+  RefreshCw, X, Wallet,
+  UploadCloud, ChevronDown, Zap, ArrowUp, ArrowDown
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -21,7 +21,8 @@ const PortfolioPage: React.FC = () => {
   const [positions, setPositions] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
   const [allocations, setAllocations] = useState<any[]>([]);
-  
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+
   // AI analysis and news
   const [analysis, setAnalysis] = useState<any>(null);
   const [prevScore, setPrevScore] = useState<number | null>(null);
@@ -296,10 +297,47 @@ const PortfolioPage: React.FC = () => {
   };
 
   // Filter positions by search query
-  const filteredPositions = positions.filter(p => 
-    p.symbol.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredPositions = positions.filter(p =>
+    p.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const sortedPositions = React.useMemo(() => {
+    let sortableItems = [...filteredPositions];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        if (aValue === undefined || aValue === null) aValue = '';
+        if (bValue === undefined || bValue === null) bValue = '';
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredPositions, sortConfig]);
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'desc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const renderSortIcon = (key: string) => {
+    if (sortConfig?.key === key) {
+      return sortConfig.direction === 'asc' ? <ArrowUp size={12} className="inline ml-1 text-cyan-400" /> : <ArrowDown size={12} className="inline ml-1 text-cyan-400" />;
+    }
+    return <ArrowDown size={12} className="inline ml-1 opacity-0 group-hover:opacity-50 transition-opacity" />;
+  };
 
   if (loading) {
     return (
@@ -326,7 +364,7 @@ const PortfolioPage: React.FC = () => {
 
   return (
     <div className="w-full min-w-0 space-y-6 max-w-7xl mx-auto px-1 md:px-0 animate-in fade-in duration-300">
-      
+
       {/* 🚀 Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -341,7 +379,7 @@ const PortfolioPage: React.FC = () => {
 
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {positions.length > 0 && (
-            <button 
+            <button
               onClick={() => setConfigModalOpen(true)}
               disabled={analyzing}
               className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
@@ -350,15 +388,15 @@ const PortfolioPage: React.FC = () => {
               {analyzing ? 'Analyzing...' : 'AI Analysis'}
             </button>
           )}
-          
-          <button 
+
+          <button
             onClick={() => setCsvModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-[#1f2028] border border-white/10 hover:border-white/20 text-gray-200 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all uppercase tracking-wider w-full sm:w-auto"
           >
-            <FileUp size={14} /> Import CSV
+            <FileUp size={14} /> Import Holdings
           </button>
 
-          <button 
+          <button
             onClick={openAddModal}
             className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00E676] text-black px-4 py-2 rounded-xl text-xs md:text-sm font-black shadow-[0_0_15px_rgba(0,200,83,0.3)] transition-all uppercase tracking-wider w-full sm:w-auto"
           >
@@ -377,14 +415,14 @@ const PortfolioPage: React.FC = () => {
             Import a CSV or add your positions manually to get started. Once you've added your holdings, we'll unlock real-time AI analysis, KPI dashboards, and your automated news feed.
           </p>
           <div className="flex gap-4 pt-4">
-            <button 
+            <button
               onClick={() => setCsvModalOpen(true)}
               className="flex items-center justify-center gap-2 bg-[#1f2028] border border-white/10 hover:border-white/20 text-gray-200 px-6 py-3 rounded-xl text-sm font-bold transition-all uppercase tracking-wider"
             >
-              <FileUp size={16} /> Import CSV
+              <FileUp size={16} /> Import Holdings
             </button>
 
-            <button 
+            <button
               onClick={openAddModal}
               className="flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00E676] text-black px-6 py-3 rounded-xl text-sm font-black shadow-[0_0_15px_rgba(0,200,83,0.3)] transition-all uppercase tracking-wider"
             >
@@ -394,432 +432,432 @@ const PortfolioPage: React.FC = () => {
         </div>
       ) : (
         <>
-      {/* 🎉 Score Banner */}
-      {analysis && (
-        <div className="bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300">
-          <div className="flex items-start sm:items-center gap-3">
-            <span className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg text-lg flex-shrink-0">🏆</span>
-            <div>
-              <h4 className="text-sm font-bold text-white uppercase tracking-wider">Portfolio Health Audited!</h4>
-              <p className="text-xs text-gray-400 mt-0.5 leading-normal">
-                Current health score: <span className="text-emerald-400 font-bold">{analysis.score}/100</span>
-                {prevScore !== null && prevScore !== analysis.score && (
-                  <span>
-                    {" "}(from <span className="text-gray-300">{prevScore}/100</span>, {" "}
-                    <span className={analysis.score > prevScore ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                      {analysis.score > prevScore ? `+${analysis.score - prevScore}` : `${analysis.score - prevScore}`} pts
-                    </span>)
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setShowHowOpen(!showHowOpen)}
-            className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 font-bold px-3 py-2 sm:py-1.5 rounded-lg text-xs tracking-wider uppercase transition-colors text-center"
-          >
-            {showHowOpen ? 'Hide Guide' : 'Show me how'}
-          </button>
-        </div>
-      )}
-
-      {/* 📊 KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-        <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-          <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Market Value</span>
-          <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.market_value)}</h3>
-          <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Invested: {fmt(stats.cost_basis)}</p>
-        </div>
-
-        <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-          <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total P/L</span>
-          <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {stats.total_pnl >= 0 ? '+' : ''}{fmt(stats.total_pnl)}
-          </h3>
-          <p className={`text-[9px] md:text-[10px] mt-1 font-bold ${stats.total_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {stats.total_pnl_pct >= 0 ? '▲' : '▼'} {stats.total_pnl_pct.toFixed(2)}%
-          </p>
-        </div>
-
-        <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-          <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Daily P/L</span>
-          <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${stats.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {stats.daily_pnl >= 0 ? '+' : ''}{fmt(stats.daily_pnl)}
-          </h3>
-          <p className={`text-[9px] md:text-[10px] mt-1 font-bold ${stats.daily_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {stats.daily_pnl_pct >= 0 ? '▲' : '▼'} {stats.daily_pnl_pct.toFixed(2)}%
-          </p>
-        </div>
-
-        <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-          <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Today's Top Mover</span>
-          <h3 className="text-base md:text-lg font-black text-white mt-1 md:mt-2 truncate">
-            {stats.top_mover ? stats.top_mover : '-'}
-          </h3>
-          <p className={`text-[9px] md:text-[10px] mt-1.5 font-bold ${stats.top_mover_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {stats.top_mover_pct >= 0 ? '▲' : '▼'} {stats.top_mover_pct.toFixed(2)}%
-          </p>
-        </div>
-
-        <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden col-span-2 lg:col-span-1">
-          <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Est. Annual Div</span>
-          <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.annual_dividends)}</h3>
-          <p className="text-gray-500 text-[9px] md:text-[10px] mt-1 font-bold">{stats.dividend_yield_pct.toFixed(2)}% Yield</p>
-        </div>
-      </div>
-
-      {/* 🧭 Show Me How detailed guide */}
-      {analysis && showHowOpen && (
-        <div className="bg-[#1f2028] border border-white/10 rounded-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
-          <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
-            <h3 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="text-emerald-400" size={18} /> Detailed Implementation Guide
-            </h3>
-            <button onClick={() => setShowHowOpen(false)} className="text-gray-400 hover:text-white transition-colors self-end sm:self-auto">
-              <X size={18} />
-            </button>
-          </div>
-          <div className="prose prose-invert max-w-none text-xs md:text-sm text-gray-300 leading-relaxed space-y-3">
-            {analysis.show_me_how.split('\n').map((line: string, i: number) => {
-              if (line.startsWith('###')) return <h4 key={i} className="text-sm font-bold text-white uppercase mt-4 tracking-wide">{line.replace('###', '')}</h4>;
-              if (line.startsWith('##')) return <h3 key={i} className="text-base font-black text-white uppercase mt-4 tracking-wide">{line.replace('##', '')}</h3>;
-              return <p key={i}>{line}</p>;
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ⚡ Action Plan & recommendations */}
-      {analysis && (
-        <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-3.5">
-          <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-              🧭 Recommended Action Plan
-            </h3>
-            <button 
-              onClick={() => setShowHowOpen(!showHowOpen)}
-              className="flex items-center gap-1 bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all"
-            >
-              <Sparkles size={13} /> Show me how
-            </button>
-          </div>
-          <div className="space-y-2">
-            {analysis.action_plan && analysis.action_plan.map((act: string, idx: number) => (
-              <div key={idx} className="bg-[#1c1f2e]/60 border border-white/5 p-3.5 rounded-xl text-xs md:text-sm text-gray-300 flex items-start gap-3">
-                <span className="w-5 h-5 bg-[#3cd7ff]/10 text-[#3cd7ff] border border-[#3cd7ff]/20 font-bold flex items-center justify-center rounded-full text-xs flex-shrink-0 mt-0.5">
-                  {idx + 1}
-                </span>
-                <span className="leading-relaxed">{act}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 📊 Mini stats bar */}
-      <div className="bg-[#131620] border border-white/5 p-3 rounded-2xl grid grid-cols-2 md:grid-cols-7 gap-3 text-center">
-        <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
-          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Avg. Daily P&L</p>
-          <p className={`text-xs md:text-sm font-bold mt-1 ${stats.avg_daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {stats.avg_daily_pnl >= 0 ? '+' : ''}{fmt(stats.avg_daily_pnl)}/day
-          </p>
-        </div>
-        <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
-          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Win Rate</p>
-          <p className="text-xs md:text-sm font-bold text-white mt-1">{stats.win_rate.toFixed(0)}% profitable</p>
-        </div>
-        <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
-          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Best Performer</p>
-          <p className="text-xs md:text-sm font-bold text-emerald-400 mt-1 truncate">
-            {stats.best_performer ? `${stats.best_performer} +${stats.best_performer_pct.toFixed(1)}%` : '-'}
-          </p>
-        </div>
-        <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
-          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Worst Performer</p>
-          <p className="text-xs md:text-sm font-bold text-rose-400 mt-1 truncate">
-            {stats.worst_performer ? `${stats.worst_performer} ${stats.worst_performer_pct.toFixed(1)}%` : '-'}
-          </p>
-        </div>
-        <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
-          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Avg. Hold Time</p>
-          <p className="text-xs md:text-sm font-bold text-white mt-1">{stats.avg_hold_time_days}d</p>
-        </div>
-        <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
-          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Portfolio Age</p>
-          <p className="text-xs md:text-sm font-bold text-white mt-1">
-            {stats.portfolio_age_days > 365 
-              ? `${(stats.portfolio_age_days / 365).toFixed(1)}y` 
-              : `${stats.portfolio_age_days}d`}
-          </p>
-        </div>
-        <div className="last:border-0 py-1">
-          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Positions</p>
-          <p className="text-xs md:text-sm font-bold text-white mt-1">{stats.positions_count}</p>
-        </div>
-      </div>
-
-      {/* Donut allocation chart & breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Allocations Card */}
-        <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-6">
-          <div className="w-full md:w-1/2 flex flex-col items-center">
-            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">Portfolio Allocation</span>
-            <div className="w-48 h-48 relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={allocations}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {allocations.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => fmt(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-black text-white">{positions.length}</span>
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Positions</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full md:w-1/2 space-y-2 max-h-56 overflow-y-auto pr-1">
-            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Holdings Breakdown</span>
-            <div className="space-y-1.5">
-              {allocations.slice(0, 5).map((alloc, idx) => (
-                <div key={idx} className="bg-white/5 border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
-                      style={{ backgroundColor: COLORS[idx % COLORS.length] }} 
-                    />
-                    <span className="text-xs font-bold text-white uppercase">{alloc.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-black text-white block">{fmt(alloc.value)}</span>
-                    <span className="text-[10px] text-emerald-400 font-bold">{alloc.percentage.toFixed(1)}%</span>
-                  </div>
+          {/* 🎉 Score Banner */}
+          {analysis && (
+            <div className="bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300">
+              <div className="flex items-start sm:items-center gap-3">
+                <span className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg text-lg flex-shrink-0">🏆</span>
+                <div>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Portfolio Health Audited!</h4>
+                  <p className="text-xs text-gray-400 mt-0.5 leading-normal">
+                    Current health score: <span className="text-emerald-400 font-bold">{analysis.score}/100</span>
+                    {prevScore !== null && prevScore !== analysis.score && (
+                      <span>
+                        {" "}(from <span className="text-gray-300">{prevScore}/100</span>, {" "}
+                        <span className={analysis.score > prevScore ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                          {analysis.score > prevScore ? `+${analysis.score - prevScore}` : `${analysis.score - prevScore}`} pts
+                        </span>)
+                      </span>
+                    )}
+                  </p>
                 </div>
-              ))}
-              {allocations.length > 5 && (
-                <div className="text-center text-[10px] text-gray-500 font-bold pt-1">
-                  + {allocations.length - 5} other holdings
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 📰 Real-Time News feed */}
-        <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 flex flex-col justify-between max-h-[300px] md:max-h-none overflow-hidden">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-white/5 pb-2.5 mb-3">
-            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Holdings News Feed</h3>
-            <div className="flex flex-wrap gap-1.5">
-              <span className="bg-emerald-500/10 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-500/20 uppercase whitespace-nowrap">
-                {newsCounts.bullish} Bullish
-              </span>
-              <span className="bg-rose-500/10 text-rose-400 text-[9px] font-bold px-2 py-0.5 rounded border border-rose-500/20 uppercase whitespace-nowrap">
-                {newsCounts.bearish} Bearish
-              </span>
-              <span className="bg-gray-500/10 text-gray-400 text-[9px] font-bold px-2 py-0.5 rounded border border-gray-500/20 uppercase whitespace-nowrap">
-                {newsCounts.neutral} Neutral
-              </span>
-            </div>
-          </div>
-
-          {newsLoading ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8">
-              <RefreshCw className="animate-spin text-cyan-400" size={20} />
-              <span className="text-[10px] text-gray-500 font-bold uppercase">Refreshing news...</span>
-            </div>
-          ) : news.length === 0 ? (
-            <div className="text-center py-8 text-xs text-gray-500 font-bold uppercase">
-              No news found for current holdings.
-            </div>
-          ) : (
-            <div className="space-y-2.5 overflow-y-auto max-h-[220px] pr-1">
-              {news.map((item, idx) => (
-                <a 
-                  key={idx} 
-                  href={item.link} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-3 block transition-all"
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <span className="text-[10px] bg-[#3cd7ff]/10 border border-[#3cd7ff]/20 text-[#3cd7ff] px-2 py-0.5 rounded font-black uppercase">
-                      {item.symbol}
-                    </span>
-                    <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${getSentimentStyle(item.sentiment)}`}>
-                      {item.sentiment}
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-bold text-white mt-1.5 line-clamp-1 leading-normal">{item.title}</h4>
-                  <div className="flex items-center justify-between text-[9px] text-gray-500 mt-2 font-bold uppercase">
-                    <span>{item.provider}</span>
-                    <span>{item.pubDate ? new Date(item.pubDate).toLocaleDateString() : ''}</span>
-                  </div>
-                </a>
-              ))}
+              </div>
+              <button
+                onClick={() => setShowHowOpen(!showHowOpen)}
+                className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 font-bold px-3 py-2 sm:py-1.5 rounded-lg text-xs tracking-wider uppercase transition-colors text-center"
+              >
+                {showHowOpen ? 'Hide Guide' : 'Show me how'}
+              </button>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* 📋 Positions Table */}
-      <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3 border-b border-white/5 pb-3">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest">All Holdings ({positions.length})</h3>
-          
-          <div className="relative w-full md:w-64">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-              <Search size={14} />
-            </span>
-            <input
-              type="text"
-              placeholder="Search by symbol or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1f2028] border border-[#2e303a] rounded-xl pl-9 pr-4 py-2 text-xs md:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
-            />
+          {/* 📊 KPI Cards Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Market Value</span>
+              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.market_value)}</h3>
+              <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Invested: {fmt(stats.cost_basis)}</p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total P/L</span>
+              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.total_pnl >= 0 ? '+' : ''}{fmt(stats.total_pnl)}
+              </h3>
+              <p className={`text-[9px] md:text-[10px] mt-1 font-bold ${stats.total_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.total_pnl_pct >= 0 ? '▲' : '▼'} {stats.total_pnl_pct.toFixed(2)}%
+              </p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Daily P/L</span>
+              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${stats.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.daily_pnl >= 0 ? '+' : ''}{fmt(stats.daily_pnl)}
+              </h3>
+              <p className={`text-[9px] md:text-[10px] mt-1 font-bold ${stats.daily_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.daily_pnl_pct >= 0 ? '▲' : '▼'} {stats.daily_pnl_pct.toFixed(2)}%
+              </p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Today's Top Mover</span>
+              <h3 className="text-base md:text-lg font-black text-white mt-1 md:mt-2 truncate">
+                {stats.top_mover ? stats.top_mover : '-'}
+              </h3>
+              <p className={`text-[9px] md:text-[10px] mt-1.5 font-bold ${stats.top_mover_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.top_mover_pct >= 0 ? '▲' : '▼'} {stats.top_mover_pct.toFixed(2)}%
+              </p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden col-span-2 lg:col-span-1">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Est. Annual Div</span>
+              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.annual_dividends)}</h3>
+              <p className="text-gray-500 text-[9px] md:text-[10px] mt-1 font-bold">{stats.dividend_yield_pct.toFixed(2)}% Yield</p>
+            </div>
           </div>
-        </div>
 
-        <div className="max-w-full overflow-x-auto pb-2">
-          <table className="w-full min-w-[600px] text-left border-collapse text-xs md:text-sm">
-            <thead>
-              <tr className="border-b border-white/5 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
-                <th className="pb-3 text-center w-8 hidden lg:table-cell">#</th>
-                <th className="pb-3">Symbol</th>
-                <th className="pb-3 text-right">Daily P&L</th>
-                <th className="pb-3 text-right">Overall P&L</th>
-                <th className="pb-3 text-right hidden md:table-cell">Cost Basis</th>
-                <th className="pb-3 text-right hidden md:table-cell">Current Price</th>
-                <th className="pb-3 text-right">Mkt Value</th>
-                <th className="pb-3 text-right hidden lg:table-cell">Div Yield</th>
-                <th className="pb-3 text-right hidden sm:table-cell">% of Port</th>
-                <th className="pb-3 text-center hidden lg:table-cell">Purchase Date</th>
-                <th className="pb-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPositions.map((pos, idx) => (
-                <tr key={pos.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                  <td className="py-4 text-center text-gray-500 font-bold hidden lg:table-cell">{idx + 1}</td>
-                  
-                  <td className="py-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${pos.category === 'crypto' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'}`}>
-                        {pos.symbol.slice(0, 2)}
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-white uppercase block">{pos.symbol}</span>
-                          {activeSignals.find(s => s.symbol === pos.symbol) && (
-                            <button
-                              onClick={() => setSelectedSignal(activeSignals.find(s => s.symbol === pos.symbol))}
-                              className="text-amber-400 hover:text-amber-300 transition-colors p-0.5 rounded-full hover:bg-amber-400/10"
-                              title="Active Signal"
-                            >
-                              <Zap size={14} fill="currentColor" />
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-gray-500 block max-w-[120px] truncate">{pos.name}</span>
+          {/* 🧭 Show Me How detailed guide */}
+          {analysis && showHowOpen && (
+            <div className="bg-[#1f2028] border border-white/10 rounded-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
+              <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
+                <h3 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles className="text-emerald-400" size={18} /> Detailed Implementation Guide
+                </h3>
+                <button onClick={() => setShowHowOpen(false)} className="text-gray-400 hover:text-white transition-colors self-end sm:self-auto">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="prose prose-invert max-w-none text-xs md:text-sm text-gray-300 leading-relaxed space-y-3">
+                {analysis.show_me_how.split('\n').map((line: string, i: number) => {
+                  if (line.startsWith('###')) return <h4 key={i} className="text-sm font-bold text-white uppercase mt-4 tracking-wide">{line.replace('###', '')}</h4>;
+                  if (line.startsWith('##')) return <h3 key={i} className="text-base font-black text-white uppercase mt-4 tracking-wide">{line.replace('##', '')}</h3>;
+                  return <p key={i}>{line}</p>;
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ⚡ Action Plan & recommendations */}
+          {analysis && (
+            <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                  🧭 Recommended Action Plan
+                </h3>
+                <button
+                  onClick={() => setShowHowOpen(!showHowOpen)}
+                  className="flex items-center gap-1 bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all"
+                >
+                  <Sparkles size={13} /> Show me how
+                </button>
+              </div>
+              <div className="space-y-2">
+                {analysis.action_plan && analysis.action_plan.map((act: string, idx: number) => (
+                  <div key={idx} className="bg-[#1c1f2e]/60 border border-white/5 p-3.5 rounded-xl text-xs md:text-sm text-gray-300 flex items-start gap-3">
+                    <span className="w-5 h-5 bg-[#3cd7ff]/10 text-[#3cd7ff] border border-[#3cd7ff]/20 font-bold flex items-center justify-center rounded-full text-xs flex-shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span className="leading-relaxed">{act}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 📊 Mini stats bar */}
+          <div className="bg-[#131620] border border-white/5 p-3 rounded-2xl grid grid-cols-2 md:grid-cols-7 gap-3 text-center">
+            <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Avg. Daily P&L</p>
+              <p className={`text-xs md:text-sm font-bold mt-1 ${stats.avg_daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.avg_daily_pnl >= 0 ? '+' : ''}{fmt(stats.avg_daily_pnl)}/day
+              </p>
+            </div>
+            <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Win Rate</p>
+              <p className="text-xs md:text-sm font-bold text-white mt-1">{stats.win_rate.toFixed(0)}% profitable</p>
+            </div>
+            <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Best Performer</p>
+              <p className="text-xs md:text-sm font-bold text-emerald-400 mt-1 truncate">
+                {stats.best_performer ? `${stats.best_performer} +${stats.best_performer_pct.toFixed(1)}%` : '-'}
+              </p>
+            </div>
+            <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Worst Performer</p>
+              <p className="text-xs md:text-sm font-bold text-rose-400 mt-1 truncate">
+                {stats.worst_performer ? `${stats.worst_performer} ${stats.worst_performer_pct.toFixed(1)}%` : '-'}
+              </p>
+            </div>
+            <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Avg. Hold Time</p>
+              <p className="text-xs md:text-sm font-bold text-white mt-1">{stats.avg_hold_time_days}d</p>
+            </div>
+            <div className="md:border-r border-white/5 last:border-0 md:last:border-0 py-1">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Portfolio Age</p>
+              <p className="text-xs md:text-sm font-bold text-white mt-1">
+                {stats.portfolio_age_days > 365
+                  ? `${(stats.portfolio_age_days / 365).toFixed(1)}y`
+                  : `${stats.portfolio_age_days}d`}
+              </p>
+            </div>
+            <div className="last:border-0 py-1">
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Positions</p>
+              <p className="text-xs md:text-sm font-bold text-white mt-1">{stats.positions_count}</p>
+            </div>
+          </div>
+
+          {/* Donut allocation chart & breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Allocations Card */}
+            <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-6">
+              <div className="w-full md:w-1/2 flex flex-col items-center">
+                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">Portfolio Allocation</span>
+                <div className="w-48 h-48 relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={allocations}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={80}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {allocations.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => fmt(value)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-black text-white">{positions.length}</span>
+                    <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Positions</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full md:w-1/2 space-y-2 max-h-56 overflow-y-auto pr-1">
+                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Holdings Breakdown</span>
+                <div className="space-y-1.5">
+                  {allocations.slice(0, 5).map((alloc, idx) => (
+                    <div key={idx} className="bg-white/5 border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                        />
+                        <span className="text-xs font-bold text-white uppercase">{alloc.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-black text-white block">{fmt(alloc.value)}</span>
+                        <span className="text-[10px] text-emerald-400 font-bold">{alloc.percentage.toFixed(1)}%</span>
                       </div>
                     </div>
-                  </td>
-
-                  <td className="py-4 text-right">
-                    <span className={`font-bold block ${pos.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {pos.daily_pnl >= 0 ? '+' : ''}{fmt(pos.daily_pnl)}
-                    </span>
-                    <span className={`text-[10px] font-bold block ${pos.daily_change_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {pos.daily_change_pct >= 0 ? '+' : ''}{pos.daily_change_pct.toFixed(2)}%
-                    </span>
-                  </td>
-
-                  <td className="py-4 text-right">
-                    <span className={`font-bold block ${pos.overall_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {pos.overall_pnl >= 0 ? '+' : ''}{fmt(pos.overall_pnl)}
-                    </span>
-                    <span className={`text-[10px] font-bold block ${pos.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {pos.overall_pnl_pct >= 0 ? '+' : ''}{pos.overall_pnl_pct.toFixed(2)}%
-                    </span>
-                  </td>
-
-                  <td className="py-4 text-right hidden md:table-cell">
-                    <span className="font-bold text-white block">{fmt(pos.cost_basis)}</span>
-                    <span className="text-[10px] text-gray-500 block">
-                      {pos.quantity.toString().slice(0, 6)} @ {fmt(pos.avg_entry_price)}
-                    </span>
-                  </td>
-
-                  <td className="py-4 text-right hidden md:table-cell font-bold text-white">{fmt(pos.current_price)}</td>
-                  
-                  <td className="py-4 text-right font-black text-white">{fmt(pos.market_value)}</td>
-                  
-                  <td className="py-4 text-right font-bold text-gray-300 hidden lg:table-cell">
-                    {pos.dividend_yield > 0 ? (
-                      <>
-                        <span className="block text-white">{(pos.dividend_yield * 100).toFixed(2)}%</span>
-                        <span className="block text-[10px] text-gray-500">{fmt(pos.annual_dividend)}/yr</span>
-                      </>
-                    ) : '-'}
-                  </td>
-
-                  <td className="py-4 text-right hidden sm:table-cell">
-                    <span className="font-bold text-cyan-400">{pos.allocation_pct.toFixed(1)}%</span>
-                  </td>
-
-                  <td className="py-4 text-center font-medium text-gray-300 hidden lg:table-cell">
-                    {pos.purchase_date}
-                  </td>
-
-                  <td className="py-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button 
-                        onClick={() => openEditModal(pos)}
-                        className="bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-gray-400 hover:text-[#3cd7ff] p-1.5 rounded-lg transition-colors"
-                      >
-                        <Edit2 size={13} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(pos.id)}
-                        className="bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-gray-400 hover:text-rose-400 p-1.5 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                  ))}
+                  {allocations.length > 5 && (
+                    <div className="text-center text-[10px] text-gray-500 font-bold pt-1">
+                      + {allocations.length - 5} other holdings
                     </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredPositions.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-500 font-bold uppercase tracking-wider">
-                    No positions found matching your search.
-                  </td>
-                </tr>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 📰 Real-Time News feed */}
+            <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 flex flex-col justify-between max-h-[300px] md:max-h-none overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-white/5 pb-2.5 mb-3">
+                <h3 className="text-xs font-bold text-white uppercase tracking-widest">Holdings News Feed</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="bg-emerald-500/10 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-500/20 uppercase whitespace-nowrap">
+                    {newsCounts.bullish} Bullish
+                  </span>
+                  <span className="bg-rose-500/10 text-rose-400 text-[9px] font-bold px-2 py-0.5 rounded border border-rose-500/20 uppercase whitespace-nowrap">
+                    {newsCounts.bearish} Bearish
+                  </span>
+                  <span className="bg-gray-500/10 text-gray-400 text-[9px] font-bold px-2 py-0.5 rounded border border-gray-500/20 uppercase whitespace-nowrap">
+                    {newsCounts.neutral} Neutral
+                  </span>
+                </div>
+              </div>
+
+              {newsLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8">
+                  <RefreshCw className="animate-spin text-cyan-400" size={20} />
+                  <span className="text-[10px] text-gray-500 font-bold uppercase">Refreshing news...</span>
+                </div>
+              ) : news.length === 0 ? (
+                <div className="text-center py-8 text-xs text-gray-500 font-bold uppercase">
+                  No news found for current holdings.
+                </div>
+              ) : (
+                <div className="space-y-2.5 overflow-y-auto max-h-[220px] pr-1">
+                  {news.map((item, idx) => (
+                    <a
+                      key={idx}
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-3 block transition-all"
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <span className="text-[10px] bg-[#3cd7ff]/10 border border-[#3cd7ff]/20 text-[#3cd7ff] px-2 py-0.5 rounded font-black uppercase">
+                          {item.symbol}
+                        </span>
+                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${getSentimentStyle(item.sentiment)}`}>
+                          {item.sentiment}
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-white mt-1.5 line-clamp-1 leading-normal">{item.title}</h4>
+                      <div className="flex items-center justify-between text-[9px] text-gray-500 mt-2 font-bold uppercase">
+                        <span>{item.provider}</span>
+                        <span>{item.pubDate ? new Date(item.pubDate).toLocaleDateString() : ''}</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      </>
+            </div>
+          </div>
+
+          {/* 📋 Positions Table */}
+          <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-3 border-b border-white/5 pb-3">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest">All Holdings ({positions.length})</h3>
+
+              <div className="relative w-full md:w-64">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                  <Search size={14} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search by symbol or name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#1f2028] border border-[#2e303a] rounded-xl pl-9 pr-4 py-2 text-xs md:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="max-w-full overflow-x-auto pb-2">
+              <table className="w-full min-w-[600px] text-left border-collapse text-xs md:text-sm">
+                <thead className="sticky top-0 bg-[#131620] z-10 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)]">
+                  <tr className="border-b border-white/5 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="pb-3 text-center w-8 hidden lg:table-cell">#</th>
+                    <th className="pb-3 cursor-pointer group select-none" onClick={() => handleSort('symbol')}>Symbol{renderSortIcon('symbol')}</th>
+                    <th className="pb-3 text-right cursor-pointer group select-none" onClick={() => handleSort('daily_pnl')}>Daily P&L{renderSortIcon('daily_pnl')}</th>
+                    <th className="pb-3 text-right cursor-pointer group select-none" onClick={() => handleSort('overall_pnl')}>Overall P&L{renderSortIcon('overall_pnl')}</th>
+                    <th className="pb-3 text-right hidden md:table-cell cursor-pointer group select-none" onClick={() => handleSort('cost_basis')}>Cost Basis{renderSortIcon('cost_basis')}</th>
+                    <th className="pb-3 text-right hidden md:table-cell cursor-pointer group select-none" onClick={() => handleSort('current_price')}>Current Price{renderSortIcon('current_price')}</th>
+                    <th className="pb-3 text-right cursor-pointer group select-none" onClick={() => handleSort('market_value')}>Mkt Value{renderSortIcon('market_value')}</th>
+                    <th className="pb-3 text-right hidden lg:table-cell cursor-pointer group select-none" onClick={() => handleSort('dividend_yield')}>Div Yield{renderSortIcon('dividend_yield')}</th>
+                    <th className="pb-3 text-right hidden sm:table-cell cursor-pointer group select-none" onClick={() => handleSort('allocation_pct')}>% of Port{renderSortIcon('allocation_pct')}</th>
+                    <th className="pb-3 text-center hidden lg:table-cell cursor-pointer group select-none" onClick={() => handleSort('purchase_date')}>Purchase Date{renderSortIcon('purchase_date')}</th>
+                    <th className="pb-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedPositions.map((pos, idx) => (
+                    <tr key={pos.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                      <td className="py-4 text-center text-gray-500 font-bold hidden lg:table-cell">{idx + 1}</td>
+
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${pos.category === 'crypto' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'}`}>
+                            {pos.symbol.slice(0, 2)}
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-white uppercase block">{pos.symbol}</span>
+                              {activeSignals.find(s => s.symbol === pos.symbol) && (
+                                <button
+                                  onClick={() => setSelectedSignal(activeSignals.find(s => s.symbol === pos.symbol))}
+                                  className="text-amber-400 hover:text-amber-300 transition-colors p-0.5 rounded-full hover:bg-amber-400/10"
+                                  title="Active Signal"
+                                >
+                                  <Zap size={14} fill="currentColor" />
+                                </button>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-gray-500 block max-w-[120px] truncate">{pos.name}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-4 text-right">
+                        <span className={`font-bold block ${pos.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {pos.daily_pnl >= 0 ? '+' : ''}{fmt(pos.daily_pnl)}
+                        </span>
+                        <span className={`text-[10px] font-bold block ${pos.daily_change_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {pos.daily_change_pct >= 0 ? '+' : ''}{pos.daily_change_pct.toFixed(2)}%
+                        </span>
+                      </td>
+
+                      <td className="py-4 text-right">
+                        <span className={`font-bold block ${pos.overall_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {pos.overall_pnl >= 0 ? '+' : ''}{fmt(pos.overall_pnl)}
+                        </span>
+                        <span className={`text-[10px] font-bold block ${pos.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {pos.overall_pnl_pct >= 0 ? '+' : ''}{pos.overall_pnl_pct.toFixed(2)}%
+                        </span>
+                      </td>
+
+                      <td className="py-4 text-right hidden md:table-cell">
+                        <span className="font-bold text-white block">{fmt(pos.cost_basis)}</span>
+                        <span className="text-[10px] text-gray-500 block">
+                          {pos.quantity.toString().slice(0, 6)} @ {fmt(pos.avg_entry_price)}
+                        </span>
+                      </td>
+
+                      <td className="py-4 text-right hidden md:table-cell font-bold text-white">{fmt(pos.current_price)}</td>
+
+                      <td className="py-4 text-right font-black text-white">{fmt(pos.market_value)}</td>
+
+                      <td className="py-4 text-right font-bold text-gray-300 hidden lg:table-cell">
+                        {pos.dividend_yield > 0 ? (
+                          <>
+                            <span className="block text-white">{(pos.dividend_yield * 100).toFixed(2)}%</span>
+                            <span className="block text-[10px] text-gray-500">{fmt(pos.annual_dividend)}/yr</span>
+                          </>
+                        ) : '-'}
+                      </td>
+
+                      <td className="py-4 text-right hidden sm:table-cell">
+                        <span className="font-bold text-cyan-400">{pos.allocation_pct.toFixed(1)}%</span>
+                      </td>
+
+                      <td className="py-4 text-center font-medium text-gray-300 hidden lg:table-cell">
+                        {pos.purchase_date}
+                      </td>
+
+                      <td className="py-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openEditModal(pos)}
+                            className="bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-gray-400 hover:text-[#3cd7ff] p-1.5 rounded-lg transition-colors"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(pos.id)}
+                            className="bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-gray-400 hover:text-rose-400 p-1.5 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredPositions.length === 0 && (
+                    <tr>
+                      <td colSpan={11} className="text-center py-8 text-gray-500 font-bold uppercase tracking-wider">
+                        No positions found matching your search.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* 📝 Add / Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1f2028] border border-white/10 rounded-2xl w-full max-w-md p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setModalOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
             >
@@ -939,7 +977,7 @@ const PortfolioPage: React.FC = () => {
       {csvModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1f2028] border border-white/10 rounded-2xl w-full max-w-xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => { setCsvModalOpen(false); setParsedCSVPositions([]); }}
               className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
             >
@@ -953,7 +991,7 @@ const PortfolioPage: React.FC = () => {
 
             {parsedCSVPositions.length === 0 ? (
               <div className="space-y-4">
-                <div 
+                <div
                   onClick={() => fileInputRef.current?.click()}
                   className="border-2 border-dashed border-[#2e303a] hover:border-cyan-500/40 rounded-xl p-8 text-center cursor-pointer bg-[#131620]/30 transition-all flex flex-col items-center justify-center gap-3.5 group relative"
                 >
@@ -1070,14 +1108,14 @@ const PortfolioPage: React.FC = () => {
                 <Sparkles className="text-purple-400" size={20} />
                 Configure AI Analysis
               </h3>
-              <button 
+              <button
                 onClick={() => setConfigModalOpen(false)}
                 className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             {(!user?.risk_profile || !user?.investment_goal) && (
               <div className="space-y-4">
                 <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-4">
@@ -1088,7 +1126,7 @@ const PortfolioPage: React.FC = () => {
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Risk Profile</label>
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={() => {
                         setRiskDropdownOpen(!riskDropdownOpen);
                         setGoalDropdownOpen(false);
@@ -1116,11 +1154,11 @@ const PortfolioPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Investment Goal</label>
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={() => {
                         setGoalDropdownOpen(!goalDropdownOpen);
                         setRiskDropdownOpen(false);
@@ -1150,7 +1188,7 @@ const PortfolioPage: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="mt-8 pt-6 border-t border-white/5">
               <button
                 onClick={runAIAnalysis}
@@ -1175,14 +1213,14 @@ const PortfolioPage: React.FC = () => {
                 <Zap className="text-amber-400" size={18} fill="currentColor" />
                 Active Signal: {selectedSignal.symbol}
               </h3>
-              <button 
+              <button
                 onClick={() => setSelectedSignal(null)}
                 className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between items-center bg-[#131620] p-3 rounded-xl border border-white/5">
                 <span className="text-xs text-gray-400 font-bold uppercase">Strategy</span>
