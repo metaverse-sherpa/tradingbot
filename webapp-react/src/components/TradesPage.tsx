@@ -65,6 +65,8 @@ const TradesPage: React.FC = () => {
     alert(`Panic complete. Successfully closed ${successCount}/${tradesToClose.length} positions.`);
   };
 
+  const initialLoadDone = React.useRef(false);
+
   const fetchTrades = async (bypassCache = false) => {
     if (bypassCache) setLoading(true);
     try {
@@ -78,6 +80,13 @@ const TradesPage: React.FC = () => {
       const validOpenTrades = (openRes.data || []).filter((t: any) => !t.id?.startsWith('local-'));
       setOpenTrades(validOpenTrades);
       setHistory(histRes.data || []);
+
+      if (!initialLoadDone.current) {
+        if (!initialStatus && location.pathname !== '/history' && validOpenTrades.length === 0) {
+          setActiveTab('closed');
+        }
+        initialLoadDone.current = true;
+      }
     } catch (err) {
       console.error("Error fetching trades:", err);
     } finally {
