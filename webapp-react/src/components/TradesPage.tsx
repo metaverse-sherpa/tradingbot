@@ -16,8 +16,6 @@ const TradesPage: React.FC = () => {
   const { user } = useAuthStore();
   const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
   
-  const showCryptoColumn = user?.has_exchange_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
-  const showStockColumn = user?.has_alpaca_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
 
   useEffect(() => {
     if (initialCategory && initialCategory !== categoryTab) {
@@ -152,6 +150,12 @@ const TradesPage: React.FC = () => {
   };
 
   const displayedTrades = activeTab === 'active' ? openTrades : history;
+
+  const userHasCrypto = user?.has_exchange_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
+  const userHasStock = user?.has_alpaca_keys || (!user?.has_exchange_keys && !user?.has_alpaca_keys);
+  
+  const showCryptoColumn = userHasCrypto && displayedTrades.some(t => t.type === 'crypto');
+  const showStockColumn = userHasStock && displayedTrades.some(t => t.type === 'stock');
 
   if (loading) {
     return (
