@@ -328,7 +328,7 @@ const Dashboard: React.FC = () => {
           </p>
           <button 
             onClick={() => {
-              const isPremium = user?.subscription_tier === 'Premium' || user?.subscription_status === 'active';
+              const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
               navigate(isPremium ? '/settings' : '/premium');
             }}
             className="w-full py-2.5 bg-white/5 border border-white/10 text-white font-bold text-xs tracking-wider rounded-xl hover:bg-white/10 transition-colors"
