@@ -730,8 +730,8 @@ const PortfolioPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="max-w-full overflow-x-auto pb-2">
-              <table className="w-full min-w-[600px] text-left border-collapse text-xs md:text-sm">
+            <div className="max-w-full overflow-auto max-h-[70vh] pb-2">
+              <table className="w-full min-w-[600px] text-left border-collapse text-xs md:text-sm relative">
                 <thead className="sticky top-0 bg-[#131620] z-10 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)]">
                   <tr className="border-b border-white/5 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
                     <th className="pb-3 text-center w-8 hidden lg:table-cell">#</th>
