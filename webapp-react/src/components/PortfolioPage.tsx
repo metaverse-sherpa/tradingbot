@@ -21,7 +21,8 @@ const PortfolioPage: React.FC = () => {
   // Positions and general stats
   const [positions, setPositions] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
-  const [allocations, setAllocations] = useState<any[]>([]);
+  const [allocationTab, setAllocationTab] = useState<'all' | 'stock' | 'crypto'>('all');
+  const [holdingsTab, setHoldingsTab] = useState<'all' | 'stock' | 'crypto'>('all');
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
   // AI analysis and news
@@ -79,7 +80,6 @@ const PortfolioPage: React.FC = () => {
       const res = await api.get('/portfolio');
       setPositions(res.data.positions || []);
       setStats(res.data.stats || {});
-      setAllocations(res.data.allocation || []);
     } catch (err) {
       console.error("Failed to fetch portfolio data", err);
     } finally {
@@ -297,11 +297,34 @@ const PortfolioPage: React.FC = () => {
     setModalOpen(true);
   };
 
-  // Filter positions by search query
+  // Filter positions by search query and category tab
   const filteredPositions = positions.filter(p =>
-    p.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (holdingsTab === 'all' || p.category === holdingsTab) &&
+    (p.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     p.name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const displayAllocations = React.useMemo(() => {
+    const filtered = positions.filter(p => allocationTab === 'all' || p.category === allocationTab);
+    
+    const allocMap = new Map<string, number>();
+    let totalValue = 0;
+    
+    filtered.forEach(p => {
+      const current = allocMap.get(p.symbol) || 0;
+      const val = p.market_value || 0;
+      if (val > 0) {
+        allocMap.set(p.symbol, current + val);
+        totalValue += val;
+      }
+    });
+    
+    return Array.from(allocMap.entries()).map(([name, value]) => ({
+      name,
+      value,
+      percentage: totalValue > 0 ? (value / totalValue) * 100 : 0
+    })).sort((a, b) => b.value - a.value);
+  }, [positions, allocationTab]);
 
   const sortedPositions = React.useMemo(() => {
     let sortableItems = [...filteredPositions];
@@ -602,12 +625,29 @@ const PortfolioPage: React.FC = () => {
             {/* Allocations Card */}
             <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-6">
               <div className="w-full md:w-1/2 flex flex-col items-center">
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">Portfolio Allocation</span>
+                <div className="flex flex-col sm:flex-row items-center justify-between w-full mb-4">
+                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 sm:mb-0">Portfolio Allocation</span>
+                  <div className="flex bg-white/5 p-1 rounded-lg">
+                    {(['all', 'stock', 'crypto'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setAllocationTab(tab)}
+                        className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-colors ${
+                          allocationTab === tab 
+                            ? 'bg-cyan-500/20 text-cyan-400' 
+                            : 'text-gray-500 hover:text-white'
+                        }`}
+                      >
+                        {tab === 'all' ? 'All' : tab === 'stock' ? 'Stocks' : 'Crypto'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="w-48 h-48 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={allocations}
+                        data={displayAllocations}
                         cx="50%"
                         cy="50%"
                         innerRadius={55}
@@ -615,15 +655,15 @@ const PortfolioPage: React.FC = () => {
                         paddingAngle={3}
                         dataKey="value"
                       >
-                        {allocations.map((_, index) => (
+                        {displayAllocations.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => fmt(value)} />
+                      <Tooltip formatter={(value: any) => fmt(value)} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-black text-white">{positions.length}</span>
+                    <span className="text-2xl font-black text-white">{displayAllocations.length}</span>
                     <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Positions</span>
                   </div>
                 </div>
@@ -632,7 +672,7 @@ const PortfolioPage: React.FC = () => {
               <div className="w-full md:w-1/2 space-y-2 max-h-56 overflow-y-auto pr-1">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Holdings Breakdown</span>
                 <div className="space-y-1.5">
-                  {allocations.slice(0, 5).map((alloc, idx) => (
+                  {displayAllocations.slice(0, 5).map((alloc, idx) => (
                     <div key={idx} className="bg-white/5 border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span
@@ -647,9 +687,9 @@ const PortfolioPage: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  {allocations.length > 5 && (
+                  {displayAllocations.length > 5 && (
                     <div className="text-center text-[10px] text-gray-500 font-bold pt-1">
-                      + {allocations.length - 5} other holdings
+                      + {displayAllocations.length - 5} other holdings
                     </div>
                   )}
                 </div>
@@ -715,7 +755,28 @@ const PortfolioPage: React.FC = () => {
           {/* 📋 Positions Table */}
           <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-3 border-b border-white/5 pb-3">
-              <h3 className="text-sm font-bold text-white uppercase tracking-widest">All Holdings ({positions.length})</h3>
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest whitespace-nowrap">All Holdings</h3>
+                
+                <div className="flex bg-white/5 p-1 rounded-lg">
+                  {(['all', 'stock', 'crypto'] as const).map(tab => {
+                    const count = positions.filter(p => tab === 'all' || p.category === tab).length;
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setHoldingsTab(tab)}
+                        className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-colors ${
+                          holdingsTab === tab 
+                            ? 'bg-cyan-500/20 text-cyan-400' 
+                            : 'text-gray-500 hover:text-white'
+                        }`}
+                      >
+                        {tab === 'all' ? 'All' : tab === 'stock' ? 'Stocks' : 'Crypto'} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="relative w-full md:w-64">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
