@@ -829,38 +829,29 @@ def get_portfolio_news():
 
     news_items = news_items[:6]
     
-    prompt_list = [f"{i+1}. Title: {n['title']} (Summary: {n['summary']})" for i, n in enumerate(news_items)]
-    prompt_str = "\n".join(prompt_list)
-
-    system_instruction = (
-        "You are a financial sentiment analyst. Classify the sentiment of each provided news article headline/summary as exactly 'Bullish', 'Bearish', or 'Neutral'.\n"
-        "Return ONLY a JSON array of strings containing these classifications, matching the order of the input articles. E.g. ['Bullish', 'Neutral', 'Bearish']."
-    )
-
-    try:
-        raw_json = call_gemini(prompt_str, system_instruction=system_instruction, json_mode=True)
-        clean_json = raw_json.strip().replace("```json", "").replace("```", "")
-        sentiments = json.loads(clean_json)
-    except Exception:
-        sentiments = ["Neutral"] * len(news_items)
+    bullish_keywords = ['soar', 'surge', 'jump', 'gain', 'buy', 'up', 'high', 'growth', 'positive', 'bull', 'rally', 'beat', 'outperform', 'strong']
+    bearish_keywords = ['plunge', 'drop', 'fall', 'lose', 'sell', 'down', 'low', 'decline', 'negative', 'bear', 'crash', 'miss', 'underperform', 'weak']
 
     bullish_count = 0
     bearish_count = 0
     neutral_count = 0
 
-    for i, n in enumerate(news_items):
-        sentiment = sentiments[i] if i < len(sentiments) else "Neutral"
-        if sentiment not in ("Bullish", "Bearish", "Neutral"):
-            sentiment = "Neutral"
-            
-        n["sentiment"] = sentiment
+    for n in news_items:
+        text = (n['title'] + " " + n['summary']).lower()
+        bull_score = sum(1 for word in bullish_keywords if word in text)
+        bear_score = sum(1 for word in bearish_keywords if word in text)
         
-        if sentiment == "Bullish":
+        if bull_score > bear_score:
+            sentiment = "Bullish"
             bullish_count += 1
-        elif sentiment == "Bearish":
+        elif bear_score > bull_score:
+            sentiment = "Bearish"
             bearish_count += 1
         else:
+            sentiment = "Neutral"
             neutral_count += 1
+            
+        n["sentiment"] = sentiment
 
     counts = {
         "bullish": bullish_count,
