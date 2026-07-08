@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   Sparkles, FileUp, Plus, Edit2, Trash2, Search,
   RefreshCw, X, Wallet,
-  UploadCloud, ChevronDown, Zap, ArrowUp, ArrowDown,
+  UploadCloud, Zap, ArrowUp, ArrowDown,
   Landmark, Coins, ChevronLeft, ChevronRight, Check
 } from 'lucide-react';
 import api from '../lib/api';
@@ -103,8 +103,6 @@ const PortfolioPage: React.FC = () => {
 
   const [riskProfile, setRiskProfile] = useState(user?.risk_profile || 'Moderate');
   const [investmentGoal, setInvestmentGoal] = useState(user?.investment_goal || 'Growth');
-  const [riskDropdownOpen, setRiskDropdownOpen] = useState(false);
-  const [goalDropdownOpen, setGoalDropdownOpen] = useState(false);
 
   // Active signals and selected signal for modal
   const [activeSignals, setActiveSignals] = useState<any[]>([]);
@@ -177,7 +175,7 @@ const PortfolioPage: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (analyzing) {
       setAnalysisMessageIndex(0);
       interval = setInterval(() => {
@@ -192,7 +190,7 @@ const PortfolioPage: React.FC = () => {
 
     setAnalyzing(true);
     try {
-      const res = await api.post('/portfolio/analyze', {
+      await api.post('/portfolio/analyze', {
         risk_profile: riskProfile,
         investment_goal: investmentGoal
       });
