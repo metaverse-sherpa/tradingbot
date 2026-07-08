@@ -12,6 +12,8 @@ import database
 from database import db_session
 from web_api.auth import require_auth, require_premium
 import utils_gcp
+from web_api.routes_trades import get_active_signals_internal
+from bot.config import is_stock
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
@@ -213,7 +215,7 @@ def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=N
         payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
     try:
-        res = requests.post(url_with_key, headers=headers, json=payload, timeout=30)
+        res = requests.post(url_with_key, headers=headers, json=payload, timeout=120)
         if res.status_code == 200:
             res_data = res.json()
             candidates = res_data.get("candidates", [])
@@ -450,6 +452,8 @@ def add_position():
             INSERT INTO PortfolioPositions (user_id, symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (g.user["id"], database.encrypt(symbol), database.encrypt(name), category, database.encrypt(str(quantity)), database.encrypt(str(avg_entry_price)), database.encrypt(purchase_date), database.encrypt(str(dividend_yield)), int(time.time())))
+        
+        c.execute('UPDATE WebUsers SET last_portfolio_update = ? WHERE id = ?', (int(time.time()), g.user["id"]))
         conn.commit()
 
     return jsonify({"message": "Position added successfully."}), 200
@@ -496,6 +500,8 @@ def edit_position(position_id):
                 SET quantity = ?, avg_entry_price = ?, purchase_date = ?, dividend_yield = ?
                 WHERE id = ? AND user_id = ?
             ''', (database.encrypt(str(quantity)), database.encrypt(str(avg_entry_price)), database.encrypt(purchase_date), database.encrypt(str(dividend_yield)), position_id, g.user["id"]))
+        
+        c.execute('UPDATE WebUsers SET last_portfolio_update = ? WHERE id = ?', (int(time.time()), g.user["id"]))
         conn.commit()
         success = c.rowcount > 0
 
@@ -511,6 +517,7 @@ def delete_position(position_id):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('DELETE FROM PortfolioPositions WHERE id = ? AND user_id = ?', (position_id, g.user["id"]))
+        c.execute('UPDATE WebUsers SET last_portfolio_update = ? WHERE id = ?', (int(time.time()), g.user["id"]))
         conn.commit()
         success = c.rowcount > 0
 
@@ -613,6 +620,8 @@ def import_positions():
                 INSERT INTO PortfolioPositions (user_id, symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (user_id, database.encrypt(symbol), database.encrypt(symbol), category, database.encrypt(str(quantity)), database.encrypt(str(avg_entry)), database.encrypt(p_date), database.encrypt(str(div_yield)), created_time))
+        
+        c.execute('UPDATE WebUsers SET last_portfolio_update = ? WHERE id = ?', (created_time, user_id))
         conn.commit()
 
     return jsonify({"message": "Positions imported successfully."}), 200
@@ -626,6 +635,18 @@ def import_positions():
 def analyze_portfolio():
     user_id = g.user["id"]
     
+    # 24-hour Rate Limit Check
+    now = int(time.time())
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT timestamp, score, action_plan, completed_actions FROM PortfolioAnalysisHistory WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1', (user_id,))
+        last_analysis = c.fetchone()
+        
+    if last_analysis and (now - last_analysis[0] < 86400):
+        last_update = g.user.get('last_portfolio_update') or 0
+        if last_update <= last_analysis[0]:
+            return jsonify({"error": "You can only run a new analysis once every 24 hours unless you update your holdings."}), 429
+            
     data = request.get_json(silent=True) or {}
     risk_profile = data.get("risk_profile") or g.user.get("risk_profile") or "Moderate"
     investment_goal = data.get("investment_goal") or g.user.get("investment_goal") or "Growth"
@@ -679,7 +700,33 @@ def analyze_portfolio():
         f"You are an expert investment advisor tailoring advice for a client with a **{risk_profile}** risk profile and an investment goal of **{investment_goal}**.\n"
         "Analyze the user's holdings and provide a detailed portfolio health report. Pay close attention to target prices.\n"
         "CRITICAL RULE: Do NOT recommend selling a stock or crypto asset if its current price is still 5-10% (or more) below its target price, as it still has room for growth.\n"
-        "Return a JSON object containing the following keys:\n"
+    )
+
+    if last_analysis and len(last_analysis) >= 4 and last_analysis[1] is not None:
+        last_score = last_analysis[1]
+        last_plan_str = last_analysis[2]
+        
+        checked_items_str = "None"
+        if last_analysis[3]:
+            try:
+                last_plan = json.loads(last_plan_str)
+                completed_bools = json.loads(last_analysis[3])
+                checked_items = [item for i, item in enumerate(last_plan) if i < len(completed_bools) and completed_bools[i]]
+                if checked_items:
+                    checked_items_str = json.dumps(checked_items)
+            except Exception:
+                pass
+
+        system_instruction += (
+            f"\nPREVIOUS CONTEXT:\nYou previously analyzed this portfolio and gave it a score of {last_score}/100. "
+            f"Your previous action plan was: {last_plan_str}\n"
+            f"The user has explicitly completed the following items from that plan: {checked_items_str}\n"
+            "Evaluate if the user has implemented these recommendations. If they have followed your advice, "
+            "you MUST reward them by increasing their score above their previous score. It is very frustrating for a user to follow advice and see their score drop.\n"
+        )
+
+    system_instruction += (
+        "\nReturn a JSON object containing the following keys:\n"
         "- score: An integer score (1-100) representing how well the portfolio aligns with their specific risk profile and goals.\n"
         "- action_plan: A JSON list of 3-5 clean recommendation strings (e.g. ['Diversify out of high-growth tech stocks', 'Trim CRWD due to high volatility']).\n"
         "- detailed_recommendations: A detailed markdown summary of your findings (under 300 words, no HTML).\n"
@@ -719,46 +766,148 @@ def analyze_portfolio():
     except Exception as e:
         return jsonify({"error": f"AI Analysis failed: {str(e)}"}), 500
 
-@portfolio_bp.route('/api/portfolio/analysis/latest', methods=['GET'])
+@portfolio_bp.route('/api/portfolio/analysis/history', methods=['GET'])
 @require_auth
 @require_premium
-def get_latest_analysis():
+def get_analysis_history():
     user_id = g.user["id"]
-    latest = None
-    previous = None
+    history = []
 
     with db_session() as conn:
         c = conn.cursor()
         c.execute('''
-            SELECT score, analysis_text, action_plan, timestamp
+            SELECT id, score, analysis_text, action_plan, timestamp, completed_actions
             FROM PortfolioAnalysisHistory
             WHERE user_id = ?
             ORDER BY timestamp DESC
-            LIMIT 2
         ''', (user_id,))
         rows = c.fetchall()
-        if len(rows) >= 1:
-            latest = rows[0]
-        if len(rows) >= 2:
-            previous = rows[1]
+        for r in rows:
+            text_data = json.loads(r[2])
+            completed_actions = []
+            if r[5]:
+                try:
+                    completed_actions = json.loads(r[5])
+                except Exception:
+                    pass
+            
+            history.append({
+                "id": r[0],
+                "score": r[1],
+                "detailed_recommendations": text_data.get("detailed_recommendations", ""),
+                "show_me_how": text_data.get("show_me_how", ""),
+                "action_plan": json.loads(r[3]),
+                "timestamp": r[4],
+                "completed_actions": completed_actions
+            })
 
-    if not latest:
-        return jsonify({"analysis": None}), 200
+    return jsonify({"history": history}), 200
 
-    text_data = json.loads(latest[1])
-    latest_obj = {
-        "score": latest[0],
-        "detailed_recommendations": text_data.get("detailed_recommendations", ""),
-        "show_me_how": text_data.get("show_me_how", ""),
-        "action_plan": json.loads(latest[2]),
-        "timestamp": latest[3]
-    }
+@portfolio_bp.route('/api/portfolio/analysis/<int:analysis_id>/check', methods=['POST'])
+@require_auth
+@require_premium
+def check_action_plan_item(analysis_id):
+    user_id = g.user["id"]
+    data = request.json or {}
+    completed_actions = data.get("completed_actions", [])
 
-    response_data = {
-        "latest": latest_obj,
-        "previous_score": previous[0] if previous else None
-    }
-    return jsonify(response_data), 200
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('''
+            UPDATE PortfolioAnalysisHistory
+            SET completed_actions = ?
+            WHERE id = ? AND user_id = ?
+        ''', (json.dumps(completed_actions), analysis_id, user_id))
+        conn.commit()
+
+    return jsonify({"success": True}), 200
+
+
+@portfolio_bp.route('/api/portfolio/good-buys', methods=['POST'])
+@require_auth
+@require_premium
+def good_buys():
+    user_id = g.user["id"]
+    data = request.json or {}
+    risk_profile = data.get("risk_profile") or g.user.get("risk_profile") or "Moderate"
+    investment_goal = data.get("investment_goal") or g.user.get("investment_goal") or "Growth"
+
+    # Fetch latest analysis
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, analysis_text, timestamp FROM PortfolioAnalysisHistory WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1', (user_id,))
+        last_analysis = c.fetchone()
+
+    if not last_analysis:
+        return jsonify({"error": "Please run an AI Analysis first to generate a Detailed Implementation Plan."}), 400
+
+    analysis_id = last_analysis[0]
+    analysis_text_raw = last_analysis[1]
+    
+    try:
+        analysis_data = json.loads(analysis_text_raw)
+    except Exception:
+        analysis_data = {}
+
+    if "good_buys" in analysis_data:
+        return jsonify({"error": "You can only generate Good Ideas once per Analysis (every 24 hours). Please refer to your Detailed Implementation Plan for your recent ideas."}), 429
+
+    # Fetch active signals
+    active_signals = get_active_signals_internal(bypass_cache=False)
+    
+    # Extract open longs to feed into Gemini
+    open_longs = [s for s in active_signals if s.get("status") == "open" and s.get("side") == "long"]
+    signal_summaries = []
+    for s in open_longs:
+        signal_type = "stock" if is_stock(s.get("symbol")) else "crypto"
+        signal_summaries.append(f"{s.get('symbol')} ({signal_type}, strategy: {s.get('strategy')})")
+
+    # Construct the AI Prompt
+    system_instruction = (
+        "You are an expert financial advisor AI for Metaverse Sherpa. "
+        "The user wants fresh ideas of stocks or cryptocurrencies to buy with freed-up capital.\n"
+        f"The user's risk profile is '{risk_profile}' and their investment goal is '{investment_goal}'.\n\n"
+        "Here are the currently active LONG trading signals from our trading bot:\n"
+        f"{', '.join(signal_summaries) if signal_summaries else 'None'}\n\n"
+        "Based on their risk profile and these active signals, select the best 3-5 assets to buy right now. "
+        "Prioritize recommending assets from the active signals list if they match the user's risk profile, but you can also suggest other strong assets. "
+        "Return ONLY a valid JSON list of objects matching this schema. Do not wrap in markdown ```json or include text.\n"
+        "[\n"
+        "  {\n"
+        "    \"symbol\": \"AAPL\",\n"
+        "    \"name\": \"Apple Inc.\",\n"
+        "    \"type\": \"stock\",\n"
+        "    \"rationale\": \"Brief 1-sentence reason why this is a good buy.\",\n"
+        "    \"is_active_signal\": true\n"
+        "  }\n"
+        "]"
+    )
+
+    try:
+        raw_json_str = call_gemini("What are some good buys right now?", system_instruction=system_instruction, json_mode=True)
+        clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
+        recommendations = json.loads(clean_json_str)
+
+        buys_md = "\n\n### 💡 Fresh Investment Ideas (Good Buys)\n\n"
+        for rec in recommendations:
+            active_badge = "⚡ (Active Signal)" if rec.get('is_active_signal') else ""
+            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})** {active_badge}\n  * {rec.get('rationale')}\n"
+
+        analysis_data["show_me_how"] = analysis_data.get("show_me_how", "") + buys_md
+        analysis_data["good_buys"] = recommendations
+
+        with db_session() as conn:
+            c = conn.cursor()
+            c.execute('''
+                UPDATE PortfolioAnalysisHistory 
+                SET analysis_text = ? 
+                WHERE id = ?
+            ''', (json.dumps(analysis_data), analysis_id))
+            conn.commit()
+
+        return jsonify({"suggestions": recommendations}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate recommendations: {str(e)}"}), 500
 
 
 # --- 📰 Yahoo Finance News Sentiment ---

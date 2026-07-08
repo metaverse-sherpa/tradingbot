@@ -856,7 +856,8 @@ def init_db():
             "coinbase_sandbox": "INTEGER DEFAULT 1",
             "developer_api_key": "TEXT UNIQUE",
             "risk_profile": "TEXT",
-            "investment_goal": "TEXT"
+            "investment_goal": "TEXT",
+            "last_portfolio_update": "INTEGER DEFAULT 0"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:

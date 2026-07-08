@@ -5,7 +5,7 @@ import {
   Sparkles, FileUp, Plus, Edit2, Trash2, Search,
   RefreshCw, X, Wallet,
   UploadCloud, ChevronDown, Zap, ArrowUp, ArrowDown,
-  Landmark, Coins
+  Landmark, Coins, ChevronLeft, ChevronRight, Check
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -13,6 +13,35 @@ import { useToast } from './Toast';
 import { useAuthStore } from '../store/useStore';
 
 const COLORS = ['#3cd7ff', '#00C853', '#8A2BE2', '#FF8C00', '#FF1493', '#00CED1', '#ADFF2F', '#A9A9A9'];
+
+const analysisMessages = [
+  "Consulting the crypto oracles...",
+  "Dusting off the blockchain...",
+  "Negotiating with rogue trading bots...",
+  "Polishing your diamond hands...",
+  "Calibrating the moon trajectory...",
+  "Feeding the AI hamsters...",
+  "Decoding Elon's latest tweet...",
+  "Searching for lost Bitcoin in couch cushions...",
+  "Asking the Metaverse Sherpa for directions...",
+  "Translating bear market roars...",
+  "Applying paper hands repellent...",
+  "Calculating the optimal time to HODL...",
+  "Waiting for the blockchain to untangle...",
+  "Bribing the algorithmic overlords...",
+  "Analyzing your risk of getting rekt...",
+  "Loading the hopium dispensers...",
+  "Summoning the ghost of Satoshi...",
+  "Checking if the trend is still your friend...",
+  "Consulting the magic 8-ball of finance...",
+  "Converting fiat tears into crypto gains...",
+  "Mining digital gold with a virtual pickaxe...",
+  "Pumping the algorithmic iron...",
+  "Checking the alignment of the financial stars...",
+  "Trekking through the digital Himalayas...",
+  "Finalizing your ticket to the moon..."
+];
+
 
 const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
@@ -26,8 +55,10 @@ const PortfolioPage: React.FC = () => {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
   // AI analysis and news
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [prevScore, setPrevScore] = useState<number | null>(null);
+  const [analysisHistory, setAnalysisHistory] = useState<any[]>([]);
+  const [currentAnalysisIndex, setCurrentAnalysisIndex] = useState(0);
+  const analysis = analysisHistory[currentAnalysisIndex] || null;
+  const prevScore = analysisHistory[currentAnalysisIndex + 1]?.score || null;
   const [news, setNews] = useState<any[]>([]);
   const [newsCounts, setNewsCounts] = useState<any>({ bullish: 0, bearish: 0, neutral: 0 });
 
@@ -35,7 +66,13 @@ const PortfolioPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [newsLoading, setNewsLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisMessageIndex, setAnalysisMessageIndex] = useState(0);
   const [parsingCSV, setParsingCSV] = useState(false);
+
+  // Any Good Buys state
+  const [goodBuys, setGoodBuys] = useState<any[] | null>(null);
+  const [loadingGoodBuys, setLoadingGoodBuys] = useState(false);
+  const [showGoodBuys, setShowGoodBuys] = useState(false);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,7 +100,7 @@ const PortfolioPage: React.FC = () => {
   const [showHowOpen, setShowHowOpen] = useState(false);
 
   // AI Config Modal state
-  const [configModalOpen, setConfigModalOpen] = useState(false);
+
   const [riskProfile, setRiskProfile] = useState(user?.risk_profile || 'Moderate');
   const [investmentGoal, setInvestmentGoal] = useState(user?.investment_goal || 'Growth');
   const [riskDropdownOpen, setRiskDropdownOpen] = useState(false);
@@ -104,10 +141,12 @@ const PortfolioPage: React.FC = () => {
   // Fetch latest AI analysis
   const fetchAnalysis = async () => {
     try {
-      const res = await api.get('/portfolio/analysis/latest');
-      if (res.data && res.data.latest) {
-        setAnalysis(res.data.latest);
-        setPrevScore(res.data.previous_score);
+      const res = await api.get('/portfolio/analysis/history');
+      if (res.data && res.data.history && res.data.history.length > 0) {
+        setAnalysisHistory(res.data.history);
+        setCurrentAnalysisIndex(0);
+      } else {
+        setAnalysisHistory([]);
       }
     } catch (err) {
       console.error("Failed to fetch latest analysis", err);
@@ -137,23 +176,87 @@ const PortfolioPage: React.FC = () => {
     if (user?.investment_goal) setInvestmentGoal(user.investment_goal);
   }, [user]);
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (analyzing) {
+      setAnalysisMessageIndex(0);
+      interval = setInterval(() => {
+        setAnalysisMessageIndex((prev) => (prev + 1) % analysisMessages.length);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [analyzing]);
+
   // AI analysis trigger
   const runAIAnalysis = async () => {
-    setConfigModalOpen(false);
+
     setAnalyzing(true);
     try {
       const res = await api.post('/portfolio/analyze', {
         risk_profile: riskProfile,
         investment_goal: investmentGoal
       });
-      setAnalysis(res.data);
+
       // Fetch score details to get updated previous score banner logic
       await fetchAnalysis();
-    } catch (err) {
-      console.error("AI Analysis failed", err);
-      alert("AI Portfolio Analysis failed. Please check your Gemini settings.");
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        showToast(err.response.data?.error || "You can only run a new analysis once every 24 hours unless you update your holdings.", "error");
+      } else {
+        console.error("AI Analysis failed", err);
+        showToast("AI Portfolio Analysis failed. Please check your Gemini settings.", "error");
+      }
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  // Fetch Good Buys
+  const fetchGoodBuys = async () => {
+    setLoadingGoodBuys(true);
+    setShowGoodBuys(true);
+    setGoodBuys(null); // clear old
+    try {
+      const res = await api.post('/portfolio/good-buys', {
+        risk_profile: riskProfile,
+        investment_goal: investmentGoal
+      });
+      setGoodBuys(res.data.suggestions || []);
+      // Re-fetch analysis so the updated Detailed Implementation Plan includes the good buys
+      fetchAnalysis();
+    } catch (err: any) {
+      console.error("Failed to fetch good buys", err);
+      showToast(err.response?.data?.error || "Failed to generate good buys.", "error");
+      setShowGoodBuys(false);
+    } finally {
+      setLoadingGoodBuys(false);
+    }
+  };
+
+  // Toggle action plan item
+  const toggleAction = async (idx: number) => {
+    if (!analysis || !analysis.id) return;
+    
+    const newCompleted = [...(analysis.completed_actions || [])];
+    while (newCompleted.length <= idx) {
+      newCompleted.push(false);
+    }
+    newCompleted[idx] = !newCompleted[idx];
+    
+    // Optimistic UI update
+    const updatedHistory = [...analysisHistory];
+    updatedHistory[currentAnalysisIndex] = {
+      ...analysis,
+      completed_actions: newCompleted
+    };
+    setAnalysisHistory(updatedHistory);
+    
+    try {
+      await api.post(`/portfolio/analysis/${analysis.id}/check`, {
+        completed_actions: newCompleted
+      });
+    } catch (err) {
+      console.error("Failed to update action checklist", err);
     }
   };
 
@@ -166,7 +269,7 @@ const PortfolioPage: React.FC = () => {
       fetchNews();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete position.");
+      showToast("Failed to delete position.", "error");
     }
   };
 
@@ -174,7 +277,7 @@ const PortfolioPage: React.FC = () => {
   const handleSavePosition = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formSymbol || !formQty || !formEntryPrice || !formDate) {
-      alert("Please fill out all required fields.");
+      showToast("Please fill out all required fields.", "error");
       return;
     }
 
@@ -199,14 +302,14 @@ const PortfolioPage: React.FC = () => {
       fetchNews();
     } catch (err) {
       console.error(err);
-      alert("Failed to save position.");
+      showToast("Failed to save position.", "error");
     }
   };
 
   // Parse CSV via backend AI
   const handleParseCSV = async () => {
     if (!csvText && !imageBase64) {
-      alert("Please upload an image, enter CSV text, or select a CSV file first.");
+      showToast("Please upload an image, enter CSV text, or select a CSV file first.", "error");
       return;
     }
     setParsingCSV(true);
@@ -220,7 +323,7 @@ const PortfolioPage: React.FC = () => {
       setParsedCSVPositions(res.data.positions || []);
     } catch (err) {
       console.error(err);
-      alert("Failed to parse with AI. Please check your file layout.");
+      showToast("Failed to parse with AI. Please check your file layout.", "error");
     } finally {
       setParsingCSV(false);
     }
@@ -241,7 +344,7 @@ const PortfolioPage: React.FC = () => {
       fetchNews();
     } catch (err) {
       console.error(err);
-      alert("Failed to import CSV positions.");
+      showToast("Failed to import CSV positions.", "error");
     }
   };
 
@@ -403,28 +506,39 @@ const PortfolioPage: React.FC = () => {
 
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {positions.length > 0 && (
-            <button
-              onClick={() => setConfigModalOpen(true)}
-              disabled={analyzing}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
-            >
-              {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
-              {analyzing ? 'Analyzing...' : 'AI Analysis'}
-            </button>
+            <>
+              <button
+                onClick={runAIAnalysis}
+                disabled={analyzing}
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
+              >
+                {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                {analyzing ? 'Analyzing...' : 'AI Analysis'}
+              </button>
+              
+              <button
+                onClick={fetchGoodBuys}
+                disabled={loadingGoodBuys}
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
+              >
+                {loadingGoodBuys ? <RefreshCw className="animate-spin" size={14} /> : <Search size={14} />}
+                {loadingGoodBuys ? 'Searching...' : 'Good Buys?'}
+              </button>
+            </>
           )}
 
           <button
             onClick={() => setCsvModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-[#1f2028] border border-white/10 hover:border-white/20 text-gray-200 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all uppercase tracking-wider w-full sm:w-auto"
           >
-            <FileUp size={14} /> Import Holdings
+            <FileUp size={14} /> Import
           </button>
 
           <button
             onClick={openAddModal}
-            className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00E676] text-black px-4 py-2 rounded-xl text-xs md:text-sm font-black shadow-[0_0_15px_rgba(0,200,83,0.3)] transition-all uppercase tracking-wider w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 bg-[#00C853] hover:bg-[#00E676] text-black px-4 py-2 rounded-xl text-xs md:text-sm font-black shadow-[0_0_15px_rgba(0,200,83,0.3)] transition-all uppercase tracking-wider w-full sm:w-auto"
           >
-            <Plus size={14} /> Add Position
+            <Plus size={14} /> Add
           </button>
         </div>
       </div>
@@ -456,9 +570,10 @@ const PortfolioPage: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* 🎉 Score Banner */}
-          {analysis && (
-            <div className="bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300">
+          {/* 🎉 Score Banner or Analyzing Overlay */}
+          <div className="relative min-h-[80px]">
+            {analysis && (
+              <div className={`bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300 ${analyzing ? 'blur-sm opacity-30 pointer-events-none' : ''}`}>
               <div className="flex items-start sm:items-center gap-3">
                 <span className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg text-lg flex-shrink-0">🏆</span>
                 <div>
@@ -483,7 +598,20 @@ const PortfolioPage: React.FC = () => {
                 {showHowOpen ? 'Hide Guide' : 'Show me how'}
               </button>
             </div>
-          )}
+            )}
+            
+            {/* Analyzing Overlay */}
+            {analyzing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl z-10 backdrop-blur-[2px]">
+                <div className="flex items-center gap-3 bg-[#1f2028] border border-purple-500/30 text-white px-5 py-3 rounded-xl shadow-lg">
+                  <RefreshCw className="animate-spin text-purple-400" size={18} />
+                  <span className="font-bold tracking-wider animate-pulse">
+                    {analysisMessages[analysisMessageIndex]}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* 📊 KPI Cards Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
@@ -555,9 +683,35 @@ const PortfolioPage: React.FC = () => {
           {analysis && (
             <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-3.5">
               <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                  🧭 Recommended Action Plan
-                </h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                    🧭 Recommended Action Plan
+                  </h3>
+                  
+                  {analysisHistory.length > 1 && (
+                    <div className="flex items-center gap-1 bg-black/40 rounded-lg p-0.5 border border-white/5">
+                      <button 
+                        onClick={() => setCurrentAnalysisIndex(Math.min(analysisHistory.length - 1, currentAnalysisIndex + 1))}
+                        disabled={currentAnalysisIndex === analysisHistory.length - 1}
+                        className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                        title="Older analysis"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <span className="text-[10px] text-gray-400 font-bold px-1">
+                        {analysisHistory.length - currentAnalysisIndex} OF {analysisHistory.length}
+                      </span>
+                      <button 
+                        onClick={() => setCurrentAnalysisIndex(Math.max(0, currentAnalysisIndex - 1))}
+                        disabled={currentAnalysisIndex === 0}
+                        className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                        title="Newer analysis"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={() => setShowHowOpen(!showHowOpen)}
                   className="flex items-center gap-1 bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all"
@@ -566,14 +720,21 @@ const PortfolioPage: React.FC = () => {
                 </button>
               </div>
               <div className="space-y-2">
-                {analysis.action_plan && analysis.action_plan.map((act: string, idx: number) => (
-                  <div key={idx} className="bg-[#1c1f2e]/60 border border-white/5 p-3.5 rounded-xl text-xs md:text-sm text-gray-300 flex items-start gap-3">
-                    <span className="w-5 h-5 bg-[#3cd7ff]/10 text-[#3cd7ff] border border-[#3cd7ff]/20 font-bold flex items-center justify-center rounded-full text-xs flex-shrink-0 mt-0.5">
-                      {idx + 1}
-                    </span>
-                    <span className="leading-relaxed">{act}</span>
-                  </div>
-                ))}
+                {analysis.action_plan && analysis.action_plan.map((act: string, idx: number) => {
+                  const isChecked = analysis.completed_actions?.[idx] === true;
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={() => toggleAction(idx)}
+                      className={`cursor-pointer border p-3.5 rounded-xl text-xs md:text-sm flex items-start gap-3 transition-colors ${isChecked ? 'bg-emerald-500/5 border-emerald-500/20 text-gray-400' : 'bg-[#1c1f2e]/60 border-white/5 text-gray-300'}`}
+                    >
+                      <div className={`w-5 h-5 flex items-center justify-center rounded-md border flex-shrink-0 mt-0.5 transition-colors ${isChecked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-500 bg-black/40 text-transparent'}`}>
+                        {isChecked && <Check size={12} strokeWidth={4} />}
+                      </div>
+                      <span className={`leading-relaxed ${isChecked ? 'line-through opacity-50' : ''}`}>{act}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1168,110 +1329,6 @@ const PortfolioPage: React.FC = () => {
         </div>
       )}
 
-      {/* AI Config Modal */}
-      {configModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#0b0d14] border border-white/10 p-6 md:p-8 rounded-2xl w-full max-w-md shadow-2xl animate-slide-up">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Sparkles className="text-purple-400" size={20} />
-                Configure AI Analysis
-              </h3>
-              <button
-                onClick={() => setConfigModalOpen(false)}
-                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {(!user?.risk_profile || !user?.investment_goal) && (
-              <div className="space-y-4">
-                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-4">
-                  <p className="text-sm text-purple-300">
-                    <strong>Tip:</strong> Set these permanently in your Settings page.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Risk Profile</label>
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setRiskDropdownOpen(!riskDropdownOpen);
-                        setGoalDropdownOpen(false);
-                      }}
-                      className="w-full bg-[#131620] border border-white/5 rounded-xl px-4 py-3 text-white flex justify-between items-center focus:outline-none focus:border-purple-500/50"
-                    >
-                      {riskProfile}
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${riskDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {riskDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1d29] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
-                        {["Conservative", "Moderate", "Aggressive"].map(opt => (
-                          <button
-                            key={opt}
-                            onClick={() => {
-                              setRiskProfile(opt);
-                              setRiskDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors ${riskProfile === opt ? 'bg-purple-500/10 text-purple-400 font-bold' : 'text-gray-300'}`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Investment Goal</label>
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setGoalDropdownOpen(!goalDropdownOpen);
-                        setRiskDropdownOpen(false);
-                      }}
-                      className="w-full bg-[#131620] border border-white/5 rounded-xl px-4 py-3 text-white flex justify-between items-center focus:outline-none focus:border-purple-500/50"
-                    >
-                      {investmentGoal}
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${goalDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {goalDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1d29] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
-                        {["Wealth Preservation", "Income", "Growth", "Speculation"].map(opt => (
-                          <button
-                            key={opt}
-                            onClick={() => {
-                              setInvestmentGoal(opt);
-                              setGoalDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors ${investmentGoal === opt ? 'bg-purple-500/10 text-purple-400 font-bold' : 'text-gray-300'}`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-8 pt-6 border-t border-white/5">
-              <button
-                onClick={runAIAnalysis}
-                disabled={analyzing}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-4 py-3 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
-              >
-                {analyzing ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                {analyzing ? 'Analyzing...' : 'Run Analysis'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Selected Signal Modal */}
       {selectedSignal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -1309,6 +1366,64 @@ const PortfolioPage: React.FC = () => {
                   <span className="text-sm font-bold text-rose-400">{selectedSignal.sl_price || '-'}</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Good Buys Modal */}
+      {showGoodBuys && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#0b0d14] border border-white/10 p-6 rounded-2xl w-full max-w-2xl shadow-2xl animate-slide-up relative overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+            <div className="flex items-center justify-between mb-6 flex-shrink-0">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+                <Search className="text-emerald-400" size={24} />
+                Fresh Investment Ideas
+              </h3>
+              <button
+                onClick={() => setShowGoodBuys(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto pr-2 space-y-4 flex-grow custom-scrollbar">
+              {loadingGoodBuys ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <RefreshCw className="animate-spin text-emerald-500" size={32} />
+                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest animate-pulse">
+                    Scanning Markets & Signals...
+                  </p>
+                </div>
+              ) : goodBuys && goodBuys.length > 0 ? (
+                goodBuys.map((buy, idx) => (
+                  <div key={idx} className="bg-[#131620] border border-white/5 p-4 rounded-xl relative group hover:border-emerald-500/30 transition-colors">
+                    {buy.is_active_signal && (
+                      <div className="absolute -top-2.5 -right-2.5 bg-emerald-500 text-black text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.5)] flex items-center gap-1">
+                        <Zap size={10} fill="currentColor" /> Active Signal
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`p-2 rounded-lg ${buy.type === 'stock' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'}`}>
+                        {buy.type === 'stock' ? <Landmark size={18} /> : <Coins size={18} />}
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black text-white leading-tight">{buy.symbol}</h4>
+                        <span className="text-xs font-medium text-gray-400">{buy.name || (buy.type === 'stock' ? 'Stock' : 'Crypto')}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-300 leading-relaxed mt-3">
+                      {buy.rationale}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <p>No active ideas found for your risk profile at this moment.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
