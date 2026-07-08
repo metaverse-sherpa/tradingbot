@@ -884,10 +884,10 @@ def init_db():
                     symbol TEXT NOT NULL,
                     name TEXT,
                     category TEXT NOT NULL,
-                    quantity REAL NOT NULL,
-                    avg_entry_price REAL NOT NULL,
+                    quantity TEXT NOT NULL,
+                    avg_entry_price TEXT NOT NULL,
                     purchase_date TEXT NOT NULL,
-                    dividend_yield REAL DEFAULT 0.0,
+                    dividend_yield TEXT,
                     created_at INTEGER NOT NULL,
                     FOREIGN KEY(user_id) REFERENCES WebUsers(id) ON DELETE CASCADE
                 )''')
@@ -896,6 +896,33 @@ def init_db():
                 conn.rollback()
                 import logging
                 logging.getLogger(__name__).error(f"Failed to create PortfolioPositions table: {e}")
+        else:
+            # Migrate existing plaintext rows to ciphertext
+            try:
+                c.execute("SELECT id, symbol, name, quantity, avg_entry_price, purchase_date, dividend_yield FROM PortfolioPositions")
+                rows = c.fetchall()
+                for row in rows:
+                    p_id, sym, nm, qty, price, p_date, div = row
+                    
+                    # Check if already encrypted (Fernet tokens start with 'gAAAAA')
+                    sym_str = str(sym)
+                    if not sym_str.startswith('gAAAAA'):
+                        enc_sym = encrypt(sym_str)
+                        enc_nm = encrypt(str(nm)) if nm else encrypt("")
+                        enc_qty = encrypt(str(qty))
+                        enc_price = encrypt(str(price))
+                        enc_date = encrypt(str(p_date))
+                        enc_div = encrypt(str(div) if div is not None else "0.0")
+                        
+                        c.execute('''UPDATE PortfolioPositions 
+                                     SET symbol=?, name=?, quantity=?, avg_entry_price=?, purchase_date=?, dividend_yield=?
+                                     WHERE id=?''', 
+                                  (enc_sym, enc_nm, enc_qty, enc_price, enc_date, enc_div, p_id))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                import logging
+                logging.getLogger(__name__).error(f"Migration error (encrypt PortfolioPositions): {e}")
 
         if "PortfolioAnalysisHistory" not in existing_tables:
             try:

@@ -211,13 +211,13 @@ def get_portfolio():
         for r in rows:
             positions.append({
                 "id": r[0],
-                "symbol": r[1],
-                "name": r[2] or r[1],
+                "symbol": database.decrypt(r[1]),
+                "name": database.decrypt(r[2]) or database.decrypt(r[1]),
                 "category": r[3],
-                "quantity": float(r[4]),
-                "avg_entry_price": float(r[5]),
-                "purchase_date": r[6],
-                "dividend_yield": float(r[7] or 0.0)
+                "quantity": float(database.decrypt(r[4])),
+                "avg_entry_price": float(database.decrypt(r[5])),
+                "purchase_date": database.decrypt(r[6]),
+                "dividend_yield": float(database.decrypt(r[7]) or 0.0)
             })
 
     if not positions:
@@ -409,7 +409,7 @@ def add_position():
         c.execute('''
             INSERT INTO PortfolioPositions (user_id, symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (g.user["id"], symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield, int(time.time())))
+        ''', (g.user["id"], database.encrypt(symbol), database.encrypt(name), category, database.encrypt(str(quantity)), database.encrypt(str(avg_entry_price)), database.encrypt(purchase_date), database.encrypt(str(dividend_yield)), int(time.time())))
         conn.commit()
 
     return jsonify({"message": "Position added successfully."}), 200
@@ -449,13 +449,13 @@ def edit_position(position_id):
                 UPDATE PortfolioPositions
                 SET quantity = ?, avg_entry_price = ?, purchase_date = ?, dividend_yield = ?, category = ?, symbol = ?, name = ?
                 WHERE id = ? AND user_id = ?
-            ''', (quantity, avg_entry_price, purchase_date, dividend_yield, category, symbol, name, position_id, g.user["id"]))
+            ''', (database.encrypt(str(quantity)), database.encrypt(str(avg_entry_price)), database.encrypt(purchase_date), database.encrypt(str(dividend_yield)), category, database.encrypt(symbol), database.encrypt(name), position_id, g.user["id"]))
         else:
             c.execute('''
                 UPDATE PortfolioPositions
                 SET quantity = ?, avg_entry_price = ?, purchase_date = ?, dividend_yield = ?
                 WHERE id = ? AND user_id = ?
-            ''', (quantity, avg_entry_price, purchase_date, dividend_yield, position_id, g.user["id"]))
+            ''', (database.encrypt(str(quantity)), database.encrypt(str(avg_entry_price)), database.encrypt(purchase_date), database.encrypt(str(dividend_yield)), position_id, g.user["id"]))
         conn.commit()
         success = c.rowcount > 0
 
@@ -540,7 +540,7 @@ def import_positions():
             c.execute('''
                 INSERT INTO PortfolioPositions (user_id, symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, symbol, symbol, category, quantity, avg_entry, p_date, div_yield, created_time))
+            ''', (user_id, database.encrypt(symbol), database.encrypt(symbol), category, database.encrypt(str(quantity)), database.encrypt(str(avg_entry)), database.encrypt(p_date), database.encrypt(str(div_yield)), created_time))
         conn.commit()
 
     return jsonify({"message": "Positions imported successfully."}), 200
@@ -702,7 +702,7 @@ def get_portfolio_news():
         c = conn.cursor()
         c.execute('SELECT symbol, category FROM PortfolioPositions WHERE user_id = ? LIMIT 5', (user_id,))
         rows = c.fetchall()
-        positions = [{"symbol": r[0], "category": r[1]} for r in rows]
+        positions = [{"symbol": database.decrypt(r[0]), "category": r[1]} for r in rows]
 
     if not positions:
         positions = [{"symbol": "BTC", "category": "crypto"}, {"symbol": "AAPL", "category": "stock"}]
