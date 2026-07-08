@@ -140,7 +140,7 @@ def get_cached_prices(symbols, categories):
 
 
 # --- 🤖 Gemini Helper Function ---
-def call_gemini(prompt, system_instruction=None, json_mode=False):
+def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=None, mime_type="image/jpeg"):
     """Call Google Gemini API using configured env variables/secrets."""
     url = os.getenv("PORTFOLIO_AI_URL") or "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     api_key = utils_gcp.get_secret("GEMINI_API_KEY")
@@ -160,7 +160,16 @@ def call_gemini(prompt, system_instruction=None, json_mode=False):
         headers["x-goog-api-key"] = api_key
         headers["Authorization"] = f"Bearer {api_key}"
 
-    contents = [{"parts": [{"text": prompt}]}]
+    parts = []
+    if image_base64:
+        parts.append({
+            "inlineData": {
+                "mimeType": mime_type,
+                "data": image_base64
+            }
+        })
+    parts.append({"text": prompt})
+    contents = [{"parts": parts}]
     payload = {
         "contents": contents,
         "generationConfig": {
@@ -480,7 +489,39 @@ def delete_position(position_id):
         return jsonify({"error": "Position not found."}), 404
 
 
-# --- 📄 AI CSV Importer Handlers ---
+# --- 📄 AI CSV & Image Importer Handlers ---
+
+@portfolio_bp.route('/api/portfolio/parse-image', methods=['POST'])
+@require_auth
+@require_premium
+def parse_image():
+    data = request.json or {}
+    image_base64 = data.get("image_base64")
+    mime_type = data.get("mime_type", "image/jpeg")
+
+    if not image_base64:
+        return jsonify({"error": "No image data provided."}), 400
+
+    system_instruction = (
+        "You are an expert financial assistant. Analyze the uploaded screenshot of the user's portfolio holdings and extract the positions into a structured JSON list.\n"
+        "Required fields for each position:\n"
+        "- symbol: Uppercase ticker/token name (e.g. QQQ, AAPL, BTC, ETH)\n"
+        "- category: Either 'stock' or 'crypto' (infer from the symbol or context)\n"
+        "- quantity: Numerical quantity of shares or coins (float)\n"
+        "- avg_entry_price: Numerical cost basis entry price (float)\n"
+        "- purchase_date: Date formatted as YYYY-MM-DD. If missing/invalid, assume '2026-01-01'\n"
+        "- dividend_yield: Percentage (e.g. 2.85 or 0.0285). Return it as a percentage number (e.g., 2.85 for 2.85%). Default to 0.0.\n"
+        "\n"
+        "Return ONLY a valid JSON list of objects matching this schema. Do not wrap in markdown ```json or include text."
+    )
+
+    try:
+        raw_json_str = call_gemini("Extract portfolio positions from this image.", system_instruction=system_instruction, json_mode=True, image_base64=image_base64, mime_type=mime_type)
+        clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
+        parsed_positions = json.loads(clean_json_str)
+        return jsonify({"positions": parsed_positions}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to parse image: {str(e)}"}), 500
 
 @portfolio_bp.route('/api/portfolio/parse-csv', methods=['POST'])
 @require_auth

@@ -50,6 +50,8 @@ const PortfolioPage: React.FC = () => {
   // CSV Modal state
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const [csvText, setCsvText] = useState('');
+  const [imageBase64, setImageBase64] = useState('');
+  const [imageMimeType, setImageMimeType] = useState('');
   const [parsedCSVPositions, setParsedCSVPositions] = useState<any[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,17 +203,22 @@ const PortfolioPage: React.FC = () => {
 
   // Parse CSV via backend AI
   const handleParseCSV = async () => {
-    if (!csvText) {
-      alert("Please enter or paste CSV text first.");
+    if (!csvText && !imageBase64) {
+      alert("Please upload an image, enter CSV text, or select a CSV file first.");
       return;
     }
     setParsingCSV(true);
     try {
-      const res = await api.post('/portfolio/parse-csv', { csv_content: csvText });
+      let res;
+      if (imageBase64) {
+        res = await api.post('/portfolio/parse-image', { image_base64: imageBase64, mime_type: imageMimeType });
+      } else {
+        res = await api.post('/portfolio/parse-csv', { csv_content: csvText });
+      }
       setParsedCSVPositions(res.data.positions || []);
     } catch (err) {
       console.error(err);
-      alert("Failed to parse CSV with AI. Please check your file layout.");
+      alert("Failed to parse with AI. Please check your file layout.");
     } finally {
       setParsingCSV(false);
     }
@@ -225,6 +232,8 @@ const PortfolioPage: React.FC = () => {
       setCsvModalOpen(false);
       setParsedCSVPositions([]);
       setCsvText('');
+      setImageBase64('');
+      setImageMimeType('');
       setCsvFile(null);
       fetchPortfolioData(true);
       fetchNews();
@@ -239,12 +248,26 @@ const PortfolioPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       setCsvFile(file);
+      setCsvText('');
+      setImageBase64('');
+      setImageMimeType('');
+
       const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        setCsvText(text);
-      };
-      reader.readAsText(file);
+      if (file.type.startsWith('image/')) {
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          const base64Data = result.split(',')[1];
+          setImageBase64(base64Data);
+          setImageMimeType(file.type);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        reader.onload = (event) => {
+          const text = event.target?.result as string;
+          setCsvText(text);
+        };
+        reader.readAsText(file);
+      }
     }
   };
 
@@ -924,45 +947,51 @@ const PortfolioPage: React.FC = () => {
             </button>
 
             <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">
-              📄 Import Holdings from CSV
+              📄 Import Holdings
             </h3>
-            <p className="text-xs text-gray-500 mb-4">Paste raw CSV text below or drop a file. Gemini AI detects headers, quantity, avg entry price, and dates automatically.</p>
+            <p className="text-xs text-gray-500 mb-4">Paste raw CSV text or drop a file (CSV or Image screenshot). Gemini AI detects tickers, quantity, and dates automatically.</p>
 
             {parsedCSVPositions.length === 0 ? (
               <div className="space-y-4">
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-[#2e303a] hover:border-cyan-500/40 rounded-xl p-8 text-center cursor-pointer bg-[#131620]/30 transition-all flex flex-col items-center justify-center gap-3.5 group"
+                  className="border-2 border-dashed border-[#2e303a] hover:border-cyan-500/40 rounded-xl p-8 text-center cursor-pointer bg-[#131620]/30 transition-all flex flex-col items-center justify-center gap-3.5 group relative"
                 >
                   <input
                     type="file"
                     ref={fileInputRef}
-                    accept=".csv"
+                    accept=".csv, image/*"
                     className="hidden"
                     onChange={handleFileChange}
                   />
-                  <UploadCloud size={32} className="text-gray-500 group-hover:text-cyan-400 transition-colors animate-bounce" />
+                  {imageBase64 ? (
+                    <img src={`data:${imageMimeType};base64,${imageBase64}`} alt="preview" className="max-h-32 rounded-lg border border-white/10" />
+                  ) : (
+                    <UploadCloud size={32} className="text-gray-500 group-hover:text-cyan-400 transition-colors animate-bounce" />
+                  )}
                   <div>
-                    <p className="text-xs md:text-sm font-bold text-white">Drag & drop your CSV file here, or <span className="text-cyan-400 group-hover:underline">Browse Files</span></p>
-                    <p className="text-[10px] text-gray-500 mt-1 uppercase">Any format accepted (AI matches headers)</p>
+                    <p className="text-xs md:text-sm font-bold text-white">Drag & drop your CSV or Image here, or <span className="text-cyan-400 group-hover:underline">Browse Files</span></p>
+                    <p className="text-[10px] text-gray-500 mt-1 uppercase">Any format accepted (AI parses images & text)</p>
                   </div>
-                  {csvFile && (
+                  {csvFile && !imageBase64 && (
                     <span className="text-xs bg-[#3cd7ff]/10 border border-[#3cd7ff]/20 text-[#3cd7ff] px-3 py-1 rounded-full font-bold">
                       {csvFile.name}
                     </span>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Or Paste CSV Text</label>
-                  <textarea
-                    rows={6}
-                    placeholder="Symbol, Qty, Price, Date&#10;AAPL, 10, 180.20, 2025-04-08&#10;BTC, 0.45, 63400.0, 2025-05-12"
-                    value={csvText}
-                    onChange={(e) => setCsvText(e.target.value)}
-                    className="w-full bg-[#131620] border border-[#2e303a] rounded-xl px-4 py-3 text-xs md:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-mono resize-none"
-                  />
-                </div>
+                {!imageBase64 && (
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Or Paste CSV Text</label>
+                    <textarea
+                      rows={6}
+                      placeholder="Symbol, Qty, Price, Date&#10;AAPL, 10, 180.20, 2025-04-08&#10;BTC, 0.45, 63400.0, 2025-05-12"
+                      value={csvText}
+                      onChange={(e) => setCsvText(e.target.value)}
+                      className="w-full bg-[#131620] border border-[#2e303a] rounded-xl px-4 py-3 text-xs md:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500 font-mono resize-none"
+                    />
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                   <button
@@ -973,11 +1002,11 @@ const PortfolioPage: React.FC = () => {
                   </button>
                   <button
                     onClick={handleParseCSV}
-                    disabled={parsingCSV || !csvText}
+                    disabled={parsingCSV || (!csvText && !imageBase64)}
                     className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl py-2.5 text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
                   >
                     {parsingCSV ? <RefreshCw className="animate-spin mr-2 inline" size={14} /> : null}
-                    {parsingCSV ? 'AI Parsing...' : 'Parse CSV with AI'}
+                    {parsingCSV ? 'AI Parsing...' : 'Parse with AI'}
                   </button>
                 </div>
               </div>
