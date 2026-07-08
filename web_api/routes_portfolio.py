@@ -17,7 +17,9 @@ portfolio_bp = Blueprint('portfolio', __name__)
 
 # --- 🚀 Price Caching system ---
 _PRICE_CACHE = {}  # {symbol: (price, change_pct, timestamp)}
-_CACHE_DURATION = 300  # 5 minutes in seconds
+_CACHE_DURATION = 3600  # 1 hour in seconds
+_NEWS_CACHE = {}  # {user_id: (news_json, timestamp)}
+_NEWS_CACHE_DURATION = 3600  # 1 hour in seconds
 
 def get_stock_prices(symbols):
     """Fetch batch stock prices from Alpaca snapshots API using system credentials."""
@@ -79,7 +81,8 @@ def get_crypto_prices(symbols):
     try:
         exchange = ccxt.binance({
             "options": {"defaultType": "spot"},
-            "enableRateLimit": True
+            "enableRateLimit": True,
+            "timeout": 3000
         })
         ccxt_symbols = [f"{sym}/USDT" for sym in symbols]
         tickers = exchange.fetch_tickers(ccxt_symbols)
@@ -88,19 +91,29 @@ def get_crypto_prices(symbols):
             if t:
                 prices[sym] = (float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0))
     except Exception:
-        # Fallback to fetching individually
-        for sym in symbols:
+        pass
+
+    missing_symbols = [s for s in symbols if s not in prices]
+    if missing_symbols:
+        binance_exch = ccxt.binance({'timeout': 3000})
+        coinbase_exch = ccxt.coinbase({'timeout': 3000})
+        
+        def fetch_single(sym):
             try:
-                exchange = ccxt.binance()
-                t = exchange.fetch_ticker(f"{sym}/USDT")
-                prices[sym] = (float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0))
+                t = binance_exch.fetch_ticker(f"{sym}/USDT")
+                return sym, float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0)
             except Exception:
                 try:
-                    exchange = ccxt.coinbase()
-                    t = exchange.fetch_ticker(f"{sym}/USD")
-                    prices[sym] = (float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0))
+                    t = coinbase_exch.fetch_ticker(f"{sym}/USD")
+                    return sym, float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0)
                 except Exception:
-                    prices[sym] = (None, 0.0)
+                    return sym, None, 0.0
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            results = executor.map(fetch_single, missing_symbols)
+            for sym, price, pct in results:
+                prices[sym] = (price, pct)
+
     return prices
 
 def get_cached_prices(symbols, categories):
@@ -126,21 +139,25 @@ def get_cached_prices(symbols, categories):
             if sym not in to_fetch_crypto:
                 to_fetch_crypto.append(sym)
 
-    if to_fetch_stock:
-        stock_prices = get_stock_prices(to_fetch_stock)
-        for sym, val in stock_prices.items():
-            cache_key = f"{sym}_stock"
-            if val[0] is not None:
-                _PRICE_CACHE[cache_key] = (val[0], val[1], now)
-            result[cache_key] = val
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        f_stock = executor.submit(get_stock_prices, to_fetch_stock) if to_fetch_stock else None
+        f_crypto = executor.submit(get_crypto_prices, to_fetch_crypto) if to_fetch_crypto else None
 
-    if to_fetch_crypto:
-        crypto_prices = get_crypto_prices(to_fetch_crypto)
-        for sym, val in crypto_prices.items():
-            cache_key = f"{sym}_crypto"
-            if val[0] is not None:
-                _PRICE_CACHE[cache_key] = (val[0], val[1], now)
-            result[cache_key] = val
+        if f_stock:
+            stock_prices = f_stock.result()
+            for sym, val in stock_prices.items():
+                cache_key = f"{sym}_stock"
+                if val[0] is not None:
+                    _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+                result[cache_key] = val
+
+        if f_crypto:
+            crypto_prices = f_crypto.result()
+            for sym, val in crypto_prices.items():
+                cache_key = f"{sym}_crypto"
+                if val[0] is not None:
+                    _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+                result[cache_key] = val
 
     # Ensure all requested keys are in the result
     for sym, cat in zip(symbols, categories):
@@ -751,6 +768,13 @@ def get_latest_analysis():
 @require_premium
 def get_portfolio_news():
     user_id = g.user["id"]
+    now = time.time()
+    
+    if user_id in _NEWS_CACHE:
+        cached_news, ts = _NEWS_CACHE[user_id]
+        if now - ts < _NEWS_CACHE_DURATION:
+            return jsonify(cached_news), 200
+
     positions = []
 
     with db_session() as conn:
@@ -763,11 +787,13 @@ def get_portfolio_news():
         positions = [{"symbol": "BTC", "category": "crypto"}, {"symbol": "AAPL", "category": "stock"}]
 
     news_items = []
-    for p in positions:
+    
+    def fetch_news_for_position(p):
         sym = p["symbol"]
         cat = p["category"]
         yf_symbol = f"{sym}-USD" if cat.lower() == 'crypto' else sym
         
+        items = []
         try:
             ticker = yf.Ticker(yf_symbol)
             ticker_news = ticker.news
@@ -778,12 +804,12 @@ def get_portfolio_news():
                 content = item.get("content", {})
                 title = content.get("title")
                 summary = content.get("summary") or content.get("description") or ""
-                pub_date = content.get("pubDate")
+                link = content.get("clickThroughUrl", {}).get("url") or item.get("link")
+                pub_date = content.get("pubDate") or item.get("providerPublishTime")
                 provider = content.get("provider", {}).get("displayName", "Yahoo Finance")
-                link = content.get("clickThroughUrl", {}).get("url") or content.get("canonicalUrl", {}).get("url")
                 
-                if title:
-                    news_items.append({
+                if title and link:
+                    items.append({
                         "symbol": sym,
                         "title": title,
                         "summary": summary[:200] + "..." if len(summary) > 200 else summary,
@@ -794,12 +820,15 @@ def get_portfolio_news():
                     count += 1
         except Exception:
             pass
+        return items
 
-    if not news_items:
-        return jsonify({"news": [], "counts": {"bullish": 0, "bearish": 0, "neutral": 0}}), 200
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        results = executor.map(fetch_news_for_position, positions)
+        for items in results:
+            news_items.extend(items)
 
     news_items = news_items[:6]
-
+    
     prompt_list = [f"{i+1}. Title: {n['title']} (Summary: {n['summary']})" for i, n in enumerate(news_items)]
     prompt_str = "\n".join(prompt_list)
 
