@@ -20,6 +20,11 @@ def send_telegram_alert(service_name, error, tb_string=None):
         return False
 
     try:
+        error_str = str(error)
+        if "127.0.0.1" in error_str and "5432" in error_str and "Connection refused" in error_str:
+            logger.warning("Suppressed localhost DB connection error from Telegram.")
+            return False
+
         if tb_string is None:
             tb_string = traceback.format_exc()
 
