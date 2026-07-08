@@ -80,7 +80,7 @@ const LoginPage: React.FC = () => {
       {/* Top Row: Login & System Architecture */}
       <div className="flex flex-col lg:flex-row items-center lg:items-stretch lg:justify-center gap-8 lg:gap-16 w-full">
         {/* Left Column: Login / Auth */}
-        <div className="w-full max-w-[420px] flex flex-col gap-6 h-full justify-between">
+        <div className="w-full lg:max-w-[420px] flex flex-col gap-6 lg:h-auto justify-between flex-1">
         {/* Header Card (Algorithmic Intelligence) */}
         <div className="relative overflow-hidden w-full rounded-2xl p-5 bg-gradient-to-br from-[#3cd7ff]/20 via-[#0c1f30] to-[#00e676]/20 border border-[#3cd7ff]/30 text-center shadow-[0_0_40px_rgba(60,215,255,0.15)]">
           <div className="absolute -right-10 -top-10 w-64 h-64 bg-[#3cd7ff]/30 rounded-full blur-[80px] pointer-events-none"></div>

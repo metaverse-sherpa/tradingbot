@@ -5,7 +5,7 @@ import {
   Sparkles, FileUp, Plus, Edit2, Trash2, Search,
   RefreshCw, X, Wallet,
   UploadCloud, ChevronDown, Zap, ArrowUp, ArrowDown,
-  LineChart, Bitcoin
+  Landmark, Coins
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -756,11 +756,18 @@ const PortfolioPage: React.FC = () => {
                       <td className="py-4">
                         <div className="flex items-center gap-2">
                           <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${pos.category === 'crypto' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'}`}>
-                            {pos.category === 'crypto' ? <Bitcoin size={16} /> : <LineChart size={16} />}
+                            {pos.category === 'crypto' ? <Coins size={16} /> : <Landmark size={16} />}
                           </span>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-white uppercase block">{pos.symbol}</span>
+                              <a 
+                                href={pos.category === 'crypto' ? `https://marketmasters.ai/currency/${pos.symbol}USDT` : `https://marketmasters.ai/stocks/${pos.symbol}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold text-white uppercase block hover:text-cyan-400 transition-colors"
+                              >
+                                {pos.symbol}
+                              </a>
                               {activeSignals.find(s => s.symbol === pos.symbol) && (
                                 <button
                                   onClick={() => setSelectedSignal(activeSignals.find(s => s.symbol === pos.symbol))}

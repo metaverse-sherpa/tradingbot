@@ -6,7 +6,7 @@ const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] text-center space-y-10 md:space-y-12 px-6 md:px-0 py-10 pb-24">
+    <div className="flex flex-col items-center min-h-[calc(100vh-8rem)] text-center space-y-10 md:space-y-12 px-6 md:px-0 py-10 pb-24 pt-10 md:pt-20">
       
       <div className="space-y-5 md:space-y-6 max-w-3xl">
         <h1 className="text-3xl md:text-7xl font-bold text-white leading-tight">

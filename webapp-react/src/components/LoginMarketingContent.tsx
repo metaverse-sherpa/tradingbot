@@ -1,22 +1,23 @@
 import React from 'react';
 import { Map, ZoomIn } from 'lucide-react';
+import architectureInfographic from '/architecture_infographic.png';
 
 const LoginMarketingContent: React.FC = () => {
 
 
   return (
-    <div className="w-full max-w-md lg:max-w-none lg:flex-1 mx-auto flex flex-col gap-6">
+    <div className="w-full max-w-md lg:max-w-none lg:flex-1 mx-auto flex flex-col gap-6 h-full justify-between">
       {/* System Architecture */}
-      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl rounded-xl p-5 border border-white/5 space-y-3 relative overflow-hidden group hover:border-[#3cd7ff]/20 transition-all shadow-lg">
+      <div className="bg-[#1b1f2c]/70 backdrop-blur-xl rounded-xl p-5 border border-white/5 space-y-3 relative overflow-hidden group hover:border-[#3cd7ff]/20 transition-all shadow-lg flex-1 flex flex-col justify-center">
         <h3 className="font-bold text-white text-base flex items-center gap-2">
           <Map size={20} className="text-[#3cd7ff]" />
           System Architecture
         </h3>
         <div 
           className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-square flex items-center justify-center cursor-zoom-in group/img shadow-lg"
-          onClick={() => window.open('/architecture_infographic.png', '_blank')}
+          onClick={() => window.open(architectureInfographic, '_blank')}
         >
-          <img src="/architecture_infographic.png" alt="System Architecture Infographic" className="w-full h-full object-cover" />
+          <img src={architectureInfographic} alt="System Architecture Infographic" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <ZoomIn size={24} className="text-white" />
             <span className="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>
