@@ -28,6 +28,8 @@ export interface User {
   referral_credits?: number;
   developer_api_key?: string | null;
   disabled_strategies?: string[];
+  risk_profile?: string;
+  investment_goal?: string;
 }
 
 interface AuthState {
