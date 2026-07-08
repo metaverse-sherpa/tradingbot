@@ -79,6 +79,11 @@ const PremiumPage: React.FC = () => {
               <CheckCircle2 className="text-emerald-400 mt-0.5 shrink-0" size={18} />
               <p className="text-sm text-gray-300"><strong className="text-white">Priority Support:</strong> Direct access to the Metaverse Sherpa team for technical assistance and algorithmic guidance.</p>
             </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="text-emerald-400 mt-0.5 shrink-0" size={18} />
+              <p className="text-sm text-gray-300"><strong className="text-white">AI-Powered Portfolio Audits:</strong> Import your existing stock and crypto holdings and let our advanced Gemini AI instantly audit your portfolio. Get a comprehensive health score, real-time sentiment analysis from the latest news, and a personalized step-by-step action plan.</p>
+            </div>
           </div>
 
           <div className="text-center pt-6 border-t border-white/5 bg-black/20 -mx-6 -mb-6 p-6">

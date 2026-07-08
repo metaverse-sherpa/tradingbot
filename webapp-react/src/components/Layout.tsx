@@ -82,7 +82,7 @@ const Layout: React.FC = () => {
                   {/* Dropdown Menu */}
                   {profileOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-[#1f2028] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
-                      <Link to="/portfolio" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                      <Link to={isPremium ? "/portfolio" : "/premium"} onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <Briefcase size={16} className="text-cyan-400" /> My Portfolio
                       </Link>
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
@@ -123,6 +123,12 @@ const Layout: React.FC = () => {
               <LayoutDashboard size={20} className="md:w-4 md:h-4" />
               <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Dashboard</span>
             </Link>
+            {isPremium && (
+              <Link to="/portfolio" className={`hidden md:flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/portfolio' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
+                <Briefcase size={20} className="md:w-4 md:h-4" />
+                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Portfolio</span>
+              </Link>
+            )}
             {showAdvancedTabs && (
               <Link to="/trades" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/trades' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
                 <TrendingUp size={20} className="md:w-4 md:h-4" />

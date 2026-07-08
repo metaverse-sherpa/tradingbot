@@ -327,7 +327,10 @@ const Dashboard: React.FC = () => {
             Connect your {type} exchange API to get automated trading and personalized portfolio tracking. Until then, you can view the free Alpha Signals.
           </p>
           <button 
-            onClick={() => navigate('/settings')}
+            onClick={() => {
+              const isPremium = user?.subscription_tier === 'Premium' || user?.subscription_status === 'active';
+              navigate(isPremium ? '/settings' : '/premium');
+            }}
             className="w-full py-2.5 bg-white/5 border border-white/10 text-white font-bold text-xs tracking-wider rounded-xl hover:bg-white/10 transition-colors"
           >
             CONNECT {isCrypto ? 'CRYPTO' : 'STOCK'} EXCHANGE
