@@ -112,29 +112,41 @@ def get_cached_prices(symbols, categories):
 
     for sym, cat in zip(symbols, categories):
         sym = sym.upper()
-        if sym in _PRICE_CACHE:
-            price, pct, ts = _PRICE_CACHE[sym]
+        cat = cat.lower()
+        cache_key = f"{sym}_{cat}"
+        if cache_key in _PRICE_CACHE:
+            price, pct, ts = _PRICE_CACHE[cache_key]
             if now - ts < _CACHE_DURATION:
-                result[sym] = (price, pct)
+                result[cache_key] = (price, pct)
                 continue
-        if cat.lower() == 'stock':
-            to_fetch_stock.append(sym)
+        if cat == 'stock':
+            if sym not in to_fetch_stock:
+                to_fetch_stock.append(sym)
         else:
-            to_fetch_crypto.append(sym)
+            if sym not in to_fetch_crypto:
+                to_fetch_crypto.append(sym)
 
     if to_fetch_stock:
         stock_prices = get_stock_prices(to_fetch_stock)
         for sym, val in stock_prices.items():
+            cache_key = f"{sym}_stock"
             if val[0] is not None:
-                _PRICE_CACHE[sym] = (val[0], val[1], now)
-            result[sym] = val
+                _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+            result[cache_key] = val
 
     if to_fetch_crypto:
         crypto_prices = get_crypto_prices(to_fetch_crypto)
         for sym, val in crypto_prices.items():
+            cache_key = f"{sym}_crypto"
             if val[0] is not None:
-                _PRICE_CACHE[sym] = (val[0], val[1], now)
-            result[sym] = val
+                _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+            result[cache_key] = val
+
+    # Ensure all requested keys are in the result
+    for sym, cat in zip(symbols, categories):
+        cache_key = f"{sym.upper()}_{cat.lower()}"
+        if cache_key not in result:
+            result[cache_key] = (None, 0.0)
 
     return result
 
@@ -279,7 +291,9 @@ def get_portfolio():
     # Populate position metrics
     for p in positions:
         sym = p["symbol"].upper()
-        curr_price, daily_change_pct = prices_map.get(sym, (None, 0.0))
+        cat = p["category"].lower()
+        cache_key = f"{sym}_{cat}"
+        curr_price, daily_change_pct = prices_map.get(cache_key, (None, 0.0))
         if curr_price is None:
             curr_price = p["avg_entry_price"]
 
