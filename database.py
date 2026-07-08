@@ -854,7 +854,9 @@ def init_db():
             "bingx_futures_type": "TEXT DEFAULT 'standard'",
             "alpaca_start_equity": "REAL",
             "coinbase_sandbox": "INTEGER DEFAULT 1",
-            "developer_api_key": "TEXT UNIQUE"
+            "developer_api_key": "TEXT UNIQUE",
+            "risk_profile": "TEXT",
+            "investment_goal": "TEXT"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:

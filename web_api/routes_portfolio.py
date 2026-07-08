@@ -555,8 +555,8 @@ def analyze_portfolio():
     user_id = g.user["id"]
     
     data = request.get_json(silent=True) or {}
-    risk_profile = data.get("risk_profile", "Moderate")
-    investment_goal = data.get("investment_goal", "Growth")
+    risk_profile = data.get("risk_profile") or g.user.get("risk_profile") or "Moderate"
+    investment_goal = data.get("investment_goal") or g.user.get("investment_goal") or "Growth"
     
     p_response, code = get_portfolio()
     if code != 200:
@@ -605,7 +605,8 @@ def analyze_portfolio():
 
     system_instruction = (
         f"You are an expert investment advisor tailoring advice for a client with a **{risk_profile}** risk profile and an investment goal of **{investment_goal}**.\n"
-        "Analyze the user's holdings and provide a detailed portfolio health report.\n"
+        "Analyze the user's holdings and provide a detailed portfolio health report. Pay close attention to target prices.\n"
+        "CRITICAL RULE: Do NOT recommend selling a stock or crypto asset if its current price is still 5-10% (or more) below its target price, as it still has room for growth.\n"
         "Return a JSON object containing the following keys:\n"
         "- score: An integer score (1-100) representing how well the portfolio aligns with their specific risk profile and goals.\n"
         "- action_plan: A JSON list of 3-5 clean recommendation strings (e.g. ['Diversify out of high-growth tech stocks', 'Trim CRWD due to high volatility']).\n"

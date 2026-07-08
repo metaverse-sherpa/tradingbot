@@ -75,6 +75,8 @@ const Settings: React.FC = () => {
   // Preferences state
   const [riskPct, setRiskPct] = useState(user?.risk_pct ?? 1.0);
   const [stockRiskPct, setStockRiskPct] = useState(user?.stock_risk_pct ?? 2.0);
+  const [riskProfile, setRiskProfile] = useState(user?.risk_profile || 'Moderate');
+  const [investmentGoal, setInvestmentGoal] = useState(user?.investment_goal || 'Growth');
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
 
   // Admin gift
@@ -89,6 +91,8 @@ const Settings: React.FC = () => {
     }
     setRiskPct(user?.risk_pct ?? 1.0);
     setStockRiskPct(user?.stock_risk_pct ?? 2.0);
+    setRiskProfile(user?.risk_profile || 'Moderate');
+    setInvestmentGoal(user?.investment_goal || 'Growth');
   }, [user]);
 
   // Handle Exchange Save
@@ -233,9 +237,14 @@ const Settings: React.FC = () => {
   const saveRiskPreferences = async () => {
     setIsSavingPreferences(true);
     try {
-      await api.post('/settings/preferences', { risk_pct: riskPct, stock_risk_pct: stockRiskPct });
+      await api.post('/settings/preferences', { 
+        risk_pct: riskPct, 
+        stock_risk_pct: stockRiskPct,
+        risk_profile: riskProfile,
+        investment_goal: investmentGoal
+      });
       showToast("Risk configuration updated", 'success');
-      setUser({ ...user, risk_pct: riskPct, stock_risk_pct: stockRiskPct } as any);
+      setUser({ ...user, risk_pct: riskPct, stock_risk_pct: stockRiskPct, risk_profile: riskProfile, investment_goal: investmentGoal } as any);
     } catch (err) {
       showToast("Failed to update risk settings", 'error');
     } finally {
@@ -723,6 +732,36 @@ const Settings: React.FC = () => {
                     <span className="text-emerald-400">{stockRiskPct}% of balance</span>
                   </div>
                   <input type="range" min="0.5" max="5.0" step="0.5" value={stockRiskPct} onChange={e => setStockRiskPct(parseFloat(e.target.value))} className="w-full accent-emerald-500" />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-bold mb-2">
+                    <span className="text-gray-400 uppercase tracking-widest">Risk Profile</span>
+                  </div>
+                  <CustomSelect 
+                    value={riskProfile} 
+                    onChange={setRiskProfile} 
+                    options={[
+                      { value: "Conservative", label: "Conservative" },
+                      { value: "Moderate", label: "Moderate" },
+                      { value: "Aggressive", label: "Aggressive" }
+                    ]}
+                  />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-xs font-bold mb-2">
+                    <span className="text-gray-400 uppercase tracking-widest">Investment Goal</span>
+                  </div>
+                  <CustomSelect 
+                    value={investmentGoal} 
+                    onChange={setInvestmentGoal} 
+                    options={[
+                      { value: "Income", label: "Income (Dividends & Yield)" },
+                      { value: "Growth", label: "Growth (Capital Appreciation)" },
+                      { value: "Speculation", label: "Speculation (High Risk)" }
+                    ]}
+                  />
                 </div>
 
                 <button onClick={saveRiskPreferences} disabled={isSavingPreferences} className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold border border-emerald-500/30 rounded-lg transition-colors flex items-center justify-center gap-2">

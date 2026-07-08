@@ -9,11 +9,13 @@ import {
 import api from '../lib/api';
 
 import { useToast } from './Toast';
+import { useAuthStore } from '../store/useStore';
 
 const COLORS = ['#3cd7ff', '#00C853', '#8A2BE2', '#FF8C00', '#FF1493', '#00CED1', '#ADFF2F', '#A9A9A9'];
 
 const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
+  const { user } = useAuthStore();
 
   // Positions and general stats
   const [positions, setPositions] = useState<any[]>([]);
@@ -57,8 +59,8 @@ const PortfolioPage: React.FC = () => {
 
   // AI Config Modal state
   const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [riskProfile, setRiskProfile] = useState('Moderate');
-  const [investmentGoal, setInvestmentGoal] = useState('Growth');
+  const [riskProfile, setRiskProfile] = useState(user?.risk_profile || 'Moderate');
+  const [investmentGoal, setInvestmentGoal] = useState(user?.investment_goal || 'Growth');
   const [riskDropdownOpen, setRiskDropdownOpen] = useState(false);
   const [goalDropdownOpen, setGoalDropdownOpen] = useState(false);
 
@@ -125,6 +127,11 @@ const PortfolioPage: React.FC = () => {
     fetchNews();
     fetchActiveSignals();
   }, []);
+
+  useEffect(() => {
+    if (user?.risk_profile) setRiskProfile(user.risk_profile);
+    if (user?.investment_goal) setInvestmentGoal(user.investment_goal);
+  }, [user]);
 
   // AI analysis trigger
   const runAIAnalysis = async () => {
@@ -295,7 +302,7 @@ const PortfolioPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-1 md:px-0 animate-in fade-in duration-300">
+    <div className="w-full min-w-0 space-y-6 max-w-7xl mx-auto px-1 md:px-0 animate-in fade-in duration-300">
       
       {/* 🚀 Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -412,11 +419,11 @@ const PortfolioPage: React.FC = () => {
       {/* 🧭 Show Me How detailed guide */}
       {analysis && showHowOpen && (
         <div className="bg-[#1f2028] border border-white/10 rounded-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
-          <div className="flex justify-between items-center border-b border-white/10 pb-3">
+          <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
             <h3 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Sparkles className="text-emerald-400" size={18} /> Detailed Implementation Guide
             </h3>
-            <button onClick={() => setShowHowOpen(false)} className="text-gray-400 hover:text-white transition-colors">
+            <button onClick={() => setShowHowOpen(false)} className="text-gray-400 hover:text-white transition-colors self-end sm:self-auto">
               <X size={18} />
             </button>
           </div>
@@ -433,7 +440,7 @@ const PortfolioPage: React.FC = () => {
       {/* ⚡ Action Plan & recommendations */}
       {analysis && (
         <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-3.5">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
               🧭 Recommended Action Plan
             </h3>
@@ -560,16 +567,16 @@ const PortfolioPage: React.FC = () => {
 
         {/* 📰 Real-Time News feed */}
         <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 flex flex-col justify-between max-h-[300px] md:max-h-none overflow-hidden">
-          <div className="flex justify-between items-center border-b border-white/5 pb-2.5 mb-3">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-b border-white/5 pb-2.5 mb-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-widest">Holdings News Feed</h3>
-            <div className="flex gap-1.5">
-              <span className="bg-emerald-500/10 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-500/20 uppercase">
+            <div className="flex flex-wrap gap-1.5">
+              <span className="bg-emerald-500/10 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-500/20 uppercase whitespace-nowrap">
                 {newsCounts.bullish} Bullish
               </span>
-              <span className="bg-rose-500/10 text-rose-400 text-[9px] font-bold px-2 py-0.5 rounded border border-rose-500/20 uppercase">
+              <span className="bg-rose-500/10 text-rose-400 text-[9px] font-bold px-2 py-0.5 rounded border border-rose-500/20 uppercase whitespace-nowrap">
                 {newsCounts.bearish} Bearish
               </span>
-              <span className="bg-gray-500/10 text-gray-400 text-[9px] font-bold px-2 py-0.5 rounded border border-gray-500/20 uppercase">
+              <span className="bg-gray-500/10 text-gray-400 text-[9px] font-bold px-2 py-0.5 rounded border border-gray-500/20 uppercase whitespace-nowrap">
                 {newsCounts.neutral} Neutral
               </span>
             </div>
@@ -633,8 +640,8 @@ const PortfolioPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs md:text-sm">
+        <div className="max-w-full overflow-x-auto pb-2">
+          <table className="w-full min-w-[600px] text-left border-collapse text-xs md:text-sm">
             <thead>
               <tr className="border-b border-white/5 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
                 <th className="pb-3 text-center w-8 hidden lg:table-cell">#</th>
@@ -1011,71 +1018,78 @@ const PortfolioPage: React.FC = () => {
               </button>
             </div>
             
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Risk Profile</label>
-                <div className="relative">
-                  <button 
-                    onClick={() => {
-                      setRiskDropdownOpen(!riskDropdownOpen);
-                      setGoalDropdownOpen(false);
-                    }}
-                    className="w-full bg-[#131620] border border-white/5 rounded-xl px-4 py-3 text-white flex justify-between items-center focus:outline-none focus:border-purple-500/50"
-                  >
-                    {riskProfile}
-                    <ChevronDown size={16} className={`text-gray-500 transition-transform ${riskDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {riskDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1d29] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
-                      {["Conservative", "Moderate", "Aggressive"].map(opt => (
-                        <button
-                          key={opt}
-                          onClick={() => {
-                            setRiskProfile(opt);
-                            setRiskDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors ${riskProfile === opt ? 'bg-purple-500/10 text-purple-400 font-bold' : 'text-gray-300'}`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+            {(!user?.risk_profile || !user?.investment_goal) && (
+              <div className="space-y-4">
+                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-4">
+                  <p className="text-sm text-purple-300">
+                    <strong>Tip:</strong> Set these permanently in your Settings page.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Risk Profile</label>
+                  <div className="relative">
+                    <button 
+                      onClick={() => {
+                        setRiskDropdownOpen(!riskDropdownOpen);
+                        setGoalDropdownOpen(false);
+                      }}
+                      className="w-full bg-[#131620] border border-white/5 rounded-xl px-4 py-3 text-white flex justify-between items-center focus:outline-none focus:border-purple-500/50"
+                    >
+                      {riskProfile}
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${riskDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {riskDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1d29] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+                        {["Conservative", "Moderate", "Aggressive"].map(opt => (
+                          <button
+                            key={opt}
+                            onClick={() => {
+                              setRiskProfile(opt);
+                              setRiskDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors ${riskProfile === opt ? 'bg-purple-500/10 text-purple-400 font-bold' : 'text-gray-300'}`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Investment Goal</label>
+                  <div className="relative">
+                    <button 
+                      onClick={() => {
+                        setGoalDropdownOpen(!goalDropdownOpen);
+                        setRiskDropdownOpen(false);
+                      }}
+                      className="w-full bg-[#131620] border border-white/5 rounded-xl px-4 py-3 text-white flex justify-between items-center focus:outline-none focus:border-purple-500/50"
+                    >
+                      {investmentGoal}
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${goalDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {goalDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1d29] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+                        {["Wealth Preservation", "Income", "Growth", "Speculation"].map(opt => (
+                          <button
+                            key={opt}
+                            onClick={() => {
+                              setInvestmentGoal(opt);
+                              setGoalDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors ${investmentGoal === opt ? 'bg-purple-500/10 text-purple-400 font-bold' : 'text-gray-300'}`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Investment Goal</label>
-                <div className="relative">
-                  <button 
-                    onClick={() => {
-                      setGoalDropdownOpen(!goalDropdownOpen);
-                      setRiskDropdownOpen(false);
-                    }}
-                    className="w-full bg-[#131620] border border-white/5 rounded-xl px-4 py-3 text-white flex justify-between items-center focus:outline-none focus:border-purple-500/50"
-                  >
-                    {investmentGoal}
-                    <ChevronDown size={16} className={`text-gray-500 transition-transform ${goalDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {goalDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1d29] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
-                      {["Wealth Preservation", "Income", "Growth", "Speculation"].map(opt => (
-                        <button
-                          key={opt}
-                          onClick={() => {
-                            setInvestmentGoal(opt);
-                            setGoalDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors ${investmentGoal === opt ? 'bg-purple-500/10 text-purple-400 font-bold' : 'text-gray-300'}`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            )}
             
             <div className="mt-8 pt-6 border-t border-white/5">
               <button

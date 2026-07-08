@@ -97,6 +97,8 @@ webusers_table = Table(
     Column('alpaca_start_equity', Float),
     Column('coinbase_sandbox', Integer, default=1),
     Column('developer_api_key', String, unique=True),
+    Column('risk_profile', String),
+    Column('investment_goal', String),
 )
 
 theoretical_trades_table = Table(

@@ -260,15 +260,16 @@ def update_web_user_alpaca_keys(user_id, api_key, api_secret, endpoint):
     update_web_user_status(user_id, 1)
     invalidate_cache_by_user_id(user_id)
 
-def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, email_notifications=1, email_frequency='realtime', browser_notifications=1):
+def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, hide_dollars, email_notifications=1, email_frequency='realtime', browser_notifications=1, risk_profile=None, investment_goal=None):
     with db_session() as conn:
         c = conn.cursor()
         c.execute('''
             UPDATE WebUsers
             SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?,
-                email_notifications = ?, email_frequency = ?, browser_notifications = ?
+                email_notifications = ?, email_frequency = ?, browser_notifications = ?,
+                risk_profile = COALESCE(?, risk_profile), investment_goal = COALESCE(?, investment_goal)
             WHERE id = ?
-        ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, int(bool(hide_dollars)), int(email_notifications), email_frequency, int(browser_notifications), user_id))
+        ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, int(bool(hide_dollars)), int(email_notifications), email_frequency, int(browser_notifications), risk_profile, investment_goal, user_id))
         
         # Sync to Telegram bot if linked
         c.execute('SELECT telegram_chat_id FROM WebUsers WHERE id = ?', (user_id,))

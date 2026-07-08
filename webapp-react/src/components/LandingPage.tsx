@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Clock, Shield, BarChart3, Gift } from 'lucide-react';
+import { ArrowRight, Clock, Shield, BarChart3, Gift, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
@@ -32,8 +32,9 @@ const LandingPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full max-w-6xl mt-10 md:mt-16 text-left">
-        <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
+      <div className="w-full max-w-6xl mt-10 md:mt-16 text-left space-y-4 md:space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full">
+          <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
           <Clock size={28} className="text-cyan-400 mb-3 md:mb-4" />
           <h3 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Set It & Forget It</h3>
           <p className="text-sm md:text-base text-gray-400 leading-relaxed">Connect your exchange once, pick your risk level, and walk away. Sherpa monitors the markets around the clock and trades for you automatically.</p>
@@ -56,6 +57,17 @@ const LandingPage: React.FC = () => {
           <h3 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Free Signals, Zero Commitment</h3>
           <p className="text-sm md:text-base text-gray-400 leading-relaxed">Not ready to go full autopilot? Our free tier gives you every signal — entry, direction, and strategy — so you can trade manually and see the results before upgrading.</p>
         </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 p-6 md:p-8 rounded-2xl border border-purple-500/20">
+        <Sparkles size={32} className="text-purple-400 mb-3 md:mb-4" />
+        <h3 className="text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide">AI-Powered Portfolio Audits</h3>
+        <p className="text-sm md:text-lg text-gray-300 leading-relaxed max-w-4xl">
+          Import your existing stock and crypto holdings and let our advanced Gemini AI instantly audit your portfolio. 
+          Get a comprehensive health score, real-time sentiment analysis from the latest news, and a personalized 
+          step-by-step action plan to optimize your investments.
+        </p>
+      </div>
       </div>
 
     </div>
