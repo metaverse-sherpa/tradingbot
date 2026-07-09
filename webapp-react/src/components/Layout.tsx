@@ -39,7 +39,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f131f] text-[#6b6375] dark:text-[#9ca3af] font-sans overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="min-h-screen bg-[#0f131f] text-gray-300 dark:text-gray-300 font-sans overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
       <ParticlesBackground />
       
       <div className="relative z-10 flex flex-col min-h-screen">
@@ -117,7 +117,7 @@ const Layout: React.FC = () => {
           
           {/* Financial Disclaimer Footer */}
           <footer className="mt-auto pt-24 pb-8 px-4 text-center">
-            <div className="max-w-4xl mx-auto text-[10px] sm:text-xs text-gray-500/60 leading-relaxed space-y-4">
+            <div className="max-w-4xl mx-auto text-[10px] sm:text-xs text-gray-400 leading-relaxed space-y-4">
               <p>
                 <strong>Disclaimer:</strong> Trading stocks, options, cryptocurrencies, and other financial instruments involves a high degree of risk and may not be suitable for all investors. Past performance of any trading system or methodology is not necessarily indicative of future results.
               </p>

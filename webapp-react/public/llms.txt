@@ -28,5 +28,12 @@
 - **Standard Tier**: Free. Includes portfolio diagnostics and basic tracking (read-only).
 - **Premium Tier**: $20.00 USD (paid via TRON USDT). Unlocks full automated trade execution, live algorithmic signals, and API broker integration.
 
+## Optional
+
+[Home Page](/)
+[Valkyrie Elite Strategy](/strategies/valkyrie-elite)
+[Sherpa Velocity Strategy](/strategies/sherpa-velocity)
+[Premium Upgrades](/premium)
+
 ## Legal Disclaimer
 Trading stocks, cryptocurrencies, and other financial instruments involves a high degree of risk and may not be suitable for all investors. Past performance of any trading system or methodology is not necessarily indicative of future results.

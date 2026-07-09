@@ -2,28 +2,29 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 
-import Dashboard from './components/Dashboard';
-import Settings from './components/Settings';
-import SignalsPage from './components/SignalsPage';
-import TradesPage from './components/TradesPage';
-import StrategiesPage from './components/StrategiesPage';
-import ValkyrieElitePage from './components/ValkyrieElitePage';
-import SherpaVelocityPage from './components/SherpaVelocityPage';
-import BacktestsPage from './components/BacktestsPage';
-import PremiumPage from './components/PremiumPage';
-import ReferralsPage from './components/ReferralsPage';
-import AdminPage from './components/AdminPage';
-import LogsPage from './components/LogsPage';
-import HelpPage from './components/HelpPage';
-import LandingPage from './components/LandingPage';
-import LoginPage from './components/LoginPage';
+const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const Settings = React.lazy(() => import('./components/Settings'));
+const SignalsPage = React.lazy(() => import('./components/SignalsPage'));
+const TradesPage = React.lazy(() => import('./components/TradesPage'));
+const StrategiesPage = React.lazy(() => import('./components/StrategiesPage'));
+const ValkyrieElitePage = React.lazy(() => import('./components/ValkyrieElitePage'));
+const SherpaVelocityPage = React.lazy(() => import('./components/SherpaVelocityPage'));
+const BacktestsPage = React.lazy(() => import('./components/BacktestsPage'));
+const PremiumPage = React.lazy(() => import('./components/PremiumPage'));
+const ReferralsPage = React.lazy(() => import('./components/ReferralsPage'));
+const AdminPage = React.lazy(() => import('./components/AdminPage'));
+const LogsPage = React.lazy(() => import('./components/LogsPage'));
+const HelpPage = React.lazy(() => import('./components/HelpPage'));
+const LandingPage = React.lazy(() => import('./components/LandingPage'));
+const LoginPage = React.lazy(() => import('./components/LoginPage'));
 import { useEffect } from 'react';
 import { auth } from './lib/firebase';
 import { onIdTokenChanged } from 'firebase/auth';
 import api from './lib/api';
 import { useAuthStore } from './store/useStore';
 
-import PortfolioPage from './components/PortfolioPage';
+// Type inference sometimes needs static import, but we'll dynamic import the component
+const PortfolioPage = React.lazy(() => import('./components/PortfolioPage'));
 
 const RequireAuthFallback = () => {
   const { isAuthenticated } = useAuthStore();
@@ -36,6 +37,12 @@ const RequireAuthFallback = () => {
   // Save the attempted URL for redirecting after login
   return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
 };
+
+const PageLoader = () => (
+  <div className="flex-1 flex items-center justify-center min-h-[50vh]">
+    <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 const App: React.FC = () => {
   const { user, setUser, isAuthenticated, isLoading } = useAuthStore();
@@ -81,36 +88,38 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<LandingPage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="strategies" element={<StrategiesPage />} />
-          <Route path="strategies/valkyrie-elite" element={<ValkyrieElitePage />} />
-          <Route path="strategies/sherpa-velocity" element={<SherpaVelocityPage />} />
-          {isAuthenticated && (
-            <>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="stats" element={<Navigate to="/signals" replace />} />
-              <Route path="signals" element={<SignalsPage />} />
-              <Route path="trades" element={<TradesPage />} />
-              <Route path="backtests" element={<BacktestsPage />} />
-              <Route path="premium" element={<PremiumPage />} />
-              <Route path="referrals" element={<ReferralsPage />} />
-              <Route path="portfolio" element={isPremium ? <PortfolioPage /> : <Navigate to="/premium" replace />} />
-              {user?.is_admin && (
-                <>
-                  <Route path="admin" element={<AdminPage />} />
-                  <Route path="logs" element={<LogsPage />} />
-                </>
-              )}
-              <Route path="help" element={<HelpPage />} />
-            </>
-          )}
-          <Route path="*" element={<RequireAuthFallback />} />
-        </Route>
-      </Routes>
+      <React.Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<LandingPage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="strategies" element={<StrategiesPage />} />
+            <Route path="strategies/valkyrie-elite" element={<ValkyrieElitePage />} />
+            <Route path="strategies/sherpa-velocity" element={<SherpaVelocityPage />} />
+            {isAuthenticated && (
+              <>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="stats" element={<Navigate to="/signals" replace />} />
+                <Route path="signals" element={<SignalsPage />} />
+                <Route path="trades" element={<TradesPage />} />
+                <Route path="backtests" element={<BacktestsPage />} />
+                <Route path="premium" element={<PremiumPage />} />
+                <Route path="referrals" element={<ReferralsPage />} />
+                <Route path="portfolio" element={isPremium ? <PortfolioPage /> : <Navigate to="/premium" replace />} />
+                {user?.is_admin && (
+                  <>
+                    <Route path="admin" element={<AdminPage />} />
+                    <Route path="logs" element={<LogsPage />} />
+                  </>
+                )}
+                <Route path="help" element={<HelpPage />} />
+              </>
+            )}
+            <Route path="*" element={<RequireAuthFallback />} />
+          </Route>
+        </Routes>
+      </React.Suspense>
     </BrowserRouter>
   );
 

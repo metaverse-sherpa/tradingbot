@@ -60,7 +60,7 @@ const StrategiesPage: React.FC = () => {
       
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-[#f3f4f6]">Strategy Guides</h2>
+          <h1 className="text-3xl font-bold text-[#f3f4f6]">Strategy Guides</h1>
           <p className="text-gray-400 mt-2">Learn about the logic behind our automated trading engines.</p>
         </div>
       </div>
@@ -76,14 +76,14 @@ const StrategiesPage: React.FC = () => {
                 <div className="p-4 bg-[#131620] rounded-xl shadow-inner border border-white/5">
                   {strat.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-white">{strat.name}</h3>
+                <h2 className="text-2xl font-bold text-white">{strat.name}</h2>
               </div>
               
               <div className="flex-1 space-y-6">
                 <div>
-                  <h4 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                  <h3 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
                     <BookOpen size={14}/> Overview
-                  </h4>
+                  </h3>
                   <p className="text-gray-300 leading-relaxed text-sm">{strat.philosophy}</p>
                 </div>
                 

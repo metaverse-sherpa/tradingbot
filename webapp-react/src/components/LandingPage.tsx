@@ -54,25 +54,25 @@ const LandingPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full">
           <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
           <Clock size={28} className="text-cyan-400 mb-3 md:mb-4" />
-          <h3 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Set It & Forget It</h3>
+          <h2 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Set It & Forget It</h2>
           <p className="text-sm md:text-base text-gray-400 leading-relaxed">Connect your exchange once, pick your risk level, and walk away. Sherpa monitors the markets around the clock and trades for you automatically.</p>
         </div>
         
         <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
           <Shield size={28} className="text-emerald-400 mb-3 md:mb-4" />
-          <h3 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Built-In Risk Management</h3>
+          <h2 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Built-In Risk Management</h2>
           <p className="text-sm md:text-base text-gray-400 leading-relaxed">Every trade has a pre-set take-profit and stop-loss. Your downside is capped before you ever enter a position — so one bad trade can't wipe out your wins.</p>
         </div>
 
         <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
           <BarChart3 size={28} className="text-emerald-400 mb-3 md:mb-4" />
-          <h3 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Daily Performance Updates</h3>
+          <h2 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Daily Performance Updates</h2>
           <p className="text-sm md:text-base text-gray-400 leading-relaxed">Get daily and weekly reports delivered straight to your inbox and Telegram. See exactly what Sherpa traded, how much you gained, and what's still open.</p>
         </div>
 
         <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
           <Gift size={28} className="text-purple-400 mb-3 md:mb-4" />
-          <h3 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Free Signals, Zero Commitment</h3>
+          <h2 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Free Signals, Zero Commitment</h2>
           <p className="text-sm md:text-base text-gray-400 leading-relaxed">Not ready to go full autopilot? Our free tier gives you every signal — entry, direction, and strategy — so you can trade manually and see the results before upgrading.</p>
         </div>
       </div>
@@ -81,7 +81,7 @@ const LandingPage: React.FC = () => {
         <div className="flex flex-col xl:flex-row items-center gap-8">
           <div className="flex-1">
             <Sparkles size={32} className="text-purple-400 mb-3 md:mb-4" />
-            <h3 className="text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide">AI-Powered Portfolio Audits</h3>
+            <h2 className="text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide">AI-Powered Portfolio Audits</h2>
             <p className="text-sm md:text-lg text-gray-300 leading-relaxed max-w-2xl">
               Import your existing stock and crypto holdings and let our advanced Gemini AI instantly audit your portfolio. 
               Get a comprehensive health score, real-time sentiment analysis from the latest news, and a personalized 
@@ -109,7 +109,7 @@ const LandingPage: React.FC = () => {
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-4 flex items-center gap-3">
                 <div className="text-2xl flex-shrink-0">🏆</div>
                 <div>
-                  <h4 className="text-white font-black text-xs uppercase tracking-wider">Portfolio Health Audited!</h4>
+                  <h3 className="text-white font-black text-xs uppercase tracking-wider">Portfolio Health Audited!</h3>
                   <p className="text-[10px] text-gray-400 mt-0.5">Current health score: <span className="text-emerald-400 font-bold">65/100</span> (from 60/100, <span className="text-emerald-400">+5 pts</span>)</p>
                 </div>
               </div>

@@ -80,9 +80,9 @@ const PremiumPage: React.FC = () => {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
       
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+        <h1 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
           <Diamond className="text-blue-400" size={24} /> Premium Upgrade
-        </h2>
+        </h1>
       </div>
 
       {/* Benefits Box */}
@@ -94,7 +94,7 @@ const PremiumPage: React.FC = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
             <Diamond className="text-blue-400" size={24} fill="currentColor" />
-            <h3 className="text-xl font-bold text-white tracking-wide">Premium Autopilot</h3>
+            <h2 className="text-xl font-bold text-white tracking-wide">Premium Autopilot</h2>
           </div>
           
           <div className="space-y-4 mb-8 mt-6">
@@ -135,9 +135,9 @@ const PremiumPage: React.FC = () => {
 
       {/* Upgrade Box */}
       <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
-        <h3 className="text-sm font-bold text-white mb-6 border-b border-white/5 pb-4">
+        <h2 className="text-sm font-bold text-white mb-6 border-b border-white/5 pb-4">
           Upgrade / Renew via TRON USDT
-        </h3>
+        </h2>
 
         <div className="space-y-6">
           <div className="text-xs text-gray-300 space-y-2 bg-[#1f2028] p-4 rounded-xl border border-white/5">

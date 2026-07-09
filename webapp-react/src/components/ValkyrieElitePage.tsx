@@ -87,32 +87,32 @@ const ValkyrieElitePage: React.FC = () => {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchemaData) }} />
       <div className="mb-8">
         <Link to="/strategies" className="text-[#3cd7ff] hover:underline mb-4 inline-block">&larr; Back to Strategies</Link>
-        <h2 className="text-3xl font-bold text-[#f3f4f6] flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-[#f3f4f6] flex items-center gap-3">
           <Shield className="text-emerald-400" size={32} />
           Valkyrie Elite Scalper
-        </h2>
+        </h1>
         <p className="text-gray-400 mt-2">Targets high-integrity trend continuation pullbacks on high-volume assets.</p>
       </div>
 
       <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg">
-        <h3 className="text-2xl font-bold text-white mb-6">How does the Valkyrie Elite Scalper strategy minimize drawdown?</h3>
+        <h2 className="text-2xl font-bold text-white mb-6">How does the Valkyrie Elite Scalper strategy minimize drawdown?</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>
-            <h4 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+            <h3 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
               <BookOpen size={14}/> Philosophy
-            </h4>
+            </h3>
             <p className="text-gray-300 text-sm">Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.</p>
           </div>
           <div>
-            <h4 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2">Indicators Used</h4>
+            <h3 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2">Indicators Used</h3>
             <p className="text-gray-300 text-sm">Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.</p>
           </div>
           <div>
-            <h4 className="text-xs text-cyan-400 uppercase tracking-widest font-bold mb-2">Execution Pace</h4>
+            <h3 className="text-xs text-cyan-400 uppercase tracking-widest font-bold mb-2">Execution Pace</h3>
             <p className="text-gray-300 text-sm">Patient and calculated. Averages ~0.68 trades/day.</p>
           </div>
           <div>
-            <h4 className="text-xs text-emerald-400 uppercase tracking-widest font-bold mb-2">Drawdown Profile</h4>
+            <h3 className="text-xs text-emerald-400 uppercase tracking-widest font-bold mb-2">Drawdown Profile</h3>
             <p className="text-gray-300 text-sm">Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket).</p>
           </div>
         </div>
@@ -122,7 +122,7 @@ const ValkyrieElitePage: React.FC = () => {
         <div className="bg-[#0b0e14]/40 p-6 rounded-xl border border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <History size={18} className="text-[#3cd7ff]" />
-            <h3 className="text-xl font-bold text-white">What is the win rate of the Valkyrie Elite Scalper strategy?</h3>
+            <h2 className="text-xl font-bold text-white">What is the win rate of the Valkyrie Elite Scalper strategy?</h2>
           </div>
           <p className="text-xs text-gray-400 mb-6">These performance metrics and equity curves are based on 3 years of rigorous historical data. (Simulated with $10k starting capital and a strict 1.5% risk management per trade for crypto).</p>
           
@@ -178,7 +178,7 @@ const ValkyrieElitePage: React.FC = () => {
             <div className="bg-[#1b1f2c]/50 rounded-xl p-5 mt-6 border border-white/5">
               <div className="flex items-center gap-2 mb-3">
                 <Activity size={18} className="text-cyan-400" />
-                <h5 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Live Alpha Stats</h5>
+                <h4 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Live Alpha Stats</h4>
               </div>
               <div className="text-sm space-y-1.5">
                 <p className="text-gray-400">• Win Rate: <span className="text-cyan-400 font-medium">{(stat.win_rate || 0).toFixed(1)}%</span> ({stat.wins} W | {stat.losses} L)</p>
