@@ -82,7 +82,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<LandingPage />} />
-          <Route path="login" element={!isAuthenticated ? <LoginPage /> : <Dashboard />} />
+          <Route path="login" element={<LoginPage />} />
           <Route path="strategies" element={<StrategiesPage />} />
           {isAuthenticated && (
             <>

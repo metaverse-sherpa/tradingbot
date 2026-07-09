@@ -7,6 +7,7 @@ import LiveActiveSignals from './LiveActiveSignals';
 import { signInWithGoogle, auth } from '../lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useToast } from './Toast';
+import { useAuthStore } from '../store/useStore';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,14 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // If already authenticated (e.g. from a previous session or immediately after login via global state), redirect
+  const { isAuthenticated } = useAuthStore();
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate(intendedDestination, { replace: true });
+    }
+  }, [isAuthenticated, navigate, intendedDestination]);
 
   const handleGoogleLogin = async () => {
     try {
