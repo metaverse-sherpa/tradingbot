@@ -118,15 +118,9 @@ const App: React.FC = () => {
 
     const isLandingPage = window.location.pathname === '/';
     if (isLandingPage) {
-      if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(() => {
-          if (isMounted) initAuth();
-        }, { timeout: 2000 });
-      } else {
-        setTimeout(() => {
-          if (isMounted) initAuth();
-        }, 1000);
-      }
+      setTimeout(() => {
+        if (isMounted) initAuth();
+      }, 3000);
     } else {
       initAuth();
     }

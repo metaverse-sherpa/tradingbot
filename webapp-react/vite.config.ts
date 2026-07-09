@@ -21,6 +21,10 @@ export default defineConfig({
     }
   },
   build: {
-    modulePreload: false
+    modulePreload: {
+      resolveDependencies(_filename, deps) {
+        return deps.filter(dep => !dep.includes('firebase'));
+      }
+    }
   }
 })
