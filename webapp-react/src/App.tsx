@@ -86,14 +86,6 @@ const App: React.FC = () => {
     let isMounted = true;
 
     const initAuth = async () => {
-      const isLandingPage = window.location.pathname === '/';
-      if (isLandingPage) {
-        // Wait 1.5 seconds to avoid blocking FCP / LCP paint
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-      }
-      
-      if (!isMounted) return;
-
       try {
         const { getAuthInstance } = await import('./lib/firebase');
         const { onIdTokenChanged } = await import('firebase/auth');
@@ -124,7 +116,20 @@ const App: React.FC = () => {
       }
     };
 
-    initAuth();
+    const isLandingPage = window.location.pathname === '/';
+    if (isLandingPage) {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => {
+          if (isMounted) initAuth();
+        }, { timeout: 2000 });
+      } else {
+        setTimeout(() => {
+          if (isMounted) initAuth();
+        }, 1000);
+      }
+    } else {
+      initAuth();
+    }
 
     return () => {
       isMounted = false;
