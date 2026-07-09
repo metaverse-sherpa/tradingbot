@@ -26,27 +26,62 @@ import { useAuthStore } from './store/useStore';
 // Type inference sometimes needs static import, but we'll dynamic import the component
 const PortfolioPage = React.lazy(() => import('./components/PortfolioPage'));
 
-const RequireAuthFallback = () => {
-  const { isAuthenticated } = useAuthStore();
-  const location = useLocation();
-  
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  // Save the attempted URL for redirecting after login
-  return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
-};
-
 const PageLoader = () => (
   <div className="flex-1 flex items-center justify-center min-h-[50vh]">
     <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
   </div>
 );
 
-const App: React.FC = () => {
-  const { user, setUser, isAuthenticated, isLoading } = useAuthStore();
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuthStore();
+  const location = useLocation();
+
+  if (isLoading) return <PageLoader />;
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const PremiumRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated, isLoading } = useAuthStore();
+  const location = useLocation();
+
+  if (isLoading) return <PageLoader />;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  }
+
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000) || !!user?.is_admin;
+  if (!isPremium) {
+    return <Navigate to="/premium" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated, isLoading } = useAuthStore();
+  const location = useLocation();
+
+  if (isLoading) return <PageLoader />;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  }
+
+  if (!user?.is_admin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const App: React.FC = () => {
+  const { setUser } = useAuthStore();
   
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -78,14 +113,6 @@ const App: React.FC = () => {
     };
   }, [setUser]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#0b0e14] text-white flex items-center justify-center font-sans">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   return (
     <BrowserRouter>
       <React.Suspense fallback={<PageLoader />}>
@@ -96,27 +123,22 @@ const App: React.FC = () => {
             <Route path="strategies" element={<StrategiesPage />} />
             <Route path="strategies/valkyrie-elite" element={<ValkyrieElitePage />} />
             <Route path="strategies/sherpa-velocity" element={<SherpaVelocityPage />} />
-            {isAuthenticated && (
-              <>
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="stats" element={<Navigate to="/signals" replace />} />
-                <Route path="signals" element={<SignalsPage />} />
-                <Route path="trades" element={<TradesPage />} />
-                <Route path="backtests" element={<BacktestsPage />} />
-                <Route path="premium" element={<PremiumPage />} />
-                <Route path="referrals" element={<ReferralsPage />} />
-                <Route path="portfolio" element={isPremium ? <PortfolioPage /> : <Navigate to="/premium" replace />} />
-                {user?.is_admin && (
-                  <>
-                    <Route path="admin" element={<AdminPage />} />
-                    <Route path="logs" element={<LogsPage />} />
-                  </>
-                )}
-                <Route path="help" element={<HelpPage />} />
-              </>
-            )}
-            <Route path="*" element={<RequireAuthFallback />} />
+            <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="stats" element={<Navigate to="/signals" replace />} />
+            <Route path="signals" element={<ProtectedRoute><SignalsPage /></ProtectedRoute>} />
+            <Route path="trades" element={<ProtectedRoute><TradesPage /></ProtectedRoute>} />
+            <Route path="backtests" element={<ProtectedRoute><BacktestsPage /></ProtectedRoute>} />
+            <Route path="premium" element={<ProtectedRoute><PremiumPage /></ProtectedRoute>} />
+            <Route path="referrals" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
+            <Route path="portfolio" element={<PremiumRoute><PortfolioPage /></PremiumRoute>} />
+            
+            <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+            <Route path="logs" element={<AdminRoute><LogsPage /></AdminRoute>} />
+            
+            <Route path="help" element={<ProtectedRoute><HelpPage /></ProtectedRoute>} />
+            
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>
       </React.Suspense>
