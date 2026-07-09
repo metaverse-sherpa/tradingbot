@@ -135,7 +135,7 @@ const LoginPage: React.FC = () => {
 
           <div className="flex items-center gap-4 py-1">
             <div className="flex-1 h-px bg-white/10"></div>
-            <span className="text-xs text-gray-500">or</span>
+            <span className="text-xs text-gray-400">or</span>
             <div className="flex-1 h-px bg-white/10"></div>
           </div>
 
@@ -163,7 +163,8 @@ const LoginPage: React.FC = () => {
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)} 
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -176,11 +177,11 @@ const LoginPage: React.FC = () => {
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </button>
               <div className="flex flex-col items-center gap-2 mt-4">
-                <button type="button" onClick={() => setAuthMode('forgot')} className="text-sm font-medium text-[#3cd7ff] hover:opacity-80 transition-opacity">
+                <button type="button" onClick={() => setAuthMode('forgot')} className="text-sm font-medium text-[#3cd7ff] hover:opacity-80 transition-opacity py-2 min-h-[44px]">
                   Forgot password?
                 </button>
                 <p className="text-[11px] text-gray-400 mt-2">
-                  Don't have an account? <button type="button" onClick={() => setAuthMode('register')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity">Create one</button>
+                  Don't have an account? <button type="button" onClick={() => setAuthMode('register')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity py-2 min-h-[44px]">Create one</button>
                 </p>
               </div>
             </form>
@@ -210,7 +211,8 @@ const LoginPage: React.FC = () => {
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)} 
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -224,7 +226,7 @@ const LoginPage: React.FC = () => {
               </button>
               <div className="flex flex-col items-center gap-2 mt-4">
                 <p className="text-[11px] text-gray-400">
-                  Already have an account? <button type="button" onClick={() => setAuthMode('login')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity">Sign in</button>
+                  Already have an account? <button type="button" onClick={() => setAuthMode('login')} className="font-bold text-[#3cd7ff] hover:opacity-80 transition-opacity py-2 min-h-[44px]">Sign in</button>
                 </p>
               </div>
             </form>
@@ -250,7 +252,7 @@ const LoginPage: React.FC = () => {
                 {isLoading ? 'Sending...' : 'Send Reset Link'}
               </button>
               <div className="flex flex-col items-center gap-2 mt-4">
-                <button type="button" onClick={() => setAuthMode('login')} className="text-xs font-bold text-gray-400 hover:text-white transition-colors">
+                <button type="button" onClick={() => setAuthMode('login')} className="text-xs font-bold text-gray-400 hover:text-white transition-colors py-2 min-h-[44px]">
                   Back to Sign In
                 </button>
               </div>
@@ -259,7 +261,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         <footer className="text-center px-4 mt-4">
-          <p className="text-[11px] text-gray-500 leading-relaxed">
+          <p className="text-[11px] text-gray-400 leading-relaxed">
               By signing in, you agree to our Terms of Service and Privacy Policy. Institutional grade encryption active.
           </p>
         </footer>
