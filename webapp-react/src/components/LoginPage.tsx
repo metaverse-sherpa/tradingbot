@@ -24,6 +24,11 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  React.useEffect(() => {
+    // Debug toast
+    showToast(`Intended destination: ${intendedDestination}`, 'info');
+  }, [intendedDestination, showToast]);
+
   // If already authenticated (e.g. from a previous session or immediately after login via global state), redirect
   const { isAuthenticated } = useAuthStore();
   React.useEffect(() => {
@@ -35,7 +40,7 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       await signInWithGoogle();
-      navigate(intendedDestination, { replace: true });
+      // Navigation is handled by the useEffect watching isAuthenticated
     } catch (error) {
       console.error("Login failed", error);
       showToast("Google Login failed", "error");
@@ -47,7 +52,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate(intendedDestination, { replace: true });
+      // Navigation is handled by the useEffect watching isAuthenticated
     } catch (error: any) {
       console.error("Login failed", error);
       showToast(error.message, "error");
@@ -61,7 +66,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      navigate(intendedDestination, { replace: true });
+      // Navigation is handled by the useEffect watching isAuthenticated
     } catch (error: any) {
       console.error("Registration failed", error);
       showToast(error.message, "error");
