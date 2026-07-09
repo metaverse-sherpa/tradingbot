@@ -38,6 +38,8 @@ CORS(
             "origins": [
                 FRONTEND_ORIGIN,
                 "https://bot.metaversesherpa.io",
+                "https://www.elliottwaves.ai",
+                "https://elliottwaves.ai",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173"
             ]

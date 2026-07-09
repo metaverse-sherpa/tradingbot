@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC5_-c02iid6jrfyzwaMok4O63FP4885LY",
-  authDomain: "bot.metaversesherpa.io",
+  authDomain: typeof window !== 'undefined' ? window.location.hostname : "bot.metaversesherpa.io",
   projectId: "tradingbot-bf028",
   storageBucket: "tradingbot-bf028.firebasestorage.app",
   messagingSenderId: "1030598184996",

@@ -3,13 +3,27 @@ upstream webapi_backend {
     keepalive 32;
 }
 
+# MAIN HTTPS SERVER BLOCK FOR ALL DOMAINS
 server {
-    server_name bot.metaversesherpa.io;
-    add_header Cross-Origin-Opener-Policy "same-origin-allow-popups";
+    # Accept connections for both the old and new domains
+    server_name bot.metaversesherpa.io elliottwaves.ai www.elliottwaves.ai;
 
     root /home/gilesasp/tradingbot/webapp-react/dist;
     index index.html;
 
+    # 1. Enable Gzip Compression for static text/code files
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+    # 2. Cache Vite hashed static assets permanently (max-age of 1 year)
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        access_log off;
+    }
     
     # Firebase Auth custom domain proxy
     location /__/auth/ {
@@ -25,6 +39,7 @@ server {
 
     location ~ ^/(api|unsubscribe) {
         proxy_pass http://webapi_backend;
+        # Crucial: This preserves whatever domain the user typed (elliottwaves.ai or bot.metaversesherpa.io)
         proxy_set_header Host $host;
         proxy_http_version 1.1;
         proxy_set_header Connection ""; # Clear header for keepalive support
@@ -43,24 +58,36 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/bot.metaversesherpa.io/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+
 }
 
-# Redirect all requests matching the domain to HTTPS
+# DYNAMIC HTTP TO HTTPS REDIRECT (Port 80)
+# This redirects any traffic on port 80 to port 443 while keeping the original domain intact.
 server {
+    if ($host = www.elliottwaves.ai) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    if ($host = elliottwaves.ai) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
     if ($host = bot.metaversesherpa.io) {
         return 301 https://$host$request_uri;
     } # managed by Certbot
 
-    listen 80;
-    server_name bot.metaversesherpa.io;
-    add_header Cross-Origin-Opener-Policy "same-origin-allow-popups";
-    return 404; # managed by Certbot
-}
 
-# Catch-all default server block to redirect IP address or other domain requests to HTTPS
-server {
     listen 80 default_server;
     listen [::]:80 default_server;
-    server_name _;
-    return 301 https://bot.metaversesherpa.io$request_uri;
+    server_name bot.metaversesherpa.io elliottwaves.ai www.elliottwaves.ai _;
+    
+    # $host matches the domain the user requested, ensuring they aren't forced onto bot.metaversesherpa.io
+    return 301 https://$host$request_uri;
+
+
+
 }
