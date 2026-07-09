@@ -5,9 +5,27 @@ import { useNavigate } from 'react-router-dom';
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
+  const orgSchemaData = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Metaverse Sherpa",
+    "url": "https://tradingbot.metaversesherpa.io",
+    "sameAs": [
+      "https://x.com/metaversesherpa",
+      "https://github.com/metaversesherpa"
+    ],
+    "founder": {
+      "@type": "Person",
+      "name": "John Giles",
+      "sameAs": [
+        "https://www.linkedin.com/in/johngiles"
+      ]
+    }
+  };
+
   return (
     <div className="flex flex-col items-center min-h-[calc(100vh-8rem)] text-center space-y-10 md:space-y-12 px-6 md:px-0 py-10 pb-24 pt-10 md:pt-20">
-      
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchemaData) }} />
       <div className="space-y-5 md:space-y-6 max-w-3xl">
         <h1 className="text-3xl md:text-7xl font-bold text-white leading-tight">
           Your Money. Working Harder. <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">24/7.</span>

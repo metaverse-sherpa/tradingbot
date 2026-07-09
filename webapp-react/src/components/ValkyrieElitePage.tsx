@@ -61,10 +61,30 @@ const ValkyrieElitePage: React.FC = () => {
     ]
   };
 
+  const datasetSchemaData = {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": "Valkyrie Elite Scalper - 3 Year Backtest Performance Data",
+    "description": "Comprehensive historical backtest data for the Valkyrie Elite Scalper strategy, covering 3 years of trades, win rate, net PnL, maximum drawdown, and Sharpe ratio.",
+    "url": "https://tradingbot.metaversesherpa.io/strategies/valkyrie-elite",
+    "creator": {
+      "@type": "Organization",
+      "name": "Metaverse Sherpa"
+    },
+    "distribution": [
+      {
+        "@type": "DataDownload",
+        "encodingFormat": "text/csv",
+        "contentUrl": "https://tradingbot.metaversesherpa.io/backtests/valkyrie_elite_backtest.csv"
+      }
+    ]
+  };
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchemaData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchemaData) }} />
       <div className="mb-8">
         <Link to="/strategies" className="text-[#3cd7ff] hover:underline mb-4 inline-block">&larr; Back to Strategies</Link>
         <h2 className="text-3xl font-bold text-[#f3f4f6] flex items-center gap-3">

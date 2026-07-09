@@ -61,10 +61,30 @@ const SherpaVelocityPage: React.FC = () => {
     ]
   };
 
+  const datasetSchemaData = {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "name": "Sherpa Velocity Pullback - 5 Year Backtest Performance Data",
+    "description": "Comprehensive historical backtest data for the Sherpa Velocity Pullback strategy, covering 5 years of trades, win rate, net PnL, maximum drawdown, and Sharpe ratio on Megacap US Equities.",
+    "url": "https://tradingbot.metaversesherpa.io/strategies/sherpa-velocity",
+    "creator": {
+      "@type": "Organization",
+      "name": "Metaverse Sherpa"
+    },
+    "distribution": [
+      {
+        "@type": "DataDownload",
+        "encodingFormat": "text/csv",
+        "contentUrl": "https://tradingbot.metaversesherpa.io/backtests/sherpa_velocity_backtest.csv"
+      }
+    ]
+  };
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchemaData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchemaData) }} />
       <div className="mb-8">
         <Link to="/strategies" className="text-[#3cd7ff] hover:underline mb-4 inline-block">&larr; Back to Strategies</Link>
         <h2 className="text-3xl font-bold text-[#f3f4f6] flex items-center gap-3">
