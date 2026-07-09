@@ -660,9 +660,35 @@ const PortfolioPage: React.FC = () => {
           {analysis && showHowOpen && (
             <div className="bg-[#1f2028] border border-white/10 rounded-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
               <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
-                <h3 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="text-emerald-400" size={18} /> Detailed Implementation Guide
-                </h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-md font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Sparkles className="text-emerald-400" size={18} /> Detailed Implementation Guide
+                  </h3>
+                  
+                  {analysisHistory.length > 1 && (
+                    <div className="flex items-center gap-1 bg-black/40 rounded-lg p-0.5 border border-white/5">
+                      <button 
+                        onClick={() => setCurrentAnalysisIndex(Math.min(analysisHistory.length - 1, currentAnalysisIndex + 1))}
+                        disabled={currentAnalysisIndex === analysisHistory.length - 1}
+                        className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                        title="Older analysis"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <span className="text-[10px] text-gray-400 font-bold px-1">
+                        {analysisHistory.length - currentAnalysisIndex} OF {analysisHistory.length}
+                      </span>
+                      <button 
+                        onClick={() => setCurrentAnalysisIndex(Math.max(0, currentAnalysisIndex - 1))}
+                        disabled={currentAnalysisIndex === 0}
+                        className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                        title="Newer analysis"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button onClick={() => setShowHowOpen(false)} className="text-gray-400 hover:text-white transition-colors self-end sm:self-auto">
                   <X size={18} />
                 </button>
