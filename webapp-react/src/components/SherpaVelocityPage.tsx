@@ -117,7 +117,7 @@ const SherpaVelocityPage: React.FC = () => {
           </div>
         </div>
 
-        <img src="/api/charts/sherpa_velocity_infographic_ai.png" alt="Sherpa Velocity Infographic" className="w-full rounded-xl border border-white/10 mb-8" onError={(e) => e.currentTarget.style.display = 'none'} />
+        <img src="/api/charts/sherpa_velocity_infographic_ai.png" alt="Sherpa Velocity Infographic" width={1024} height={1024} className="w-full aspect-square rounded-xl border border-white/10 mb-8" onError={(e) => e.currentTarget.style.display = 'none'} />
 
         <div className="bg-[#0b0e14]/40 p-6 rounded-xl border border-white/5">
           <div className="flex items-center gap-2 mb-2">
@@ -128,9 +128,9 @@ const SherpaVelocityPage: React.FC = () => {
           
           <div 
             className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-6 flex items-center justify-center cursor-zoom-in group/chart shadow-lg"
-            onClick={() => window.open("/api/charts/sherpa_equity.png", '_blank')}
+            onClick={() => window.open("/api/charts/sherpa_equity.webp", '_blank')}
           >
-            <img src="/api/charts/sherpa_equity.png" alt="Backtest Equity Curve" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <img src="/api/charts/sherpa_equity.webp" alt="Backtest Equity Curve" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/chart:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <ZoomIn size={24} className="text-white" />
               <span className="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
@@ -141,8 +141,8 @@ const SherpaVelocityPage: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="py-3 px-4 text-xs text-gray-500 uppercase font-bold">Metric</th>
-                  <th className="py-3 px-4 text-xs text-gray-500 uppercase font-bold">Performance Value</th>
+                  <th className="py-3 px-4 text-xs text-gray-400 uppercase font-bold">Metric</th>
+                  <th className="py-3 px-4 text-xs text-gray-400 uppercase font-bold">Performance Value</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -178,7 +178,7 @@ const SherpaVelocityPage: React.FC = () => {
             <div className="bg-[#1b1f2c]/50 rounded-xl p-5 mt-6 border border-white/5">
               <div className="flex items-center gap-2 mb-3">
                 <Activity size={18} className="text-amber-400" />
-                <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider">Live Alpha Stats</h4>
+                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider">Live Alpha Stats</h3>
               </div>
               <div className="text-sm space-y-1.5">
                 <p className="text-gray-400">• Win Rate: <span className="text-amber-400 font-medium">{(stat.win_rate || 0).toFixed(1)}%</span> ({stat.wins} W | {stat.losses} L)</p>
@@ -196,7 +196,7 @@ const SherpaVelocityPage: React.FC = () => {
             >
               Unlock Strategy with Premium
             </Link>
-            <p className="text-xs text-gray-500 mt-3">Full access to Sherpa Velocity Pullback is included in the Premium subscription.</p>
+            <p className="text-xs text-gray-400 mt-3">Full access to Sherpa Velocity Pullback is included in the Premium subscription.</p>
           </div>
         </div>
       </div>

@@ -32,9 +32,9 @@ const ActiveStrategiesCatalog: React.FC = () => {
               
               <div 
                 className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-4 flex items-center justify-center cursor-zoom-in group/chart shadow-lg"
-                onClick={() => window.open('/api/charts/valkyrie_equity.png', '_blank')}
+                onClick={() => window.open('/api/charts/valkyrie_equity.webp', '_blank')}
               >
-                <img src="/api/charts/valkyrie_equity.png" alt="Backtest Equity Curve" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <img src="/api/charts/valkyrie_equity.webp" alt="Backtest Equity Curve" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/chart:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <ZoomIn size={24} className="text-white" />
                   <span className="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
@@ -82,7 +82,7 @@ const ActiveStrategiesCatalog: React.FC = () => {
             {guideExpanded && (
               <div className="pt-4 mt-2 border-t border-white/5 space-y-4 text-left animate-fade-in">
                 <div className="rounded-xl overflow-hidden mb-4 border border-white/10 shadow-lg">
-                   <img src="/api/charts/valkyrie_elite_infographic_ai.png" alt="Valkyrie Infographic" className="w-full h-auto object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <img src="/api/charts/valkyrie_elite_infographic_ai.webp" alt="Valkyrie Infographic" width={1024} height={1024} className="w-full aspect-square object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 </div>
                 <div className="space-y-1">
                   <h6 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Philosophy</h6>
@@ -133,9 +133,9 @@ const ActiveStrategiesCatalog: React.FC = () => {
               
               <div 
                 className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-4 flex items-center justify-center cursor-zoom-in group/chart shadow-lg"
-                onClick={() => window.open('/api/charts/sherpa_equity.png', '_blank')}
+                onClick={() => window.open('/api/charts/sherpa_equity.webp', '_blank')}
               >
-                <img src="/api/charts/sherpa_equity.png" alt="Backtest Equity Curve" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <img src="/api/charts/sherpa_equity.webp" alt="Backtest Equity Curve" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/chart:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <ZoomIn size={24} className="text-white" />
                   <span className="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
@@ -175,7 +175,7 @@ const ActiveStrategiesCatalog: React.FC = () => {
             {guideExpanded2 && (
               <div className="pt-4 mt-2 border-t border-white/5 space-y-4 text-left animate-fade-in">
                 <div className="rounded-xl overflow-hidden mb-4 border border-white/10 shadow-lg">
-                   <img src="/api/charts/sherpa_velocity_infographic_ai.png" alt="Sherpa Velocity Infographic" className="w-full h-auto object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <img src="/api/charts/sherpa_velocity_infographic_ai.webp" alt="Sherpa Velocity Infographic" width={1024} height={1024} className="w-full aspect-square object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 </div>
                 <div className="space-y-1">
                   <h6 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Philosophy</h6>

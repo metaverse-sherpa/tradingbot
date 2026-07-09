@@ -1480,7 +1480,9 @@ def panic_close():
 def get_chart(filename):
     filepath = os.path.join(os.getcwd(), "results", filename)
     if os.path.exists(filepath):
-        return send_file(filepath, mimetype='image/png')
+        ext = filename.rsplit('.', 1)[-1].lower()
+        mimetype = 'image/webp' if ext == 'webp' else 'image/png'
+        return send_file(filepath, mimetype=mimetype)
         
     import base64
     pixel = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")

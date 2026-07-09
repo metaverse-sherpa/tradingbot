@@ -19,8 +19,8 @@ const strategies = [
       maxDrawdown: "-19.5%",
       netPnl: "+240.1%",
       finalBalance: "$34,010.00",
-      chart: "/api/charts/valkyrie_equity.png",
-      infographic: "/api/charts/valkyrie_elite_infographic_ai.png"
+      chart: "/api/charts/valkyrie_equity.webp",
+      infographic: "/api/charts/valkyrie_elite_infographic_ai.webp"
     }
   },
   {
@@ -39,8 +39,8 @@ const strategies = [
       maxDrawdown: "-22.7%",
       netPnl: "+1,515.8%",
       finalBalance: "$161,586.43",
-      chart: "/api/charts/sherpa_equity.png",
-      infographic: "/api/charts/sherpa_velocity_infographic_ai.png"
+      chart: "/api/charts/sherpa_equity.webp",
+      infographic: "/api/charts/sherpa_velocity_infographic_ai.webp"
     }
   }
 ];
