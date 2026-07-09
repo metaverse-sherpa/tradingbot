@@ -17,7 +17,7 @@ const LoginMarketingContent: React.FC = () => {
           className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-square flex items-center justify-center cursor-zoom-in group/img shadow-lg"
           onClick={() => window.open(architectureInfographic, '_blank')}
         >
-          <img src={architectureInfographic} alt="System Architecture Infographic" width={1024} height={1024} className="w-full h-full object-cover aspect-square" />
+          <img src={architectureInfographic} alt="System Architecture Infographic" width={1024} height={1024} className="w-full h-full object-cover aspect-square" loading="lazy" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <ZoomIn size={24} className="text-white" />
             <span className="text-xs text-white font-bold uppercase tracking-wider">Expand Infographic</span>

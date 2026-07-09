@@ -23,6 +23,14 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
 
 
@@ -274,14 +282,18 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Bottom Row: Active Strategies Catalog */}
-      <div className="w-full">
-        <ActiveStrategiesCatalog />
-      </div>
+      {!isMobile && (
+        <div className="w-full">
+          <ActiveStrategiesCatalog />
+        </div>
+      )}
 
       {/* Live Active Signals Row */}
-      <div className="w-full">
-        <LiveActiveSignals />
-      </div>
+      {!isMobile && (
+        <div className="w-full">
+          <LiveActiveSignals />
+        </div>
+      )}
 
     </div>
   );
