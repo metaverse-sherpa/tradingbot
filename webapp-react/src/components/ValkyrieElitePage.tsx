@@ -7,6 +7,12 @@ const ValkyrieElitePage: React.FC = () => {
   const [stat, setStat] = useState<any>(null);
 
   useEffect(() => {
+    document.title = "Valkyrie Elite Scalper Crypto Strategy | Metaverse Sherpa";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', "Valkyrie Elite Scalper targets crypto trend continuation pullbacks using Bollinger Bands. 58.4% Win Rate, 4.12 Sharpe, -19.5% Max Drawdown.");
+    }
+
     const fetchStats = async () => {
       try {
         const res = await api.get('/stats/free');

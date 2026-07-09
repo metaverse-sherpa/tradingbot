@@ -7,6 +7,12 @@ const SherpaVelocityPage: React.FC = () => {
   const [stat, setStat] = useState<any>(null);
 
   useEffect(() => {
+    document.title = "Sherpa Velocity Pullback Equities Strategy | Metaverse Sherpa";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', "Sherpa Velocity Pullback targets short-term oversold pullback cycles on megacap US equities. 68.4% Win Rate, 2.14 Sharpe, -22.7% Max Drawdown.");
+    }
+
     const fetchStats = async () => {
       try {
         const res = await api.get('/stats/free');

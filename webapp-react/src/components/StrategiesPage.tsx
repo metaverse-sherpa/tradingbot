@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BookOpen, Shield, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -46,6 +46,14 @@ const strategies = [
 ];
 
 const StrategiesPage: React.FC = () => {
+
+  useEffect(() => {
+    document.title = "Automated Trading Strategy Guides | Metaverse Sherpa";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', "Explore our proprietary algorithmic trading strategies for crypto and equities. Discover the philosophy, backtests, and performance metrics.");
+    }
+  }, []);
 
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">

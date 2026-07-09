@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Diamond, Copy, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../store/useStore';
 import { useToast } from './Toast';
@@ -8,6 +8,14 @@ const PremiumPage: React.FC = () => {
   const { user } = useAuthStore();
   const { showToast } = useToast();
   const [sourceWallet, setSourceWallet] = useState('');
+
+  useEffect(() => {
+    document.title = "Unlock Premium Automated Trading Autopilot | Metaverse Sherpa";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', "Upgrade to Premium for $20/month. Unlock full automated execution, exchange integration with Binance and Alpaca, and AI-powered portfolio audits.");
+    }
+  }, []);
 
   const schemaData = {
     "@context": "https://schema.org",
