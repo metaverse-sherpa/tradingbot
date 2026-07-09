@@ -103,6 +103,140 @@ async def premium_expiration_engine(application):
             except: pass
             await asyncio.sleep(3600)
 
+async def fetch_daily_stock_stats(tg_user):
+    equity = 0.0
+    daily_pnl_pct = 0.0
+    daily_pnl_usd = 0.0
+    overall_pnl_pct = 0.0
+    overall_pnl_usd = 0.0
+    try:
+        loop = asyncio.get_event_loop()
+        acc = await loop.run_in_executor(None, lambda: database.make_alpaca_request(tg_user, "GET", "/v2/account"))
+        if acc:
+            equity = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
+            last_eq = float(acc.get("last_equity", 0) or 0)
+            if last_eq > 0:
+                daily_pnl_usd = equity - last_eq
+                daily_pnl_pct = (daily_pnl_usd / last_eq) * 100
+                
+            start_eq = float(tg_user.get("alpaca_start_equity") or 0)
+            if start_eq > 0:
+                overall_pnl_usd = equity - start_eq
+                overall_pnl_pct = (overall_pnl_usd / start_eq) * 100
+                
+    except Exception as e:
+        logger.error(f"Error fetching daily stock stats for {tg_user.get('telegram_chat_id')}: {e}")
+    return {
+        "equity": equity,
+        "daily_pnl_pct": daily_pnl_pct,
+        "daily_pnl_usd": daily_pnl_usd,
+        "overall_pnl_pct": overall_pnl_pct,
+        "overall_pnl_usd": overall_pnl_usd
+    }
+
+async def fetch_daily_crypto_stats(tg_user):
+    equity = 0.0
+    daily_pnl_pct = 0.0
+    daily_pnl_usd = 0.0
+    overall_pnl_pct = 0.0
+    overall_pnl_usd = 0.0
+    
+    crypto_api_key = tg_user.get("api_key")
+    crypto_api_secret = tg_user.get("api_secret")
+    crypto_api_password = tg_user.get("api_password") or ""
+    crypto_exchange_id = tg_user.get("exchange_id", "blofin")
+    
+    if crypto_api_key and crypto_api_secret:
+        try:
+            import ccxt
+            default_type = "swap"
+            config = {
+                "apiKey": crypto_api_key,
+                "secret": crypto_api_secret,
+                **({"password": crypto_api_password} if crypto_api_password else {}),
+                "options": {"defaultType": default_type},
+                "enableRateLimit": False,
+                "timeout": 4000,
+            }
+            client = getattr(ccxt, crypto_exchange_id)(config)
+            
+            # Check for sandbox
+            cb_sandbox = tg_user.get("coinbase_sandbox")
+            if cb_sandbox in (1, True, '1', 'true', 'True') and crypto_exchange_id == 'coinbase':
+                client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
+                
+            loop = asyncio.get_event_loop()
+            
+            # Fetch balance
+            futures_type = tg_user.get("bingx_futures_type", "standard") or "standard"
+            bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
+            
+            bal = await loop.run_in_executor(None, lambda: client.fetch_balance(params=bal_params))
+            
+            if crypto_exchange_id == 'coinbase':
+                usd_bal = bal.get('USD', {})
+                usdc_bal = bal.get('USDC', {})
+                free_usd = float(usd_bal.get('free') or usd_bal.get('total') or bal.get('free', {}).get('USD') or bal.get('total', {}).get('USD') or 0.0)
+                free_usdc = float(usdc_bal.get('free') or usdc_bal.get('total') or bal.get('free', {}).get('USDC') or bal.get('total', {}).get('USDC') or 0.0)
+                free_asset = free_usd + free_usdc
+            else:
+                asset = 'USDT'
+                asset_bal = bal.get(asset, {})
+                free_asset = float(asset_bal.get('free') or asset_bal.get('total') or bal.get('free', {}).get(asset) or bal.get('total', {}).get(asset) or 0.0)
+            
+            total_equity = free_asset
+            try:
+                positions = await loop.run_in_executor(None, client.fetch_positions)
+                for p in positions:
+                    margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
+                    upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
+                    total_equity += (margin + upnl)
+            except Exception as pos_err:
+                if crypto_exchange_id != 'coinbase':
+                    logger.error(f"Error fetching positions for balance in daily engine: {pos_err}")
+                    
+            equity = total_equity
+            
+            # Overall PnL
+            start_eq = float(tg_user.get("equity") or 1000.0)
+            if start_eq > 0:
+                overall_pnl_usd = equity - start_eq
+                overall_pnl_pct = (overall_pnl_usd / start_eq) * 100
+            
+            # Estimate daily PnL using the user's historical balance snapshots in PortfolioBalanceHistory (last 24 hours)
+            one_day_ago = int(time.time()) - 24 * 3600
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("""
+                    SELECT encrypted_crypto_balance FROM PortfolioBalanceHistory 
+                    WHERE user_id = (SELECT id FROM WebUsers WHERE telegram_chat_id = ?) 
+                      AND encrypted_crypto_balance IS NOT NULL AND encrypted_crypto_balance != ''
+                    ORDER BY ABS(timestamp - ?) ASC LIMIT 1
+                """, (tg_user.get("telegram_chat_id"), one_day_ago))
+                row = c.fetchone()
+                if row and row[0]:
+                    try:
+                        decrypted_str = database.decrypt(row[0])
+                        day_start_eq = float(decrypted_str)
+                        if day_start_eq > 0:
+                            daily_pnl_usd = equity - day_start_eq
+                            daily_pnl_pct = (daily_pnl_usd / day_start_eq) * 100
+                    except Exception as dec_err:
+                        logger.error(f"Error decrypting historical balance: {dec_err}")
+            
+            try: client.close()
+            except: pass
+        except Exception as e:
+            logger.error(f"Error fetching CCXT daily crypto stats: {e}")
+            
+    return {
+        "equity": equity,
+        "daily_pnl_pct": daily_pnl_pct,
+        "daily_pnl_usd": daily_pnl_usd,
+        "overall_pnl_pct": overall_pnl_pct,
+        "overall_pnl_usd": overall_pnl_usd
+    }
+
 async def fetch_weekly_stock_stats(tg_user):
     equity = 0.0
     weekly_pnl_pct = 0.0
@@ -597,16 +731,45 @@ async def daily_combined_email_engine(application):
                 s['daily_pnl_pct'] = (daily_change * CRYPTO_LEVERAGE) if is_long else (-daily_change * CRYPTO_LEVERAGE)
 
             from web_api.email_service import send_alert_email, get_combined_daily_summary_html, get_combined_daily_summary_telegram
+            
+            stock_hypothetical_data = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
+            crypto_hypothetical_data = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+            
+            stock_prices_float_cache = {k: v["daily"] for k, v in live_prices_stock.items()}
+            crypto_prices_float_cache = {k: v["daily"] for k, v in live_prices_crypto.items()}
+            
             daily_mail_users = [ru for ru in daily_users if ru.get("wants_daily_email")]
             if daily_mail_users:
                 subject = f"🏔️ Metaverse Sherpa Daily Digest - {datetime.now(tz).strftime('%Y-%m-%d')}"
                 for ru in daily_mail_users:
                     if ru.get("email"):
                         is_prem = ru.get("is_premium_user", False)
+                        has_stock_exch = ru.get("has_stock_exchange", False)
+                        has_crypto_exch = ru.get("has_crypto_exchange", False)
+                        
+                        stock_portfolio_data = None
+                        stock_open_trades = None
+                        crypto_portfolio_data = None
+                        crypto_open_trades = None
+                        
+                        if is_prem:
+                            from database import get_user
+                            tg_id = ru.get('telegram_chat_id')
+                            tg_user = get_user(tg_id) if tg_id else None
+                            if tg_user:
+                                if has_stock_exch:
+                                    stock_portfolio_data = await fetch_daily_stock_stats(tg_user)
+                                    stock_open_trades = await fetch_premium_open_trades(tg_user, "stock", stock_prices_float_cache, crypto_prices_float_cache)
+                                if has_crypto_exch:
+                                    crypto_portfolio_data = await fetch_daily_crypto_stats(tg_user)
+                                    crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto", stock_prices_float_cache, crypto_prices_float_cache)
+                        
                         html_content = get_combined_daily_summary_html(
-                            stock_opened, stock_closed, 
-                            crypto_opened, crypto_closed, 
-                            is_premium=is_prem
+                            is_premium=is_prem,
+                            has_stock_exchange=has_stock_exch, stock_portfolio_data=stock_portfolio_data, stock_open_trades=stock_open_trades, stock_hypothetical_data=stock_hypothetical_data,
+                            has_crypto_exchange=has_crypto_exch, crypto_portfolio_data=crypto_portfolio_data, crypto_open_trades=crypto_open_trades, crypto_hypothetical_data=crypto_hypothetical_data,
+                            stock_opened=stock_opened, stock_closed=stock_closed,
+                            crypto_opened=crypto_opened, crypto_closed=crypto_closed
                         )
                         send_alert_email(ru["email"], subject, html_content)
                 logger.info(f"✅ Daily combined summary emails dispatched to {len(daily_mail_users)} subscribers.")
@@ -615,10 +778,32 @@ async def daily_combined_email_engine(application):
             if daily_tg_users:
                 for ru in daily_tg_users:
                     is_prem = ru.get("is_premium_user", False)
+                    has_stock_exch = ru.get("has_stock_exchange", False)
+                    has_crypto_exch = ru.get("has_crypto_exchange", False)
+                    
+                    stock_portfolio_data = None
+                    stock_open_trades = None
+                    crypto_portfolio_data = None
+                    crypto_open_trades = None
+                    
+                    if is_prem:
+                        from database import get_user
+                        tg_id = ru.get('telegram_chat_id')
+                        tg_user = get_user(tg_id) if tg_id else None
+                        if tg_user:
+                            if has_stock_exch:
+                                stock_portfolio_data = await fetch_daily_stock_stats(tg_user)
+                                stock_open_trades = await fetch_premium_open_trades(tg_user, "stock", stock_prices_float_cache, crypto_prices_float_cache)
+                            if has_crypto_exch:
+                                crypto_portfolio_data = await fetch_daily_crypto_stats(tg_user)
+                                crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto", stock_prices_float_cache, crypto_prices_float_cache)
+                    
                     tg_chunks = get_combined_daily_summary_telegram(
-                        stock_opened, stock_closed, 
-                        crypto_opened, crypto_closed, 
-                        is_premium=is_prem
+                        is_premium=is_prem,
+                        has_stock_exchange=has_stock_exch, stock_portfolio_data=stock_portfolio_data, stock_open_trades=stock_open_trades, stock_hypothetical_data=stock_hypothetical_data,
+                        has_crypto_exchange=has_crypto_exch, crypto_portfolio_data=crypto_portfolio_data, crypto_open_trades=crypto_open_trades, crypto_hypothetical_data=crypto_hypothetical_data,
+                        stock_opened=stock_opened, stock_closed=stock_closed,
+                        crypto_opened=crypto_opened, crypto_closed=crypto_closed
                     )
                     for chunk in tg_chunks:
                         try:

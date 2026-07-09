@@ -623,6 +623,8 @@ def get_users_for_daily_processing():
         # Determine if they need a daily portfolio snapshot
         has_crypto = bool(u.get('api_key') and u.get('api_secret'))
         has_stock = bool(u.get('alpaca_api_key') and u.get('alpaca_api_secret'))
+        u['has_crypto_exchange'] = has_crypto
+        u['has_stock_exchange'] = has_stock
         has_exchange = has_crypto or has_stock
         
         u['needs_snapshot'] = u['is_premium_user'] and has_exchange

@@ -271,23 +271,42 @@ def main():
     # 3. Generate HTML and send
     from web_api.email_service import send_alert_email, get_combined_daily_summary_html
 
+    # Generate dummy data for testing premium features
+    dummy_stock_portfolio = {"equity": 15000.50, "daily_pnl_pct": 1.25, "daily_pnl_usd": 187.50}
+    dummy_crypto_portfolio = {"equity": 5430.20, "daily_pnl_pct": -0.50, "daily_pnl_usd": -27.15}
+    
+    # We will simulate that the premium user has BOTH exchanges connected, and all active global trades are in their portfolio
+    dummy_stock_open_trades = copy.deepcopy(stock_opened_2)
+    dummy_crypto_open_trades = copy.deepcopy(crypto_opened_2)
+    # Remove one trade from their open trades to simulate a "missed" signal if there are at least two
+    if len(dummy_stock_open_trades) > 1:
+        dummy_stock_open_trades.pop()
+    if len(dummy_crypto_open_trades) > 1:
+        dummy_crypto_open_trades.pop()
+
+    dummy_stock_hypo = {"cumulative_pnl": 250.0, "wins": 15, "losses": 5, "win_rate": 75.0}
+    dummy_crypto_hypo = {"cumulative_pnl": -150.0, "wins": 8, "losses": 10, "win_rate": 44.4}
+
     # --- FREE version ---
     logger.info("📧 Generating FREE version...")
     html_free = get_combined_daily_summary_html(
-        stock_opened, stock_closed,
-        crypto_opened, crypto_closed,
         is_premium=False,
+        stock_opened=stock_opened, stock_closed=stock_closed,
+        crypto_opened=crypto_opened, crypto_closed=crypto_closed
     )
+
     subject_free = f"🏔️ [TEST - FREE] Metaverse Sherpa Daily Digest - {date_str}"
     send_alert_email(args.to, subject_free, html_free)
     logger.info(f"✅ FREE version queued for {args.to}")
 
-    # --- PREMIUM version ---
+    # --- PREMIUM version (Exchanges Connected) ---
     logger.info("📧 Generating PREMIUM version...")
     html_premium = get_combined_daily_summary_html(
-        stock_opened_2, stock_closed_2,
-        crypto_opened_2, crypto_closed_2,
         is_premium=True,
+        has_stock_exchange=True, stock_portfolio_data=dummy_stock_portfolio, stock_open_trades=dummy_stock_open_trades, stock_hypothetical_data=dummy_stock_hypo,
+        has_crypto_exchange=True, crypto_portfolio_data=dummy_crypto_portfolio, crypto_open_trades=dummy_crypto_open_trades, crypto_hypothetical_data=dummy_crypto_hypo,
+        stock_opened=stock_opened_2, stock_closed=stock_closed_2,
+        crypto_opened=crypto_opened_2, crypto_closed=crypto_closed_2
     )
     subject_premium = f"🏔️ [TEST - PREMIUM] Metaverse Sherpa Daily Digest - {date_str}"
     send_alert_email(args.to, subject_premium, html_premium)
