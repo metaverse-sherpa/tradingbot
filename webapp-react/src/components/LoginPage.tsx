@@ -24,10 +24,7 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  React.useEffect(() => {
-    // Debug toast
-    showToast(`Intended destination: ${intendedDestination}`, 'info');
-  }, [intendedDestination, showToast]);
+
 
   // If already authenticated (e.g. from a previous session or immediately after login via global state), redirect
   const { isAuthenticated } = useAuthStore();
