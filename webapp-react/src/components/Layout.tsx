@@ -112,8 +112,23 @@ const Layout: React.FC = () => {
         </nav>
 
         {/* Main Content */}
-        <main className={`flex-1 w-full max-w-7xl mx-auto flex flex-col ${isAuthenticated ? 'p-4 pb-24 md:p-8' : ''}`}>
+        <main className={`flex-1 w-full max-w-7xl mx-auto flex flex-col ${isAuthenticated ? 'p-4 pb-32 md:p-8 md:pb-32' : 'pb-12'}`}>
           <Outlet />
+          
+          {/* Financial Disclaimer Footer */}
+          <footer className="mt-auto pt-24 pb-8 px-4 text-center">
+            <div className="max-w-4xl mx-auto text-[10px] sm:text-xs text-gray-500/60 leading-relaxed space-y-4">
+              <p>
+                <strong>Disclaimer:</strong> Trading stocks, options, cryptocurrencies, and other financial instruments involves a high degree of risk and may not be suitable for all investors. Past performance of any trading system or methodology is not necessarily indicative of future results.
+              </p>
+              <p>
+                Metaversesherpa provides algorithmic trading tools and portfolio analytics for informational and educational purposes only. We are not registered financial advisors. By using this platform, you acknowledge that you are solely responsible for your own investment decisions and any resulting financial losses.
+              </p>
+              <p>
+                © {new Date().getFullYear()} Metaversesherpa AI. All rights reserved.
+              </p>
+            </div>
+          </footer>
         </main>
 
         {/* Unified Bottom Navbar */}

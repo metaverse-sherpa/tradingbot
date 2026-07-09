@@ -9,6 +9,24 @@ const PremiumPage: React.FC = () => {
   const { showToast } = useToast();
   const [sourceWallet, setSourceWallet] = useState('');
 
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": "https://bot.metaversesherpa.io/#product",
+    "name": "Metaversesherpa Automated Trading Subscription",
+    "description": "Hands-free automated stock and cryptocurrency trading bot strategy access.",
+    "brand": {
+      "@type": "Brand",
+      "name": "Metaversesherpa"
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": "https://bot.metaversesherpa.io/premium",
+      "price": "20.00",
+      "priceCurrency": "USD"
+    }
+  };
+
   const treasuryAddress = 'TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj';
 
   const handleCopy = () => {
@@ -32,6 +50,17 @@ const PremiumPage: React.FC = () => {
   const handleVerify = async () => {
     try {
       const res = await api.post('/premium/check-payment');
+      
+      // GA4 Conversion Tracking
+      if (typeof window !== 'undefined' && (window as any).dataLayer) {
+        (window as any).dataLayer.push({
+          event: 'premium_subscription_purchased',
+          value: 20.00,
+          currency: 'USD',
+          method: 'TRON_USDT'
+        });
+      }
+
       showToast(res.data.message || 'Verification request submitted. Please allow up to 15 minutes for blockchain confirmation.', 'info');
     } catch (error: any) {
       showToast(error.response?.data?.error || 'Verification failed', 'error');
@@ -40,6 +69,7 @@ const PremiumPage: React.FC = () => {
 
   return (
     <div className="flex-1 w-full max-w-2xl mx-auto space-y-6 pb-20">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
       
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">

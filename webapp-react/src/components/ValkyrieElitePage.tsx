@@ -19,8 +19,22 @@ const ValkyrieElitePage: React.FC = () => {
     fetchStats();
   }, []);
 
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Valkyrie Elite Scalper",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "149.00",
+      "priceCurrency": "USD"
+    }
+  };
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
       <div className="mb-8">
         <Link to="/strategies" className="text-[#3cd7ff] hover:underline mb-4 inline-block">&larr; Back to Strategies</Link>
         <h2 className="text-3xl font-bold text-[#f3f4f6] flex items-center gap-3">
@@ -31,7 +45,7 @@ const ValkyrieElitePage: React.FC = () => {
       </div>
 
       <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg">
-        <h3 className="text-2xl font-bold text-white mb-6">Detailed Overview</h3>
+        <h3 className="text-2xl font-bold text-white mb-6">How does the Valkyrie Elite Scalper strategy minimize drawdown?</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>
             <h4 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
@@ -58,7 +72,7 @@ const ValkyrieElitePage: React.FC = () => {
         <div className="bg-[#0b0e14]/40 p-6 rounded-xl border border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <History size={18} className="text-[#3cd7ff]" />
-            <h5 className="text-sm font-bold text-[#3cd7ff] uppercase tracking-wider">3-Year Historical Backtest</h5>
+            <h3 className="text-xl font-bold text-white">What is the win rate of the Valkyrie Elite Scalper strategy?</h3>
           </div>
           <p className="text-xs text-gray-400 mb-6">These performance metrics and equity curves are based on 3 years of rigorous historical data. (Simulated with $10k starting capital and a strict 1.5% risk management per trade for crypto).</p>
           
@@ -73,31 +87,41 @@ const ValkyrieElitePage: React.FC = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-[10px] text-gray-500 uppercase font-bold">Win Rate</div>
-              <div className="text-[#00e676] font-bold text-lg">58%</div>
-            </div>
-            <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-[10px] text-gray-500 uppercase font-bold">Total Trades</div>
-              <div className="text-white font-bold text-lg">747</div>
-            </div>
-            <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-[10px] text-gray-500 uppercase font-bold">Sharpe Ratio</div>
-              <div className="text-[#ffdb3c] font-bold text-lg">3.86</div>
-            </div>
-            <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-[10px] text-gray-500 uppercase font-bold">Max Drawdown</div>
-              <div className="text-rose-500 font-bold text-lg">-19.5%</div>
-            </div>
-            <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-[10px] text-gray-500 uppercase font-bold">Net PnL</div>
-              <div className="text-[#00e676] font-bold text-lg">+240.1%</div>
-            </div>
-            <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-              <div className="text-[10px] text-gray-500 uppercase font-bold">Final Balance</div>
-              <div className="text-white font-bold text-lg">$34,010.00</div>
-            </div>
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="py-3 px-4 text-xs text-gray-500 uppercase font-bold">Metric</th>
+                  <th className="py-3 px-4 text-xs text-gray-500 uppercase font-bold">Performance Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                <tr className="bg-[#1b1f2c]/30 hover:bg-[#1b1f2c]/50 transition-colors">
+                  <td className="py-3 px-4 text-sm text-gray-300 font-medium">Win Rate</td>
+                  <td className="py-3 px-4 text-[#00e676] font-bold">58%</td>
+                </tr>
+                <tr className="bg-[#1b1f2c]/30 hover:bg-[#1b1f2c]/50 transition-colors">
+                  <td className="py-3 px-4 text-sm text-gray-300 font-medium">Total Trades</td>
+                  <td className="py-3 px-4 text-white font-bold">747</td>
+                </tr>
+                <tr className="bg-[#1b1f2c]/30 hover:bg-[#1b1f2c]/50 transition-colors">
+                  <td className="py-3 px-4 text-sm text-gray-300 font-medium">Sharpe Ratio</td>
+                  <td className="py-3 px-4 text-[#ffdb3c] font-bold">3.86</td>
+                </tr>
+                <tr className="bg-[#1b1f2c]/30 hover:bg-[#1b1f2c]/50 transition-colors">
+                  <td className="py-3 px-4 text-sm text-gray-300 font-medium">Max Drawdown</td>
+                  <td className="py-3 px-4 text-rose-500 font-bold">-19.5%</td>
+                </tr>
+                <tr className="bg-[#1b1f2c]/30 hover:bg-[#1b1f2c]/50 transition-colors">
+                  <td className="py-3 px-4 text-sm text-gray-300 font-medium">Net PnL</td>
+                  <td className="py-3 px-4 text-[#00e676] font-bold">+240.1%</td>
+                </tr>
+                <tr className="bg-[#1b1f2c]/30 hover:bg-[#1b1f2c]/50 transition-colors">
+                  <td className="py-3 px-4 text-sm text-gray-300 font-medium">Final Balance</td>
+                  <td className="py-3 px-4 text-white font-bold">$34,010.00</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
           
           {stat && (
@@ -114,6 +138,16 @@ const ValkyrieElitePage: React.FC = () => {
               </div>
             </div>
           )}
+
+          <div className="mt-8 pt-6 border-t border-white/10 text-center">
+            <Link 
+              to="/premium"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-[#3cd7ff] to-[#0099ff] text-white font-bold rounded-xl shadow-lg hover:shadow-cyan-500/25 transition-all hover:-translate-y-0.5 w-full md:w-auto"
+            >
+              Unlock Strategy with Premium
+            </Link>
+            <p className="text-xs text-gray-500 mt-3">Full access to Valkyrie Elite Scalper is included in the Premium subscription.</p>
+          </div>
         </div>
       </div>
     </div>
