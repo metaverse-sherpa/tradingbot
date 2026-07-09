@@ -197,6 +197,12 @@ const PortfolioPage: React.FC = () => {
 
       // Fetch score details to get updated previous score banner logic
       await fetchAnalysis();
+
+      if ((window as any).dataLayer) {
+        (window as any).dataLayer.push({
+          event: 'portfolio_analysis_run'
+        });
+      }
     } catch (err: any) {
       if (err.response?.status === 429) {
         showToast(err.response.data?.error || "You can only run a new analysis once every 24 hours unless you update your holdings.", "error");

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Shield, TrendingUp, History, ZoomIn, Activity } from 'lucide-react';
-import api from '../lib/api';
+import React from 'react';
+import { BookOpen, Shield, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const strategies = [
   {
@@ -46,19 +46,6 @@ const strategies = [
 ];
 
 const StrategiesPage: React.FC = () => {
-  const [freeStats, setFreeStats] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await api.get('/stats/free');
-        setFreeStats(res.data?.strategies || []);
-      } catch (e) {
-        console.error('Failed to fetch free stats', e);
-      }
-    };
-    fetchStats();
-  }, []);
 
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">
@@ -70,129 +57,48 @@ const StrategiesPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
-        {strategies.map((strat, idx) => (
-          <div key={idx} className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-4 bg-[#131620] rounded-xl shadow-inner border border-white/5">
-                {strat.icon}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {strategies.map((strat, idx) => {
+          const isCrypto = strat.name.includes("Valkyrie");
+          const linkPath = isCrypto ? '/strategies/valkyrie-elite' : '/strategies/sherpa-velocity';
+
+          return (
+            <div key={idx} className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg flex flex-col h-full">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 bg-[#131620] rounded-xl shadow-inner border border-white/5">
+                  {strat.icon}
+                </div>
+                <h3 className="text-2xl font-bold text-white">{strat.name}</h3>
               </div>
-              <h3 className="text-2xl font-bold text-white">{strat.name}</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
+              
+              <div className="flex-1 space-y-6">
                 <div>
                   <h4 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
-                    <BookOpen size={14}/> Philosophy
+                    <BookOpen size={14}/> Overview
                   </h4>
                   <p className="text-gray-300 leading-relaxed text-sm">{strat.philosophy}</p>
                 </div>
-                <div>
-                  <h4 className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2">Indicators Used</h4>
-                  <p className="text-gray-300 leading-relaxed text-sm">{strat.indicators}</p>
-                </div>
                 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
-                  <div>
-                    <h4 className="text-xs text-cyan-400 uppercase tracking-widest font-bold mb-2">Execution Pace</h4>
-                    <p className="text-gray-300 text-sm">{strat.pace}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs text-emerald-400 uppercase tracking-widest font-bold mb-2">Drawdown Profile</h4>
-                    <p className="text-gray-300 text-sm">{strat.drawdown}</p>
-                  </div>
-                </div>
-                
-                {strat.backtest.infographic && (
-                   <div className="pt-4 border-t border-white/5">
-                     <img src={strat.backtest.infographic} alt="Infographic" className="w-full rounded-xl border border-white/10" onError={(e) => e.currentTarget.style.display = 'none'} />
+                   <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
+                     <div className="text-[10px] text-gray-500 uppercase font-bold">Win Rate</div>
+                     <div className="text-[#00e676] font-bold text-lg">{strat.backtest.winRate}</div>
                    </div>
-                )}
+                   <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
+                     <div className="text-[10px] text-gray-500 uppercase font-bold">Net PnL</div>
+                     <div className="text-[#00e676] font-bold text-lg">{strat.backtest.netPnl}</div>
+                   </div>
+                </div>
               </div>
-              
-              {/* Backtest Section */}
-              <div className="bg-[#0b0e14]/40 p-6 rounded-xl border border-white/5">
-                <div className="flex items-center gap-2 mb-2">
-                  <History size={18} className="text-[#3cd7ff]" />
-                  <h5 className="text-sm font-bold text-[#3cd7ff] uppercase tracking-wider">{strat.backtest.period}</h5>
-                </div>
-                <p className="text-xs text-gray-400 mb-6 leading-relaxed">
-                  {strat.backtest.desc}
-                </p>
-                
-                {strat.backtest.chart && (
-                  <div 
-                    className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 aspect-video mb-6 flex items-center justify-center cursor-zoom-in group/chart shadow-lg"
-                    onClick={() => window.open(strat.backtest.chart, '_blank')}
-                  >
-                    <img src={strat.backtest.chart} alt="Backtest Equity Curve" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/chart:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <ZoomIn size={24} className="text-white" />
-                      <span className="text-xs text-white font-bold uppercase tracking-wider">Expand Chart</span>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold">Win Rate</div>
-                    <div className="text-[#00e676] font-bold text-lg">{strat.backtest.winRate}</div>
-                  </div>
-                  <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold">Total Trades</div>
-                    <div className="text-white font-bold text-lg">{strat.backtest.trades}</div>
-                  </div>
-                  {strat.backtest.sharpe !== "-" && (
-                    <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-                      <div className="text-[10px] text-gray-500 uppercase font-bold">Sharpe Ratio</div>
-                      <div className="text-[#ffdb3c] font-bold text-lg">{strat.backtest.sharpe}</div>
-                    </div>
-                  )}
-                  <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold">Max Drawdown</div>
-                    <div className="text-rose-500 font-bold text-lg">{strat.backtest.maxDrawdown}</div>
-                  </div>
-                  {strat.backtest.netPnl !== "-" && (
-                    <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-                      <div className="text-[10px] text-gray-500 uppercase font-bold">Net PnL</div>
-                      <div className="text-[#00e676] font-bold text-lg">{strat.backtest.netPnl}</div>
-                    </div>
-                  )}
-                  {strat.backtest.finalBalance !== "-" && (
-                    <div className="bg-[#1b1f2c]/50 rounded-lg p-3 text-center border border-white/5">
-                      <div className="text-[10px] text-gray-500 uppercase font-bold">Final Balance</div>
-                      <div className="text-white font-bold text-lg">{strat.backtest.finalBalance}</div>
-                    </div>
-                  )}
-                </div>
 
-                {/* Live Stats Section */}
-                {(() => {
-                  const stat = freeStats.find(s => s.name === strat.name);
-                  if (!stat) return null;
-                  const isCrypto = strat.name.includes("Valkyrie");
-                  const accentColor = isCrypto ? 'text-cyan-400' : 'text-amber-400';
-                  
-                  return (
-                    <div className="bg-[#1b1f2c]/50 rounded-xl p-5 mt-6 border border-white/5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Activity size={18} className={accentColor} />
-                        <h5 className={`text-sm font-bold ${accentColor} uppercase tracking-wider`}>Live Alpha Stats</h5>
-                      </div>
-                      <div className="text-sm space-y-1.5">
-                        <p className="text-gray-400">• Win Rate: <span className={accentColor + " font-medium"}>{(stat.win_rate || 0).toFixed(1)}%</span> ({stat.wins} W | {stat.losses} L)</p>
-                        <p className="text-gray-400">• Realized PnL: <span className={`font-medium ${stat.realized_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{stat.realized_pct >= 0 ? '+' : ''}{(stat.realized_pct || 0).toFixed(2)}%</span></p>
-                        <p className="text-gray-400">• Unrealized PnL: <span className={`font-medium ${(stat.unrealized_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{(stat.unrealized_pct || 0) >= 0 ? '+' : ''}{(stat.unrealized_pct || 0).toFixed(2)}%</span></p>
-                        <p className="text-gray-400">• Active Signals: <span className={accentColor + " font-medium"}>{stat.active_count}</span></p>
-                      </div>
-                    </div>
-                  );
-                })()}
+              <div className="mt-8 pt-6 border-t border-white/5">
+                <Link to={linkPath} className={`w-full py-3 rounded-xl flex items-center justify-center font-bold transition-all ${isCrypto ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}`}>
+                  Explore Strategy
+                </Link>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ import Settings from './components/Settings';
 import SignalsPage from './components/SignalsPage';
 import TradesPage from './components/TradesPage';
 import StrategiesPage from './components/StrategiesPage';
+import ValkyrieElitePage from './components/ValkyrieElitePage';
+import SherpaVelocityPage from './components/SherpaVelocityPage';
 import BacktestsPage from './components/BacktestsPage';
 import PremiumPage from './components/PremiumPage';
 import ReferralsPage from './components/ReferralsPage';
@@ -84,6 +86,8 @@ const App: React.FC = () => {
           <Route index element={<LandingPage />} />
           <Route path="login" element={<LoginPage />} />
           <Route path="strategies" element={<StrategiesPage />} />
+          <Route path="strategies/valkyrie-elite" element={<ValkyrieElitePage />} />
+          <Route path="strategies/sherpa-velocity" element={<SherpaVelocityPage />} />
           {isAuthenticated && (
             <>
               <Route path="dashboard" element={<Dashboard />} />

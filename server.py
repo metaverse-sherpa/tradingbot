@@ -83,6 +83,9 @@ app.register_blueprint(premium_bp)
 app.register_blueprint(faq_bp)
 app.register_blueprint(portfolio_bp)
 
+from web_api.routes_ssr import ssr_bp
+app.register_blueprint(ssr_bp)
+
 
 # ----------------- Serve Frontend -----------------
 @app.route('/', defaults={'path': ''})

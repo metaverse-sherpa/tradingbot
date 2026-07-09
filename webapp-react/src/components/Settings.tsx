@@ -132,6 +132,14 @@ const Settings: React.FC = () => {
         const profileRes = await api.get('/user/profile');
         setUser({ ...user, ...profileRes.data });
         
+        if ((window as any).dataLayer) {
+          (window as any).dataLayer.push({
+            event: 'api_key_saved',
+            exchange_type: type
+          });
+        }
+
+        
         // Reset form
         setApiKey('');
         setApiSecret('');
@@ -188,6 +196,11 @@ const Settings: React.FC = () => {
       const res = await api.post('/settings/telegram', { telegram_chat_id: telegramId });
       showToast(res.data.message || "Telegram linked", 'success');
       setUser({ ...user, telegram_chat_id: parseInt(telegramId) } as any);
+      if ((window as any).dataLayer) {
+        (window as any).dataLayer.push({
+          event: 'telegram_linked'
+        });
+      }
     } catch (err: any) {
       showToast(err.response?.data?.error || "Failed to link Telegram", 'error');
     } finally {
@@ -245,6 +258,11 @@ const Settings: React.FC = () => {
       });
       showToast("Risk configuration updated", 'success');
       setUser({ ...user, risk_pct: riskPct, stock_risk_pct: stockRiskPct, risk_profile: riskProfile, investment_goal: investmentGoal } as any);
+      if ((window as any).dataLayer) {
+        (window as any).dataLayer.push({
+          event: 'preferences_saved'
+        });
+      }
     } catch (err) {
       showToast("Failed to update risk settings", 'error');
     } finally {

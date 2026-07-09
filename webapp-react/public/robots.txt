@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /strategies
+Allow: /strategies/valkyrie-elite
+Allow: /strategies/sherpa-velocity
+Allow: /pricing
+
+Sitemap: https://tradingbot.metaversesherpa.io/sitemap.xml
