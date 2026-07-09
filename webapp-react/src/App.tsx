@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 
 import Dashboard from './components/Dashboard';
@@ -22,6 +22,18 @@ import api from './lib/api';
 import { useAuthStore } from './store/useStore';
 
 import PortfolioPage from './components/PortfolioPage';
+
+const RequireAuthFallback = () => {
+  const { isAuthenticated } = useAuthStore();
+  const location = useLocation();
+  
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  // Save the attempted URL for redirecting after login
+  return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+};
 
 const App: React.FC = () => {
   const { user, setUser, isAuthenticated, isLoading } = useAuthStore();
@@ -92,7 +104,7 @@ const App: React.FC = () => {
               <Route path="help" element={<HelpPage />} />
             </>
           )}
-          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+          <Route path="*" element={<RequireAuthFallback />} />
         </Route>
       </Routes>
     </BrowserRouter>

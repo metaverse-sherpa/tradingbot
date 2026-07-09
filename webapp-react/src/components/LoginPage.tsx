@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import LoginMarketingContent from './LoginMarketingContent';
 import ActiveStrategiesCatalog from './ActiveStrategiesCatalog';
@@ -10,7 +10,13 @@ import { useToast } from './Toast';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
+  
+  // Default to /dashboard if no intended destination exists.
+  // Avoid infinite loops by falling back to /dashboard if the intent was /login.
+  const intendedDestination = location.state?.from === '/login' || !location.state?.from ? '/dashboard' : location.state.from;
+
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +26,7 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       await signInWithGoogle();
-      navigate('/dashboard');
+      navigate(intendedDestination, { replace: true });
     } catch (error) {
       console.error("Login failed", error);
       showToast("Google Login failed", "error");
@@ -32,7 +38,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/dashboard');
+      navigate(intendedDestination, { replace: true });
     } catch (error: any) {
       console.error("Login failed", error);
       showToast(error.message, "error");
@@ -46,7 +52,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      navigate('/dashboard');
+      navigate(intendedDestination, { replace: true });
     } catch (error: any) {
       console.error("Registration failed", error);
       showToast(error.message, "error");
