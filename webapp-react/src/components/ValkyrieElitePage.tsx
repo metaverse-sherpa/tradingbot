@@ -38,9 +38,33 @@ const ValkyrieElitePage: React.FC = () => {
     }
   };
 
+  const faqSchemaData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How does the Valkyrie Elite Scalper strategy minimize drawdown?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "It targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the Bollinger bands and quickly close back inside, utilizing a volatility squeeze, wick piercing verification, ADX, and standard RSI. It has a highly protected, ultra-low peak drawdown ceiling of ~16.2% to 19.5%."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the win rate of the Valkyrie Elite Scalper strategy?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Based on 3 years of rigorous historical data, the strategy has a 58% win rate across 747 trades, a Sharpe Ratio of 3.86, and a net PnL of +240.1%."
+        }
+      }
+    ]
+  };
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchemaData) }} />
       <div className="mb-8">
         <Link to="/strategies" className="text-[#3cd7ff] hover:underline mb-4 inline-block">&larr; Back to Strategies</Link>
         <h2 className="text-3xl font-bold text-[#f3f4f6] flex items-center gap-3">

@@ -38,9 +38,33 @@ const SherpaVelocityPage: React.FC = () => {
     }
   };
 
+  const faqSchemaData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How does the Sherpa Velocity Pullback strategy minimize drawdown?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "It targets short-term oversold pullback cycles on megacap US equities during robust, verified uptrends. It utilizes indicators like Daily Close > EMA(200), SuperTrend(10, 3) is UP, and 4-period RSI (< 26), maintaining a tight 22.7% maximum drawdown."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the win rate of the Sherpa Velocity Pullback strategy?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Based on 5 years of rigorous historical data on US Equities, the strategy boasts a 68.4% win rate across 766 trades, a Sharpe Ratio of 2.14, and a net PnL of +1,515.8%."
+        }
+      }
+    ]
+  };
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 p-4 md:p-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchemaData) }} />
       <div className="mb-8">
         <Link to="/strategies" className="text-[#3cd7ff] hover:underline mb-4 inline-block">&larr; Back to Strategies</Link>
         <h2 className="text-3xl font-bold text-[#f3f4f6] flex items-center gap-3">
