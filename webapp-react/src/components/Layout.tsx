@@ -1,7 +1,87 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ParticlesBackground from './ParticlesBackground';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, LayoutDashboard, Activity, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert, BookOpen, Briefcase } from 'lucide-react';
+const SettingsIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+);
+
+const LayoutDashboardIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="3" y="3" width="7" height="9" rx="1" />
+    <rect x="14" y="3" width="7" height="5" rx="1" />
+    <rect x="14" y="12" width="7" height="9" rx="1" />
+    <rect x="3" y="16" width="7" height="5" rx="1" />
+  </svg>
+);
+
+const ActivityIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+);
+
+const CrownIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7z" />
+    <path d="M5 20h14" />
+  </svg>
+);
+
+const UsersIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+const PowerIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+    <line x1="12" y1="2" x2="12" y2="12" />
+  </svg>
+);
+
+const HelpCircleIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+const TrendingUpIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+    <polyline points="17 6 23 6 23 12" />
+  </svg>
+);
+
+const ShieldAlertIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+
+const BookOpenIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+const BriefcaseIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+  </svg>
+);
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 
@@ -61,7 +141,7 @@ const Layout: React.FC = () => {
                 <div className="relative" ref={profileRef}>
                   <div className="flex items-center gap-4 cursor-pointer">
                     <Link to="/help" className="text-gray-400 hover:text-white transition-colors">
-                      <HelpCircle size={20} />
+                      <HelpCircleIcon size={20} />
                     </Link>
                     <div onClick={() => setProfileOpen(!profileOpen)} className="flex items-center justify-center relative">
                       {(user as any)?.avatar_url ? (
@@ -80,25 +160,23 @@ const Layout: React.FC = () => {
                   </div>
                   
                   {/* Dropdown Menu */}
-                  {profileOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-[#1f2028] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
                       <Link to={isPremium ? "/portfolio" : "/premium"} onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                        <Briefcase size={16} className="text-cyan-400" /> My Portfolio
+                        <BriefcaseIcon size={16} className="text-cyan-400" /> My Portfolio
                       </Link>
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                        <Users size={16} className="text-emerald-400" /> Refer & Earn
+                        <UsersIcon size={16} className="text-emerald-400" /> Refer & Earn
                       </Link>
                       {user?.is_admin && (
                         <Link to="/admin" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                          <ShieldAlert size={16} className="text-purple-400" /> Admin
+                          <ShieldAlertIcon size={16} className="text-purple-400" /> Admin
                         </Link>
                       )}
                       <div className="h-px bg-white/10 my-1"></div>
                       <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-left">
-                        <Power size={16} className="text-rose-400" /> Logout
+                        <PowerIcon size={16} className="text-rose-400" /> Logout
                       </button>
                     </div>
-                  )}
                 </div>
               ) : (
                 location.pathname !== '/login' && (
@@ -135,48 +213,48 @@ const Layout: React.FC = () => {
         {isAuthenticated && (
           <div className="fixed bottom-0 left-0 right-0 md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:right-auto bg-[#131620]/95 md:bg-[#1f2028]/95 backdrop-blur-xl border-t md:border border-white/10 z-50 px-2 py-2 flex items-center justify-center gap-1 md:gap-2 pb-safe md:rounded-2xl shadow-2xl overflow-x-auto no-scrollbar max-w-full">
             <Link to="/dashboard" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/dashboard' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-              <LayoutDashboard size={20} className="md:w-4 md:h-4" />
+              <LayoutDashboardIcon size={20} className="md:w-4 md:h-4" />
               <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Dashboard</span>
             </Link>
             {isPremium && (
               <Link to="/portfolio" className={`hidden md:flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/portfolio' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-                <Briefcase size={20} className="md:w-4 md:h-4" />
+                <BriefcaseIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Portfolio</span>
               </Link>
             )}
             {showAdvancedTabs && (
               <Link to="/trades" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/trades' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-                <TrendingUp size={20} className="md:w-4 md:h-4" />
+                <TrendingUpIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Trades</span>
               </Link>
             )}
             {showAdvancedTabs && (
               <Link to="/signals" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/signals' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-                <Activity size={20} className="md:w-4 md:h-4" />
+                <ActivityIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Signals</span>
               </Link>
             )}
 
             {!isPremium && (
               <Link to="/premium" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/premium' ? 'text-yellow-500 md:bg-yellow-500/20' : 'text-gray-500 hover:text-yellow-500 md:text-gray-400 md:hover:bg-white/5'}`}>
-                <Crown size={20} className="md:w-4 md:h-4" />
+                <CrownIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Premium</span>
               </Link>
             )}
             {!showAdvancedTabs && (
               <Link to="/strategies" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/strategies' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-                <BookOpen size={20} className="md:w-4 md:h-4" />
+                <BookOpenIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Strategies</span>
               </Link>
             )}
             {user?.is_admin && (
               <Link to="/admin" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/admin' ? 'text-purple-400 md:bg-purple-400/20' : 'text-gray-500 hover:text-purple-400 md:text-gray-400 md:hover:bg-white/5'}`}>
-                <ShieldAlert size={20} className="md:w-4 md:h-4" />
+                <ShieldAlertIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Admin</span>
               </Link>
             )}
             <Link to="/settings" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/settings' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-              <Settings size={20} className="md:w-4 md:h-4" />
+              <SettingsIcon size={20} className="md:w-4 md:h-4" />
               <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Settings</span>
             </Link>
           </div>
