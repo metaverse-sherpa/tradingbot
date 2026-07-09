@@ -12,12 +12,20 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+let authInstance: ReturnType<typeof getAuth> | null = null;
+export const getAuthInstance = () => {
+  if (!authInstance) {
+    authInstance = getAuth(app);
+  }
+  return authInstance;
+};
+
 export const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(getAuthInstance(), googleProvider);
     return result.user;
   } catch (error) {
     console.error("Error signing in with Google", error);
@@ -27,7 +35,7 @@ export const signInWithGoogle = async () => {
 
 export const logoutUser = async () => {
   try {
-    await signOut(auth);
+    await signOut(getAuthInstance());
   } catch (error) {
     console.error("Error signing out", error);
     throw error;

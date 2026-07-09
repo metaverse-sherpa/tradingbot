@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 
@@ -17,9 +17,6 @@ const LogsPage = React.lazy(() => import('./components/LogsPage'));
 const HelpPage = React.lazy(() => import('./components/HelpPage'));
 const LandingPage = React.lazy(() => import('./components/LandingPage'));
 const LoginPage = React.lazy(() => import('./components/LoginPage'));
-import { useEffect } from 'react';
-import { auth } from './lib/firebase';
-import { onIdTokenChanged } from 'firebase/auth';
 import api from './lib/api';
 import { useAuthStore } from './store/useStore';
 
@@ -85,30 +82,53 @@ const App: React.FC = () => {
   
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    const unsubscribe = onIdTokenChanged(auth, async (user) => {
-      if (user) {
-        const syncUser = async () => {
-          try {
-            // Sync with backend
-            const res = await api.post('/auth/sync', {});
-            const finalUser = { ...res.data.user, avatar_url: user.photoURL || res.data.user.avatar_url };
-            setUser(finalUser);
-          } catch (e) {
-            console.error("Auth sync failed", e);
-            setUser(null);
-          }
-        };
-        syncUser();
-        // Background polling for global user updates every 15 mins
-        interval = setInterval(syncUser, 15 * 60 * 1000);
-      } else {
-        setUser(null);
-        if (interval) clearInterval(interval);
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
+
+    const initAuth = async () => {
+      const isLandingPage = window.location.pathname === '/';
+      if (isLandingPage) {
+        // Wait 1.5 seconds to avoid blocking FCP / LCP paint
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
-    });
+      
+      if (!isMounted) return;
+
+      try {
+        const { getAuthInstance } = await import('./lib/firebase');
+        const { onIdTokenChanged } = await import('firebase/auth');
+        
+        const auth = getAuthInstance();
+        unsubscribe = onIdTokenChanged(auth, async (user) => {
+          if (user) {
+            const syncUser = async () => {
+              try {
+                // Sync with backend
+                const res = await api.post('/auth/sync', {});
+                const finalUser = { ...res.data.user, avatar_url: user.photoURL || res.data.user.avatar_url };
+                if (isMounted) setUser(finalUser);
+              } catch (e) {
+                console.error("Auth sync failed", e);
+                if (isMounted) setUser(null);
+              }
+            };
+            syncUser();
+            interval = setInterval(syncUser, 15 * 60 * 1000);
+          } else {
+            if (isMounted) setUser(null);
+            if (interval) clearInterval(interval);
+          }
+        });
+      } catch (err) {
+        console.error("Failed to load auth", err);
+      }
+    };
+
+    initAuth();
 
     return () => {
-      unsubscribe();
+      isMounted = false;
+      if (unsubscribe) unsubscribe();
       if (interval) clearInterval(interval);
     };
   }, [setUser]);

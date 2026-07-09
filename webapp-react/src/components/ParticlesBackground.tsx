@@ -57,9 +57,14 @@ const ParticlesBackground: React.FC = () => {
       }
     }
 
+    const isMobile = window.innerWidth < 768;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const shouldAnimate = !isMobile && !prefersReducedMotion;
+
     const init = () => {
       particlesArray = [];
-      const numberOfParticles = (canvas.width * canvas.height) / 9000;
+      const densityDivider = isMobile ? 40000 : 9000;
+      const numberOfParticles = (canvas.width * canvas.height) / densityDivider;
       for (let i = 0; i < numberOfParticles; i++) {
         particlesArray.push(new Particle());
       }
@@ -71,11 +76,20 @@ const ParticlesBackground: React.FC = () => {
         particlesArray[i].update();
         particlesArray[i].draw();
       }
-      animationFrameId = requestAnimationFrame(animate);
+      if (shouldAnimate) {
+        animationFrameId = requestAnimationFrame(animate);
+      }
     };
 
     init();
-    animate();
+    if (shouldAnimate) {
+      animate();
+    } else {
+      // Draw static particles once
+      for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].draw();
+      }
+    }
 
     return () => {
       window.removeEventListener('resize', handleResize);

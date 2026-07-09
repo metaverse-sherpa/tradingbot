@@ -4,7 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import LoginMarketingContent from './LoginMarketingContent';
 import ActiveStrategiesCatalog from './ActiveStrategiesCatalog';
 import LiveActiveSignals from './LiveActiveSignals';
-import { signInWithGoogle, auth } from '../lib/firebase';
+import { signInWithGoogle, getAuthInstance } from '../lib/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useToast } from './Toast';
 import { useAuthStore } from '../store/useStore';
@@ -51,7 +51,7 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(getAuthInstance(), email, password);
       // Navigation is handled by the useEffect watching isAuthenticated
     } catch (error: any) {
       console.error("Login failed", error);
@@ -65,7 +65,7 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      await createUserWithEmailAndPassword(getAuthInstance(), email, password);
       // Navigation is handled by the useEffect watching isAuthenticated
     } catch (error: any) {
       console.error("Registration failed", error);
@@ -83,7 +83,7 @@ const LoginPage: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(getAuthInstance(), email);
       showToast("Password reset link sent to your email.", "success");
       setAuthMode('login');
     } catch (error: any) {

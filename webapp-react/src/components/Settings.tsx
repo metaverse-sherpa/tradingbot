@@ -8,7 +8,6 @@ import {
 import { useAuthStore } from '../store/useStore';
 import { useToast } from './Toast';
 import api from '../lib/api';
-import { auth } from '../lib/firebase';
 
 const CustomSelect = ({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: {label: string, value: string, disabled?: boolean}[] }) => {
   const [open, setOpen] = useState(false);
@@ -311,7 +310,8 @@ const Settings: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await auth.signOut();
+    const { logoutUser } = await import('../lib/firebase');
+    await logoutUser();
     window.location.href = '/';
   };
 

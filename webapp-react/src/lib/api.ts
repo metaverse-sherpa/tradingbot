@@ -1,12 +1,12 @@
 import axios from 'axios';
-import { auth } from './firebase';
 
 const api = axios.create({
   baseURL: '/api',
 });
 
 api.interceptors.request.use(async (config) => {
-  const user = auth.currentUser;
+  const { getAuthInstance } = await import('./firebase');
+  const user = getAuthInstance().currentUser;
   if (user) {
     const token = await user.getIdToken();
     config.headers.Authorization = `Bearer ${token}`;

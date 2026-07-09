@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import ParticlesBackground from './ParticlesBackground';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Settings, LayoutDashboard, Activity, Crown, Users, Power, HelpCircle, TrendingUp, ShieldAlert, BookOpen, Briefcase } from 'lucide-react';
-import { logoutUser } from '../lib/firebase';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 
@@ -30,6 +29,7 @@ const Layout: React.FC = () => {
   const handleLogout = async () => {
     try {
       await api.post('/auth/logout');
+      const { logoutUser } = await import('../lib/firebase');
       await logoutUser();
       setProfileOpen(false);
       navigate('/login');
