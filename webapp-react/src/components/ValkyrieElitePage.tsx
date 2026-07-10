@@ -117,7 +117,7 @@ const ValkyrieElitePage: React.FC = () => {
           </div>
         </div>
 
-        <img src="/api/charts/valkyrie_elite_infographic_ai.png" alt="Valkyrie Elite Infographic" width={1024} height={1024} className="w-full aspect-square rounded-xl border border-white/10 mb-8" onError={(e) => e.currentTarget.style.display = 'none'} />
+        <img src="/api/charts/valkyrie_elite_infographic_ai.webp" alt="Valkyrie Elite Infographic" width={1024} height={1024} className="w-full aspect-square rounded-xl border border-white/10 mb-8" onError={(e) => e.currentTarget.style.display = 'none'} />
 
         <div className="bg-[#0b0e14]/40 p-6 rounded-xl border border-white/5">
           <div className="flex items-center gap-2 mb-2">
