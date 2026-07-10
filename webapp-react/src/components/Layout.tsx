@@ -160,6 +160,7 @@ const Layout: React.FC = () => {
                   </div>
                   
                   {/* Dropdown Menu */}
+                  {profileOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-[#1f2028] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
                       <Link to={isPremium ? "/portfolio" : "/premium"} onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <BriefcaseIcon size={16} className="text-cyan-400" /> My Portfolio
@@ -177,6 +178,7 @@ const Layout: React.FC = () => {
                         <PowerIcon size={16} className="text-rose-400" /> Logout
                       </button>
                     </div>
+                  )}
                 </div>
               ) : (
                 location.pathname !== '/login' && (
