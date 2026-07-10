@@ -185,6 +185,7 @@ const Layout: React.FC = () => {
                   <Link to="/login" className="bg-[#3cd7ff] hover:bg-white text-black px-4 py-1.5 rounded-lg font-bold text-xs shadow-[0_0_15px_rgba(60,215,255,0.3)] transition-all uppercase tracking-wider">
                     Login
                   </Link>
+                  
                 )
               )}
             </div>
