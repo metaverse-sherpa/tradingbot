@@ -321,7 +321,7 @@ const AdminPage: React.FC = () => {
               <h3 className="text-lg font-bold">FAQ Management</h3>
             </div>
             <button
-              onClick={() => setEditingFaq({ question: '', answer: '', order_index: 0 })}
+              onClick={() => setEditingFaq({ question: '', answer: '', order_index: 0, url: '' })}
               className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors"
             >
               <Plus size={16} /> Add FAQ
@@ -348,6 +348,15 @@ const AdminPage: React.FC = () => {
                   onChange={(e) => setEditingFaq({ ...editingFaq, answer: e.target.value })}
                   className="w-full bg-[#1b1f2c] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 min-h-[100px]"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Optional URL/Link</label>
+                <input
+                  type="text"
+                  value={editingFaq.url || ''}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, url: e.target.value })}
+                  className="w-full bg-[#1b1f2c] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
                 />
               </div>
               <div>
@@ -381,9 +390,12 @@ const AdminPage: React.FC = () => {
                       <span className="text-gray-500 text-xs px-2 py-1 bg-white/5 rounded">#{faq.order_index}</span>
                       {faq.question}
                     </h4>
-                    <p className="text-gray-400 text-sm whitespace-pre-wrap">{faq.answer}</p>
+                    <p className="text-gray-400 text-sm whitespace-pre-wrap mb-2">{faq.answer}</p>
+                    {faq.url && (
+                      <p className="text-purple-400 text-xs truncate">Link: {faq.url}</p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 transition-opacity">
                     <button onClick={() => setEditingFaq(faq)} className="p-2 text-cyan-400 hover:bg-white/5 rounded-lg transition-colors">
                       <Edit size={16} />
                     </button>
@@ -494,7 +506,7 @@ const AdminPage: React.FC = () => {
                       <p className="text-gray-500 text-xs italic truncate">Content length: {doc.content?.length || 0} characters</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 transition-opacity">
                     <button onClick={() => setEditingDoc(doc)} className="p-2 text-cyan-400 hover:bg-white/5 rounded-lg transition-colors">
                       <Edit size={16} />
                     </button>

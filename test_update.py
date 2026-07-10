@@ -1,13 +1,21 @@
-import requests
-import json
+import logging
+logging.basicConfig(level=logging.INFO)
 
-data = {
-    "category": "stock",
-    "symbol": "BTC",
-    "quantity": 10.0,
-    "avg_entry_price": 50000.0,
-    "purchase_date": "2024-01-01",
-    "dividend_yield": 0.0
-}
+from database import db_session
 
-# we need an auth token or cookie, this is tough
+with db_session() as conn:
+    c = conn.cursor()
+    c.execute('''
+        UPDATE faqs
+        SET url = %s
+        WHERE id = %s
+    ''', ('/premium', 1))
+    
+    if c.rowcount == 0:
+        print("FAQ not found")
+        
+    conn.commit()
+    print("Updated FAQ 1 url to /premium")
+    
+    c.execute("SELECT id, url FROM faqs WHERE id = 1")
+    print("Result:", c.fetchall())

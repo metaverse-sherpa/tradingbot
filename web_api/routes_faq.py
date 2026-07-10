@@ -22,7 +22,7 @@ def is_user_admin(user):
 def get_faqs():
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT id, question, answer, order_index, created_at FROM FAQs ORDER BY order_index ASC, id ASC")
+        c.execute("SELECT id, question, answer, order_index, created_at, url FROM FAQs ORDER BY order_index ASC, id ASC")
         rows = c.fetchall()
         
     faqs = []
@@ -32,7 +32,8 @@ def get_faqs():
             "question": r['question'],
             "answer": r['answer'],
             "order_index": r['order_index'],
-            "created_at": r['created_at']
+            "created_at": r['created_at'],
+            "url": r['url'] if 'url' in r.keys() else None
         })
     return jsonify({"faqs": faqs}), 200
 
@@ -47,6 +48,7 @@ def create_faq():
     question = data.get('question', '').strip()
     answer = data.get('answer', '').strip()
     order_index = int(data.get('order_index', 0))
+    url = data.get('url', '').strip() or None
     
     if not question or not answer:
         return jsonify({"error": "Question and answer are required"}), 400
@@ -56,9 +58,9 @@ def create_faq():
     with db_session() as conn:
         c = conn.cursor()
         c.execute('''
-            INSERT INTO FAQs (question, answer, order_index, created_at)
-            VALUES (?, ?, ?, ?)
-        ''', (question, answer, order_index, created_at))
+            INSERT INTO FAQs (question, answer, order_index, created_at, url)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (question, answer, order_index, created_at, url))
         conn.commit()
         new_id = c.lastrowid
         
@@ -75,6 +77,7 @@ def update_faq(faq_id):
     question = data.get('question', '').strip()
     answer = data.get('answer', '').strip()
     order_index = int(data.get('order_index', 0))
+    url = data.get('url', '').strip() or None
     
     if not question or not answer:
         return jsonify({"error": "Question and answer are required"}), 400
@@ -83,9 +86,9 @@ def update_faq(faq_id):
         c = conn.cursor()
         c.execute('''
             UPDATE FAQs
-            SET question = ?, answer = ?, order_index = ?
+            SET question = ?, answer = ?, order_index = ?, url = ?
             WHERE id = ?
-        ''', (question, answer, order_index, faq_id))
+        ''', (question, answer, order_index, url, faq_id))
         
         if c.rowcount == 0:
             return jsonify({"error": "FAQ not found"}), 404

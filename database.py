@@ -700,7 +700,14 @@ def init_db():
                           question TEXT NOT NULL,
                           answer TEXT NOT NULL,
                           order_index INTEGER DEFAULT 0,
-                          created_at INTEGER)''')
+                          created_at INTEGER,
+                          url TEXT)''')
+        else:
+            try:
+                c.execute("ALTER TABLE FAQs ADD COLUMN url TEXT")
+                conn.commit()
+            except:
+                conn.rollback()
 
         # 📄 Documents Table
         if "Documents" not in existing_tables:

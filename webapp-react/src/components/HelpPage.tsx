@@ -144,25 +144,50 @@ const HelpPage: React.FC = () => {
           <p className="text-gray-400 italic">No FAQs available at the moment.</p>
         ) : (
           <div className="space-y-4">
-            {faqs.map((faq) => (
-              <div 
-                key={faq.id} 
-                className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-colors hover:border-white/20 cursor-pointer"
-                onClick={() => setOpenFaqId(openFaqId === faq.id ? null : faq.id)}
-              >
-                <div className="p-5 flex items-center justify-between">
-                  <h4 className="text-lg font-semibold text-white">{faq.question}</h4>
-                  <div className="text-gray-400">
-                    {openFaqId === faq.id ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            {faqs.map((faq) => {
+              if (faq.url) {
+                const isExternal = faq.url.startsWith('http');
+                return (
+                  <a 
+                    key={faq.id}
+                    href={faq.url}
+                    target={isExternal ? "_blank" : "_self"}
+                    rel={isExternal ? "noopener noreferrer" : ""}
+                    className="block bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-colors hover:border-white/20"
+                  >
+                    <div className="p-5 flex items-center justify-between">
+                      <div>
+                        <h4 className="text-lg font-semibold text-white">{faq.question}</h4>
+                        {faq.answer && <p className="text-gray-400 text-sm mt-1 whitespace-pre-wrap">{faq.answer}</p>}
+                      </div>
+                      <div className="text-purple-400">
+                        <FileText size={20} />
+                      </div>
+                    </div>
+                  </a>
+                );
+              }
+
+              return (
+                <div 
+                  key={faq.id} 
+                  className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-colors hover:border-white/20 cursor-pointer"
+                  onClick={() => setOpenFaqId(openFaqId === faq.id ? null : faq.id)}
+                >
+                  <div className="p-5 flex items-center justify-between">
+                    <h4 className="text-lg font-semibold text-white">{faq.question}</h4>
+                    <div className="text-gray-400">
+                      {openFaqId === faq.id ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                    </div>
                   </div>
+                  {openFaqId === faq.id && (
+                    <div className="px-5 pb-5 text-gray-400 border-t border-white/5 pt-4 whitespace-pre-wrap">
+                      {faq.answer}
+                    </div>
+                  )}
                 </div>
-                {openFaqId === faq.id && (
-                  <div className="px-5 pb-5 text-gray-400 border-t border-white/5 pt-4 whitespace-pre-wrap">
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
