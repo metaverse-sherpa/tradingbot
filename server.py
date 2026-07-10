@@ -1,6 +1,12 @@
 import os
 import sys
 import time
+import warnings
+
+# Suppress annoying dependency warnings
+warnings.filterwarnings("ignore", message=".*Your application has authenticated using end user credentials.*")
+warnings.filterwarnings("ignore", module=".*engineio.*")
+warnings.filterwarnings("ignore", module=".*eventlet.*")
 
 # Set Matplotlib config directory to a writable local path in the workspace to prevent slow font cache rebuilds
 os.environ['MPLCONFIGDIR'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", ".matplotlib")
