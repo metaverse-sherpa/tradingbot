@@ -702,6 +702,18 @@ def init_db():
                           order_index INTEGER DEFAULT 0,
                           created_at INTEGER)''')
 
+        # 📄 Documents Table
+        if "Documents" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS Documents
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          description TEXT,
+                          content TEXT,
+                          url TEXT,
+                          order_index INTEGER DEFAULT 0,
+                          created_at INTEGER)''')
+
+
         
         # Set default master wallet if not exists
         c.execute("SELECT 1 FROM Config WHERE key = 'master_usdt_wallet'")

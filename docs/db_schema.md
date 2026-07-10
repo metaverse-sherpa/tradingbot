@@ -171,3 +171,16 @@ Stores dynamic frequently asked questions to be displayed on the Help page.
 - `answer` (TEXT) - The FAQ answer
 - `order_index` (INTEGER) - Used for custom sorting
 - `created_at` (INTEGER) - Unix timestamp
+
+---
+
+## 9. `Documents` Table
+Stores dynamic documentation links and text content to be displayed on the Help page.
+
+- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
+- `title` (TEXT) - The document title
+- `description` (TEXT) - A short description of the document
+- `content` (TEXT) - The text content of the document (if no URL is provided)
+- `url` (TEXT) - The URL to link out to (if external/internal link)
+- `order_index` (INTEGER) - Used for custom sorting
+- `created_at` (INTEGER) - Unix timestamp

@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Users, ShieldAlert, Activity, Search, Loader2, MessageCircleQuestion, Plus, Edit, Trash2 } from 'lucide-react';
+import { Users, ShieldAlert, Activity, Search, Loader2, MessageCircleQuestion, Plus, Edit, Trash2, FileText } from 'lucide-react';
 import api from '../lib/api';
 import { Link } from 'react-router-dom';
 
 const AdminPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'faqs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'faqs' | 'docs'>('users');
   
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loadingFaqs, setLoadingFaqs] = useState(false);
   const [editingFaq, setEditingFaq] = useState<any>(null);
+
+  const [docs, setDocs] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<any>(null);
+
   const [editingUser, setEditingUser] = useState<any>(null);
 
   const handleSaveUserPremium = async (e: React.FormEvent) => {
@@ -83,6 +88,18 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const fetchDocs = async () => {
+    setLoadingDocs(true);
+    try {
+      const res = await api.get('/docs');
+      setDocs(res.data?.docs || []);
+    } catch (e) {
+      console.error('Failed to fetch Docs', e);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -90,6 +107,9 @@ const AdminPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'faqs' && faqs.length === 0) {
       fetchFaqs();
+    }
+    if (activeTab === 'docs' && docs.length === 0) {
+      fetchDocs();
     }
   }, [activeTab]);
 
@@ -120,6 +140,33 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const handleSaveDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingDoc.id) {
+        await api.put(`/admin/docs/${editingDoc.id}`, editingDoc);
+      } else {
+        await api.post('/admin/docs', editingDoc);
+      }
+      setEditingDoc(null);
+      fetchDocs();
+    } catch (e) {
+      console.error('Failed to save document', e);
+      alert('Failed to save document');
+    }
+  };
+
+  const handleDeleteDoc = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this Document?')) return;
+    try {
+      await api.delete(`/admin/docs/${id}`);
+      fetchDocs();
+    } catch (e) {
+      console.error('Failed to delete document', e);
+      alert('Failed to delete document');
+    }
+  };
+
   return (
     <div className="flex-1 w-full max-w-6xl mx-auto space-y-8">
       
@@ -145,6 +192,12 @@ const AdminPage: React.FC = () => {
           className={`pb-4 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === 'faqs' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
         >
           FAQs
+        </button>
+        <button
+          onClick={() => setActiveTab('docs')}
+          className={`pb-4 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === 'docs' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          Documents
         </button>
       </div>
 
@@ -342,6 +395,117 @@ const AdminPage: React.FC = () => {
               ))}
               {faqs.length === 0 && !editingFaq && (
                 <p className="text-center text-gray-500 py-8 italic">No FAQs created yet.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'docs' && (
+        <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-3 text-white">
+              <FileText size={24} className="text-blue-400" />
+              <h3 className="text-lg font-bold">Documentation Management</h3>
+            </div>
+            <button
+              onClick={() => setEditingDoc({ title: '', description: '', content: '', url: '', order_index: 0 })}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+            >
+              <Plus size={16} /> Add Document
+            </button>
+          </div>
+
+          {editingDoc && (
+            <form onSubmit={handleSaveDoc} className="bg-[#131620] p-6 rounded-xl border border-white/10 mb-8 space-y-4">
+              <h4 className="text-white font-bold mb-2">{editingDoc.id ? 'Edit Document' : 'New Document'}</h4>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Title</label>
+                <input
+                  type="text"
+                  value={editingDoc.title}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, title: e.target.value })}
+                  className="w-full bg-[#1b1f2c] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Description</label>
+                <textarea
+                  value={editingDoc.description}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, description: e.target.value })}
+                  className="w-full bg-[#1b1f2c] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">URL (Optional)</label>
+                <input
+                  type="text"
+                  value={editingDoc.url}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, url: e.target.value })}
+                  placeholder="https://... or /strategies"
+                  className="w-full bg-[#1b1f2c] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Content (If no URL)</label>
+                <textarea
+                  value={editingDoc.content}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, content: e.target.value })}
+                  className="w-full bg-[#1b1f2c] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 min-h-[100px]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Order Index</label>
+                <input
+                  type="number"
+                  value={editingDoc.order_index}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, order_index: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[#1b1f2c] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="flex gap-4 pt-2">
+                <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-6 rounded-xl transition-colors">
+                  Save
+                </button>
+                <button type="button" onClick={() => setEditingDoc(null)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-xl transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {loadingDocs ? (
+            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-cyan-500 size-8" /></div>
+          ) : (
+            <div className="space-y-4">
+              {docs.map(doc => (
+                <div key={doc.id} className="bg-[#131620] border border-white/10 p-5 rounded-xl flex items-start justify-between group">
+                  <div className="flex-1 pr-6">
+                    <h4 className="text-white font-bold mb-2 flex items-center gap-3">
+                      <span className="text-gray-500 text-xs px-2 py-1 bg-white/5 rounded">#{doc.order_index}</span>
+                      {doc.title}
+                    </h4>
+                    <p className="text-gray-400 text-sm mb-2">{doc.description}</p>
+                    {doc.url ? (
+                      <p className="text-cyan-400 text-xs truncate">Link: {doc.url}</p>
+                    ) : (
+                      <p className="text-gray-500 text-xs italic truncate">Content length: {doc.content?.length || 0} characters</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setEditingDoc(doc)} className="p-2 text-cyan-400 hover:bg-white/5 rounded-lg transition-colors">
+                      <Edit size={16} />
+                    </button>
+                    <button onClick={() => handleDeleteDoc(doc.id)} className="p-2 text-rose-400 hover:bg-white/5 rounded-lg transition-colors">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {docs.length === 0 && !editingDoc && (
+                <p className="text-center text-gray-500 py-8 italic">No Documents created yet.</p>
               )}
             </div>
           )}

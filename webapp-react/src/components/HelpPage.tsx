@@ -7,6 +7,10 @@ const HelpPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [openFaqId, setOpenFaqId] = useState<number | null>(null);
 
+  const [docs, setDocs] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [openDocId, setOpenDocId] = useState<number | null>(null);
+
   useEffect(() => {
     const fetchFaqs = async () => {
       try {
@@ -18,7 +22,18 @@ const HelpPage: React.FC = () => {
         setLoading(false);
       }
     };
+    const fetchDocs = async () => {
+      try {
+        const res = await api.get('/docs');
+        setDocs(res.data?.docs || []);
+      } catch (e) {
+        console.error('Failed to fetch Docs', e);
+      } finally {
+        setLoadingDocs(false);
+      }
+    };
     fetchFaqs();
+    fetchDocs();
   }, []);
 
   return (
@@ -33,7 +48,7 @@ const HelpPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-lg hover:border-cyan-500/30 transition-colors cursor-pointer group">
+        <div onClick={() => document.getElementById('docs-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-lg hover:border-cyan-500/30 transition-colors cursor-pointer group">
           <FileText size={32} className="text-cyan-400 mb-4 group-hover:scale-110 transition-transform" />
           <h3 className="text-xl font-bold text-white mb-2">Documentation</h3>
           <p className="text-gray-400">Read detailed guides on setting up your API keys, configuring risk management, and understanding the algorithms.</p>
@@ -57,6 +72,66 @@ const HelpPage: React.FC = () => {
           <p className="text-gray-400">Can't find what you're looking for? Send us an email and our team will get back to you within 24 hours.</p>
         </a>
 
+      </div>
+
+      <div id="docs-section" className="pt-8">
+        <h2 className="text-2xl font-bold text-[#f3f4f6] mb-6">Documentation</h2>
+        {loadingDocs ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="animate-spin text-blue-500 size-8" />
+          </div>
+        ) : docs.length === 0 ? (
+          <p className="text-gray-400 italic">No documentation available at the moment.</p>
+        ) : (
+          <div className="space-y-4">
+            {docs.map((doc) => {
+              if (doc.url) {
+                return (
+                  <a 
+                    key={doc.id}
+                    href={doc.url}
+                    target={doc.url.startsWith('/') ? "_self" : "_blank"}
+                    rel="noopener noreferrer"
+                    className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-colors hover:border-blue-500/30 cursor-pointer block p-5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-lg font-semibold text-white">{doc.title}</h4>
+                        {doc.description && <p className="text-gray-400 text-sm mt-1">{doc.description}</p>}
+                      </div>
+                      <div className="text-blue-400">
+                        <FileText size={20} />
+                      </div>
+                    </div>
+                  </a>
+                );
+              }
+
+              return (
+                <div 
+                  key={doc.id} 
+                  className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-colors hover:border-white/20 cursor-pointer"
+                  onClick={() => setOpenDocId(openDocId === doc.id ? null : doc.id)}
+                >
+                  <div className="p-5 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-lg font-semibold text-white">{doc.title}</h4>
+                      {doc.description && <p className="text-gray-400 text-sm mt-1">{doc.description}</p>}
+                    </div>
+                    <div className="text-gray-400">
+                      {openDocId === doc.id ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                    </div>
+                  </div>
+                  {openDocId === doc.id && (
+                    <div className="px-5 pb-5 text-gray-400 border-t border-white/5 pt-4 whitespace-pre-wrap">
+                      {doc.content}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div id="faq-section" className="pt-8">
