@@ -794,3 +794,305 @@ def get_combined_daily_summary_telegram(is_premium=False,
     lines.append(NFA_SHORT_TEXT)
     
     return _chunk_telegram_message("\n".join(lines))
+
+def get_combined_weekly_summary_html(is_premium=False, 
+                                     has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
+                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None):
+    """
+    Generates combined weekly stock & crypto performance update HTML.
+    """
+    color_bg = "#0B0E14"
+    color_card = "#141A24"
+    
+    header_section = """
+        <div style="padding: 35px 30px; text-align: center; background: #0c1f30; background-image: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(213, 0, 249, 0.1) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
+            <h1 style="font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: #FFFFFF;">🏔️ Weekly Update</h1>
+            <p style="font-size: 13px; color: #8892b0; margin: 8px 0 0 0;">Metaverse Sherpa Combined Weekly Performance Summary</p>
+        </div>
+    """
+    
+    content = ""
+    
+    # helper for rendering sections
+    def render_section(title, icon, accent_color, has_exchange, portfolio_data, open_trades, hypothetical_data):
+        section_content = f'<h2 style="font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; color: {accent_color}; margin: 20px 0 20px 0; border-bottom: 1px solid #2a3546; padding-bottom: 10px;">{icon} {title}</h2>'
+        
+        active_headers = f"""
+                            <tr style="background-color: #111822;">
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'25%' if is_premium else '40%'};">Symbol</th>
+                                {'<th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: 30%;">Parameters</th>' if is_premium else ''}
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Daily PnL</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Total PnL</th>
+                                <th style="padding: 10px; font-size: 10px; text-transform: uppercase; color: #8892b0; border-bottom: 1px solid #2a3546; width: {'15%' if is_premium else '20%'};">Target PnL</th>
+                            </tr>
+        """
+        if is_premium:
+            if has_exchange:
+                equity = portfolio_data.get("equity", 0.0)
+                weekly_pnl_pct = portfolio_data.get("weekly_pnl_pct", 0.0)
+                weekly_pnl_usd = portfolio_data.get("weekly_pnl_usd", 0.0)
+                pnl_color = "#00C853" if weekly_pnl_pct >= 0 else "#FF1744"
+                sign = "+" if weekly_pnl_pct >= 0 else ""
+                usd_sign = "+" if weekly_pnl_usd >= 0 else ""
+                
+                open_rows = ""
+                if not open_trades:
+                    open_rows = f'<tr><td colspan="4" style="padding: 15px; text-align: center; color: #8892b0; font-size: 13px; background-color: #1a222e;">No open {title.lower()} positions currently.</td></tr>'
+                else:
+                    open_trades_sorted = sorted(open_trades, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+                    for t in open_trades_sorted:
+                        pnl_pct = t.get("current_pnl_pct", 0.0)
+                        daily_pnl_pct = t.get("daily_pnl_pct", 0.0)
+                        target_pnl_pct = t.get("target_pnl_pct", 0.0)
+                        
+                        t_pnl_color = "#00C853" if pnl_pct >= 0 else "#FF1744"
+                        daily_pnl_color = "#00C853" if daily_pnl_pct >= 0 else "#FF1744"
+                        t_pnl_weight = "bold" if pnl_pct >= 0 else "normal"
+                        daily_pnl_weight = "bold" if daily_pnl_pct >= 0 else "normal"
+                        
+                        sym = t['symbol']
+                        clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
+                        is_long = t.get('side', '').upper() in ['BUY', 'LONG']
+                        dir_emoji = "📈" if is_long else "📉"
+                        sym_html = f'<span style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</span>'
+                        
+                        if is_premium:
+                            open_rows += f"""
+                            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 25%;">{sym_html}</td>
+                                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 30%;">Entry: ${t['entry_price']:.4f}<br>SL: ${t['sl_price']:.4f}<br>TP: ${t['tp_price']:.4f}</td>
+                                <td style="padding: 12px 10px; font-weight: {daily_pnl_weight}; color: {daily_pnl_color}; font-size: 13px; width: 15%;">{daily_pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; font-weight: {t_pnl_weight}; color: {t_pnl_color}; font-size: 13px; width: 15%;">{pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 15%;">+{target_pnl_pct:.1f}%</td>
+                            </tr>
+                            """
+                        else:
+                            open_rows += f"""
+                            <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
+                                <td style="padding: 12px 10px; font-weight: bold; font-size: 14px; width: 40%;">{sym_html}</td>
+                                <td style="padding: 12px 10px; font-weight: {daily_pnl_weight}; color: {daily_pnl_color}; font-size: 13px; width: 20%;">{daily_pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; font-weight: {t_pnl_weight}; color: {t_pnl_color}; font-size: 13px; width: 20%;">{pnl_pct:+.2f}%</td>
+                                <td style="padding: 12px 10px; color: #FFFFFF; font-size: 13px; width: 20%;">+{target_pnl_pct:.1f}%</td>
+                            </tr>
+                            """
+                
+                section_content += f"""
+                <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; padding: 20px; margin-bottom: 25px; text-align: center;">
+                    <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">Portfolio Equity</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${equity:,.2f} USD</div>
+                    <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
+                        Weekly Performance: {sign}{weekly_pnl_pct:.2f}% ({usd_sign}${weekly_pnl_usd:,.2f})
+                    </div>
+                </div>
+                
+                <h3 style="font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: {accent_color}; margin: 25px 0 15px 0; border-left: 3px solid {accent_color}; padding-left: 10px;">🛰️ Currently Open Positions</h3>
+                <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; overflow: hidden; margin-bottom: 20px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+{active_headers}
+                        </thead>
+                        <tbody>
+                            {open_rows}
+                        </tbody>
+                    </table>
+                </div>
+                """
+            else:
+                # First show hypothetical stats so they can see what they're missing
+                hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
+                hypo_balance = 1000.0 + hypo_pnl
+                hypo_growth = (hypo_pnl / 1000.0) * 100
+                
+                wins = hypothetical_data.get("wins", 0)
+                losses = hypothetical_data.get("losses", 0)
+                win_rate = hypothetical_data.get("win_rate", 0.0)
+                
+                pnl_color = "#00C853" if hypo_pnl >= 0 else "#FF1744"
+                sign = "+" if hypo_pnl >= 0 else ""
+                
+                section_content += f"""
+                <div style="background-color: #1a222e; border-radius: 8px; border: 1px dashed {accent_color}; padding: 20px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; right: 0; background-color: {accent_color}; color: #000; font-size: 9px; font-weight: bold; padding: 3px 10px; border-bottom-left-radius: 8px; text-transform: uppercase;">Hypothetical</div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">Simulated Portfolio Equity</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${hypo_balance:,.2f} USD</div>
+                    <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
+                        Cumulative Performance: {sign}{hypo_growth:.2f}% ({sign}${hypo_pnl:,.2f})
+                    </div>
+                    <div style="font-size: 13px; color: #8892b0; margin-top: 10px;">
+                        <b>Win Rate:</b> {win_rate:.1f}% ({wins} W | {losses} L)
+                    </div>
+                    <p style="font-size: 11px; color: #8892b0; margin: 15px 0 0 0; font-style: italic;">
+                        * This is a simulation of what your {title.lower()} portfolio would look like with our automated fractional execution (starting from a $1,000 base). Connect your exchange to see your real performance!
+                    </p>
+                </div>
+                """
+                
+                # Then show the connection prompt
+                section_content += f"""
+                <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-bottom: 25px; text-align: center;">
+                    <h3 style="color: #FF1744; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">⚠️ Exchange Connection Required</h3>
+                    <p style="font-size: 13px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
+                        You have Premium Access, but your exchange API keys for {title.lower()} are missing or invalid. Please connect your exchange in the trading console to enable real-time tracking and autopilot execution.
+                    </p>
+                    <a href="https://bot.metaversesherpa.io/#/settings" style="display: inline-block; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Connect Exchange</a>
+                </div>
+                """
+
+        else:
+            hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
+            hypo_balance = 1000.0 + hypo_pnl
+            hypo_growth = (hypo_pnl / 1000.0) * 100
+            
+            wins = hypothetical_data.get("wins", 0)
+            losses = hypothetical_data.get("losses", 0)
+            win_rate = hypothetical_data.get("win_rate", 0.0)
+            
+            pnl_color = "#00C853" if hypo_pnl >= 0 else "#FF1744"
+            sign = "+" if hypo_pnl >= 0 else ""
+            
+            section_content += f"""
+            <div style="background-color: #1a222e; border-radius: 8px; border: 1px dashed {accent_color}; padding: 20px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: 0; right: 0; background-color: {accent_color}; color: #000; font-size: 9px; font-weight: bold; padding: 3px 10px; border-bottom-left-radius: 8px; text-transform: uppercase;">Hypothetical</div>
+                <div style="font-size: 11px; text-transform: uppercase; color: #8892b0; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;">Premium Access Potential Equity</div>
+                <div style="font-size: 28px; font-weight: bold; color: #FFFFFF; margin-bottom: 5px;">${hypo_balance:,.2f} USD</div>
+                <div style="font-size: 16px; color: {pnl_color}; font-weight: bold;">
+                    Cumulative Performance: {sign}{hypo_growth:.2f}% ({sign}${hypo_pnl:,.2f})
+                </div>
+                <div style="font-size: 13px; color: #8892b0; margin-top: 10px;">
+                    <b>Win Rate:</b> {win_rate:.1f}% ({wins} W | {losses} L)
+                </div>
+                <p style="font-size: 11px; color: #8892b0; margin: 15px 0 0 0; font-style: italic;">
+                    * This is a simulation of what your {title.lower()} portfolio would look like if you had upgraded to Premium and used our automated fractional execution (starting from a $1,000 base).
+                </p>
+            </div>
+            """
+        return section_content
+
+    content += render_section("Stock Markets", "📈", "#3cd7ff", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data)
+    content += render_section("Crypto Markets", "₿", "#D500F9", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data)
+    
+    upsell_section = ""
+    if not is_premium:
+        upsell_section = f"""
+        <div style="background-color: #1a1126; border: 1px solid rgba(213, 0, 249, 0.3); border-radius: 8px; padding: 20px; margin-top: 30px; text-align: center;">
+            <h3 style="color: #D500F9; margin: 0 0 10px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">🚀 UNLOCK FULL AUTOPILOT</h3>
+            <p style="font-size: 12px; color: #b3a9c9; margin: 0 0 15px 0; line-height: 1.5;">
+                Stop leaving money on the table. Upgrade to <b>Premium Access</b> today to turn those hypothetical returns into reality with automated execution.
+            </p>
+            <a href="https://bot.metaversesherpa.io/#/premium" style="display: inline-block; background: linear-gradient(90deg, #D500F9 0%, #7B1FA2 100%); color: #ffffff; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Upgrade to Premium Now</a>
+        </div>
+        """
+        
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light dark">
+        <meta name="supported-color-schemes" content="light dark">
+        <title>Sherpa Weekly Summary</title>
+        <style>
+            :root {{
+                color-scheme: light dark;
+                supported-color-schemes: light dark;
+            }}
+        </style>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
+        <div style="background-color: {color_bg}; padding: 20px 10px; min-height: 100%;">
+            <div style="max-width: 600px; margin: 20px auto; background-color: {color_card}; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 12px; overflow: hidden; color: #FFFFFF;">
+                {header_section}
+                <div style="padding: 30px;">
+                    {content}
+                    {upsell_section}
+                    <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
+                </div>
+                <div style="padding: 20px; text-align: center; border-top: 1px solid #2a3546; font-size: 11px; color: #8892b0; background-color: #141A24;">
+                    🏔️ Metaverse Sherpa Trading Platform
+                    {NFA_MEDIUM_HTML}
+                    <br>
+                    Do you prefer silent hikes in the Metaverse? <br>
+                    <a href="{{{{UNSUBSCRIBE_LINK}}}}" style="color: #3cd7ff; text-decoration: underline;">Click here to silence the noise (unsubscribe)</a>.
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def _chunk_telegram_message(text, limit=4000):
+    chunks = []
+    while len(text) > limit:
+        split_index = text.rfind('\n', 0, limit)
+        if split_index == -1:
+            split_index = limit
+        chunks.append(text[:split_index])
+        text = text[split_index:].lstrip()
+    if text:
+        chunks.append(text)
+    return chunks
+def get_combined_weekly_summary_telegram(is_premium=False, 
+                                     has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
+                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None):
+    lines = ["🏔️ <b>Weekly Update</b>\nMetaverse Sherpa Combined Weekly Performance Summary\n"]
+    
+    def render_section(title, icon, has_exchange, portfolio_data, open_trades, hypothetical_data):
+        section_lines = [f"\n{icon} <b>{title}</b>"]
+        if is_premium:
+            if has_exchange:
+                equity = portfolio_data.get("equity", 0.0)
+                weekly_pnl_pct = portfolio_data.get("weekly_pnl_pct", 0.0)
+                weekly_pnl_usd = portfolio_data.get("weekly_pnl_usd", 0.0)
+                sign = "+" if weekly_pnl_pct >= 0 else ""
+                usd_sign = "+" if weekly_pnl_usd >= 0 else ""
+                
+                if not open_trades:
+                    section_lines.append(f"No open {title.lower()} positions currently.")
+                else:
+                    open_trades_sorted = sorted(open_trades, key=lambda x: x.get('current_pnl_pct', 0.0), reverse=True)
+                    for t in open_trades_sorted:
+                        pnl_pct = t.get("current_pnl_pct", 0.0)
+                        daily_pnl_pct = t.get("daily_pnl_pct", 0.0)
+                        target_pnl_pct = t.get("target_pnl_pct", 0.0)
+                        sym = t['symbol']
+                        clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
+                        is_long = t.get('side', '').upper() in ['BUY', 'LONG']
+                        dir_emoji = "📈" if is_long else "📉"
+                        sym_html = f"<span>{sym}</span>"
+                        
+                        section_lines.append(f"{dir_emoji} {sym_html} | Entry: ${t['entry_price']:.4f} SL: ${t['sl_price']:.4f} TP: ${t['tp_price']:.4f} | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_pnl_pct:.1f}%")
+                
+                section_lines.append(f"\n<b>Portfolio Equity:</b> ${equity:,.2f} USD")
+                section_lines.append(f"<b>7-Day Performance:</b> {sign}{weekly_pnl_pct:.2f}% ({usd_sign}${weekly_pnl_usd:,.2f})")
+            else:
+                section_lines.append(f"No Exchange Connected. <a href='https://bot.metaversesherpa.io/#/settings'>Connect Exchange</a>")
+        else:
+            hypo_pnl = hypothetical_data.get("cumulative_pnl", 0.0)
+            hypo_balance = 1000.0 + hypo_pnl
+            hypo_growth = (hypo_pnl / 1000.0) * 100
+            wins = hypothetical_data.get("wins", 0)
+            losses = hypothetical_data.get("losses", 0)
+            win_rate = hypothetical_data.get("win_rate", 0.0)
+            sign = "+" if hypo_pnl >= 0 else ""
+            
+            section_lines.append("<i>Hypothetical Premium Access Potential Equity</i>")
+            section_lines.append(f"<b>${hypo_balance:,.2f} USD</b>")
+            section_lines.append(f"Cumulative Performance: {sign}{hypo_growth:.2f}% ({sign}${hypo_pnl:,.2f})")
+            section_lines.append(f"Win Rate: {win_rate:.1f}% ({wins} W | {losses} L)")
+            section_lines.append(f"<i>* This is a simulation of what your {title.lower()} portfolio would look like if you had upgraded to Premium and used our automated fractional execution (starting from a $1,000 base).</i>")
+            
+        return section_lines
+
+    lines.extend(render_section("Stock Markets", "📈", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data))
+    lines.extend(render_section("Crypto Markets", "₿", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data))
+
+    if not is_premium:
+        lines.append("\n🚀 <b>UNLOCK FULL AUTOPILOT</b>\nStop leaving money on the table. Upgrade to <b>Premium Access</b> today to turn those hypothetical returns into reality with automated execution.\n<a href='https://bot.metaversesherpa.io/#/premium'>Upgrade to Premium Now</a>")
+
+    lines.append("\n<a href='https://bot.metaversesherpa.io'>Access Trading Console</a>")
+    lines.append(NFA_SHORT_TEXT)
+    return _chunk_telegram_message("\n".join(lines))
+
+
