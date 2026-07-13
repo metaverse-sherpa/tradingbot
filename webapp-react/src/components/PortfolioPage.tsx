@@ -5,7 +5,8 @@ import {
   Sparkles, FileUp, Plus, Edit2, Trash2, Search,
   RefreshCw, X, Wallet,
   UploadCloud, Zap, ArrowUp, ArrowDown,
-  Landmark, Coins, ChevronLeft, ChevronRight, Check
+  Landmark, Coins, ChevronLeft, ChevronRight, Check,
+  AlertTriangle
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -114,7 +115,6 @@ const PortfolioPage: React.FC = () => {
   
   // Insufficient Cash Dialog State
   const [insufficientCashOpen, setInsufficientCashOpen] = useState(false);
-  const [pendingPositionPayload, setPendingPositionPayload] = useState<any>(null);
 
   const [riskProfile, setRiskProfile] = useState(user?.risk_profile || 'Moderate');
   const [investmentGoal, setInvestmentGoal] = useState(user?.investment_goal || 'Growth');
@@ -327,7 +327,6 @@ const PortfolioPage: React.FC = () => {
     if (deductFromCash && !editingPosition && !forceTopUp) {
       const requiredCash = qty * price;
       if (requiredCash > (stats.cash_balance || 0)) {
-        setPendingPositionPayload(payload);
         setInsufficientCashOpen(true);
         return; // wait for user confirmation
       }
@@ -341,7 +340,6 @@ const PortfolioPage: React.FC = () => {
       }
       setModalOpen(false);
       setInsufficientCashOpen(false);
-      setPendingPositionPayload(null);
       showToast("Position saved successfully!");
       fetchPortfolioData(true);
       fetchNews();
@@ -1288,7 +1286,6 @@ const PortfolioPage: React.FC = () => {
                     className="w-full bg-[#131620] border border-[#2e303a] rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
-                </div>
               </div>
               
               {!editingPosition && (
@@ -1322,7 +1319,6 @@ const PortfolioPage: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
           </div>
         </div>
       )}
@@ -1385,7 +1381,7 @@ const PortfolioPage: React.FC = () => {
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => { setInsufficientCashOpen(false); setPendingPositionPayload(null); }}
+                onClick={() => { setInsufficientCashOpen(false); }}
                 className="flex-1 bg-[#131620] border border-white/5 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-wider"
               >
                 Cancel
