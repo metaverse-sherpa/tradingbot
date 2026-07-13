@@ -1012,14 +1012,9 @@ const PortfolioPage: React.FC = () => {
                           </span>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <a 
-                                href={pos.category === 'crypto' ? `https://marketmasters.ai/currency/${pos.symbol}USDT` : `https://marketmasters.ai/stocks/${pos.symbol}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-bold text-white uppercase block hover:text-cyan-400 transition-colors"
-                              >
+                              <span className="font-bold text-white uppercase block">
                                 {pos.symbol}
-                              </a>
+                              </span>
                               {activeSignals.find(s => s.symbol === pos.symbol) && (
                                 <button
                                   onClick={() => setSelectedSignal(activeSignals.find(s => s.symbol === pos.symbol))}

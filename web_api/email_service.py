@@ -164,10 +164,9 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
     """
     from bot.config import is_stock
     if is_stock(symbol):
-        symbol_link = f'<a href="https://marketmasters.ai/stocks/{symbol}" style="color: #3cd7ff; text-decoration: underline;">{symbol}</a>'
+        symbol_link = f'<span style="color: #3cd7ff; text-decoration: underline;">{symbol}</span>'
     else:
-        clean_sym = symbol.replace("/", "").split(":")[0]
-        symbol_link = f'<a href="https://marketmasters.ai/currency/{clean_sym}" style="color: #3cd7ff; text-decoration: underline;">{symbol}</a>'
+        symbol_link = f'<span style="color: #3cd7ff; text-decoration: underline;">{symbol}</span>'
 
     is_win = (pnl_pct and pnl_pct > 0)
     pnl_str = f"{pnl_pct:+.2f}%" if pnl_pct is not None else ""
@@ -499,9 +498,7 @@ def get_combined_daily_summary_html(is_premium=False,
                     clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                     is_long = t.get('side', '').upper() in ['BUY', 'LONG']
                     dir_emoji = "📈" if is_long else "📉"
-                    link_base = "stocks" if title == "Stock Markets" else "currency"
-                    display_sym = clean_sym if title != "Stock Markets" else sym
-                    sym_html = f'<a href="https://marketmasters.ai/{link_base}/{display_sym}" style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</a>'
+                    sym_html = f'<span style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</span>'
                     
                     open_rows += f"""
                     <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
@@ -527,9 +524,7 @@ def get_combined_daily_summary_html(is_premium=False,
                         clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                         is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                         dir_emoji = "📈" if is_long else "📉"
-                        link_base = "stocks" if title == "Stock Markets" else "currency"
-                        display_sym = clean_sym if title != "Stock Markets" else sym
-                        sym_html = f'<a href="https://marketmasters.ai/{link_base}/{display_sym}" style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</a>'
+                        sym_html = f'<span style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</span>'
                         
                         open_rows += f"""
                         <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e; opacity: 0.7;">
@@ -558,9 +553,7 @@ def get_combined_daily_summary_html(is_premium=False,
                     
                     is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                     dir_emoji = "📈" if is_long else "📉"
-                    link_base = "stocks" if title == "Stock Markets" else "currency"
-                    display_sym = clean_sym if title != "Stock Markets" else sym
-                    sym_html = f'<a href="https://marketmasters.ai/{link_base}/{display_sym}" style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</a>'
+                    sym_html = f'<span style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</span>'
                     
                     open_rows += f"""
                     <tr style="border-bottom: 1px solid #2a3546; background-color: #1a222e;">
@@ -605,9 +598,7 @@ def get_combined_daily_summary_html(is_premium=False,
                 
                 is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                 dir_emoji = "📈" if is_long else "📉"
-                link_base = "stocks" if title == "Stock Markets" else "currency"
-                display_sym = clean_sym if title != "Stock Markets" else sym
-                sym_html = f'<a href="https://marketmasters.ai/{link_base}/{display_sym}" style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</a>'
+                sym_html = f'<span style="color: {accent_color}; text-decoration: none;">{dir_emoji} {sym}</span>'
                 
                 if is_premium:
                     exit_price = s.get('close_price') or 0.0
@@ -733,9 +724,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                     clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                     is_long = t.get('side', '').upper() in ['BUY', 'LONG']
                     dir_emoji = "📈" if is_long else "📉"
-                    link_base = "stocks" if title == "Stock Markets" else "currency"
-                    display_sym = clean_sym if title != "Stock Markets" else sym
-                    sym_html = f"<a href='https://marketmasters.ai/{link_base}/{display_sym}'>{sym}</a>"
+                    sym_html = f"<span>{sym}</span>"
                     
                     section_lines.append(f"{dir_emoji} {sym_html} | Entry: ${t['entry_price']:.4f} SL: ${t['sl_price']:.4f} TP: ${t['tp_price']:.4f} | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_pnl_pct:.1f}%")
             
@@ -751,9 +740,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                         clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                         is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                         dir_emoji = "📈" if is_long else "📉"
-                        link_base = "stocks" if title == "Stock Markets" else "currency"
-                        display_sym = clean_sym if title != "Stock Markets" else sym
-                        sym_html = f"<a href='https://marketmasters.ai/{link_base}/{display_sym}'>{sym}</a>"
+                        sym_html = f"<span>{sym}</span>"
                         
                         section_lines.append(f"⚠️ {dir_emoji} {sym_html} | Not Positioned | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_tp_pct:.1f}%")
                         
@@ -769,9 +756,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                     clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                     is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                     dir_emoji = "📈" if is_long else "📉"
-                    link_base = "stocks" if title == "Stock Markets" else "currency"
-                    display_sym = clean_sym if title != "Stock Markets" else sym
-                    sym_html = f"<a href='https://marketmasters.ai/{link_base}/{display_sym}'>{sym}</a>"
+                    sym_html = f"<span>{sym}</span>"
                     
                     section_lines.append(f"{dir_emoji} {sym_html} | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_tp_pct:.1f}%")
 
@@ -788,9 +773,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                 pnl_pct = s.get('pnl_pct', 0.0)
                 is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                 dir_emoji = "📈" if is_long else "📉"
-                link_base = "stocks" if title == "Stock Markets" else "currency"
-                display_sym = clean_sym if title != "Stock Markets" else sym
-                sym_html = f"<a href='https://marketmasters.ai/{link_base}/{display_sym}'>{sym}</a>"
+                sym_html = f"<span>{sym}</span>"
                 
                 if is_premium:
                     exit_price = s.get('close_price') or 0.0

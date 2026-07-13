@@ -37,26 +37,12 @@ const LiveActiveSignals: React.FC = () => {
             const pnlColor = pnl >= 0 ? 'text-[#00e676]' : 'text-rose-400';
             const sideColor = isLong ? 'text-[#00e676] bg-[#00e676]/20' : 'text-rose-400 bg-rose-500/20';
             const sideText = isLong ? 'LONG' : 'SHORT';
-            const isCrypto = signal.symbol.includes('/');
-            let linkUrl = '';
-            if (isCrypto) {
-              const baseSymbol = signal.symbol.replace(/:.*$/, '').replace(/[\/-]/g, '').replace(/USDT?$/i, '').replace(/USD$/i, '');
-              linkUrl = `https://marketmasters.ai/currency/${baseSymbol}USDT`;
-            } else {
-              linkUrl = `https://marketmasters.ai/stocks/${signal.symbol}`;
-            }
-            
             return (
               <div key={idx} className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/5 rounded-xl p-4 opacity-100 shadow-lg">
                 <div className="flex justify-between items-center mb-2">
-                  <a 
-                    href={linkUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-white font-bold hover:text-[#3cd7ff] transition-colors underline decoration-white/30 underline-offset-2"
-                  >
+                  <span className="text-white font-bold">
                     {signal.symbol.split('/')[0]}
-                  </a>
+                  </span>
                   <span className={`text-xs px-2 py-1 rounded ${sideColor}`}>{sideText}</span>
                 </div>
                 <div className="text-xs text-gray-400">Entry: <span className="blur-sm select-none text-white/50 font-mono">100.00</span></div>

@@ -52,18 +52,10 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
           <div>
             <h4 className="font-bold text-white text-lg leading-tight">
               {(() => {
-                const isCryptoTrade = type === 'crypto';
-                let linkUrl = '';
-                if (isCryptoTrade) {
-                  const baseSymbol = (trade.symbol || '').replace(/:.*$/, '').replace(/[\/-]/g, '').replace(/USDT?$/i, '').replace(/USD$/i, '');
-                  linkUrl = `https://marketmasters.ai/currency/${baseSymbol}USDT`;
-                } else {
-                  linkUrl = `https://marketmasters.ai/stocks/${trade.symbol || ''}`;
-                }
                 return (
-                  <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#3cd7ff] transition-colors underline decoration-white/30 underline-offset-2" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-white" onClick={(e) => e.stopPropagation()}>
                     {(trade.symbol || '').split('/')[0]}
-                  </a>
+                  </span>
                 );
               })()}
             </h4>

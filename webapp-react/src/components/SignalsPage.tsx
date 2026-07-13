@@ -184,18 +184,10 @@ const SignalsPage: React.FC = () => {
             <div>
               <h4 className="font-bold text-white text-lg leading-tight flex items-center gap-2">
                 {(() => {
-                  const isCryptoSignal = type === 'crypto';
-                  let linkUrl = '';
-                  if (isCryptoSignal) {
-                    const baseSymbol = (signal.symbol || '').replace(/:.*$/, '').replace(/[\/-]/g, '').replace(/USDT?$/i, '').replace(/USD$/i, '');
-                    linkUrl = `https://marketmasters.ai/currency/${baseSymbol}USDT`;
-                  } else {
-                    linkUrl = `https://marketmasters.ai/stocks/${signal.symbol || ''}`;
-                  }
                   return (
-                    <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#3cd7ff] transition-colors underline decoration-white/30 underline-offset-2" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-white" onClick={(e) => e.stopPropagation()}>
                       {(signal.symbol || '').split('/')[0]}
-                    </a>
+                    </span>
                   );
                 })()}
                 {isLong ? <TrendingUp size={14} className="text-emerald-400"/> : <TrendingDown size={14} className="text-rose-400"/>}
