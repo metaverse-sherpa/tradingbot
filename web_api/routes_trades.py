@@ -220,9 +220,14 @@ def get_balance_internal(user, segment=None, bypass_cache=False):
             client = database.get_exchange_client(merged_user, is_async=False)
             client.timeout = 10000
             try:
-                futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
-                bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
-                bal = client.fetch_balance(params=bal_params)
+                try:
+                    futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
+                    bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
+                    bal = client.fetch_balance(params=bal_params)
+                except Exception as e:
+                    print(f"Error fetching live balance for {crypto_exchange_id}: {str(e).splitlines()[0]}")
+                    return (db_fallback, False)
+                    
                 if crypto_exchange_id == 'coinbase':
                     usd_bal = bal.get('USD', {})
                     usdc_bal = bal.get('USDC', {})
