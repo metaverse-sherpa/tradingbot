@@ -71,9 +71,9 @@ const PortfolioPage: React.FC = () => {
   const [parsingCSV, setParsingCSV] = useState(false);
 
   // Any Good Buys state
-  const [goodBuys, setGoodBuys] = useState<any[] | null>(null);
+  const [goodBuys, setGoodBuys] = useState<{ stocks: any[], crypto: any[] } | null>(null);
+  const [activeIdeaTab, setActiveIdeaTab] = useState<'stocks' | 'crypto'>('stocks');
   const [loadingGoodBuys, setLoadingGoodBuys] = useState(false);
-  const [showGoodBuys, setShowGoodBuys] = useState(false);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,23 +230,32 @@ const PortfolioPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (analysis && analysis.good_buys) {
+      setGoodBuys(analysis.good_buys);
+    } else {
+      setGoodBuys(null);
+    }
+  }, [analysis]);
+
   // Fetch Good Buys
   const fetchGoodBuys = async () => {
     setLoadingGoodBuys(true);
-    setShowGoodBuys(true);
     setGoodBuys(null); // clear old
     try {
       const res = await api.post('/portfolio/good-buys', {
         risk_profile: riskProfile,
         investment_goal: investmentGoal
       });
-      setGoodBuys(res.data.suggestions || []);
+      setGoodBuys({
+        stocks: res.data.stocks || [],
+        crypto: res.data.crypto || []
+      });
       // Re-fetch analysis so the updated Detailed Implementation Plan includes the good buys
       fetchAnalysis();
     } catch (err: any) {
       console.error("Failed to fetch good buys", err);
       showToast(err.response?.data?.error || "Failed to generate good buys.", "error");
-      setShowGoodBuys(false);
     } finally {
       setLoadingGoodBuys(false);
     }
@@ -545,6 +554,50 @@ const PortfolioPage: React.FC = () => {
     return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
   };
 
+  const renderIdeaCard = (buy: any, idx: number) => (
+    <div
+      key={idx}
+      className={`bg-[#1c1f2e]/60 border p-4 rounded-xl relative group hover:border-emerald-500/30 transition-colors ${
+        buy.conviction === 'high'
+          ? 'border-l-2 border-l-emerald-500 border-t-white/5 border-r-white/5 border-b-white/5'
+          : 'border-white/5'
+      }`}
+    >
+      {buy.is_active_signal && (
+        <div className="absolute -top-2.5 -right-2.5 bg-emerald-500 text-black text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.5)] flex items-center gap-1">
+          <Zap size={10} fill="currentColor" /> Active Signal
+        </div>
+      )}
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`p-2 rounded-lg ${buy.type === 'stock' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'}`}>
+          {buy.type === 'stock' ? <Landmark size={18} /> : <Coins size={18} />}
+        </div>
+        <div className="flex-1">
+          <h4 className="text-lg font-black text-white leading-tight">{buy.symbol}</h4>
+          <span className="text-xs font-medium text-gray-400">{buy.name || (buy.type === 'stock' ? 'Stock' : 'Crypto')}</span>
+        </div>
+        {buy.conviction === 'high' && (
+          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">
+            High Conviction
+          </span>
+        )}
+      </div>
+      {buy.metrics_summary && (
+        <p className="text-[11px] font-mono text-cyan-300/70 bg-cyan-500/5 rounded-lg px-3 py-1.5 mb-2">
+          {buy.metrics_summary}
+        </p>
+      )}
+      {buy.target_price && (
+        <p className="text-[11px] font-mono text-emerald-300/80 bg-emerald-500/10 rounded-lg px-3 py-1.5 mb-2">
+          Target: {buy.target_price} (+{buy.expected_growth_pct}%) | Timeframe: {buy.estimated_timeframe}
+        </p>
+      )}
+      <p className="text-sm text-gray-300 leading-relaxed">
+        {buy.rationale}
+      </p>
+    </div>
+  );
+
   return (
     <div className="w-full min-w-0 space-y-6 max-w-7xl mx-auto px-1 md:px-0 animate-in fade-in duration-300">
 
@@ -570,15 +623,6 @@ const PortfolioPage: React.FC = () => {
               >
                 {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
                 {analyzing ? 'Analyzing...' : 'AI Analysis'}
-              </button>
-              
-              <button
-                onClick={fetchGoodBuys}
-                disabled={loadingGoodBuys}
-                className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
-              >
-                {loadingGoodBuys ? <RefreshCw className="animate-spin" size={14} /> : <Search size={14} />}
-                {loadingGoodBuys ? 'Searching...' : 'Good Buys?'}
               </button>
             </>
           )}
@@ -846,6 +890,88 @@ const PortfolioPage: React.FC = () => {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* 💡 Recommended Buys Panel */}
+          {(goodBuys || loadingGoodBuys) && (
+            <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4 flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                  <Search className="text-emerald-400" size={16} />
+                  Recommended Buys
+                </h3>
+                <button
+                  onClick={fetchGoodBuys}
+                  disabled={
+                    loadingGoodBuys || 
+                    (!user?.is_admin && analysis && (Date.now() - new Date(analysis.timestamp + "Z").getTime() < 24 * 60 * 60 * 1000))
+                  }
+                  className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all disabled:opacity-50"
+                  title={(!user?.is_admin && analysis && (Date.now() - new Date(analysis.timestamp + "Z").getTime() < 24 * 60 * 60 * 1000)) ? "Check back in 24 hours" : "Find Fresh Ideas"}
+                >
+                  {loadingGoodBuys ? <RefreshCw className="animate-spin" size={13} /> : <Search size={13} />}
+                  {loadingGoodBuys ? 'Searching...' : 'Good Buys?'}
+                </button>
+              </div>
+
+              {loadingGoodBuys ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <RefreshCw className="animate-spin text-emerald-500" size={32} />
+                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest animate-pulse">
+                    Scanning Markets & Signals...
+                  </p>
+                </div>
+              ) : goodBuys && (
+                <>
+                  {/* Desktop View (Two Columns) */}
+                  <div className="hidden md:grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                        <Landmark size={14} /> Stocks ({goodBuys.stocks?.length || 0})
+                      </h4>
+                      {goodBuys.stocks?.map(renderIdeaCard)}
+                    </div>
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                        <Coins size={14} /> Crypto ({goodBuys.crypto?.length || 0})
+                      </h4>
+                      {goodBuys.crypto?.map(renderIdeaCard)}
+                    </div>
+                  </div>
+
+                  {/* Mobile View (Tabs) */}
+                  <div className="md:hidden">
+                    <div className="flex gap-1 bg-black/40 rounded-xl p-1 mb-4 border border-white/5">
+                      <button
+                        onClick={() => setActiveIdeaTab('stocks')}
+                        className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                          activeIdeaTab === 'stocks'
+                            ? 'bg-blue-500/20 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
+                            : 'text-gray-500 hover:text-gray-300'
+                        }`}
+                      >
+                        <Landmark size={14} className="inline mr-1.5 -mt-0.5" />
+                        Stocks
+                      </button>
+                      <button
+                        onClick={() => setActiveIdeaTab('crypto')}
+                        className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                          activeIdeaTab === 'crypto'
+                            ? 'bg-orange-500/20 text-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.2)]'
+                            : 'text-gray-500 hover:text-gray-300'
+                        }`}
+                      >
+                        <Coins size={14} className="inline mr-1.5 -mt-0.5" />
+                        Crypto
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {goodBuys[activeIdeaTab]?.map(renderIdeaCard)}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1621,63 +1747,7 @@ const PortfolioPage: React.FC = () => {
         </div>
       )}
 
-      {/* Good Buys Modal */}
-      {showGoodBuys && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#0b0d14] border border-white/10 p-6 rounded-2xl w-full max-w-2xl shadow-2xl animate-slide-up relative overflow-hidden max-h-[85vh] flex flex-col">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
-            <div className="flex items-center justify-between mb-6 flex-shrink-0">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2 uppercase tracking-wider">
-                <Search className="text-emerald-400" size={24} />
-                Fresh Investment Ideas
-              </h3>
-              <button
-                onClick={() => setShowGoodBuys(false)}
-                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
 
-            <div className="overflow-y-auto pr-2 space-y-4 flex-grow custom-scrollbar">
-              {loadingGoodBuys ? (
-                <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                  <RefreshCw className="animate-spin text-emerald-500" size={32} />
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest animate-pulse">
-                    Scanning Markets & Signals...
-                  </p>
-                </div>
-              ) : goodBuys && goodBuys.length > 0 ? (
-                goodBuys.map((buy, idx) => (
-                  <div key={idx} className="bg-[#131620] border border-white/5 p-4 rounded-xl relative group hover:border-emerald-500/30 transition-colors">
-                    {buy.is_active_signal && (
-                      <div className="absolute -top-2.5 -right-2.5 bg-emerald-500 text-black text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.5)] flex items-center gap-1">
-                        <Zap size={10} fill="currentColor" /> Active Signal
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`p-2 rounded-lg ${buy.type === 'stock' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'}`}>
-                        {buy.type === 'stock' ? <Landmark size={18} /> : <Coins size={18} />}
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-black text-white leading-tight">{buy.symbol}</h4>
-                        <span className="text-xs font-medium text-gray-400">{buy.name || (buy.type === 'stock' ? 'Stock' : 'Crypto')}</span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-300 leading-relaxed mt-3">
-                      {buy.rationale}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <p>No active ideas found for your risk profile at this moment.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

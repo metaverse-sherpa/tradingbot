@@ -7,6 +7,7 @@ import yfinance as yf
 import ccxt
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime
+import threading
 
 import database
 from database import db_session
@@ -17,11 +18,261 @@ from bot.config import is_stock
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
+def is_user_admin(user):
+    if not user: return False
+    import database
+    tg_id = user.get("telegram_chat_id")
+    tg_user = None
+    if tg_id:
+        try:
+            tg_user = database.get_user(int(tg_id))
+        except:
+            pass
+    is_super_admin = (tg_id == 1567788633 or user.get("email") == "gilesasp@gmail.com")
+    return user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+
 # --- 🚀 Price Caching system ---
 _PRICE_CACHE = {}  # {symbol: (price, change_pct, timestamp)}
 _CACHE_DURATION = 3600  # 1 hour in seconds
 _NEWS_CACHE = {}  # {user_id: (news_json, timestamp)}
 _NEWS_CACHE_DURATION = 3600  # 1 hour in seconds
+
+# --- 📊 Global Market Data Cache (shared across all users) ---
+STOCK_WATCHLIST = [
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "BRK-B",
+    "JPM", "V", "MA", "UNH", "LLY", "AVGO", "COST", "HD",
+    "PG", "JNJ", "ABBV", "CRM", "AMD", "NFLX", "XOM", "CVX",
+    "PEP", "KO", "WMT", "MRK", "ORCL", "ADBE"
+]
+
+CRYPTO_WATCHLIST = [
+    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
+    "DOT", "LINK", "MATIC", "SHIB", "UNI", "LTC", "ATOM",
+    "NEAR", "APT", "ARB", "OP", "RNDR"
+]
+
+_MARKET_DATA_CACHE = {
+    "stocks": {},
+    "crypto": {},
+    "last_refresh": 0
+}
+_MARKET_DATA_LOCK = threading.Lock()
+_MARKET_DATA_TTL = 43200  # 12 hours in seconds
+
+def _refresh_market_data_cache():
+    """Fetch 30d price history for all watchlist assets and compute screening metrics."""
+    try:
+        now = time.time()
+        new_stocks = {}
+        new_crypto = {}
+
+        # --- STOCKS ---
+        try:
+            stock_df = yf.download(
+                STOCK_WATCHLIST,
+                period="1mo",
+                interval="1d",
+                group_by="ticker",
+                auto_adjust=True,
+                threads=True,
+                progress=False
+            )
+            for sym in STOCK_WATCHLIST:
+                try:
+                    if len(STOCK_WATCHLIST) == 1:
+                        df = stock_df
+                    else:
+                        df = stock_df[sym]
+
+                    closes = df["Close"].dropna()
+                    if len(closes) < 2:
+                        continue
+
+                    current_price = float(closes.iloc[-1])
+                    price_7d_ago = float(closes.iloc[-6]) if len(closes) >= 6 else float(closes.iloc[0])
+                    price_30d_ago = float(closes.iloc[0])
+
+                    ret_7d = ((current_price - price_7d_ago) / price_7d_ago) * 100
+                    ret_30d = ((current_price - price_30d_ago) / price_30d_ago) * 100
+                    avg_vol = int(df["Volume"].dropna().mean()) if "Volume" in df.columns else 0
+
+                    ticker_obj = yf.Ticker(sym)
+                    fi = ticker_obj.fast_info
+                    high_52w = float(fi.get("year_high", current_price))
+                    low_52w = float(fi.get("year_low", current_price))
+                    market_cap = int(fi.get("market_cap", 0))
+
+                    new_stocks[sym] = {
+                        "price": round(current_price, 2),
+                        "7d_return": round(ret_7d, 2),
+                        "30d_return": round(ret_30d, 2),
+                        "avg_volume": avg_vol,
+                        "52w_high": round(high_52w, 2),
+                        "52w_low": round(low_52w, 2),
+                        "market_cap": market_cap,
+                        "pct_from_52w_high": round(((current_price - high_52w) / high_52w) * 100, 2)
+                    }
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"[MarketCache] Stock fetch error: {e}")
+
+        # --- CRYPTO ---
+        try:
+            crypto_yf_symbols = [f"{sym}-USD" for sym in CRYPTO_WATCHLIST]
+            crypto_df = yf.download(
+                crypto_yf_symbols,
+                period="1mo",
+                interval="1d",
+                group_by="ticker",
+                auto_adjust=True,
+                threads=True,
+                progress=False
+            )
+            for sym in CRYPTO_WATCHLIST:
+                yf_sym = f"{sym}-USD"
+                try:
+                    if len(CRYPTO_WATCHLIST) == 1:
+                        df = crypto_df
+                    else:
+                        df = crypto_df[yf_sym]
+
+                    closes = df["Close"].dropna()
+                    if len(closes) < 2:
+                        continue
+
+                    current_price = float(closes.iloc[-1])
+                    price_7d_ago = float(closes.iloc[-6]) if len(closes) >= 6 else float(closes.iloc[0])
+                    price_30d_ago = float(closes.iloc[0])
+
+                    ret_7d = ((current_price - price_7d_ago) / price_7d_ago) * 100
+                    ret_30d = ((current_price - price_30d_ago) / price_30d_ago) * 100
+                    avg_vol = int(df["Volume"].dropna().mean()) if "Volume" in df.columns else 0
+
+                    ticker_obj = yf.Ticker(yf_sym)
+                    fi = ticker_obj.fast_info
+                    high_52w = float(fi.get("year_high", current_price))
+                    low_52w = float(fi.get("year_low", current_price))
+                    market_cap = int(fi.get("market_cap", 0))
+
+                    new_crypto[sym] = {
+                        "price": round(current_price, 6) if current_price < 1 else round(current_price, 2),
+                        "7d_return": round(ret_7d, 2),
+                        "30d_return": round(ret_30d, 2),
+                        "avg_volume": avg_vol,
+                        "52w_high": round(high_52w, 2),
+                        "52w_low": round(low_52w, 2),
+                        "market_cap": market_cap,
+                        "pct_from_52w_high": round(((current_price - high_52w) / high_52w) * 100, 2)
+                    }
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"[MarketCache] Crypto fetch error: {e}")
+
+        with _MARKET_DATA_LOCK:
+            if new_stocks:
+                _MARKET_DATA_CACHE["stocks"] = new_stocks
+            if new_crypto:
+                _MARKET_DATA_CACHE["crypto"] = new_crypto
+            _MARKET_DATA_CACHE["last_refresh"] = now
+
+        print(f"[MarketCache] Refreshed: {len(new_stocks)} stocks, {len(new_crypto)} crypto")
+    except Exception as e:
+        print(f"[MarketCache] Fatal refresh error: {e}")
+
+def _schedule_market_data_refresh():
+    """Run market data refresh every 4 hours in a background thread."""
+    _refresh_market_data_cache()
+    # Schedule next run in 4 hours (14400 seconds)
+    t = threading.Timer(14400, _schedule_market_data_refresh)
+    t.daemon = True  # Dies when main process dies
+    t.start()
+
+# Start the first refresh in a background thread on module load
+_initial_refresh = threading.Thread(target=_schedule_market_data_refresh, daemon=True)
+_initial_refresh.start()
+
+def _build_market_research_brief(user_id):
+    """Build a structured research brief from cached market data + active signals."""
+    # 1. Get cached market data
+    with _MARKET_DATA_LOCK:
+        stock_data = dict(_MARKET_DATA_CACHE.get("stocks", {}))
+        crypto_data = dict(_MARKET_DATA_CACHE.get("crypto", {}))
+        last_refresh = _MARKET_DATA_CACHE.get("last_refresh", 0)
+
+    # If cache is empty or stale (>12h), do an on-demand refresh
+    if not stock_data and not crypto_data:
+        _refresh_market_data_cache()
+        with _MARKET_DATA_LOCK:
+            stock_data = dict(_MARKET_DATA_CACHE.get("stocks", {}))
+            crypto_data = dict(_MARKET_DATA_CACHE.get("crypto", {}))
+
+    # 2. Get active bot signals
+    active_signals = get_active_signals_internal(bypass_cache=False)
+    open_longs = [s for s in active_signals if s.get("status") == "open" and s.get("side", "").lower() == "long"]
+
+    # Build lookup: symbol -> signal data
+    signal_lookup = {}
+    for s in open_longs:
+        sym = s.get("symbol", "").replace("/USDT", "").replace("/USD", "").upper()
+        signal_lookup[sym] = {
+            "strategy": s.get("strategy", ""),
+            "entry_price": s.get("entry_price", 0),
+            "tp_price": s.get("tp_price", 0),
+            "sl_price": s.get("sl_price", 0),
+        }
+
+    # 3. Get user's existing holdings to exclude
+    held_symbols = set()
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('SELECT symbol FROM PortfolioPositions WHERE user_id = ?', (user_id,))
+        for row in c.fetchall():
+            held_symbols.add(database.decrypt(row[0]).upper())
+
+    # 4. Build the text brief
+    brief_lines = []
+    brief_lines.append("=== STOCK CANDIDATES ===")
+    brief_lines.append("(Sorted by 30-day return. Assets the user already holds are excluded.)")
+    brief_lines.append("")
+
+    for sym in sorted(stock_data.keys(), key=lambda s: stock_data[s].get("30d_return", 0), reverse=True):
+        if sym in held_symbols:
+            continue
+        d = stock_data[sym]
+        sig = signal_lookup.get(sym)
+        line = (
+            f"  {sym}: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
+            f"Vol={d['avg_volume']:,} | 52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}% from high) | "
+            f"MktCap=${d['market_cap']:,}"
+        )
+        if sig:
+            tp_upside = ((sig['tp_price'] - sig['entry_price']) / sig['entry_price'] * 100) if sig['entry_price'] > 0 else 0
+            line += f" | ⚡ ACTIVE SIGNAL (Strategy: {sig['strategy']}, TP Upside: {tp_upside:+.1f}%)"
+        brief_lines.append(line)
+
+    brief_lines.append("")
+    brief_lines.append("=== CRYPTO CANDIDATES ===")
+    brief_lines.append("(Sorted by 30-day return. Assets the user already holds are excluded.)")
+    brief_lines.append("(Note: Our crypto bot signals are 15-minute scalps, NOT buy-and-hold. Weigh them less.)")
+    brief_lines.append("")
+
+    for sym in sorted(crypto_data.keys(), key=lambda s: crypto_data[s].get("30d_return", 0), reverse=True):
+        if sym in held_symbols:
+            continue
+        d = crypto_data[sym]
+        sig = signal_lookup.get(sym)
+        line = (
+            f"  {sym}: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
+            f"Vol={d['avg_volume']:,} | 52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}% from high) | "
+            f"MktCap=${d['market_cap']:,}"
+        )
+        if sig:
+            line += f" | ⚡ ACTIVE SIGNAL (Strategy: {sig['strategy']}, short-term scalp)"
+        brief_lines.append(line)
+
+    return "\\n".join(brief_lines)
 
 def get_stock_prices(symbols):
     """Fetch batch stock prices from Alpaca snapshots API using system credentials."""
@@ -854,6 +1105,7 @@ def get_analysis_history():
                 "score": r[1],
                 "detailed_recommendations": text_data.get("detailed_recommendations", ""),
                 "show_me_how": text_data.get("show_me_how", ""),
+                "good_buys": text_data.get("good_buys", None),
                 "action_plan": json.loads(r[3]),
                 "timestamp": r[4],
                 "completed_actions": completed_actions
@@ -907,50 +1159,99 @@ def good_buys():
     except Exception:
         analysis_data = {}
 
-    if "good_buys" in analysis_data:
+    if "good_buys" in analysis_data and not is_user_admin(g.user):
         return jsonify({"error": "You can only generate Good Ideas once per Analysis (every 24 hours). Please refer to your Detailed Implementation Plan for your recent ideas."}), 429
 
-    # Fetch active signals
-    active_signals = get_active_signals_internal(bypass_cache=False)
-    
-    # Extract open longs to feed into Gemini
-    open_longs = [s for s in active_signals if s.get("status") == "open" and s.get("side") == "long"]
-    signal_summaries = []
-    for s in open_longs:
-        signal_type = "stock" if is_stock(s.get("symbol")) else "crypto"
-        signal_summaries.append(f"{s.get('symbol')} ({signal_type}, strategy: {s.get('strategy')})")
+    # Build the market research brief from cached data
+    research_brief = _build_market_research_brief(user_id)
 
     # Construct the AI Prompt
     system_instruction = (
-        "You are an expert financial advisor AI for Metaverse Sherpa. "
-        "The user wants fresh ideas of stocks or cryptocurrencies to buy with freed-up capital.\n"
-        f"The user's risk profile is '{risk_profile}' and their investment goal is '{investment_goal}'.\n\n"
-        "Here are the currently active LONG trading signals from our trading bot:\n"
-        f"{', '.join(signal_summaries) if signal_summaries else 'None'}\n\n"
-        "Based on their risk profile and these active signals, select the best 3-5 assets to buy right now. "
-        "Prioritize recommending assets from the active signals list if they match the user's risk profile, but you can also suggest other strong assets. "
-        "Return ONLY a valid JSON list of objects matching this schema. Do not wrap in markdown ```json or include text.\n"
-        "[\n"
-        "  {\n"
-        "    \"symbol\": \"AAPL\",\n"
-        "    \"name\": \"Apple Inc.\",\n"
-        "    \"type\": \"stock\",\n"
-        "    \"rationale\": \"Brief 1-sentence reason why this is a good buy.\",\n"
-        "    \"is_active_signal\": true\n"
-        "  }\n"
-        "]"
+        "You are a senior portfolio analyst AI for Metaverse Sherpa. "
+        "You are selecting the best buy-and-hold investment ideas for a user.\\n\\n"
+        f"User's risk profile: '{risk_profile}'\\n"
+        f"User's investment goal: '{investment_goal}'\\n\\n"
+        "IMPORTANT RULES:\\n"
+        "1. Base your analysis ONLY on the market data provided below.\\n"
+        "2. Do NOT fabricate earnings data, revenue figures, P/E ratios, or any information not present in the research brief.\\n"
+        "3. Your rationale must reference the actual numbers from the data (e.g., '30d momentum of +12.3%').\\n"
+        "4. Assets marked with ⚡ ACTIVE SIGNAL have been identified by our trading algorithm. Stock signals are high-conviction momentum plays. Crypto signals are short-term scalps (weigh less for buy-and-hold).\\n"
+        "5. Prefer assets with: strong 30d momentum, reasonable distance from 52-week highs (room to run), high liquidity.\\n"
+        "6. Diversify across sectors/categories. Do not recommend 5 tech stocks.\\n"
+        "7. Generate realistic technical target prices (`target_price`) based on 52-week highs and momentum (e.g., using previous resistance levels as targets). Calculate the `expected_growth_pct` (number) mathematically from the current price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\\n\\n"
+        "Return a JSON object with exactly this structure (no markdown, no extra text):\\n"
+        "{\\n"
+        '  "stocks": [\\n'
+        "    {\\n"
+        '      "symbol": "AAPL",\\n'
+        '      "name": "Apple Inc.",\\n'
+        '      "type": "stock",\\n'
+        '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
+        '      "is_active_signal": true,\\n'
+        '      "conviction": "high",\\n'
+        '      "metrics_summary": "Price: $198 | 30d: +5.2% | 8% below 52w high",\\n'
+        '      "target_price": "$220.00",\\n'
+        '      "expected_growth_pct": 11.1,\\n'
+        '      "estimated_timeframe": "3-6 Months"\\n'
+        "    }\\n"
+        "  ],\\n"
+        '  "crypto": [\\n'
+        "    {\\n"
+        '      "symbol": "SOL",\\n'
+        '      "name": "Solana",\\n'
+        '      "type": "crypto",\\n'
+        '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
+        '      "is_active_signal": false,\\n'
+        '      "conviction": "medium",\\n'
+        '      "metrics_summary": "Price: $142 | 30d: +18.4% | 22% below 52w high",\\n'
+        '      "target_price": "$175.00",\\n'
+        '      "expected_growth_pct": 23.2,\\n'
+        '      "estimated_timeframe": "2-4 Months"\\n'
+        "    }\\n"
+        "  ]\\n"
+        "}\\n\\n"
+        "Select exactly 5 stocks and exactly 5 crypto assets. "
+        "Set conviction to 'high' if the asset has an active signal AND strong momentum, otherwise 'medium'.\\n\\n"
+        "--- MARKET DATA RESEARCH BRIEF ---\\n\\n"
+        f"{research_brief}"
     )
 
     try:
-        raw_json_str = call_gemini("What are some good buys right now?", system_instruction=system_instruction, json_mode=True)
+        raw_json_str = call_gemini(
+            "Analyze the market data and select the top 5 stocks and top 5 crypto for buy-and-hold investment.",
+            system_instruction=system_instruction,
+            json_mode=True
+        )
         clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
         recommendations = json.loads(clean_json_str)
 
-        buys_md = "\n\n### 💡 Fresh Investment Ideas (Good Buys)\n\n"
-        for rec in recommendations:
-            active_badge = "⚡ (Active Signal)" if rec.get('is_active_signal') else ""
-            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})** {active_badge}\n  * {rec.get('rationale')}\n"
+        # Ensure we have both keys
+        stock_recs = recommendations.get("stocks", [])
+        crypto_recs = recommendations.get("crypto", [])
 
+        # Build markdown for the Detailed Implementation Plan
+        buys_md = "\n\n### 💡 Fresh Investment Ideas\n\n"
+        buys_md += "#### 📈 Top Stock Ideas\n\n"
+        for rec in stock_recs:
+            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
+            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
+            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
+            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
+            if rec.get('target_price'):
+                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
+            buys_md += f"  * {rec.get('rationale', '')}\n"
+
+        buys_md += "\n#### 🪙 Top Crypto Ideas\n\n"
+        for rec in crypto_recs:
+            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
+            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
+            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
+            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
+            if rec.get('target_price'):
+                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
+            buys_md += f"  * {rec.get('rationale', '')}\n"
+
+        # Append to the Detailed Implementation Plan
         analysis_data["show_me_how"] = analysis_data.get("show_me_how", "") + buys_md
         analysis_data["good_buys"] = recommendations
 
@@ -963,7 +1264,7 @@ def good_buys():
             ''', (json.dumps(analysis_data), analysis_id))
             conn.commit()
 
-        return jsonify({"suggestions": recommendations}), 200
+        return jsonify(recommendations), 200
     except Exception as e:
         return jsonify({"error": f"Failed to generate recommendations: {str(e)}"}), 500
 
