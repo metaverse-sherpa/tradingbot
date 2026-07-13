@@ -238,9 +238,15 @@ def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=N
 def get_portfolio():
     user_id = g.user["id"]
     positions = []
+    cash_balance = 0.0
     
     with db_session() as conn:
         c = conn.cursor()
+        c.execute('SELECT cash_balance FROM WebUsers WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        if row and row[0] is not None:
+            cash_balance = float(row[0])
+
         c.execute('''
             SELECT id, symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield
             FROM PortfolioPositions
@@ -264,6 +270,8 @@ def get_portfolio():
         return jsonify({
             "positions": [],
             "stats": {
+                "cash_balance": cash_balance,
+                "total_portfolio_value": cash_balance,
                 "market_value": 0.0,
                 "cost_basis": 0.0,
                 "total_pnl": 0.0,
@@ -368,14 +376,23 @@ def get_portfolio():
             top_mover_sym = p["symbol"]
 
     # Compute percentage allocations
+    total_denominator = total_market_value + cash_balance
     allocation_list = []
     for p in positions:
-        pct = (p["market_value"] / total_market_value * 100) if total_market_value > 0 else 0.0
+        pct = (p["market_value"] / total_denominator * 100) if total_denominator > 0 else 0.0
         p["allocation_pct"] = pct
         allocation_list.append({
             "name": p["symbol"],
             "value": p["market_value"],
             "percentage": pct
+        })
+
+    if cash_balance > 0:
+        cash_pct = (cash_balance / total_denominator * 100) if total_denominator > 0 else 0.0
+        allocation_list.append({
+            "name": "CASH",
+            "value": cash_balance,
+            "percentage": cash_pct
         })
 
     allocation_list = sorted(allocation_list, key=lambda x: x["value"], reverse=True)
@@ -390,6 +407,8 @@ def get_portfolio():
     portfolio_age = (datetime.now() - earliest_purchase).days if earliest_purchase else 0
 
     stats = {
+        "cash_balance": cash_balance,
+        "total_portfolio_value": total_market_value + cash_balance,
         "market_value": total_market_value,
         "cost_basis": total_cost_basis,
         "total_pnl": total_pnl,
@@ -417,6 +436,26 @@ def get_portfolio():
         "allocation": allocation_list
     }), 200
 
+@portfolio_bp.route('/api/portfolio/cash', methods=['POST'])
+@require_auth
+@require_premium
+def update_cash():
+    data = request.json or {}
+    if "cash_balance" not in data:
+        return jsonify({"error": "Missing cash_balance."}), 400
+    try:
+        cash_balance = float(data["cash_balance"])
+    except ValueError:
+        return jsonify({"error": "Invalid cash_balance value."}), 400
+        
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute('UPDATE WebUsers SET cash_balance = ?, last_portfolio_update = ? WHERE id = ?', 
+                  (cash_balance, int(time.time()), g.user["id"]))
+        conn.commit()
+        
+    return jsonify({"message": "Cash balance updated successfully.", "cash_balance": cash_balance}), 200
+
 @portfolio_bp.route('/api/portfolio/position', methods=['POST'])
 @require_auth
 @require_premium
@@ -428,6 +467,8 @@ def add_position():
     avg_entry_price = float(data.get("avg_entry_price", 0))
     purchase_date = data.get("purchase_date", "").strip()
     dividend_yield = float(data.get("dividend_yield") or 0.0) / 100.0
+    deduct_from_cash = data.get("deduct_from_cash", False)
+    auto_top_up = data.get("auto_top_up", False)
 
     if not symbol or not purchase_date or quantity <= 0 or avg_entry_price <= 0:
         return jsonify({"error": "Missing or invalid position details."}), 400
@@ -448,6 +489,17 @@ def add_position():
 
     with db_session() as conn:
         c = conn.cursor()
+        
+        if deduct_from_cash:
+            cost_basis = quantity * avg_entry_price
+            c.execute('SELECT cash_balance FROM WebUsers WHERE id = ?', (g.user["id"],))
+            row = c.fetchone()
+            current_cash = float(row[0]) if row and row[0] is not None else 0.0
+            if cost_basis > current_cash and auto_top_up:
+                current_cash = cost_basis  # Auto top-up
+            new_cash = current_cash - cost_basis
+            c.execute('UPDATE WebUsers SET cash_balance = ? WHERE id = ?', (new_cash, g.user["id"]))
+            
         c.execute('''
             INSERT INTO PortfolioPositions (user_id, symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -514,12 +566,18 @@ def edit_position(position_id):
 @require_auth
 @require_premium
 def delete_position(position_id):
+    add_to_cash = request.args.get('add_to_cash', 'false').lower() == 'true'
+    proceeds = float(request.args.get('proceeds', 0.0))
+
     with db_session() as conn:
         c = conn.cursor()
         c.execute('DELETE FROM PortfolioPositions WHERE id = ? AND user_id = ?', (position_id, g.user["id"]))
-        c.execute('UPDATE WebUsers SET last_portfolio_update = ? WHERE id = ?', (int(time.time()), g.user["id"]))
-        conn.commit()
         success = c.rowcount > 0
+        if success:
+            if add_to_cash and proceeds > 0.0:
+                c.execute('UPDATE WebUsers SET cash_balance = COALESCE(cash_balance, 0.0) + ? WHERE id = ?', (proceeds, g.user["id"]))
+            c.execute('UPDATE WebUsers SET last_portfolio_update = ? WHERE id = ?', (int(time.time()), g.user["id"]))
+        conn.commit()
 
     if success:
         return jsonify({"message": "Position deleted successfully."}), 200

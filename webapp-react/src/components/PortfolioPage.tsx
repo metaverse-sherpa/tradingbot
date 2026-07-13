@@ -100,6 +100,21 @@ const PortfolioPage: React.FC = () => {
   const [showHowOpen, setShowHowOpen] = useState(false);
 
   // AI Config Modal state
+  const [cashModalOpen, setCashModalOpen] = useState(false);
+  const [cashInputVal, setCashInputVal] = useState('');
+  
+  // Custom Delete Modal State
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [positionToDelete, setPositionToDelete] = useState<any>(null);
+  const [addProceedsToCash, setAddProceedsToCash] = useState(true);
+  const [customProceeds, setCustomProceeds] = useState('');
+  
+  // Add Position Deduct Checkbox State
+  const [deductFromCash, setDeductFromCash] = useState(true);
+  
+  // Insufficient Cash Dialog State
+  const [insufficientCashOpen, setInsufficientCashOpen] = useState(false);
+  const [pendingPositionPayload, setPendingPositionPayload] = useState<any>(null);
 
   const [riskProfile, setRiskProfile] = useState(user?.risk_profile || 'Moderate');
   const [investmentGoal, setInvestmentGoal] = useState(user?.investment_goal || 'Growth');
@@ -265,10 +280,20 @@ const PortfolioPage: React.FC = () => {
   };
 
   // Delete position handler
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this position?")) return;
+  const triggerDelete = (position: any) => {
+    setPositionToDelete(position);
+    setAddProceedsToCash(true);
+    setCustomProceeds(position.market_value ? position.market_value.toString() : (position.quantity * position.avg_entry_price).toString());
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!positionToDelete) return;
     try {
-      await api.delete(`/portfolio/position/${id}`);
+      const proceeds = parseFloat(customProceeds) || 0;
+      await api.delete(`/portfolio/position/${positionToDelete.id}?add_to_cash=${addProceedsToCash}&proceeds=${proceeds}`);
+      setDeleteConfirmOpen(false);
+      setPositionToDelete(null);
       fetchPortfolioData(true);
       fetchNews();
     } catch (err) {
@@ -278,21 +303,35 @@ const PortfolioPage: React.FC = () => {
   };
 
   // Manual Add / Edit Submit handler
-  const handleSavePosition = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSavePosition = async (e?: React.FormEvent, forceTopUp = false) => {
+    if (e) e.preventDefault();
     if (!formSymbol || !formQty || !formEntryPrice || !formDate) {
       showToast("Please fill out all required fields.", "error");
       return;
     }
 
+    const qty = parseFloat(formQty);
+    const price = parseFloat(formEntryPrice);
+
     const payload = {
       symbol: formSymbol,
       category: formCategory,
-      quantity: parseFloat(formQty),
-      avg_entry_price: parseFloat(formEntryPrice),
+      quantity: qty,
+      avg_entry_price: price,
       purchase_date: formDate,
-      dividend_yield: formYield ? parseFloat(formYield) : 0.0
+      dividend_yield: formYield ? parseFloat(formYield) : 0.0,
+      deduct_from_cash: deductFromCash && !editingPosition,
+      auto_top_up: forceTopUp
     };
+
+    if (deductFromCash && !editingPosition && !forceTopUp) {
+      const requiredCash = qty * price;
+      if (requiredCash > (stats.cash_balance || 0)) {
+        setPendingPositionPayload(payload);
+        setInsufficientCashOpen(true);
+        return; // wait for user confirmation
+      }
+    }
 
     try {
       if (editingPosition) {
@@ -301,12 +340,27 @@ const PortfolioPage: React.FC = () => {
         await api.post('/portfolio/position', payload);
       }
       setModalOpen(false);
+      setInsufficientCashOpen(false);
+      setPendingPositionPayload(null);
       showToast("Position saved successfully!");
       fetchPortfolioData(true);
       fetchNews();
     } catch (err) {
       console.error(err);
       showToast("Failed to save position.", "error");
+    }
+  };
+
+  const saveCashBalance = async () => {
+    try {
+      const val = parseFloat(cashInputVal);
+      if (isNaN(val)) throw new Error("Invalid number");
+      await api.post('/portfolio/cash', { cash_balance: val });
+      setCashModalOpen(false);
+      fetchPortfolioData(true);
+      showToast("Cash balance updated!");
+    } catch (err) {
+      showToast("Failed to update cash balance.", "error");
     }
   };
 
@@ -618,9 +672,37 @@ const PortfolioPage: React.FC = () => {
           </div>
 
           {/* 📊 KPI Cards Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+            {/* Card 1: Total Balance */}
             <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Market Value</span>
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total Balance</span>
+              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.total_portfolio_value || stats.market_value)}</h3>
+              <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Positions + Cash</p>
+            </div>
+
+            {/* Card 2: Cash Available */}
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden group">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-between">
+                Cash Available
+                <button 
+                  onClick={() => { setCashInputVal((stats.cash_balance || 0).toString()); setCashModalOpen(true); }}
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity p-0.5 rounded"
+                >
+                  <Edit2 size={12} />
+                </button>
+              </span>
+              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.cash_balance || 0)}</h3>
+              <p 
+                className="text-gray-500 text-[9px] md:text-[10px] mt-1 cursor-pointer hover:text-emerald-400"
+                onClick={() => { setCashInputVal((stats.cash_balance || 0).toString()); setCashModalOpen(true); }}
+              >
+                Manage cash
+              </p>
+            </div>
+
+            {/* Card 3: Holdings Value (Renamed from Market Value) */}
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Holdings Value</span>
               <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.market_value)}</h3>
               <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Invested: {fmt(stats.cost_basis)}</p>
             </div>
@@ -1085,7 +1167,7 @@ const PortfolioPage: React.FC = () => {
                             <Edit2 size={13} />
                           </button>
                           <button
-                            onClick={() => handleDelete(pos.id)}
+                            onClick={() => triggerDelete(pos)}
                             className="bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-gray-400 hover:text-rose-400 p-1.5 rounded-lg transition-colors"
                           >
                             <Trash2 size={13} />
@@ -1206,7 +1288,23 @@ const PortfolioPage: React.FC = () => {
                     className="w-full bg-[#131620] border border-[#2e303a] rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
+                </div>
               </div>
+              
+              {!editingPosition && (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id="deductFromCash"
+                    checked={deductFromCash}
+                    onChange={(e) => setDeductFromCash(e.target.checked)}
+                    className="w-4 h-4 rounded border-white/10 bg-[#131620] text-cyan-500 focus:ring-cyan-500"
+                  />
+                  <label htmlFor="deductFromCash" className="text-xs text-gray-400">
+                    Deduct cost from Cash Available
+                  </label>
+                </div>
+              )}
 
               <div className="pt-2 flex gap-3">
                 <button
@@ -1225,10 +1323,141 @@ const PortfolioPage: React.FC = () => {
               </div>
             </form>
           </div>
+          </div>
         </div>
       )}
 
-      {/* 📄 CSV Import Modal */}
+      {/* 💵 Cash Balance Modal */}
+      {cashModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1f2028] border border-white/10 rounded-2xl w-full max-w-sm p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setCashModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-4">
+              💵 Update Cash Balance
+            </h3>
+            <div className="mb-4">
+              <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1.5">Available Cash</label>
+              <input
+                type="number"
+                step="any"
+                required
+                placeholder="$0.00"
+                value={cashInputVal}
+                onChange={(e) => setCashInputVal(e.target.value)}
+                className="w-full bg-[#131620] border border-[#2e303a] rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCashModalOpen(false)}
+                className="flex-1 bg-[#131620] hover:bg-[#181C28] border border-white/5 rounded-xl py-2 text-xs md:text-sm font-bold text-gray-400 hover:text-white transition-all uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveCashBalance}
+                className="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2 text-xs md:text-sm font-black text-black shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all uppercase tracking-wider"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ Insufficient Cash Dialog */}
+      {insufficientCashOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1f2028] border border-rose-500/30 rounded-2xl w-full max-w-sm p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+              <AlertTriangle className="text-rose-400" size={20} />
+              Insufficient Cash
+            </h3>
+            <p className="text-xs text-gray-400 mb-6">
+              You do not have enough cash balance to cover this purchase. Would you like to automatically top up your cash balance to proceed?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setInsufficientCashOpen(false); setPendingPositionPayload(null); }}
+                className="flex-1 bg-[#131620] border border-white/5 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleSavePosition(undefined, true); }}
+                className="flex-1 bg-emerald-500 hover:bg-emerald-400 py-2 rounded-xl text-xs font-bold text-black shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-colors uppercase tracking-wider"
+              >
+                Top Up & Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🗑️ Custom Delete Confirm Modal */}
+      {deleteConfirmOpen && positionToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-[#1f2028] border border-rose-500/30 rounded-2xl w-full max-w-sm p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+              <Trash2 className="text-rose-400" size={20} />
+              Delete {positionToDelete.symbol}?
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Are you sure you want to remove this position from your portfolio?
+            </p>
+            
+            <div className="bg-[#131620] rounded-xl p-3 mb-6 border border-white/5">
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="checkbox"
+                  id="addProceedsToCash"
+                  checked={addProceedsToCash}
+                  onChange={(e) => setAddProceedsToCash(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/10 bg-[#131620] text-emerald-500 focus:ring-emerald-500"
+                />
+                <label htmlFor="addProceedsToCash" className="text-xs font-bold text-gray-300">
+                  Add sale proceeds to Cash Available
+                </label>
+              </div>
+              
+              {addProceedsToCash && (
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1 block">Proceeds Amount</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={customProceeds}
+                    onChange={(e) => setCustomProceeds(e.target.value)}
+                    className="w-full bg-[#1f2028] border border-[#2e303a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeleteConfirmOpen(false); setPositionToDelete(null); }}
+                className="flex-1 bg-[#131620] border border-white/5 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 bg-rose-500 hover:bg-rose-400 py-2 rounded-xl text-xs font-bold text-white shadow-[0_0_15px_rgba(244,63,94,0.3)] transition-colors uppercase tracking-wider"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {csvModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1f2028] border border-white/10 rounded-2xl w-full max-w-xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">

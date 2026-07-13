@@ -842,7 +842,8 @@ def init_db():
                 created_at INTEGER,
                 referral_reward_triggered BOOLEAN DEFAULT 0,
                 alpaca_start_equity REAL,
-                developer_api_key TEXT UNIQUE
+                developer_api_key TEXT UNIQUE,
+                cash_balance REAL DEFAULT 0.0
             )''')
 
         if "PortfolioBalanceHistory" not in existing_tables:
@@ -876,7 +877,8 @@ def init_db():
             "developer_api_key": "TEXT UNIQUE",
             "risk_profile": "TEXT",
             "investment_goal": "TEXT",
-            "last_portfolio_update": "INTEGER DEFAULT 0"
+            "last_portfolio_update": "INTEGER DEFAULT 0",
+            "cash_balance": "REAL DEFAULT 0.0"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:
