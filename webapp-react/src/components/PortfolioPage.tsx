@@ -6,7 +6,7 @@ import {
   RefreshCw, X, Wallet,
   UploadCloud, Zap, ArrowUp, ArrowDown,
   Landmark, Coins, ChevronLeft, ChevronRight, Check,
-  AlertTriangle
+  AlertTriangle, ChevronDown
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -43,10 +43,54 @@ const analysisMessages = [
   "Finalizing your ticket to the moon..."
 ];
 
+const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: {value: string, label: string}[] }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const currentLabel = options.find(o => o.value === value)?.label || value;
+
+  return (
+    <div className="relative w-full sm:w-auto" ref={ref}>
+      <button 
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full sm:w-48 bg-black/50 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 flex justify-between items-center outline-none focus:border-emerald-500/50 transition-colors"
+      >
+        <span className="truncate pr-2">{currentLabel}</span>
+        <ChevronDown size={14} className={`text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-[100] w-full mt-1 bg-[#1f2028] border border-[#2e303a] rounded-lg shadow-xl overflow-y-auto max-h-48 left-0">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-xs hover:bg-white/5 transition-colors ${value === opt.value ? 'text-emerald-400 font-bold bg-white/5' : 'text-gray-300'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
 
   // Positions and general stats
   const [positions, setPositions] = useState<any[]>([]);
@@ -241,8 +285,8 @@ const PortfolioPage: React.FC = () => {
         force_regenerate: force
       });
       setGoodBuys({
-        stocks: res.data.stocks || [],
-        crypto: res.data.crypto || []
+        stocks: (res.data.stocks || []).sort((a: any, b: any) => (b.expected_growth_pct || 0) - (a.expected_growth_pct || 0)),
+        crypto: (res.data.crypto || []).sort((a: any, b: any) => (b.expected_growth_pct || 0) - (a.expected_growth_pct || 0))
       });
       // Re-fetch analysis so the updated Detailed Implementation Plan includes the good buys, if applicable
       if (force) {
@@ -1245,32 +1289,54 @@ const PortfolioPage: React.FC = () => {
 
       {/* 💡 Recommended Buys Panel */}
       <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4 flex flex-col mt-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+        <div className="flex flex-col lg:flex-row lg:justify-between items-start lg:items-center gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full lg:w-auto">
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
               <Search className="text-emerald-400" size={16} />
               Recommended Buys
             </h3>
             
-            <div className="flex flex-row items-center gap-2">
-              <select
-                value={riskProfile}
-                onChange={(e) => setRiskProfile(e.target.value)}
-                className="bg-black/50 border border-white/10 text-white text-xs rounded-lg px-2 py-1 outline-none focus:border-emerald-500/50"
-              >
-                <option value="Conservative">Conservative</option>
-                <option value="Moderate">Moderate</option>
-                <option value="Aggressive">Aggressive</option>
-              </select>
-              <select
-                value={investmentGoal}
-                onChange={(e) => setInvestmentGoal(e.target.value)}
-                className="bg-black/50 border border-white/10 text-white text-xs rounded-lg px-2 py-1 outline-none focus:border-emerald-500/50"
-              >
-                <option value="Income">Income</option>
-                <option value="Growth">Growth</option>
-                <option value="Speculation">Speculation</option>
-              </select>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+              <div className="flex flex-row items-center justify-between sm:justify-start gap-3">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">Risk Profile</span>
+                <SmallCustomSelect
+                  value={riskProfile}
+                  onChange={async (v) => {
+                    setRiskProfile(v);
+                    try {
+                      await api.post('/settings/preferences', { risk_profile: v });
+                      if (user) setUser({ ...user, risk_profile: v } as any);
+                    } catch (e) {
+                      showToast("Failed to update risk profile", "error");
+                    }
+                  }}
+                  options={[
+                    { value: "Conservative", label: "Conservative" },
+                    { value: "Moderate", label: "Moderate" },
+                    { value: "Aggressive", label: "Aggressive" }
+                  ]}
+                />
+              </div>
+              <div className="flex flex-row items-center justify-between sm:justify-start gap-3">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">Goal</span>
+                <SmallCustomSelect
+                  value={investmentGoal}
+                  onChange={async (v) => {
+                    setInvestmentGoal(v);
+                    try {
+                      await api.post('/settings/preferences', { investment_goal: v });
+                      if (user) setUser({ ...user, investment_goal: v } as any);
+                    } catch (e) {
+                      showToast("Failed to update investment goal", "error");
+                    }
+                  }}
+                  options={[
+                    { value: "Income", label: "Income (Dividends & Yield)" },
+                    { value: "Growth", label: "Growth (Capital Appreciation)" },
+                    { value: "Speculation", label: "Speculation (High Risk)" }
+                  ]}
+                />
+              </div>
             </div>
           </div>
 

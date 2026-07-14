@@ -82,6 +82,13 @@ const BriefcaseIcon = ({ size = 20, className = '' }) => (
     <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
   </svg>
 );
+
+const CompassIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+  </svg>
+);
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 
@@ -165,6 +172,11 @@ const Layout: React.FC = () => {
                       <Link to={isPremium ? "/portfolio" : "/premium"} onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <BriefcaseIcon size={16} className="text-cyan-400" /> My Portfolio
                       </Link>
+                      {isPremium && (
+                        <Link to="/recommendations" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                          <CompassIcon size={16} className="text-cyan-400" /> AI Recommendations
+                        </Link>
+                      )}
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <UsersIcon size={16} className="text-emerald-400" /> Refer & Earn
                       </Link>

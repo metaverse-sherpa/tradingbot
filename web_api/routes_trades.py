@@ -2604,6 +2604,26 @@ def get_trade_chart():
                     df_chart = df_chart.copy()
                 else:
                     df_chart = None
+                    try:
+                        import yfinance as yf
+                        tkr = yf.Ticker(symbol)
+                        yf_df = tkr.history(period="3mo")
+                        if not yf_df.empty:
+                            yf_df.reset_index(inplace=True)
+                            yf_df.columns = [c.lower() for c in yf_df.columns]
+                            if 'date' in yf_df.columns:
+                                yf_df.rename(columns={'date': 'timestamp'}, inplace=True)
+                            if 'datetime' in yf_df.columns:
+                                yf_df.rename(columns={'datetime': 'timestamp'}, inplace=True)
+                            
+                            yf_df['timestamp'] = pd.to_datetime(yf_df['timestamp'])
+                            if yf_df['timestamp'].dt.tz is not None:
+                                yf_df['timestamp'] = yf_df['timestamp'].dt.tz_convert('UTC').dt.tz_localize(None)
+                                
+                            yf_df['timestamp'] = yf_df['timestamp'].astype('datetime64[ms]').astype('int64')
+                            df_chart = yf_df
+                    except Exception as e:
+                        print(f"yfinance fallback failed for chart: {e}", flush=True)
             except Exception as e:
                 print(f"Error fetching from stock daily cache: {e}", flush=True)
         else:

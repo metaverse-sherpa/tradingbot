@@ -22,6 +22,7 @@ import { useAuthStore } from './store/useStore';
 
 // Type inference sometimes needs static import, but we'll dynamic import the component
 const PortfolioPage = React.lazy(() => import('./components/PortfolioPage'));
+const RecommendationsPage = React.lazy(() => import('./components/RecommendationsPage'));
 
 const PageLoader = () => (
   <div className="flex-1 flex items-center justify-center min-h-[50vh]">
@@ -151,6 +152,7 @@ const App: React.FC = () => {
             <Route path="premium" element={<ProtectedRoute><PremiumPage /></ProtectedRoute>} />
             <Route path="referrals" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
             <Route path="portfolio" element={<PremiumRoute><PortfolioPage /></PremiumRoute>} />
+            <Route path="recommendations" element={<PremiumRoute><RecommendationsPage /></PremiumRoute>} />
             
             <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
             <Route path="logs" element={<AdminRoute><LogsPage /></AdminRoute>} />

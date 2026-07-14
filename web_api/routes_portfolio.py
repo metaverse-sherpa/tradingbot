@@ -62,6 +62,13 @@ _MARKET_DATA_TTL = 43200  # 12 hours in seconds
 
 _GOOD_BUYS_LOCKS = collections.defaultdict(threading.Lock)
 
+_SPECULATIVE_STOCK_CACHE = {
+    "stocks": {},
+    "last_refresh": 0
+}
+_SPECULATIVE_MARKET_DATA_LOCK = threading.Lock()
+FALLBACK_SPECULATIVE_WATCHLIST = ['TSLA', 'PLTR', 'AMD', 'COIN', 'MARA', 'RIOT', 'SOXL', 'UPST', 'CLSK', 'SOFI']
+
 def _refresh_market_data_cache():
     """Fetch 30d price history for all watchlist assets and compute screening metrics."""
     try:
@@ -196,7 +203,75 @@ def _schedule_market_data_refresh():
 _initial_refresh = threading.Thread(target=_schedule_market_data_refresh, daemon=True)
 _initial_refresh.start()
 
-def _build_market_research_brief(user_id):
+def _fetch_speculative_stock_symbols():
+    symbols = set()
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    for scr_id in ["most_actives", "day_gainers"]:
+        url = f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=true&scrIds={scr_id}&count=25"
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            data = response.json()
+            results = data.get("finance", {}).get("result", [])
+            if results:
+                for q in results[0].get("quotes", []):
+                    sym = q.get('symbol', '')
+                    if sym and "^" not in sym and "=" not in sym and "-" not in sym:
+                        symbols.add(sym)
+        except Exception as e:
+            print(f"[MarketCache] Speculative fetch error for {scr_id}: {e}")
+    if not symbols:
+        return FALLBACK_SPECULATIVE_WATCHLIST
+    return list(symbols)
+
+def _get_speculative_market_data():
+    with _SPECULATIVE_MARKET_DATA_LOCK:
+        last_refresh = _SPECULATIVE_STOCK_CACHE.get("last_refresh", 0)
+        if time.time() - last_refresh < 3600 and _SPECULATIVE_STOCK_CACHE.get("stocks"):
+            return dict(_SPECULATIVE_STOCK_CACHE["stocks"])
+
+    symbols = _fetch_speculative_stock_symbols()
+    new_stocks = {}
+    try:
+        stock_df = yf.download(symbols, period="1mo", interval="1d", group_by="ticker", auto_adjust=True, threads=True, progress=False)
+        for sym in symbols:
+            try:
+                df = stock_df if len(symbols) == 1 else stock_df[sym]
+                closes = df["Close"].dropna()
+                if len(closes) < 2: continue
+                current_price = float(closes.iloc[-1])
+                price_7d_ago = float(closes.iloc[-6]) if len(closes) >= 6 else float(closes.iloc[0])
+                price_30d_ago = float(closes.iloc[0])
+                ret_7d = ((current_price - price_7d_ago) / price_7d_ago) * 100
+                ret_30d = ((current_price - price_30d_ago) / price_30d_ago) * 100
+                avg_vol = int(df["Volume"].dropna().mean()) if "Volume" in df.columns else 0
+                
+                ticker_obj = yf.Ticker(sym)
+                fi = ticker_obj.fast_info
+                high_52w = float(fi.get("year_high", current_price))
+                low_52w = float(fi.get("year_low", current_price))
+                market_cap = int(fi.get("market_cap", 0))
+
+                new_stocks[sym] = {
+                    "price": round(current_price, 2),
+                    "7d_return": round(ret_7d, 2),
+                    "30d_return": round(ret_30d, 2),
+                    "avg_volume": avg_vol,
+                    "52w_high": round(high_52w, 2),
+                    "52w_low": round(low_52w, 2),
+                    "market_cap": market_cap,
+                    "pct_from_52w_high": round(((current_price - high_52w) / high_52w) * 100, 2)
+                }
+            except Exception:
+                continue
+        with _SPECULATIVE_MARKET_DATA_LOCK:
+            _SPECULATIVE_STOCK_CACHE["stocks"] = new_stocks
+            _SPECULATIVE_STOCK_CACHE["last_refresh"] = time.time()
+    except Exception as e:
+        print(f"[MarketCache] Failed to download speculative data: {e}")
+    
+    return new_stocks
+
+def _build_market_research_brief(user_id, risk_profile="Moderate", investment_goal="Growth"):
     """Build a structured research brief from cached market data + active signals."""
     # 1. Get cached market data
     with _MARKET_DATA_LOCK:
@@ -210,6 +285,12 @@ def _build_market_research_brief(user_id):
         with _MARKET_DATA_LOCK:
             stock_data = dict(_MARKET_DATA_CACHE.get("stocks", {}))
             crypto_data = dict(_MARKET_DATA_CACHE.get("crypto", {}))
+
+    # If aggressive and speculation, swap the stock_data with dynamic speculative candidates
+    if risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation":
+        speculative_data = _get_speculative_market_data()
+        if speculative_data:
+            stock_data = speculative_data
 
     # 2. Get active bot signals
     active_signals = get_active_signals_internal(bypass_cache=False)
@@ -954,7 +1035,7 @@ def analyze_portfolio():
         c.execute('SELECT timestamp, score, action_plan, completed_actions FROM PortfolioAnalysisHistory WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1', (user_id,))
         last_analysis = c.fetchone()
         
-    if last_analysis and (now - last_analysis[0] < 86400):
+    if not is_user_admin(g.user) and last_analysis and (now - last_analysis[0] < 86400):
         last_update = g.user.get('last_portfolio_update') or 0
         if last_update <= last_analysis[0]:
             return jsonify({"error": "You can only run a new analysis once every 24 hours unless you update your holdings."}), 429
@@ -1046,6 +1127,54 @@ def analyze_portfolio():
         "Ensure the response is valid JSON and nothing else."
     )
 
+    # Load active Good Buys and inject them into the system instruction
+    cache_key = f"good_buys_{risk_profile}_{investment_goal}"
+    cached_data_str = get_config(cache_key)
+    good_buys_dict = None
+    buys_md = ""
+    if cached_data_str:
+        try:
+            cached_data = json.loads(cached_data_str)
+            cached_timestamp = cached_data.get("timestamp", 0)
+            if time.time() - cached_timestamp < 86400:
+                recommendations = cached_data.get("recommendations", {})
+                good_buys_dict = recommendations
+                stock_recs = recommendations.get("stocks", [])
+                crypto_recs = recommendations.get("crypto", [])
+                
+                if stock_recs or crypto_recs:
+                    buys_md = "\n\n### 💡 Fresh Investment Ideas\n\n"
+                    prompt_buys_ctx = "\n\nRECOMMENDED BUYS (Consider recommending selling poor performing assets or assets that reached their targets, and re-allocating funds into these recommended assets):\n"
+                    if stock_recs:
+                        buys_md += "#### 📈 Top Stock Ideas\n\n"
+                        prompt_buys_ctx += "- STOCKS:\n"
+                        for rec in stock_recs:
+                            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
+                            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
+                            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
+                            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
+                            if rec.get('target_price'):
+                                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
+                            buys_md += f"  * {rec.get('rationale', '')}\n"
+                            prompt_buys_ctx += f"  * {rec.get('symbol')}: {rec.get('rationale', '')}\n"
+
+                    if crypto_recs:
+                        buys_md += "\n#### 🪙 Top Crypto Ideas\n\n"
+                        prompt_buys_ctx += "- CRYPTO:\n"
+                        for rec in crypto_recs:
+                            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
+                            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
+                            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
+                            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
+                            if rec.get('target_price'):
+                                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
+                            buys_md += f"  * {rec.get('rationale', '')}\n"
+                            prompt_buys_ctx += f"  * {rec.get('symbol')}: {rec.get('rationale', '')}\n"
+                    
+                    system_instruction += prompt_buys_ctx
+        except Exception:
+            pass
+
     prompt = f"Analyze this portfolio: {compiled_positions_str}. General stats: Market Value: ${stats['market_value']:.2f}, Cost Basis: ${stats['cost_basis']:.2f}, Dividends: ${stats['annual_dividends']:.2f}."
 
     try:
@@ -1057,16 +1186,23 @@ def analyze_portfolio():
         action_plan = analysis.get("action_plan", [])
         detailed_recs = analysis.get("detailed_recommendations", "")
         show_me_how = analysis.get("show_me_how", "")
+        
+        if buys_md:
+            show_me_how += buys_md
+
+        analysis_data = {
+            "detailed_recommendations": detailed_recs,
+            "show_me_how": show_me_how
+        }
+        if good_buys_dict:
+            analysis_data["good_buys"] = good_buys_dict
 
         with db_session() as conn:
             c = conn.cursor()
             c.execute('''
                 INSERT INTO PortfolioAnalysisHistory (user_id, score, analysis_text, action_plan, timestamp)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (user_id, score, json.dumps({
-                "detailed_recommendations": detailed_recs,
-                "show_me_how": show_me_how
-            }), json.dumps(action_plan), int(time.time())))
+            ''', (user_id, score, json.dumps(analysis_data), json.dumps(action_plan), int(time.time())))
             conn.commit()
 
         return jsonify({
@@ -1212,7 +1348,7 @@ def good_buys():
              pass 
 
         # Build the market research brief from cached data
-        research_brief = _build_market_research_brief(user_id)
+        research_brief = _build_market_research_brief(user_id, risk_profile, investment_goal)
 
         # Construct the AI Prompt
         system_instruction = (
@@ -1227,8 +1363,14 @@ def good_buys():
             "4. Assets marked with ⚡ ACTIVE SIGNAL have been identified by our trading algorithm. Stock signals are high-conviction momentum plays. Crypto signals are short-term scalps (weigh less for buy-and-hold).\\n"
             "5. Prefer assets with: strong 30d momentum, reasonable distance from 52-week highs (room to run), high liquidity.\\n"
             "6. Diversify across sectors/categories. Do not recommend 5 tech stocks.\\n"
-            "7. Generate realistic technical target prices (`target_price`) based on 52-week highs and momentum (e.g., using previous resistance levels as targets). Calculate the `expected_growth_pct` (number) mathematically from the current price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\\n\\n"
-            "Return a JSON object with exactly this structure (no markdown, no extra text):\\n"
+            "7. Generate realistic technical target prices (`target_price`) and stop loss prices (`stop_loss`) based on 52-week highs, momentum, and technical supports/resistances. Calculate the `expected_growth_pct` (number) mathematically from the current price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\\n"
+        )
+        if risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation":
+            system_instruction += (
+                "8. **AGGRESSIVE/SPECULATION OVERRIDE**: The user wants high risk, high reward. Select highly volatile, high-volume assets. Target substantial gains (e.g., 20-50%+) and project shorter timeframes (e.g., '1-3 Months'). Focus heavily on short-term momentum and liquidity turnover rather than market cap.\\n"
+            )
+        system_instruction += (
+            "\\nReturn a JSON object with exactly this structure (no markdown, no extra text):\\n"
             "{\\n"
             '  "stocks": [\\n'
             "    {\\n"
@@ -1240,6 +1382,7 @@ def good_buys():
             '      "conviction": "high",\\n'
             '      "metrics_summary": "Price: $198 | 30d: +5.2% | 8% below 52w high",\\n'
             '      "target_price": "$220.00",\\n'
+            '      "stop_loss": "$180.00",\\n'
             '      "expected_growth_pct": 11.1,\\n'
             '      "estimated_timeframe": "3-6 Months"\\n'
             "    }\\n"
@@ -1254,6 +1397,7 @@ def good_buys():
             '      "conviction": "medium",\\n'
             '      "metrics_summary": "Price: $142 | 30d: +18.4% | 22% below 52w high",\\n'
             '      "target_price": "$175.00",\\n'
+            '      "stop_loss": "$120.00",\\n'
             '      "expected_growth_pct": 23.2,\\n'
             '      "estimated_timeframe": "2-4 Months"\\n'
             "    }\\n"
@@ -1285,27 +1429,101 @@ def good_buys():
             stock_recs = recommendations.get("stocks", [])
             crypto_recs = recommendations.get("crypto", [])
 
+            # Record recommendations to AIRecommendations table
+            with db_session() as conn:
+                c = conn.cursor()
+                now_ts = int(time.time())
+                
+                with _MARKET_DATA_LOCK:
+                    stock_cache = dict(_MARKET_DATA_CACHE.get("stocks", {}))
+                    crypto_cache = dict(_MARKET_DATA_CACHE.get("crypto", {}))
+                
+                speculative_cache = _get_speculative_market_data() or {}
+
+                for rec in stock_recs + crypto_recs:
+                    sym = rec.get("symbol", "").upper()
+                    cat = rec.get("type", "stock").lower()
+                    
+                    t_price_str = str(rec.get("target_price", "0")).replace("$", "").replace(",", "").strip()
+                    try:
+                        target_price = float(t_price_str)
+                    except ValueError:
+                        target_price = 0.0
+                        
+                    sl_price_str = str(rec.get("stop_loss", "0")).replace("$", "").replace(",", "").strip()
+                    try:
+                        stop_loss = float(sl_price_str)
+                    except ValueError:
+                        stop_loss = 0.0
+
+                    entry_price = 0.0
+                    if cat == "stock":
+                        if sym in speculative_cache:
+                            entry_price = speculative_cache[sym].get("price", 0.0)
+                        elif sym in stock_cache:
+                            entry_price = stock_cache[sym].get("price", 0.0)
+                    else:
+                        if sym in crypto_cache:
+                            entry_price = crypto_cache[sym].get("price", 0.0)
+
+                    if entry_price <= 0.0:
+                        try:
+                            yf_sym = sym if cat == "stock" else f"{sym}-USD"
+                            ticker = yf.Ticker(yf_sym)
+                            entry_price = float(ticker.fast_info.get("lastPrice", 0.0))
+                        except Exception:
+                            import re
+                            price_match = re.search(r"Price:\s*\$?([\d\.]+)", rec.get("metrics_summary", ""))
+                            if price_match:
+                                try:
+                                    entry_price = float(price_match.group(1))
+                                except ValueError:
+                                    pass
+
+                    if entry_price <= 0.0:
+                        continue
+
+                    if stop_loss <= 0.0:
+                        stop_loss = round(entry_price * 0.85, 2)
+
+                    # Check if there is an active recommendation for this combination already
+                    c.execute('''
+                        SELECT id FROM AIRecommendations 
+                        WHERE symbol = ? AND risk_profile = ? AND investment_goal = ? AND status = 'active'
+                    ''', (sym, risk_profile, investment_goal))
+                    existing = c.fetchone()
+                    
+                    if not existing:
+                        c.execute('''
+                            INSERT INTO AIRecommendations 
+                            (symbol, category, risk_profile, investment_goal, entry_price, current_price, target_price, stop_loss, status, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+                        ''', (sym, cat, risk_profile, investment_goal, entry_price, entry_price, target_price, stop_loss, now_ts))
+                conn.commit()
+
             # Build markdown for the Detailed Implementation Plan
-            buys_md = "\\n\\n### 💡 Fresh Investment Ideas\\n\\n"
-            buys_md += "#### 📈 Top Stock Ideas\\n\\n"
+            buys_md = "\n\n### 💡 Fresh Investment Ideas\n\n"
+            buys_md += "#### 📈 Top Stock Ideas\n\n"
             for rec in stock_recs:
                 active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
                 conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
-                buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\\n"
-                buys_md += f"  * {rec.get('metrics_summary', '')}\\n"
+                buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
+                buys_md += f"  * {rec.get('metrics_summary', '')}\n"
                 if rec.get('target_price'):
-                    buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\\n"
-                buys_md += f"  * {rec.get('rationale', '')}\\n"
+                    sl_str = f" | Stop Loss: {rec.get('stop_loss')}" if rec.get('stop_loss') else ""
+                    buys_md += f"  * Target: {rec.get('target_price')}{sl_str} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
+                buys_md += f"  * {rec.get('rationale', '')}\n"
 
-            buys_md += "\\n#### 🪙 Top Crypto Ideas\\n\\n"
+            buys_md += "\n#### 🪙 Top Crypto Ideas\n\n"
             for rec in crypto_recs:
                 active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
                 conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
-                buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\\n"
-                buys_md += f"  * {rec.get('metrics_summary', '')}\\n"
+                buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
+                buys_md += f"  * {rec.get('metrics_summary', '')}\n"
                 if rec.get('target_price'):
-                    buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\\n"
-                buys_md += f"  * {rec.get('rationale', '')}\\n"
+                    sl_str = f" | Stop Loss: {rec.get('stop_loss')}" if rec.get('stop_loss') else ""
+                    buys_md += f"  * Target: {rec.get('target_price')}{sl_str} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
+                buys_md += f"  * {rec.get('rationale', '')}\n"
 
             # Append to the Detailed Implementation Plan
             if analysis_id:
@@ -1429,3 +1647,118 @@ def get_portfolio_news():
         "news": news_items,
         "counts": counts
     }), 200
+
+
+@portfolio_bp.route('/api/portfolio/recommendations', methods=['GET'])
+@require_auth
+@require_premium
+def get_tracked_recommendations():
+    # 1. Fetch active recommendations from AIRecommendations
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM AIRecommendations WHERE status = 'active'")
+        active_recs = [dict(row) for row in c.fetchall()]
+
+    # 2. Update active prices on-demand
+    if active_recs:
+        updated_recs = []
+        now_ts = int(time.time())
+        symbols_to_fetch = []
+        for rec in active_recs:
+            sym = rec["symbol"]
+            cat = rec["category"]
+            yf_sym = sym if cat == "stock" else f"{sym}-USD"
+            symbols_to_fetch.append((rec["id"], sym, cat, yf_sym, rec["target_price"], rec["stop_loss"]))
+
+        if symbols_to_fetch:
+            yf_symbols = [item[3] for item in symbols_to_fetch]
+            try:
+                data = yf.download(yf_symbols, period="1d", group_by="ticker", progress=False)
+                
+                with db_session() as conn:
+                    c = conn.cursor()
+                    for rec_id, sym, cat, yf_sym, target, sl in symbols_to_fetch:
+                        price = 0.0
+                        try:
+                            if len(yf_symbols) == 1:
+                                df = data
+                            else:
+                                df = data[yf_sym]
+                            
+                            closes = df["Close"].dropna()
+                            if not closes.empty:
+                                price = float(closes.iloc[-1])
+                        except Exception:
+                            try:
+                                ticker = yf.Ticker(yf_sym)
+                                price = float(ticker.fast_info.get("lastPrice", 0.0))
+                            except Exception:
+                                pass
+                        
+                        if price > 0.0:
+                            status = 'active'
+                            closed_at = None
+                            if price >= target:
+                                status = 'hit_target'
+                                closed_at = now_ts
+                            elif price <= sl:
+                                status = 'hit_stop_loss'
+                                closed_at = now_ts
+                                
+                            c.execute('''
+                                UPDATE AIRecommendations 
+                                SET current_price = ?, status = ?, closed_at = ?
+                                WHERE id = ?
+                            ''', (price, status, closed_at, rec_id))
+                    conn.commit()
+            except Exception as e:
+                print(f"[Recommendations] Error updating prices: {e}")
+
+    # 3. Retrieve all recommendations
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM AIRecommendations ORDER BY created_at DESC")
+        all_recs = [dict(row) for row in c.fetchall()]
+
+    # 4. Calculate Stats
+    stock_stats = {"total": 0, "hits": 0, "stops": 0, "win_rate": 0.0, "avg_days": 0.0}
+    crypto_stats = {"total": 0, "hits": 0, "stops": 0, "win_rate": 0.0, "avg_days": 0.0}
+    
+    closed_stocks = [r for r in all_recs if r["category"] == "stock" and r["status"] != "active"]
+    closed_cryptos = [r for r in all_recs if r["category"] == "crypto" and r["status"] != "active"]
+
+    stock_stats["total"] = len([r for r in all_recs if r["category"] == "stock"])
+    crypto_stats["total"] = len([r for r in all_recs if r["category"] == "crypto"])
+
+    # Stock win rate
+    closed_stock_count = len(closed_stocks)
+    if closed_stock_count > 0:
+        hits = len([r for r in closed_stocks if r["status"] == "hit_target"])
+        stops = len([r for r in closed_stocks if r["status"] == "hit_stop_loss"])
+        stock_stats["hits"] = hits
+        stock_stats["stops"] = stops
+        stock_stats["win_rate"] = round((hits / closed_stock_count) * 100, 1)
+        
+        total_dur = sum((r["closed_at"] - r["created_at"]) for r in closed_stocks)
+        stock_stats["avg_days"] = round((total_dur / closed_stock_count) / 86400, 1)
+
+    # Crypto win rate
+    closed_crypto_count = len(closed_cryptos)
+    if closed_crypto_count > 0:
+        hits = len([r for r in closed_cryptos if r["status"] == "hit_target"])
+        stops = len([r for r in closed_cryptos if r["status"] == "hit_stop_loss"])
+        crypto_stats["hits"] = hits
+        crypto_stats["stops"] = stops
+        crypto_stats["win_rate"] = round((hits / closed_crypto_count) * 100, 1)
+        
+        total_dur = sum((r["closed_at"] - r["created_at"]) for r in closed_cryptos)
+        crypto_stats["avg_days"] = round((total_dur / closed_crypto_count) / 86400, 1)
+
+    return jsonify({
+        "recommendations": all_recs,
+        "stats": {
+            "stock": stock_stats,
+            "crypto": crypto_stats
+        }
+    }), 200
+

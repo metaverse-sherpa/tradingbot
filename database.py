@@ -961,8 +961,27 @@ def init_db():
             except Exception as e:
                 conn.rollback()
                 import logging
-                logging.getLogger(__name__).error(f"Failed to create PortfolioAnalysisHistory table: {e}")
-
+        if "AIRecommendations" not in existing_tables:
+            try:
+                c.execute('''CREATE TABLE IF NOT EXISTS AIRecommendations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    symbol TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    risk_profile TEXT NOT NULL,
+                    investment_goal TEXT NOT NULL,
+                    entry_price REAL NOT NULL,
+                    current_price REAL NOT NULL,
+                    target_price REAL NOT NULL,
+                    stop_loss REAL NOT NULL,
+                    status TEXT DEFAULT 'active',
+                    created_at INTEGER NOT NULL,
+                    closed_at INTEGER
+                )''')
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                import logging
+                logging.getLogger(__name__).error(f"Failed to create AIRecommendations table: {e}")
 
 
 
