@@ -298,7 +298,8 @@ const RecommendationsPage: React.FC = () => {
       </div>
 
       {/* Stats Panels */}
-      <div className="w-full mb-6">
+      {(hits > 0 || stops > 0) && (
+        <div className="w-full mb-6">
         {/* Stocks Hold Stats */}
         {activeTab === 'stocks' && (
           <div className="bg-gradient-to-br from-[#141724] to-[#0f111a] border border-white/5 rounded-3xl p-6 relative overflow-hidden">
@@ -361,6 +362,7 @@ const RecommendationsPage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Active Recommendations Section */}
       <div>
@@ -436,7 +438,7 @@ const RecommendationsPage: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Target Price</p>
-                        <p className="text-xs font-black text-emerald-400 mt-0.5">${rec.target_price.toLocaleString()} <span className="text-[10px] font-semibold text-emerald-500/70">({formatPercent(targetPct)})</span></p>
+                        <p className="text-xs font-black text-emerald-400 mt-0.5">${rec.target_price.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Stop Loss</p>
@@ -445,10 +447,22 @@ const RecommendationsPage: React.FC = () => {
                     </div>
 
                     {/* PnL Indicator */}
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2 mb-4">
                       <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Performance</span>
-                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${isProfit ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
-                        {formatPercent(pnl)}
+                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${
+                        sortBy === 'actual_pnl' 
+                          ? (isProfit ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm shadow-emerald-500/10' : 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-sm shadow-rose-500/10')
+                          : (isProfit ? 'bg-emerald-500/5 text-emerald-500/70 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500/70 border-rose-500/10')
+                      }`}>
+                        {pnl > 0 ? '+' : ''}{pnl.toFixed(2)}%
+                      </span>
+                      <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mx-1">of</span>
+                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${
+                        sortBy === 'target_pnl' 
+                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-sm shadow-cyan-500/10'
+                          : 'bg-cyan-500/5 text-cyan-500/70 border-cyan-500/10'
+                      }`}>
+                        {targetPct > 0 ? '+' : ''}{targetPct.toFixed(2)}%
                       </span>
                     </div>
                   </div>
