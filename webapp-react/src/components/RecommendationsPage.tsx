@@ -58,6 +58,7 @@ const RecommendationsPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'stocks' | 'crypto'>('stocks');
 
   // Filters initialized from user preference
@@ -92,6 +93,22 @@ const RecommendationsPage: React.FC = () => {
       setLoading(false);
     }
   }, [fetchRecommendations, isPremium]);
+
+  const handleGenerateBuys = async () => {
+    setGenerating(true);
+    try {
+      await api.post('/portfolio/good-buys', {
+        risk_profile: riskProfile,
+        investment_goal: investmentGoal,
+        force_regenerate: true
+      });
+      await fetchRecommendations(true);
+    } catch (err: any) {
+      console.error("Failed to generate good buys", err);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const getYahooFinanceLink = (symbol: string, category: string) => {
     const isCrypto = category.toLowerCase() === 'crypto';
@@ -181,7 +198,7 @@ const RecommendationsPage: React.FC = () => {
             <span className="bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/20 text-cyan-400">
               <Compass size={22} />
             </span>
-            AI HOLD TRACKER
+            RECOMMENDATION TRACKER
           </h1>
           <p className="text-gray-400 text-xs md:text-sm mt-1">
             Track performance, targets, and stop losses of AI-recommended buys.
@@ -354,8 +371,27 @@ const RecommendationsPage: React.FC = () => {
         </h2>
 
         {activeRecs.length === 0 ? (
-          <div className="bg-[#141620]/40 p-8 rounded-3xl border border-white/5 text-center text-gray-400">
-            No active holds tracked for {riskProfile} & {investmentGoal}. Run an AI audit on the Portfolio page to generate buys.
+          <div className="bg-[#141620]/40 p-8 rounded-3xl border border-white/5 text-center flex flex-col items-center gap-5">
+            <p className="text-gray-400">
+              There aren't currently any active recommendations tracked for {riskProfile} & {investmentGoal}.
+            </p>
+            <button
+              onClick={handleGenerateBuys}
+              disabled={generating}
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-6 py-3 rounded-xl text-sm font-black transition-all uppercase tracking-wider shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {generating ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" />
+                  Generating AI Buys...
+                </>
+              ) : (
+                <>
+                  <Compass size={16} />
+                  Generate AI Buys
+                </>
+              )}
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

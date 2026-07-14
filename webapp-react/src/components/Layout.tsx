@@ -262,6 +262,12 @@ const Layout: React.FC = () => {
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Strategies</span>
               </Link>
             )}
+            {isPremium && !showAdvancedTabs && (
+              <Link to="/recommendations" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/recommendations' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
+                <CompassIcon size={20} className="md:w-4 md:h-4" />
+                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Recommendations</span>
+              </Link>
+            )}
             {user?.is_admin && (
               <Link to="/admin" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/admin' ? 'text-purple-400 md:bg-purple-400/20' : 'text-gray-500 hover:text-purple-400 md:text-gray-400 md:hover:bg-white/5'}`}>
                 <ShieldAlertIcon size={20} className="md:w-4 md:h-4" />
