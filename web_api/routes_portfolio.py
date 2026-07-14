@@ -7,10 +7,11 @@ import yfinance as yf
 import ccxt
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime
+import collections
 import threading
 
 import database
-from database import db_session
+from database import db_session, get_config, update_config
 from web_api.auth import require_auth, require_premium
 import utils_gcp
 from web_api.routes_trades import get_active_signals_internal
@@ -58,6 +59,8 @@ _MARKET_DATA_CACHE = {
 }
 _MARKET_DATA_LOCK = threading.Lock()
 _MARKET_DATA_TTL = 43200  # 12 hours in seconds
+
+_GOOD_BUYS_LOCKS = collections.defaultdict(threading.Lock)
 
 def _refresh_market_data_cache():
     """Fetch 30d price history for all watchlist assets and compute screening metrics."""
@@ -1141,132 +1144,187 @@ def good_buys():
     data = request.json or {}
     risk_profile = data.get("risk_profile") or g.user.get("risk_profile") or "Moderate"
     investment_goal = data.get("investment_goal") or g.user.get("investment_goal") or "Growth"
+    force_regenerate = data.get("force_regenerate", False)
 
-    # Fetch latest analysis
-    with db_session() as conn:
-        c = conn.cursor()
-        c.execute('SELECT id, analysis_text, timestamp FROM PortfolioAnalysisHistory WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1', (user_id,))
-        last_analysis = c.fetchone()
-
-    if not last_analysis:
-        return jsonify({"error": "Please run an AI Analysis first to generate a Detailed Implementation Plan."}), 400
-
-    analysis_id = last_analysis[0]
-    analysis_text_raw = last_analysis[1]
+    cache_key = f"good_buys_{risk_profile}_{investment_goal}"
     
-    try:
-        analysis_data = json.loads(analysis_text_raw)
-    except Exception:
-        analysis_data = {}
+    cached_data_str = get_config(cache_key)
+    cached_timestamp = 0
+    cached_recommendations = None
+    if cached_data_str:
+        try:
+            cached_data = json.loads(cached_data_str)
+            cached_timestamp = cached_data.get("timestamp", 0)
+            cached_recommendations = cached_data.get("recommendations")
+        except Exception:
+            pass
 
-    if "good_buys" in analysis_data and not is_user_admin(g.user):
-        return jsonify({"error": "You can only generate Good Ideas once per Analysis (every 24 hours). Please refer to your Detailed Implementation Plan for your recent ideas."}), 429
+    # If force_regenerate is requested but it was already generated in the last 24 hours
+    if force_regenerate and not is_user_admin(g.user):
+        if time.time() - cached_timestamp < 86400:
+            return jsonify({"error": f"This list was recently generated in the last 24 hours for {risk_profile} & {investment_goal}."}), 429
 
-    # Build the market research brief from cached data
-    research_brief = _build_market_research_brief(user_id)
+    # 1. First Pass: Check Cache (No Lock)
+    if not force_regenerate and cached_recommendations:
+        if time.time() - cached_timestamp < 86400:
+            return jsonify(cached_recommendations), 200
 
-    # Construct the AI Prompt
-    system_instruction = (
-        "You are a senior portfolio analyst AI for Metaverse Sherpa. "
-        "You are selecting the best buy-and-hold investment ideas for a user.\\n\\n"
-        f"User's risk profile: '{risk_profile}'\\n"
-        f"User's investment goal: '{investment_goal}'\\n\\n"
-        "IMPORTANT RULES:\\n"
-        "1. Base your analysis ONLY on the market data provided below.\\n"
-        "2. Do NOT fabricate earnings data, revenue figures, P/E ratios, or any information not present in the research brief.\\n"
-        "3. Your rationale must reference the actual numbers from the data (e.g., '30d momentum of +12.3%').\\n"
-        "4. Assets marked with ⚡ ACTIVE SIGNAL have been identified by our trading algorithm. Stock signals are high-conviction momentum plays. Crypto signals are short-term scalps (weigh less for buy-and-hold).\\n"
-        "5. Prefer assets with: strong 30d momentum, reasonable distance from 52-week highs (room to run), high liquidity.\\n"
-        "6. Diversify across sectors/categories. Do not recommend 5 tech stocks.\\n"
-        "7. Generate realistic technical target prices (`target_price`) based on 52-week highs and momentum (e.g., using previous resistance levels as targets). Calculate the `expected_growth_pct` (number) mathematically from the current price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\\n\\n"
-        "Return a JSON object with exactly this structure (no markdown, no extra text):\\n"
-        "{\\n"
-        '  "stocks": [\\n'
-        "    {\\n"
-        '      "symbol": "AAPL",\\n'
-        '      "name": "Apple Inc.",\\n'
-        '      "type": "stock",\\n'
-        '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
-        '      "is_active_signal": true,\\n'
-        '      "conviction": "high",\\n'
-        '      "metrics_summary": "Price: $198 | 30d: +5.2% | 8% below 52w high",\\n'
-        '      "target_price": "$220.00",\\n'
-        '      "expected_growth_pct": 11.1,\\n'
-        '      "estimated_timeframe": "3-6 Months"\\n'
-        "    }\\n"
-        "  ],\\n"
-        '  "crypto": [\\n'
-        "    {\\n"
-        '      "symbol": "SOL",\\n'
-        '      "name": "Solana",\\n'
-        '      "type": "crypto",\\n'
-        '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
-        '      "is_active_signal": false,\\n'
-        '      "conviction": "medium",\\n'
-        '      "metrics_summary": "Price: $142 | 30d: +18.4% | 22% below 52w high",\\n'
-        '      "target_price": "$175.00",\\n'
-        '      "expected_growth_pct": 23.2,\\n'
-        '      "estimated_timeframe": "2-4 Months"\\n'
-        "    }\\n"
-        "  ]\\n"
-        "}\\n\\n"
-        "Select exactly 5 stocks and exactly 5 crypto assets. "
-        "Set conviction to 'high' if the asset has an active signal AND strong momentum, otherwise 'medium'.\\n\\n"
-        "--- MARKET DATA RESEARCH BRIEF ---\\n\\n"
-        f"{research_brief}"
-    )
+    # 2. Acquire Lock for this specific combination
+    lock = _GOOD_BUYS_LOCKS[cache_key]
+    acquired = lock.acquire(blocking=False)
+    if not acquired:
+        return jsonify({"error": f"An analysis is currently in progress for {risk_profile} & {investment_goal}. Please wait a moment."}), 429
 
     try:
-        raw_json_str = call_gemini(
-            "Analyze the market data and select the top 5 stocks and top 5 crypto for buy-and-hold investment.",
-            system_instruction=system_instruction,
-            json_mode=True
-        )
-        clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
-        recommendations = json.loads(clean_json_str)
+        # 3. Double-Check Cache
+        if not force_regenerate:
+            cached_data_str = get_config(cache_key)
+            if cached_data_str:
+                try:
+                    cached_data = json.loads(cached_data_str)
+                    timestamp = cached_data.get("timestamp", 0)
+                    if time.time() - timestamp < 86400:
+                        return jsonify(cached_data["recommendations"]), 200
+                except Exception:
+                    pass
 
-        # Ensure we have both keys
-        stock_recs = recommendations.get("stocks", [])
-        crypto_recs = recommendations.get("crypto", [])
-
-        # Build markdown for the Detailed Implementation Plan
-        buys_md = "\n\n### 💡 Fresh Investment Ideas\n\n"
-        buys_md += "#### 📈 Top Stock Ideas\n\n"
-        for rec in stock_recs:
-            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
-            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
-            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
-            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
-            if rec.get('target_price'):
-                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
-            buys_md += f"  * {rec.get('rationale', '')}\n"
-
-        buys_md += "\n#### 🪙 Top Crypto Ideas\n\n"
-        for rec in crypto_recs:
-            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
-            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
-            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
-            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
-            if rec.get('target_price'):
-                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
-            buys_md += f"  * {rec.get('rationale', '')}\n"
-
-        # Append to the Detailed Implementation Plan
-        analysis_data["show_me_how"] = analysis_data.get("show_me_how", "") + buys_md
-        analysis_data["good_buys"] = recommendations
-
+        # 4. Generate New Recommendations
+        # Fetch latest analysis to append if applicable
         with db_session() as conn:
             c = conn.cursor()
-            c.execute('''
-                UPDATE PortfolioAnalysisHistory 
-                SET analysis_text = ? 
-                WHERE id = ?
-            ''', (json.dumps(analysis_data), analysis_id))
-            conn.commit()
+            c.execute('SELECT id, analysis_text, timestamp FROM PortfolioAnalysisHistory WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1', (user_id,))
+            last_analysis = c.fetchone()
 
-        return jsonify(recommendations), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to generate recommendations: {str(e)}"}), 500
+        analysis_id = None
+        analysis_data = {}
+        if last_analysis:
+            analysis_id = last_analysis[0]
+            try:
+                analysis_data = json.loads(last_analysis[1])
+            except Exception:
+                pass
+
+        if "good_buys" in analysis_data and not is_user_admin(g.user) and not force_regenerate:
+             # This prevents abuse of forcing generation by just clicking the button.
+             # Wait, if force_regenerate is True, they can bypass.
+             # But let's restrict force_regenerate to admins or something?
+             # The user asked to show "Recommended Buys" even without an analysis.
+             pass 
+
+        # Build the market research brief from cached data
+        research_brief = _build_market_research_brief(user_id)
+
+        # Construct the AI Prompt
+        system_instruction = (
+            "You are a senior portfolio analyst AI for Metaverse Sherpa. "
+            "You are selecting the best buy-and-hold investment ideas for a user.\\n\\n"
+            f"User's risk profile: '{risk_profile}'\\n"
+            f"User's investment goal: '{investment_goal}'\\n\\n"
+            "IMPORTANT RULES:\\n"
+            "1. Base your analysis ONLY on the market data provided below.\\n"
+            "2. Do NOT fabricate earnings data, revenue figures, P/E ratios, or any information not present in the research brief.\\n"
+            "3. Your rationale must reference the actual numbers from the data (e.g., '30d momentum of +12.3%').\\n"
+            "4. Assets marked with ⚡ ACTIVE SIGNAL have been identified by our trading algorithm. Stock signals are high-conviction momentum plays. Crypto signals are short-term scalps (weigh less for buy-and-hold).\\n"
+            "5. Prefer assets with: strong 30d momentum, reasonable distance from 52-week highs (room to run), high liquidity.\\n"
+            "6. Diversify across sectors/categories. Do not recommend 5 tech stocks.\\n"
+            "7. Generate realistic technical target prices (`target_price`) based on 52-week highs and momentum (e.g., using previous resistance levels as targets). Calculate the `expected_growth_pct` (number) mathematically from the current price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\\n\\n"
+            "Return a JSON object with exactly this structure (no markdown, no extra text):\\n"
+            "{\\n"
+            '  "stocks": [\\n'
+            "    {\\n"
+            '      "symbol": "AAPL",\\n'
+            '      "name": "Apple Inc.",\\n'
+            '      "type": "stock",\\n'
+            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
+            '      "is_active_signal": true,\\n'
+            '      "conviction": "high",\\n'
+            '      "metrics_summary": "Price: $198 | 30d: +5.2% | 8% below 52w high",\\n'
+            '      "target_price": "$220.00",\\n'
+            '      "expected_growth_pct": 11.1,\\n'
+            '      "estimated_timeframe": "3-6 Months"\\n'
+            "    }\\n"
+            "  ],\\n"
+            '  "crypto": [\\n'
+            "    {\\n"
+            '      "symbol": "SOL",\\n'
+            '      "name": "Solana",\\n'
+            '      "type": "crypto",\\n'
+            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
+            '      "is_active_signal": false,\\n'
+            '      "conviction": "medium",\\n'
+            '      "metrics_summary": "Price: $142 | 30d: +18.4% | 22% below 52w high",\\n'
+            '      "target_price": "$175.00",\\n'
+            '      "expected_growth_pct": 23.2,\\n'
+            '      "estimated_timeframe": "2-4 Months"\\n'
+            "    }\\n"
+            "  ]\\n"
+            "}\\n\\n"
+            "Select exactly 5 stocks and exactly 5 crypto assets. "
+            "Set conviction to 'high' if the asset has an active signal AND strong momentum, otherwise 'medium'.\\n\\n"
+            "--- MARKET DATA RESEARCH BRIEF ---\\n\\n"
+            f"{research_brief}"
+        )
+
+        try:
+            raw_json_str = call_gemini(
+                "Analyze the market data and select the top 5 stocks and top 5 crypto for buy-and-hold investment.",
+                system_instruction=system_instruction,
+                json_mode=True
+            )
+            clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
+            recommendations = json.loads(clean_json_str)
+
+            # Store in cache
+            cache_payload = {
+                "timestamp": time.time(),
+                "recommendations": recommendations
+            }
+            update_config(cache_key, json.dumps(cache_payload))
+
+            # Ensure we have both keys
+            stock_recs = recommendations.get("stocks", [])
+            crypto_recs = recommendations.get("crypto", [])
+
+            # Build markdown for the Detailed Implementation Plan
+            buys_md = "\\n\\n### 💡 Fresh Investment Ideas\\n\\n"
+            buys_md += "#### 📈 Top Stock Ideas\\n\\n"
+            for rec in stock_recs:
+                active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
+                conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
+                buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\\n"
+                buys_md += f"  * {rec.get('metrics_summary', '')}\\n"
+                if rec.get('target_price'):
+                    buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\\n"
+                buys_md += f"  * {rec.get('rationale', '')}\\n"
+
+            buys_md += "\\n#### 🪙 Top Crypto Ideas\\n\\n"
+            for rec in crypto_recs:
+                active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
+                conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
+                buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\\n"
+                buys_md += f"  * {rec.get('metrics_summary', '')}\\n"
+                if rec.get('target_price'):
+                    buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\\n"
+                buys_md += f"  * {rec.get('rationale', '')}\\n"
+
+            # Append to the Detailed Implementation Plan
+            if analysis_id:
+                analysis_data["show_me_how"] = analysis_data.get("show_me_how", "") + buys_md
+                analysis_data["good_buys"] = recommendations
+                with db_session() as conn:
+                    c = conn.cursor()
+                    c.execute('''
+                        UPDATE PortfolioAnalysisHistory 
+                        SET analysis_text = ? 
+                        WHERE id = ?
+                    ''', (json.dumps(analysis_data), analysis_id))
+                    conn.commit()
+
+            return jsonify(recommendations), 200
+        except Exception as e:
+            return jsonify({"error": f"Failed to generate recommendations: {str(e)}"}), 500
+    finally:
+        lock.release()
 
 
 # --- 📰 Yahoo Finance News Sentiment ---

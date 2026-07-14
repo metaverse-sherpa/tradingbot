@@ -230,36 +230,38 @@ const PortfolioPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (analysis && analysis.good_buys) {
-      setGoodBuys(analysis.good_buys);
-    } else {
-      setGoodBuys(null);
-    }
-  }, [analysis]);
-
   // Fetch Good Buys
-  const fetchGoodBuys = async () => {
-    setLoadingGoodBuys(true);
-    setGoodBuys(null); // clear old
+  const fetchGoodBuys = async (force = false) => {
+    if (force) setLoadingGoodBuys(true);
+    if (force) setGoodBuys(null); // clear old only if forcing
     try {
       const res = await api.post('/portfolio/good-buys', {
         risk_profile: riskProfile,
-        investment_goal: investmentGoal
+        investment_goal: investmentGoal,
+        force_regenerate: force
       });
       setGoodBuys({
         stocks: res.data.stocks || [],
         crypto: res.data.crypto || []
       });
-      // Re-fetch analysis so the updated Detailed Implementation Plan includes the good buys
-      fetchAnalysis();
+      // Re-fetch analysis so the updated Detailed Implementation Plan includes the good buys, if applicable
+      if (force) {
+        fetchAnalysis();
+      }
     } catch (err: any) {
       console.error("Failed to fetch good buys", err);
-      showToast(err.response?.data?.error || "Failed to generate good buys.", "error");
+      if (force) {
+        showToast(err.response?.data?.error || "Failed to generate good buys.", "error");
+      }
     } finally {
-      setLoadingGoodBuys(false);
+      if (force) setLoadingGoodBuys(false);
     }
   };
+
+  useEffect(() => {
+    // Fetch cached data whenever settings change
+    fetchGoodBuys(false);
+  }, [riskProfile, investmentGoal]);
 
   // Toggle action plan item
   const toggleAction = async (idx: number) => {
@@ -893,87 +895,7 @@ const PortfolioPage: React.FC = () => {
             </div>
           )}
 
-          {/* 💡 Recommended Buys Panel */}
-          {(goodBuys || loadingGoodBuys) && (
-            <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4 flex flex-col">
-              <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                  <Search className="text-emerald-400" size={16} />
-                  Recommended Buys
-                </h3>
-                <button
-                  onClick={fetchGoodBuys}
-                  disabled={
-                    loadingGoodBuys || 
-                    (!user?.is_admin && analysis && (Date.now() - new Date(analysis.timestamp + "Z").getTime() < 24 * 60 * 60 * 1000))
-                  }
-                  className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all disabled:opacity-50"
-                  title={(!user?.is_admin && analysis && (Date.now() - new Date(analysis.timestamp + "Z").getTime() < 24 * 60 * 60 * 1000)) ? "Check back in 24 hours" : "Find Fresh Ideas"}
-                >
-                  {loadingGoodBuys ? <RefreshCw className="animate-spin" size={13} /> : <Search size={13} />}
-                  {loadingGoodBuys ? 'Searching...' : 'Good Buys?'}
-                </button>
-              </div>
 
-              {loadingGoodBuys ? (
-                <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                  <RefreshCw className="animate-spin text-emerald-500" size={32} />
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest animate-pulse">
-                    Scanning Markets & Signals...
-                  </p>
-                </div>
-              ) : goodBuys && (
-                <>
-                  {/* Desktop View (Two Columns) */}
-                  <div className="hidden md:grid grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-                        <Landmark size={14} /> Stocks ({goodBuys.stocks?.length || 0})
-                      </h4>
-                      {goodBuys.stocks?.map(renderIdeaCard)}
-                    </div>
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-                        <Coins size={14} /> Crypto ({goodBuys.crypto?.length || 0})
-                      </h4>
-                      {goodBuys.crypto?.map(renderIdeaCard)}
-                    </div>
-                  </div>
-
-                  {/* Mobile View (Tabs) */}
-                  <div className="md:hidden">
-                    <div className="flex gap-1 bg-black/40 rounded-xl p-1 mb-4 border border-white/5">
-                      <button
-                        onClick={() => setActiveIdeaTab('stocks')}
-                        className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                          activeIdeaTab === 'stocks'
-                            ? 'bg-blue-500/20 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-                            : 'text-gray-500 hover:text-gray-300'
-                        }`}
-                      >
-                        <Landmark size={14} className="inline mr-1.5 -mt-0.5" />
-                        Stocks
-                      </button>
-                      <button
-                        onClick={() => setActiveIdeaTab('crypto')}
-                        className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                          activeIdeaTab === 'crypto'
-                            ? 'bg-orange-500/20 text-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.2)]'
-                            : 'text-gray-500 hover:text-gray-300'
-                        }`}
-                      >
-                        <Coins size={14} className="inline mr-1.5 -mt-0.5" />
-                        Crypto
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {goodBuys[activeIdeaTab]?.map(renderIdeaCard)}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
 
           {/* 📊 Mini stats bar */}
           <div className="bg-[#131620] border border-white/5 p-3 rounded-2xl grid grid-cols-2 md:grid-cols-7 gap-3 text-center">
@@ -1313,6 +1235,116 @@ const PortfolioPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* 💡 Recommended Buys Panel */}
+      <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4 flex flex-col mt-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+              <Search className="text-emerald-400" size={16} />
+              Recommended Buys
+            </h3>
+            
+            <div className="flex flex-row items-center gap-2">
+              <select
+                value={riskProfile}
+                onChange={(e) => setRiskProfile(e.target.value)}
+                className="bg-black/50 border border-white/10 text-white text-xs rounded-lg px-2 py-1 outline-none focus:border-emerald-500/50"
+              >
+                <option value="Conservative">Conservative</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Aggressive">Aggressive</option>
+              </select>
+              <select
+                value={investmentGoal}
+                onChange={(e) => setInvestmentGoal(e.target.value)}
+                className="bg-black/50 border border-white/10 text-white text-xs rounded-lg px-2 py-1 outline-none focus:border-emerald-500/50"
+              >
+                <option value="Income">Income</option>
+                <option value="Growth">Growth</option>
+                <option value="Speculation">Speculation</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            onClick={() => fetchGoodBuys(true)}
+            disabled={loadingGoodBuys}
+            className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all disabled:opacity-50"
+            title="Find Fresh Ideas"
+          >
+            {loadingGoodBuys ? <RefreshCw className="animate-spin" size={13} /> : <Search size={13} />}
+            {loadingGoodBuys ? 'Searching...' : 'Good Buys?'}
+          </button>
+        </div>
+
+        {loadingGoodBuys ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <RefreshCw className="animate-spin text-emerald-500" size={32} />
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest animate-pulse">
+              Scanning Markets & Signals...
+            </p>
+          </div>
+        ) : goodBuys ? (
+          <>
+            {/* Desktop View (Two Columns) */}
+            <div className="hidden md:grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                  <Landmark size={14} /> Stocks ({goodBuys.stocks?.length || 0})
+                </h4>
+                {goodBuys.stocks?.map(renderIdeaCard)}
+              </div>
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-orange-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                  <Coins size={14} /> Crypto ({goodBuys.crypto?.length || 0})
+                </h4>
+                {goodBuys.crypto?.map(renderIdeaCard)}
+              </div>
+            </div>
+
+            {/* Mobile View (Tabs) */}
+            <div className="md:hidden">
+              <div className="flex gap-1 bg-black/40 rounded-xl p-1 mb-4 border border-white/5">
+                <button
+                  onClick={() => setActiveIdeaTab('stocks')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    activeIdeaTab === 'stocks'
+                      ? 'bg-blue-500/20 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <Landmark size={14} className="inline mr-1.5 -mt-0.5" />
+                  Stocks
+                </button>
+                <button
+                  onClick={() => setActiveIdeaTab('crypto')}
+                  className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    activeIdeaTab === 'crypto'
+                      ? 'bg-orange-500/20 text-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.2)]'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <Coins size={14} className="inline mr-1.5 -mt-0.5" />
+                  Crypto
+                </button>
+              </div>
+              <div className="space-y-3">
+                {goodBuys[activeIdeaTab]?.map(renderIdeaCard)}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
+            <div className="bg-emerald-500/10 p-3 rounded-full text-emerald-400">
+              <Search size={24} />
+            </div>
+            <p className="text-sm text-gray-400 max-w-md">
+              Click the button above to scan the market for new AI-powered trade ideas tailored to your risk profile.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* 📝 Add / Edit Modal */}
       {modalOpen && (
