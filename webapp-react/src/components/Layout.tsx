@@ -174,7 +174,7 @@ const Layout: React.FC = () => {
                       </Link>
                       {isPremium && (
                         <Link to="/recommendations" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                          <CompassIcon size={16} className="text-cyan-400" /> AI Recommendations
+                          <CompassIcon size={16} className="text-cyan-400" /> Recommendations
                         </Link>
                       )}
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
@@ -262,8 +262,8 @@ const Layout: React.FC = () => {
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Strategies</span>
               </Link>
             )}
-            {isPremium && !showAdvancedTabs && (
-              <Link to="/recommendations" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/recommendations' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
+            {isPremium && (
+              <Link to="/recommendations" className={`${showAdvancedTabs ? 'hidden md:flex' : 'flex'} flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/recommendations' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
                 <CompassIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Recommendations</span>
               </Link>

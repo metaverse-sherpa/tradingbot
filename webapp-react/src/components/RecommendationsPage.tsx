@@ -59,6 +59,14 @@ const RecommendationsPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'stocks' | 'crypto'>('stocks');
+  const [expandedCharts, setExpandedCharts] = useState<Record<string | number, boolean>>({});
+
+  const toggleChart = (id: string | number) => {
+    setExpandedCharts(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   // Filters initialized from user preference
   const [riskProfile, setRiskProfile] = useState<string>(user?.risk_profile || 'Moderate');
@@ -75,7 +83,8 @@ const RecommendationsPage: React.FC = () => {
   const fetchRecommendations = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     try {
-      const res = await api.get('/portfolio/recommendations');
+      const url = showRefresh ? '/portfolio/recommendations?force=true' : '/portfolio/recommendations';
+      const res = await api.get(url);
       setRecommendations(res.data?.recommendations || []);
     } catch (err) {
       console.error("Error fetching recommendations:", err);
@@ -447,39 +456,50 @@ const RecommendationsPage: React.FC = () => {
                     </div>
 
                     {/* PnL Indicator */}
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Performance</span>
-                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${
-                        sortBy === 'actual_pnl' 
-                          ? (isProfit ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm shadow-emerald-500/10' : 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-sm shadow-rose-500/10')
-                          : (isProfit ? 'bg-emerald-500/5 text-emerald-500/70 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500/70 border-rose-500/10')
-                      }`}>
-                        {pnl > 0 ? '+' : ''}{pnl.toFixed(2)}%
-                      </span>
-                      <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mx-1">of</span>
-                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${
-                        sortBy === 'target_pnl' 
-                          ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-sm shadow-cyan-500/10'
-                          : 'bg-cyan-500/5 text-cyan-500/70 border-cyan-500/10'
-                      }`}>
-                        {targetPct > 0 ? '+' : ''}{targetPct.toFixed(2)}%
-                      </span>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Performance</span>
+                        <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${
+                          sortBy === 'actual_pnl' 
+                            ? (isProfit ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm shadow-emerald-500/10' : 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-sm shadow-rose-500/10')
+                            : (isProfit ? 'bg-emerald-500/5 text-emerald-500/70 border-emerald-500/10' : 'bg-rose-500/5 text-rose-500/70 border-rose-500/10')
+                        }`}>
+                          {pnl > 0 ? '+' : ''}{pnl.toFixed(2)}%
+                        </span>
+                        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mx-1">of</span>
+                        <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${
+                          sortBy === 'target_pnl' 
+                            ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-sm shadow-cyan-500/10'
+                            : 'bg-cyan-500/5 text-cyan-500/70 border-cyan-500/10'
+                        }`}>
+                          {targetPct > 0 ? '+' : ''}{targetPct.toFixed(2)}%
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => toggleChart(rec.id)}
+                        className="text-gray-400 hover:text-cyan-400 transition-colors p-1.5 hover:bg-white/5 rounded-lg flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                      >
+                        {expandedCharts[rec.id] ? 'Hide Chart' : 'Show Chart'}
+                        <ChevronDown size={14} className={`transform transition-transform duration-200 ${expandedCharts[rec.id] ? 'rotate-180' : ''}`} />
+                      </button>
                     </div>
                   </div>
 
                   {/* Embedded mini chart using get_trade_chart logic */}
-                  <div className="mt-2 bg-[#0c0d12]/40 rounded-xl overflow-hidden border border-white/5">
-                    <img
-                      src={`/api/trades/chart?symbol=${encodeURIComponent(
-                        rec.category === 'stock' ? rec.symbol : `${rec.symbol}/USDT`
-                      )}&entry=${rec.entry_price}&tp=${rec.target_price}&sl=${rec.stop_loss}&open_ts=${rec.created_at}&current_price=${rec.current_price}&type=${rec.category}`}
-                      alt={`${rec.symbol} price action chart`}
-                      className="w-full h-auto object-cover opacity-90"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
+                  {expandedCharts[rec.id] && (
+                    <div className="mt-2 bg-[#0c0d12]/40 rounded-xl overflow-hidden border border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <img
+                        src={`/api/trades/chart?symbol=${encodeURIComponent(
+                          rec.category === 'stock' ? rec.symbol : `${rec.symbol}/USDT`
+                        )}&entry=${rec.entry_price}&tp=${rec.target_price}&sl=${rec.stop_loss}&open_ts=${rec.created_at}&current_price=${rec.current_price}&type=${rec.category}`}
+                        alt={`${rec.symbol} price action chart`}
+                        className="w-full h-auto object-cover opacity-90"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}

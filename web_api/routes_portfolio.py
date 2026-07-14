@@ -1649,20 +1649,40 @@ def get_portfolio_news():
     }), 200
 
 
+LAST_RECOMMENDATIONS_UPDATE_TIME = 0
+
+def is_us_market_open():
+    try:
+        import pytz
+        tz_et = pytz.timezone('US/Eastern')
+        now = datetime.now(tz_et)
+        if now.weekday() >= 5:
+            return False
+        market_start = now.replace(hour=9, minute=30, second=0, microsecond=0)
+        market_end = now.replace(hour=16, minute=0, second=0, microsecond=0)
+        return market_start <= now <= market_end
+    except Exception:
+        return True
+
 @portfolio_bp.route('/api/portfolio/recommendations', methods=['GET'])
 @require_auth
 @require_premium
 def get_tracked_recommendations():
+    global LAST_RECOMMENDATIONS_UPDATE_TIME
+    force_update = request.args.get('force', 'false').lower() == 'true'
+    now_ts = int(time.time())
+    
     # 1. Fetch active recommendations from AIRecommendations
     with db_session() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM AIRecommendations WHERE status = 'active'")
         active_recs = [dict(row) for row in c.fetchall()]
 
+    cache_duration = 900 if is_us_market_open() else 3600
+    should_update = force_update or (now_ts - LAST_RECOMMENDATIONS_UPDATE_TIME >= cache_duration)
+
     # 2. Update active prices on-demand
-    if active_recs:
-        updated_recs = []
-        now_ts = int(time.time())
+    if active_recs and should_update:
         symbols_to_fetch = []
         for rec in active_recs:
             sym = rec["symbol"]
@@ -1711,8 +1731,11 @@ def get_tracked_recommendations():
                                 WHERE id = ?
                             ''', (price, status, closed_at, rec_id))
                     conn.commit()
+                LAST_RECOMMENDATIONS_UPDATE_TIME = now_ts
             except Exception as e:
                 print(f"[Recommendations] Error updating prices: {e}")
+                # Still set the time to prevent spamming yfinance on consecutive errors
+                LAST_RECOMMENDATIONS_UPDATE_TIME = now_ts
 
     # 3. Retrieve all recommendations
     with db_session() as conn:
