@@ -575,8 +575,15 @@ const PortfolioPage: React.FC = () => {
           {buy.type === 'stock' ? <Landmark size={18} /> : <Coins size={18} />}
         </div>
         <div className="flex-1">
-          <h4 className="text-lg font-black text-white leading-tight">{buy.symbol}</h4>
-          <span className="text-xs font-medium text-gray-400">{buy.name || (buy.type === 'stock' ? 'Stock' : 'Crypto')}</span>
+          <a
+            href={`https://uk.finance.yahoo.com/quote/${buy.symbol}${buy.type === 'crypto' ? '-USD' : ''}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-lg font-black text-white leading-tight hover:text-emerald-400 hover:underline transition-colors"
+          >
+            {buy.symbol}
+          </a>
+          <div className="text-xs font-medium text-gray-400">{buy.name || (buy.type === 'stock' ? 'Stock' : 'Crypto')}</div>
         </div>
         {buy.conviction === 'high' && (
           <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">
