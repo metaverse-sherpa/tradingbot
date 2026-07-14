@@ -24,8 +24,7 @@ import utils_gcp
 # Initialize Database on Startup
 database.init_db()
 
-USE_REACT = os.getenv("SERVE_REACT_APP", "0") == "1"
-static_dir = 'webapp-react/dist' if USE_REACT else 'webapp'
+static_dir = 'webapp-react/dist'
 app = Flask(__name__, static_folder=static_dir, static_url_path='')
 
 import logging
@@ -103,13 +102,11 @@ def serve_index(path):
         from flask import abort
         abort(404)
         
-    if USE_REACT:
+    if path == '':
         return app.send_static_file('index.html')
     else:
-        if path == '':
-            return app.send_static_file('index.html')
-        from flask import abort
-        abort(404)
+        # Fallback to index.html for React Router
+        return app.send_static_file('index.html')
 
 from web_api.auth import require_auth, require_premium, require_auth_web, require_premium_web
 
@@ -127,12 +124,12 @@ def serve_api_docs():
 @app.route('/favicon.svg')
 def favicon_svg():
     from flask import send_from_directory
-    return send_from_directory('webapp', 'favicon.svg', mimetype='image/svg+xml')
+    return send_from_directory('webapp-react/dist', 'favicon.svg', mimetype='image/svg+xml')
 
 @app.route('/favicon.ico')
 def favicon_ico():
     from flask import send_from_directory
-    return send_from_directory('webapp', 'favicon.svg', mimetype='image/svg+xml')
+    return send_from_directory('webapp-react/dist', 'favicon.svg', mimetype='image/svg+xml')
 
 # ----------------- Unsubscribe Endpoint -----------------
 @app.route('/unsubscribe', methods=['GET'])
