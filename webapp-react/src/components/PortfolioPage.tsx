@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -91,6 +92,26 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
 const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
   const { user, setUser } = useAuthStore();
+
+  const formatMarkdownLine = (line: string) => {
+    const tokenRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
+    const tokens = line.split(tokenRegex);
+    return tokens.map((token, idx) => {
+      if (token.startsWith('**') && token.endsWith('**')) {
+        return <strong key={idx} className="font-extrabold text-white">{token.slice(2, -2)}</strong>;
+      }
+      if (token.startsWith('[') && token.includes('](')) {
+        const linkText = token.slice(1, token.indexOf(']('));
+        const url = token.slice(token.indexOf('](') + 2, -1);
+        if (url.startsWith('/')) {
+          return <Link key={idx} to={url} className="text-cyan-400 hover:text-cyan-300 font-bold hover:underline">{linkText}</Link>;
+        } else {
+          return <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 font-bold hover:underline">{linkText}</a>;
+        }
+      }
+      return token;
+    });
+  };
 
   // Positions and general stats
   const [positions, setPositions] = useState<any[]>([]);
@@ -793,9 +814,9 @@ const PortfolioPage: React.FC = () => {
               </div>
               <div className="prose prose-invert max-w-none text-xs md:text-sm text-gray-300 leading-relaxed space-y-3">
                 {analysis.show_me_how.split('\n').map((line: string, i: number) => {
-                  if (line.startsWith('###')) return <h4 key={i} className="text-sm font-bold text-white uppercase mt-4 tracking-wide">{line.replace('###', '')}</h4>;
-                  if (line.startsWith('##')) return <h3 key={i} className="text-base font-black text-white uppercase mt-4 tracking-wide">{line.replace('##', '')}</h3>;
-                  return <p key={i}>{line}</p>;
+                  if (line.startsWith('###')) return <h4 key={i} className="text-sm font-bold text-white uppercase mt-4 tracking-wide">{formatMarkdownLine(line.replace('###', ''))}</h4>;
+                  if (line.startsWith('##')) return <h3 key={i} className="text-base font-black text-white uppercase mt-4 tracking-wide">{formatMarkdownLine(line.replace('##', ''))}</h3>;
+                  return <p key={i}>{formatMarkdownLine(line)}</p>;
                 })}
               </div>
             </div>
