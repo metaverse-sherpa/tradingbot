@@ -319,6 +319,10 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         limit_price = lp * 1.01 if signal["side"] == "buy" else lp * 0.99
         order_side = "buy" if signal["side"] == "buy" else "sell"
         if exchange.id == 'coinbase':
+            if signal["side"] == "buy":
+                limit_price = min(limit_price, tp * 0.999)
+            else:
+                limit_price = max(limit_price, tp * 1.001)
             params = {
                 "attached_order_configuration": {
                     "trigger_bracket_gtc": {

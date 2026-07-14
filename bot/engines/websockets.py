@@ -85,7 +85,7 @@ async def alpaca_ws_client():
                     # TODO: Process ticker updates
                     pass
         except Exception as e:
-            logger.error(f"Alpaca WS Error: {e}. Reconnecting in 5s...")
+            logger.debug(f"Alpaca WS Error: {e}. Reconnecting in 5s...")
             await asyncio.sleep(5)
 
 async def websocket_engine(application):
