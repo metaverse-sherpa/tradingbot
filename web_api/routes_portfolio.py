@@ -47,8 +47,8 @@ STOCK_WATCHLIST = [
 
 CRYPTO_WATCHLIST = [
     "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
-    "DOT", "LINK", "MATIC", "SHIB", "UNI", "LTC", "ATOM",
-    "NEAR", "APT", "ARB", "OP", "RNDR"
+    "DOT", "LINK", "XLM", "SHIB", "AAVE", "LTC", "ATOM",
+    "NEAR", "LDO", "ARB", "OP", "RENDER"
 ]
 
 _MARKET_DATA_CACHE = {
