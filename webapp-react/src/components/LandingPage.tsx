@@ -75,7 +75,7 @@ const LandingPage: React.FC = () => {
           Your Money. Working Harder. <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">24/7.</span>
         </h1>
         <p className="text-base md:text-xl text-gray-400 leading-relaxed">
-          Sherpa finds high-probability trade setups across crypto and stocks — then executes them automatically while you sleep, travel, or live your life.
+          The MetaverseSherpa Bot finds high-probability trade setups across crypto and stocks — then executes them automatically while you sleep, travel, or live your life.
         </p>
       </div>
 
@@ -99,7 +99,7 @@ const LandingPage: React.FC = () => {
           <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
           <ClockIcon size={28} className="text-cyan-400 mb-3 md:mb-4" />
           <h2 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Set It & Forget It</h2>
-          <p className="text-sm md:text-base text-gray-400 leading-relaxed">Connect your exchange once, pick your risk level, and walk away. Sherpa monitors the markets around the clock and trades for you automatically.</p>
+          <p className="text-sm md:text-base text-gray-400 leading-relaxed">Connect your exchange once, pick your risk level, and walk away. Our bot monitors the markets around the clock and trades for you automatically.</p>
         </div>
         
         <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
@@ -111,7 +111,7 @@ const LandingPage: React.FC = () => {
         <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
           <BarChart3Icon size={28} className="text-emerald-400 mb-3 md:mb-4" />
           <h2 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Daily Performance Updates</h2>
-          <p className="text-sm md:text-base text-gray-400 leading-relaxed">Get daily and weekly reports delivered straight to your inbox and Telegram. See exactly what Sherpa traded, how much you gained, and what's still open.</p>
+          <p className="text-sm md:text-base text-gray-400 leading-relaxed">Get daily and weekly reports delivered straight to your inbox and Telegram. See exactly what the bot traded, how much you gained, and what's still open.</p>
         </div>
 
         <div className="bg-[#1b1f2c]/50 p-5 md:p-6 rounded-2xl border border-white/5">
@@ -127,7 +127,7 @@ const LandingPage: React.FC = () => {
             <SparklesIcon size={32} className="text-purple-400 mb-3 md:mb-4" />
             <h2 className="text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide">AI-Powered Portfolio Audits</h2>
             <p className="text-sm md:text-lg text-gray-300 leading-relaxed max-w-2xl">
-              Import your existing stock and crypto holdings and let our advanced Gemini AI instantly audit your portfolio. 
+              Import your existing stock and crypto holdings and let our advanced AI instantly audit your portfolio. 
               Get a comprehensive health score, real-time sentiment analysis from the latest news, and a personalized 
               step-by-step action plan to optimize your investments.
             </p>
