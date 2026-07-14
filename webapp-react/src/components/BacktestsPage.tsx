@@ -90,7 +90,7 @@ const BacktestsPage: React.FC = () => {
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (results && !loading && window.innerWidth < 1024) {
+    if (results && !loading) {
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);

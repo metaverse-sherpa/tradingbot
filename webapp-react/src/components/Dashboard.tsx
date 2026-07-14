@@ -265,7 +265,7 @@ const Dashboard: React.FC = () => {
             </span>
           </button>
           <button 
-            onClick={() => { setTab(type); navigate('/backtests'); }}
+            onClick={() => { setTab(type); navigate(`/backtests?run=true&strategy=${encodeURIComponent(type === 'crypto' ? 'Valkyrie Elite Scalper' : 'Sherpa Velocity Pullback')}`); }}
             className="bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-xl py-2.5 px-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group"
           >
             <Settings className="text-gray-400 group-hover:text-white transition-colors" size={18} />
