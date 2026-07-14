@@ -222,7 +222,7 @@ const Dashboard: React.FC = () => {
           </button>
 
           <button 
-            onClick={() => { setTab(type); navigate('/history'); }}
+            onClick={() => { setTab(type); navigate('/trades'); }}
             className="bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-xl py-2.5 px-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group"
           >
             <Clock className="text-gray-400 group-hover:text-white transition-colors" size={18} />

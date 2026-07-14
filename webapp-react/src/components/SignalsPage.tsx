@@ -401,10 +401,10 @@ const SignalsPage: React.FC = () => {
       
       {shareStat && (
         <SharePnLModal
-          trade={shareStat.stat} // sharePnLModal expects trade object, stat object structure might need adaptation but it was like this in StatsPage
+          stat={shareStat.stat}
           type={shareStat.type as 'crypto'|'stock'}
           roe={shareStat.stat.realized_pct}
-          pnl={shareStat.stat.realized_pct} // Dummy PNL
+          pnl={shareStat.stat.realized_pct}
           onClose={() => setShareStat(null)}
         />
       )}
