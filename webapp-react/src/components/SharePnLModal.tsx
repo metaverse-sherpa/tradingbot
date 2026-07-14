@@ -129,7 +129,7 @@ const SharePnLModal: React.FC<SharePnLModalProps> = ({ trade, stat, onClose, roe
           ) : imageUrl ? (
             <div className="w-full flex flex-col gap-4">
               <div className="w-full rounded-xl overflow-hidden border border-white/10 relative shadow-2xl bg-black/20 flex justify-center items-center">
-                <img src={imageUrl} className="w-full h-auto max-h-[60vh] object-contain rounded-xl" alt="PnL Card Preview" />
+                <img src={imageUrl} className="w-full h-auto max-h-[40vh] object-contain rounded-xl" alt="PnL Card Preview" />
               </div>
               
               <div className="w-full space-y-3">

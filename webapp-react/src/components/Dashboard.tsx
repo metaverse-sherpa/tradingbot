@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'recharts';
-import { Activity, Clock, Settings, Zap, Target, Loader2, RefreshCcw } from 'lucide-react';
+import { Activity, Clock, Settings, Zap, Target, Loader2, RefreshCcw, Share2 } from 'lucide-react';
 import { useDashboardStore, useAuthStore } from '../store/useStore';
 import api from '../lib/api';
 import TradeCard from './TradeCard';
@@ -25,6 +25,7 @@ const Dashboard: React.FC = () => {
   const [openTradesLoading, setOpenTradesLoading] = useState(true);
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [shareTrade, setShareTrade] = useState<{trade: any, type: 'crypto'|'stock', roe: number, pnl: number} | null>(null);
+  const [shareStat, setShareStat] = useState<{stat: any, type: 'crypto'|'stock'} | null>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
@@ -207,6 +208,24 @@ const Dashboard: React.FC = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </div>
+
+        <div className="mt-3">
+          <button 
+            onClick={() => {
+              const statObj = {
+                name: isCrypto ? 'Crypto Portfolio' : 'Stock Portfolio',
+                realized_pct: data.pnl_pct,
+                unrealized_pct: 0,
+                win_rate: parseFloat(winRate),
+                wins: data.wins,
+                losses: data.losses
+              };
+              setShareStat({ stat: statObj, type });
+            }}
+            className="w-full py-2.5 rounded-xl border border-white/10 text-gray-300 font-medium text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
+            <Share2 size={16} /> SHARE & EARN
+          </button>
         </div>
 
         {/* Action Grid */}
@@ -420,6 +439,16 @@ const Dashboard: React.FC = () => {
           roe={shareTrade.roe}
           pnl={shareTrade.pnl}
           onClose={() => setShareTrade(null)}
+        />
+      )}
+
+      {shareStat && (
+        <SharePnLModal
+          stat={shareStat.stat}
+          type={shareStat.type}
+          roe={shareStat.stat.realized_pct}
+          pnl={shareStat.stat.realized_pct}
+          onClose={() => setShareStat(null)}
         />
       )}
     </div>
