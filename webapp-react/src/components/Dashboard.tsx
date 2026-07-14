@@ -237,29 +237,20 @@ const Dashboard: React.FC = () => {
           </button>
 
           <button 
-            onClick={() => { setTab(type); navigate('/stats'); }}
+            onClick={() => { setTab(type); navigate('/signals'); }}
             className="bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-xl py-2.5 px-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group"
           >
-            <Target className="text-gray-400 group-hover:text-white transition-colors" size={18} />
-            <span className="text-sm font-semibold text-gray-300 group-hover:text-white">My Stats</span>
+            <Zap className={`${accentColor} group-hover:text-white transition-colors`} size={18} />
+            <span className="text-sm font-semibold text-gray-300 group-hover:text-white flex items-center gap-1">
+              Alpha Signals {signalsLoading ? <Loader2 className="animate-spin text-gray-500 size-3" /> : <span className="text-gray-400 font-normal">({signalCount})</span>}
+            </span>
           </button>
-
           <button 
             onClick={() => { setTab(type); navigate('/backtests'); }}
             className="bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-xl py-2.5 px-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group"
           >
             <Settings className="text-gray-400 group-hover:text-white transition-colors" size={18} />
             <span className="text-sm font-semibold text-gray-300 group-hover:text-white">Backtest</span>
-          </button>
-
-          <button 
-            onClick={() => { setTab(type); navigate('/signals'); }}
-            className="col-span-2 bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-xl p-3 flex flex-row items-center justify-center gap-2 hover:bg-white/5 transition-colors group"
-          >
-            <Zap className={`${accentColor} group-hover:text-white transition-colors`} size={18} />
-            <span className="text-sm font-semibold text-gray-300 group-hover:text-white flex items-center gap-1">
-              Alpha Signals {signalsLoading ? <Loader2 className="animate-spin text-gray-500 size-3" /> : <span className="text-gray-400 font-normal">({signalCount})</span>}
-            </span>
           </button>
         </div>
 
@@ -318,24 +309,6 @@ const Dashboard: React.FC = () => {
         <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
           {isCrypto ? '🪙 Crypto Free Signals' : '📈 Stock Free Signals'}
         </h2>
-        
-        <div className="bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-5 shadow-lg relative overflow-hidden group">
-          <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
-            <Settings size={18} className="text-gray-400" /> Exchange Not Connected
-          </h3>
-          <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-            Connect your {type} exchange API to get automated trading and personalized portfolio tracking. Until then, you can view the free Alpha Signals.
-          </p>
-          <button 
-            onClick={() => {
-              const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
-              navigate(isPremium ? '/settings' : '/premium');
-            }}
-            className="w-full py-2.5 bg-white/5 border border-white/10 text-white font-bold text-xs tracking-wider rounded-xl hover:bg-white/10 transition-colors"
-          >
-            CONNECT {isCrypto ? 'CRYPTO' : 'STOCK'} EXCHANGE
-          </button>
-        </div>
 
         {typeStrategies.length > 0 && (
           <div className="space-y-3 mt-4">
@@ -382,6 +355,25 @@ const Dashboard: React.FC = () => {
                </div>
             ))
           )}
+        </div>
+
+        <div className="bg-[#1b1f2c]/70 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-5 shadow-lg relative overflow-hidden group mt-4">
+          <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+            <Settings size={18} className="text-gray-400" /> Exchange Not Connected
+          </h3>
+          <p className="text-sm text-gray-400 mb-4 leading-relaxed">
+            Connect your {type} exchange API to get automated trading and personalized portfolio tracking. Until then, you can view the free Alpha Signals.
+          </p>
+          <button 
+            onClick={() => {
+              const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
+              navigate(isPremium ? '/settings' : '/premium');
+              window.scrollTo(0, 0);
+            }}
+            className="w-full py-2.5 bg-white/5 border border-white/10 text-white font-bold text-xs tracking-wider rounded-xl hover:bg-white/10 transition-colors"
+          >
+            CONNECT {isCrypto ? 'CRYPTO' : 'STOCK'} EXCHANGE
+          </button>
         </div>
       </div>
     );
