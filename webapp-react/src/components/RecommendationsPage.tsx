@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Compass, TrendingUp, TrendingDown, Clock, RefreshCw, ChevronDown, Lock, ShieldAlert, Award, Calendar } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Compass, Clock, RefreshCw, ChevronDown, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 import LoadingDisplay from './LoadingDisplay';
@@ -53,7 +53,6 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
 const RecommendationsPage: React.FC = () => {
   const { user, setUser } = useAuthStore();
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
-  const navigate = useNavigate();
 
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +154,7 @@ const RecommendationsPage: React.FC = () => {
   }
 
   if (loading) {
-    return <LoadingDisplay message="Analyzing market predictions..." />;
+    return <LoadingDisplay />;
   }
 
   // Filter recommendations based on selected drop downs and active tab
