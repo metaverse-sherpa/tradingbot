@@ -1127,53 +1127,29 @@ def analyze_portfolio():
         "Ensure the response is valid JSON and nothing else."
     )
 
-    # Load active Good Buys and inject them into the system instruction
-    cache_key = f"good_buys_{risk_profile}_{investment_goal}"
-    cached_data_str = get_config(cache_key)
-    good_buys_dict = None
-    buys_md = ""
-    if cached_data_str:
-        try:
-            cached_data = json.loads(cached_data_str)
-            cached_timestamp = cached_data.get("timestamp", 0)
-            if time.time() - cached_timestamp < 86400:
-                recommendations = cached_data.get("recommendations", {})
-                good_buys_dict = recommendations
-                stock_recs = recommendations.get("stocks", [])
-                crypto_recs = recommendations.get("crypto", [])
-                
-                if stock_recs or crypto_recs:
-                    buys_md = "\n\n### 💡 Fresh Investment Ideas\n\n"
-                    prompt_buys_ctx = "\n\nRECOMMENDED BUYS (Consider recommending selling poor performing assets or assets that reached their targets, and re-allocating funds into these recommended assets):\n"
-                    if stock_recs:
-                        buys_md += "#### 📈 Top Stock Ideas\n\n"
-                        prompt_buys_ctx += "- STOCKS:\n"
-                        for rec in stock_recs:
-                            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
-                            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
-                            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
-                            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
-                            if rec.get('target_price'):
-                                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
-                            buys_md += f"  * {rec.get('rationale', '')}\n"
-                            prompt_buys_ctx += f"  * {rec.get('symbol')}: {rec.get('rationale', '')}\n"
+    # Load active recommendations from DB and inject them into the system instruction
+    active_recs = []
+    try:
+        with db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT symbol, category, entry_price, target_price, stop_loss FROM AIRecommendations WHERE status = 'active' AND risk_profile = ? AND investment_goal = ?", (risk_profile, investment_goal))
+            active_recs = [dict(row) for row in c.fetchall()]
+    except Exception as e:
+        print(f"[Analysis] Error fetching active recommendations: {e}")
 
-                    if crypto_recs:
-                        buys_md += "\n#### 🪙 Top Crypto Ideas\n\n"
-                        prompt_buys_ctx += "- CRYPTO:\n"
-                        for rec in crypto_recs:
-                            active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
-                            conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
-                            buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
-                            buys_md += f"  * {rec.get('metrics_summary', '')}\n"
-                            if rec.get('target_price'):
-                                buys_md += f"  * Target: {rec.get('target_price')} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
-                            buys_md += f"  * {rec.get('rationale', '')}\n"
-                            prompt_buys_ctx += f"  * {rec.get('symbol')}: {rec.get('rationale', '')}\n"
-                    
-                    system_instruction += prompt_buys_ctx
-        except Exception:
-            pass
+    buys_md = ""
+    if active_recs:
+        prompt_recs_ctx = (
+            "\n\nACTIVE RECOMMENDATIONS (If recommending selling poor performers or assets that reached their targets, "
+            "you MUST suggest re-allocating funds into these active recommendations. You MUST include a markdown link to "
+            "[AI Recommendations](/recommendations) in your markdown response so the user can easily click to track these setups):\n"
+        )
+        buys_md = "\n\n### 💡 Active Recommendations to Re-allocate Into\n\n"
+        for rec in active_recs:
+            prompt_recs_ctx += f"- {rec['symbol']} ({rec['category']}): Target Price: ${rec['target_price']}, Stop Loss: ${rec['stop_loss']}, Entry Price: ${rec['entry_price']}\n"
+            buys_md += f"* **{rec['symbol']}** ({rec['category'].upper()}) | Entry: ${rec['entry_price']} | Target: ${rec['target_price']} | Stop Loss: ${rec['stop_loss']}\n"
+        
+        system_instruction += prompt_recs_ctx
 
     prompt = f"Analyze this portfolio: {compiled_positions_str}. General stats: Market Value: ${stats['market_value']:.2f}, Cost Basis: ${stats['cost_basis']:.2f}, Dividends: ${stats['annual_dividends']:.2f}."
 
@@ -1194,8 +1170,6 @@ def analyze_portfolio():
             "detailed_recommendations": detailed_recs,
             "show_me_how": show_me_how
         }
-        if good_buys_dict:
-            analysis_data["good_buys"] = good_buys_dict
 
         with db_session() as conn:
             c = conn.cursor()

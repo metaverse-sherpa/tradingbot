@@ -456,8 +456,8 @@ const RecommendationsPage: React.FC = () => {
                     </div>
 
                     {/* PnL Indicator */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Performance</span>
                         <span className={`text-sm font-black px-2.5 py-1 rounded-lg border ${
                           sortBy === 'actual_pnl' 
@@ -477,7 +477,7 @@ const RecommendationsPage: React.FC = () => {
                       </div>
                       <button
                         onClick={() => toggleChart(rec.id)}
-                        className="text-gray-400 hover:text-cyan-400 transition-colors p-1.5 hover:bg-white/5 rounded-lg flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
+                        className="text-gray-400 hover:text-cyan-400 transition-colors p-2 hover:bg-white/5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider border border-white/5 sm:border-0 bg-white/5 sm:bg-transparent w-full sm:w-auto"
                       >
                         {expandedCharts[rec.id] ? 'Hide Chart' : 'Show Chart'}
                         <ChevronDown size={14} className={`transform transition-transform duration-200 ${expandedCharts[rec.id] ? 'rotate-180' : ''}`} />
