@@ -70,7 +70,7 @@ const BacktestsPage: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     const isStock = strategy === 'Sherpa Velocity Pullback';
-    const defaultRisk = isStock ? (user.stock_risk_pct ?? 1.5) : (user.risk_pct ?? 1.5);
+    const defaultRisk = isStock ? (user.stock_risk_pct ?? 2.0) : (user.risk_pct ?? 2.0);
     
     // If we have a risk param in the URL, prioritize that on first load
     const riskParam = searchParams.get('risk');

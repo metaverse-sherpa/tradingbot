@@ -46,7 +46,7 @@ async def handle_risk_callback(query, update: Update, context: ContextTypes.DEFA
             update, context,
             "🪙 *Set Crypto Risk Percentage*\n\n"
             "Please type your preferred risk-per-trade for crypto as a number (e.g., `1.5` or `2.0`).\n\n"
-            "_Current: " + f"{user.get('risk_pct', 1.5):.2f}%_",
+            "_Current: " + f"{user.get('risk_pct', 2.0):.2f}%_",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return True

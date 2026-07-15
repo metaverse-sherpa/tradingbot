@@ -72,7 +72,7 @@ const Settings: React.FC = () => {
   const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
 
   // Preferences state
-  const [riskPct, setRiskPct] = useState(user?.risk_pct ?? 1.0);
+  const [riskPct, setRiskPct] = useState(user?.risk_pct ?? 2.0);
   const [stockRiskPct, setStockRiskPct] = useState(user?.stock_risk_pct ?? 2.0);
   const [riskProfile, setRiskProfile] = useState(user?.risk_profile || 'Moderate');
   const [investmentGoal, setInvestmentGoal] = useState(user?.investment_goal || 'Growth');
@@ -88,7 +88,7 @@ const Settings: React.FC = () => {
     if (user?.telegram_chat_id) {
       setTelegramId(user.telegram_chat_id.toString());
     }
-    setRiskPct(user?.risk_pct ?? 1.0);
+    setRiskPct(user?.risk_pct ?? 2.0);
     setStockRiskPct(user?.stock_risk_pct ?? 2.0);
     setRiskProfile(user?.risk_profile || 'Moderate');
     setInvestmentGoal(user?.investment_goal || 'Growth');

@@ -75,7 +75,7 @@ def settings_alpaca():
 @require_auth
 def settings_preferences():
     data = request.json or {}
-    risk_pct = float(data.get("risk_pct", g.user.get("risk_pct", 1.0)))
+    risk_pct = float(data.get("risk_pct", g.user.get("risk_pct", 2.0)))
     stock_risk_pct = float(data.get("stock_risk_pct", g.user.get("stock_risk_pct", 2.0)))
     custom_equity_type = data.get("custom_equity_type", g.user.get("custom_equity_type", "all"))
     custom_equity_value = data.get("custom_equity_value")

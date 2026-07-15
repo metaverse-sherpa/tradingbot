@@ -1501,7 +1501,7 @@ def run_backtest():
     data = request.json or {}
     strategy = data.get("strategy", "Mean Reversion Scalper")
     capital = float(data.get("capital", 10000.0))
-    risk_pct = float(data.get("risk_pct", 1.5))
+    risk_pct = float(data.get("risk_pct", 2.0))
     period_str = data.get("period", "Last 1 Year")
     
     years = 1
