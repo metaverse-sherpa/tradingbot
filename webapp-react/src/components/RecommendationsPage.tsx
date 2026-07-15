@@ -195,6 +195,9 @@ const RecommendationsPage: React.FC = () => {
   const hits = pastRecs.filter((r) => r.status === 'hit_target').length;
   const stops = pastRecs.filter((r) => r.status === 'hit_stop_loss').length;
   const winRate = closedCount > 0 ? (hits / closedCount) * 100 : 0;
+  const avgDays = closedCount > 0
+    ? pastRecs.reduce((sum, r) => sum + ((r.closed_at || r.created_at) - r.created_at), 0) / closedCount / 86400
+    : 0;
 
 
   return (
@@ -318,7 +321,7 @@ const RecommendationsPage: React.FC = () => {
               <span className="text-xl">📈</span>
               <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Stocks Hold Stats</h3>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div>
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Recs</p>
                 <p className="text-xl font-black text-white mt-1">{totalRecs}</p>
@@ -336,6 +339,12 @@ const RecommendationsPage: React.FC = () => {
               <div>
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Stop Loss</p>
                 <p className="text-xl font-black text-rose-400 mt-1">{stops}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Avg Duration</p>
+                <p className="text-xl font-black text-cyan-400 mt-1">
+                  {closedCount > 0 ? `${avgDays.toFixed(1)}d` : '—'}
+                </p>
               </div>
             </div>
           </div>
@@ -349,7 +358,7 @@ const RecommendationsPage: React.FC = () => {
               <span className="text-xl">🪙</span>
               <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Crypto Hold Stats</h3>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div>
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Recs</p>
                 <p className="text-xl font-black text-white mt-1">{totalRecs}</p>
@@ -367,6 +376,12 @@ const RecommendationsPage: React.FC = () => {
               <div>
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Stop Loss</p>
                 <p className="text-xl font-black text-rose-400 mt-1">{stops}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Avg Duration</p>
+                <p className="text-xl font-black text-cyan-400 mt-1">
+                  {closedCount > 0 ? `${avgDays.toFixed(1)}d` : '—'}
+                </p>
               </div>
             </div>
           </div>
