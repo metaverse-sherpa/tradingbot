@@ -166,6 +166,15 @@ const RecommendationsPage: React.FC = () => {
     return <LoadingDisplay />;
   }
 
+  // Count active recs per category (independent of active tab) for tab badges
+  const profileFilteredRecs = recommendations.filter(
+    (r) =>
+      r.risk_profile.toLowerCase() === riskProfile.toLowerCase() &&
+      r.investment_goal.toLowerCase() === investmentGoal.toLowerCase()
+  );
+  const activeCryptoCount = profileFilteredRecs.filter((r) => r.category.toLowerCase() === 'crypto' && r.status === 'active').length;
+  const activeStockCount = profileFilteredRecs.filter((r) => r.category.toLowerCase() === 'stock' && r.status === 'active').length;
+
   // Filter recommendations based on selected drop downs and active tab
   const filteredRecs = recommendations.filter(
     (r) =>
@@ -296,7 +305,7 @@ const RecommendationsPage: React.FC = () => {
               : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          Crypto
+          Crypto ({activeCryptoCount})
         </button>
         <button
           onClick={() => setActiveTab('stocks')}
@@ -306,7 +315,7 @@ const RecommendationsPage: React.FC = () => {
               : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          Stocks
+          Stocks ({activeStockCount})
         </button>
       </div>
 
