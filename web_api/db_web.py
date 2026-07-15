@@ -280,6 +280,7 @@ def update_web_user_preferences(user_id, risk_pct, stock_risk_pct, custom_equity
                 SET risk_pct = ?, stock_risk_pct = ?, custom_equity_type = ?, custom_equity_value = ?, hide_dollars = ?
                 WHERE telegram_chat_id = ?
             ''', (risk_pct, stock_risk_pct, custom_equity_type, custom_equity_value, int(bool(hide_dollars)), row[0]))
+    invalidate_cache_by_user_id(user_id)
 
 def update_web_user_symbols(user_id, symbols_str):
     with db_session() as conn:
@@ -291,6 +292,7 @@ def update_web_user_symbols(user_id, symbols_str):
         row = c.fetchone()
         if row and row[0]:
             c.execute('UPDATE Users SET enabled_symbols = ? WHERE telegram_chat_id = ?', (symbols_str, row[0]))
+    invalidate_cache_by_user_id(user_id)
 
 def update_web_user_status(user_id, is_active):
     with db_session() as conn:
@@ -302,6 +304,7 @@ def update_web_user_status(user_id, is_active):
         row = c.fetchone()
         if row and row[0]:
             c.execute('UPDATE Users SET is_active = ? WHERE telegram_chat_id = ?', (1 if is_active else 0, row[0]))
+    invalidate_cache_by_user_id(user_id)
 
 def update_web_user_strategy(user_id, strategy_type, strategy_name):
     with db_session() as conn:
@@ -319,6 +322,7 @@ def update_web_user_strategy(user_id, strategy_type, strategy_name):
                 c.execute('UPDATE Users SET active_crypto_strategy = ?, strategy = ? WHERE telegram_chat_id = ?', (strategy_name, strategy_name, row[0]))
             else:
                 c.execute('UPDATE Users SET active_stock_strategy = ? WHERE telegram_chat_id = ?', (strategy_name, row[0]))
+    invalidate_cache_by_user_id(user_id)
 
 def update_web_user_wallet(user_id, source_wallet):
     with db_session() as conn:
@@ -330,6 +334,7 @@ def update_web_user_wallet(user_id, source_wallet):
         row = c.fetchone()
         if row and row[0]:
             c.execute('UPDATE Users SET source_wallet = ? WHERE telegram_chat_id = ?', (source_wallet, row[0]))
+    invalidate_cache_by_user_id(user_id)
 
 def update_web_user_telegram(user_id, telegram_chat_id):
     with db_session() as conn:
@@ -406,6 +411,7 @@ def update_web_user_telegram(user_id, telegram_chat_id):
                     WHERE telegram_chat_id = ?
                 ''', (f_wallet, f_ak, f_as, f_ap, f_exc, f_alk, f_als, f_ale,
                       f_ref_count, f_credits, f_expiry, f_premium_ref, f_reward_triggered, f_cb, telegram_chat_id))
+    invalidate_cache_by_user_id(user_id)
 
 def send_telegram_notification(chat_id, message):
     try:
