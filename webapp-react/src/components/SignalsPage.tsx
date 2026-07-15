@@ -137,7 +137,7 @@ const SignalsPage: React.FC = () => {
             <Share2 size={16} /> SHARE & EARN
           </button>
           <button 
-            onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(stat.name)}`)}
+            onClick={() => navigate(`/backtests?run=true&strategy=${encodeURIComponent(stat.name)}`)}
             className="w-full py-2.5 rounded-xl border border-white/10 text-gray-300 font-medium text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
             <Beaker size={16} /> BACKTEST
           </button>
