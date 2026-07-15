@@ -16,7 +16,7 @@ logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 # Use a non-interactive backend to save RAM and avoid VPS issues
 matplotlib.use('Agg')
 
-def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="15M", currency="USDT", current_price=0.0, strategy=""):
+def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="15M", currency="USDT", current_price=0.0, strategy="", leverage=None):
     """
     Generates a high-contrast Neon chart where TP/SL/Entry lines only start from open_ts.
     """
@@ -236,7 +236,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     # --- 4. Premium Visual Assembly ---
     try:
         import media_gen
-        prog_img = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, current_price if current_price > 0 else df['close'].iloc[-1], width=1024, return_image=True)
+        prog_img = media_gen.generate_trade_progress_box(symbol, side, entry, tp, sl, current_price if current_price > 0 else df['close'].iloc[-1], width=1024, return_image=True, leverage=leverage)
         
         from PIL import Image
         chart_img = Image.open(buf).convert("RGBA")

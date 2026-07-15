@@ -492,7 +492,7 @@ const RecommendationsPage: React.FC = () => {
                       <img
                         src={`/api/trades/chart?symbol=${encodeURIComponent(
                           rec.category === 'stock' ? rec.symbol : `${rec.symbol}/USDT`
-                        )}&entry=${rec.entry_price}&tp=${rec.target_price}&sl=${rec.stop_loss}&open_ts=${rec.created_at}&current_price=${rec.current_price}&type=${rec.category}`}
+                        )}&entry=${rec.entry_price}&tp=${rec.target_price}&sl=${rec.stop_loss}&open_ts=${rec.created_at}&current_price=${rec.current_price}&type=${rec.category}&timeframe=1D&leverage=1`}
                         alt={`${rec.symbol} price action chart`}
                         className="w-full h-auto object-cover opacity-90"
                         onError={(e) => {

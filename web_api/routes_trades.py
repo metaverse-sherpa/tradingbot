@@ -2562,7 +2562,10 @@ def get_trade_chart():
         
     side = request.args.get("side", "LONG").upper()
     trade_type = request.args.get("type", "crypto")
+    timeframe = request.args.get("timeframe", "15M" if trade_type == "crypto" else "1D").upper()
     strategy = request.args.get("strategy", "")
+    leverage_param = request.args.get("leverage", None)  # None = auto (20x crypto, 1x stock)
+    leverage = float(leverage_param) if leverage_param is not None else None
 
     if not symbol:
         return "Symbol required", 400
@@ -2573,7 +2576,7 @@ def get_trade_chart():
     # Time-bucket to 5-minute intervals
     time_bucket = int(time.time() // 300)
     
-    cache_key = f"{symbol}_{entry}_{tp}_{sl}_{side}_{price_pct_bucket}_{time_bucket}_{strategy}"
+    cache_key = f"{symbol}_{entry}_{tp}_{sl}_{side}_{price_pct_bucket}_{time_bucket}_{strategy}_{timeframe}_{leverage}"
     
     with CHART_MEM_CACHE_LOCK:
         cached = CHART_MEM_CACHE.get(cache_key)
@@ -2627,13 +2630,13 @@ def get_trade_chart():
             except Exception as e:
                 print(f"Error fetching from stock daily cache: {e}", flush=True)
         else:
-            timeframe = "15M"
+            interval = "1d" if timeframe == "1D" else "15m"
             try:
                 # Sourcing OHLCV from Binance public API is fast (less than 1s) and avoids CCXT overhead
                 clean_sym = symbol.split(":")[0].replace("/", "")
                 endpoints = [
-                    f"https://api.binance.com/api/v3/klines?symbol={clean_sym}&interval=15m&limit=250",
-                    f"https://api.binance.us/api/v3/klines?symbol={clean_sym}&interval=15m&limit=250"
+                    f"https://api.binance.com/api/v3/klines?symbol={clean_sym}&interval={interval}&limit=250",
+                    f"https://api.binance.us/api/v3/klines?symbol={clean_sym}&interval={interval}&limit=250"
                 ]
                 klines_data = None
                 for url in endpoints:
@@ -2664,7 +2667,8 @@ def get_trade_chart():
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     try:
-                        df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, "15m"))
+                        ccxt_timeframe = "1d" if timeframe == "1D" else "15m"
+                        df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, ccxt_timeframe))
                     finally:
                         loop.run_until_complete(mdm.close())
                     loop.close()
@@ -2692,7 +2696,8 @@ def get_trade_chart():
             open_ts=open_ts,
             timeframe=timeframe,
             current_price=current_price,
-            strategy=strategy
+            strategy=strategy,
+            leverage=leverage
         )
         
         # Read the generated chart image bytes

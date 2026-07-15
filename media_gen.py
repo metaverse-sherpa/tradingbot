@@ -255,9 +255,10 @@ def generate_audit_card(pnl_pct, win_rate, max_dd, total_trades, avg_trades_day,
     
     return save_path
 
-def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024, return_image=False):
+def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024, return_image=False, leverage=None):
     """
     Generates a premium horizontal progress bar box to be appended below charts.
+    leverage: explicit leverage multiplier for ROE display. None = auto (1x stock, 20x crypto).
     """
     height = 200
     # Background: Dark, almost black
@@ -278,9 +279,14 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
         roe = 0.0
     # Local definitions to bypass bot.config import which triggers slow GCP Secret Manager lookups
     is_stock = lambda s: str(s).upper() and "/" not in str(s).upper() and ":" not in str(s).upper() and "USDT" not in str(s).upper()
-    CRYPTO_LEVERAGE = 20.0
-    if not is_stock(symbol):
-        roe *= CRYPTO_LEVERAGE
+
+    # Determine leverage multiplier
+    if leverage is not None:
+        lev = float(leverage)
+    else:
+        lev = 1.0 if is_stock(symbol) else 20.0
+    roe *= lev
+
     color_neon = (0, 255, 150, 255) if roe >= 0 else (255, 50, 50, 255)
     
     # Progress Bar Geometry
@@ -319,10 +325,9 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
         sl_roe = 0.0
         tp_roe = 0.0
     
-    if not is_stock(symbol):
-        sl_roe *= CRYPTO_LEVERAGE
-        tp_roe *= CRYPTO_LEVERAGE
-
+    sl_roe *= lev
+    tp_roe *= lev
+    
     draw.text((get_x(sl), bar_y + 40), f"{sl_roe:.1f}%", font=font_sub, fill=(255, 100, 100, 255), anchor="mm")
     draw.text((get_x(tp), bar_y + 40), f"{tp_roe:+.1f}%", font=font_sub, fill=(0, 255, 150, 255), anchor="mm")
     
