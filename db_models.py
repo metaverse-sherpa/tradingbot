@@ -46,6 +46,7 @@ users_table = Table(
     Column('referral_reward_triggered', Boolean, default=False),
     Column('bingx_futures_type', String, default='standard'),
     Column('coinbase_sandbox', Integer, default=1),
+    Column('hide_dollars', Boolean, default=False),
 )
 
 webusers_table = Table(

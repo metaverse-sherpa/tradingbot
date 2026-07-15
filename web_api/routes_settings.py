@@ -100,7 +100,7 @@ def settings_preferences():
     tg_user = _get_telegram_user(g.user)
     if tg_user:
         try:
-            database.update_user_preference(tg_user["telegram_chat_id"], "hide_dollars", 1 if hide_dollars else 0)
+            database.update_user_preference(tg_user["telegram_chat_id"], "hide_dollars", bool(hide_dollars))
             database.update_user_preference(tg_user["telegram_chat_id"], "risk_pct", risk_pct)
             database.update_user_preference(tg_user["telegram_chat_id"], "stock_risk_pct", stock_risk_pct)
         except Exception as e:

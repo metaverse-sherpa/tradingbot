@@ -129,7 +129,7 @@ const Settings: React.FC = () => {
         
         // Refresh user object to show connected state
         const profileRes = await api.get('/user/profile');
-        setUser({ ...user, ...profileRes.data });
+        setUser({ ...user, ...profileRes.data.data });
         
         if ((window as any).dataLayer) {
           (window as any).dataLayer.push({
@@ -166,7 +166,7 @@ const Settings: React.FC = () => {
       showToast(`${type} API keys deleted`, 'success');
       
       const profileRes = await api.get('/user/profile');
-      setUser({ ...user, ...profileRes.data });
+      setUser({ ...user, ...profileRes.data.data });
     } catch (err) {
       showToast("Failed to delete keys", 'error');
     }
@@ -231,6 +231,8 @@ const Settings: React.FC = () => {
           Notification.requestPermission();
         }
       }
+
+      showToast('Preference saved', 'success');
     } catch (err) {
       setUser(originalUser as any);
       showToast(`Failed to update ${key}`, 'error');
