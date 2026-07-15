@@ -37,7 +37,7 @@ def check_payment():
     if not source_wallet:
         return jsonify({"message": "Please save your source wallet before verifying payment."}), 400
         
-    master_wallet = os.getenv("MASTER_TREASURY_WALLET", "TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj")
+    master_wallet = os.getenv("MASTER_TREASURY_WALLET", "TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3")
     
     # Security: Do not allow using master wallet to bypass
     super_admin_id = os.getenv("SUPER_ADMIN_ID")

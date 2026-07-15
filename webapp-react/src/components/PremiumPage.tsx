@@ -35,7 +35,7 @@ const PremiumPage: React.FC = () => {
     }
   };
 
-  const treasuryAddress = 'TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj';
+  const treasuryAddress = 'TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(treasuryAddress);
@@ -149,7 +149,7 @@ const PremiumPage: React.FC = () => {
           {/* QR Code */}
           <div className="flex justify-center my-6">
             <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center">
-               <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TY1V64xJc24abG9aq4UXGeMJtvPhSDCgoj" alt="QR Code" className="w-full h-full" />
+               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${treasuryAddress}`} alt="QR Code" className="w-full h-full" />
             </div>
           </div>
 
