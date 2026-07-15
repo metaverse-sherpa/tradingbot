@@ -47,6 +47,7 @@ const analysisMessages = [
 const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
   const { user } = useAuthStore();
+  const hideDollars = user?.hide_dollars;
 
   const formatMarkdownLine = (line: string) => {
     const tokenRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
@@ -558,19 +559,6 @@ const PortfolioPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-          {positions.length > 0 && (
-            <>
-              <button
-                onClick={runAIAnalysis}
-                disabled={analyzing}
-                className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50 w-full sm:w-auto"
-              >
-                {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                {analyzing ? 'Analyzing...' : 'AI Analysis'}
-              </button>
-            </>
-          )}
-
           <button
             onClick={() => setCsvModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-[#1f2028] border border-white/10 hover:border-white/20 text-gray-200 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all uppercase tracking-wider w-full sm:w-auto"
@@ -614,8 +602,113 @@ const PortfolioPage: React.FC = () => {
         </div>
       ) : (
         <>
+          {/* 📊 KPI Cards Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+            {/* Card 1: Total Balance */}
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total Balance</span>
+              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+                {hideDollars ? '$***,***.**' : fmt(stats.total_portfolio_value || stats.market_value)}
+              </h3>
+              <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Positions + Cash</p>
+            </div>
+
+            {/* Card 2: Cash Available */}
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden group">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-between">
+                Cash Available
+                <button 
+                  onClick={() => { setCashInputVal((stats.cash_balance || 0).toString()); setCashModalOpen(true); }}
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity p-0.5 rounded"
+                >
+                  <Edit2 size={12} />
+                </button>
+              </span>
+              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+                {hideDollars ? '$***,***.**' : fmt(stats.cash_balance || 0)}
+              </h3>
+              <p 
+                className="text-gray-500 text-[9px] md:text-[10px] mt-1 cursor-pointer hover:text-emerald-400"
+                onClick={() => { setCashInputVal((stats.cash_balance || 0).toString()); setCashModalOpen(true); }}
+              >
+                Manage cash
+              </p>
+            </div>
+
+            {/* Card 3: Holdings Value (Renamed from Market Value) */}
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Holdings Value</span>
+              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+                {hideDollars ? '$***,***.**' : fmt(stats.market_value)}
+              </h3>
+              <p className={`text-gray-500 text-[9px] md:text-[10px] mt-1 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+                Invested: {hideDollars ? '$***,***.**' : fmt(stats.cost_basis)}
+              </p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total P/L</span>
+              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+                {hideDollars ? '$***,***.**' : `${stats.total_pnl >= 0 ? '+' : ''}${fmt(stats.total_pnl)}`}
+              </h3>
+              <p className={`mt-1 font-bold ${hideDollars ? 'text-sm font-black' : 'text-[9px] md:text-[10px]'} ${stats.total_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.total_pnl_pct >= 0 ? '▲' : '▼'} {stats.total_pnl_pct.toFixed(2)}%
+              </p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Daily P/L</span>
+              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (stats.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+                {hideDollars ? '$***,***.**' : `${stats.daily_pnl >= 0 ? '+' : ''}${fmt(stats.daily_pnl)}`}
+              </h3>
+              <p className={`mt-1 font-bold ${hideDollars ? 'text-sm font-black' : 'text-[9px] md:text-[10px]'} ${stats.daily_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.daily_pnl_pct >= 0 ? '▲' : '▼'} {stats.daily_pnl_pct.toFixed(2)}%
+              </p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Today's Top Mover</span>
+              <h3 className="text-base md:text-lg font-black text-white mt-1 md:mt-2 truncate">
+                {stats.top_mover ? stats.top_mover : '-'}
+              </h3>
+              <p className={`mt-1.5 font-bold ${hideDollars ? 'text-sm font-black' : 'text-[9px] md:text-[10px]'} ${stats.top_mover_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats.top_mover_pct >= 0 ? '▲' : '▼'} {stats.top_mover_pct.toFixed(2)}%
+              </p>
+            </div>
+
+            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden col-span-2 lg:col-span-1">
+              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Est. Annual Div</span>
+              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+                {hideDollars ? '$***,***.**' : fmt(stats.annual_dividends)}
+              </h3>
+              <p className={`mt-1 font-bold ${hideDollars ? 'text-sm font-black text-white' : 'text-[9px] md:text-[10px] text-gray-500'}`}>{stats.dividend_yield_pct.toFixed(2)}% Yield</p>
+            </div>
+          </div>
+
           {/* 🎉 Score Banner or Analyzing Overlay */}
-          <div className="relative min-h-[80px]">
+          <div className="relative mt-6 min-h-[80px]">
+            {positions.length > 0 && !analysis && (
+              <div className={`bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300 ${analyzing ? 'blur-sm opacity-30 pointer-events-none' : ''}`}>
+                <div className="flex items-start sm:items-center gap-3">
+                  <span className="bg-gray-500/10 text-gray-400 p-2 rounded-lg text-lg flex-shrink-0">📊</span>
+                  <div>
+                    <h4 className="text-sm font-bold text-white uppercase tracking-wider">Portfolio Health Audited!</h4>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-normal">
+                      No health audit run yet. Get your score now!
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={runAIAnalysis}
+                  disabled={analyzing}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
+                >
+                  {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                  {analyzing ? 'Analyzing...' : 'AI Analysis'}
+                </button>
+              </div>
+            )}
+            
             {analysis && (
               <div className={`bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300 ${analyzing ? 'blur-sm opacity-30 pointer-events-none' : ''}`}>
               <div className="flex items-start sm:items-center gap-3">
@@ -636,10 +729,12 @@ const PortfolioPage: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => setShowHowOpen(!showHowOpen)}
-                className="w-full sm:w-auto bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 font-bold px-3 py-2 sm:py-1.5 rounded-lg text-xs tracking-wider uppercase transition-colors text-center"
+                onClick={runAIAnalysis}
+                disabled={analyzing}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
               >
-                {showHowOpen ? 'Hide Guide' : 'Show me how'}
+                {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                {analyzing ? 'Analyzing...' : 'AI Analysis'}
               </button>
             </div>
             )}
@@ -655,79 +750,6 @@ const PortfolioPage: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* 📊 KPI Cards Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-            {/* Card 1: Total Balance */}
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total Balance</span>
-              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.total_portfolio_value || stats.market_value)}</h3>
-              <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Positions + Cash</p>
-            </div>
-
-            {/* Card 2: Cash Available */}
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden group">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-between">
-                Cash Available
-                <button 
-                  onClick={() => { setCashInputVal((stats.cash_balance || 0).toString()); setCashModalOpen(true); }}
-                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-opacity p-0.5 rounded"
-                >
-                  <Edit2 size={12} />
-                </button>
-              </span>
-              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.cash_balance || 0)}</h3>
-              <p 
-                className="text-gray-500 text-[9px] md:text-[10px] mt-1 cursor-pointer hover:text-emerald-400"
-                onClick={() => { setCashInputVal((stats.cash_balance || 0).toString()); setCashModalOpen(true); }}
-              >
-                Manage cash
-              </p>
-            </div>
-
-            {/* Card 3: Holdings Value (Renamed from Market Value) */}
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Holdings Value</span>
-              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.market_value)}</h3>
-              <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Invested: {fmt(stats.cost_basis)}</p>
-            </div>
-
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total P/L</span>
-              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {stats.total_pnl >= 0 ? '+' : ''}{fmt(stats.total_pnl)}
-              </h3>
-              <p className={`text-[9px] md:text-[10px] mt-1 font-bold ${stats.total_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {stats.total_pnl_pct >= 0 ? '▲' : '▼'} {stats.total_pnl_pct.toFixed(2)}%
-              </p>
-            </div>
-
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Daily P/L</span>
-              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${stats.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {stats.daily_pnl >= 0 ? '+' : ''}{fmt(stats.daily_pnl)}
-              </h3>
-              <p className={`text-[9px] md:text-[10px] mt-1 font-bold ${stats.daily_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {stats.daily_pnl_pct >= 0 ? '▲' : '▼'} {stats.daily_pnl_pct.toFixed(2)}%
-              </p>
-            </div>
-
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Today's Top Mover</span>
-              <h3 className="text-base md:text-lg font-black text-white mt-1 md:mt-2 truncate">
-                {stats.top_mover ? stats.top_mover : '-'}
-              </h3>
-              <p className={`text-[9px] md:text-[10px] mt-1.5 font-bold ${stats.top_mover_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {stats.top_mover_pct >= 0 ? '▲' : '▼'} {stats.top_mover_pct.toFixed(2)}%
-              </p>
-            </div>
-
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden col-span-2 lg:col-span-1">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Est. Annual Div</span>
-              <h3 className="text-lg md:text-2xl font-black text-white mt-1 md:mt-2">{fmt(stats.annual_dividends)}</h3>
-              <p className="text-gray-500 text-[9px] md:text-[10px] mt-1 font-bold">{stats.dividend_yield_pct.toFixed(2)}% Yield</p>
-            </div>
           </div>
 
           {/* 🧭 Show Me How detailed guide */}
@@ -1101,33 +1123,33 @@ const PortfolioPage: React.FC = () => {
                       </td>
 
                       <td className="py-4 text-right">
-                        <span className={`font-bold block ${pos.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {pos.daily_pnl >= 0 ? '+' : ''}{fmt(pos.daily_pnl)}
+                        <span className={`font-bold block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (pos.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+                          {hideDollars ? '$***,***.**' : `${pos.daily_pnl >= 0 ? '+' : ''}${fmt(pos.daily_pnl)}`}
                         </span>
-                        <span className={`text-[10px] font-bold block ${pos.daily_change_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <span className={`font-bold block ${hideDollars ? 'text-sm font-black' : 'text-[10px]'} ${pos.daily_change_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {pos.daily_change_pct >= 0 ? '+' : ''}{pos.daily_change_pct.toFixed(2)}%
                         </span>
                       </td>
 
                       <td className="py-4 text-right">
-                        <span className={`font-bold block ${pos.overall_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {pos.overall_pnl >= 0 ? '+' : ''}{fmt(pos.overall_pnl)}
+                        <span className={`font-bold block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (pos.overall_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+                          {hideDollars ? '$***,***.**' : `${pos.overall_pnl >= 0 ? '+' : ''}${fmt(pos.overall_pnl)}`}
                         </span>
-                        <span className={`text-[10px] font-bold block ${pos.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <span className={`font-bold block ${hideDollars ? 'text-sm font-black' : 'text-[10px]'} ${pos.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {pos.overall_pnl_pct >= 0 ? '+' : ''}{pos.overall_pnl_pct.toFixed(2)}%
                         </span>
                       </td>
 
                       <td className="py-4 text-right hidden md:table-cell">
-                        <span className="font-bold text-white block">{fmt(pos.cost_basis)}</span>
-                        <span className="text-[10px] text-gray-500 block">
-                          {pos.quantity.toString().slice(0, 6)} @ {fmt(pos.avg_entry_price)}
+                        <span className={`font-bold text-white block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>{hideDollars ? '$***,***.**' : fmt(pos.cost_basis)}</span>
+                        <span className={`text-[10px] text-gray-500 block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+                          {hideDollars ? '* @ $***.**' : `${pos.quantity.toString().slice(0, 6)} @ ${fmt(pos.avg_entry_price)}`}
                         </span>
                       </td>
 
-                      <td className="py-4 text-right hidden md:table-cell font-bold text-white">{fmt(pos.current_price)}</td>
+                      <td className={`py-4 text-right hidden md:table-cell font-bold ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : 'text-white'}`}>{hideDollars ? '$***,***.**' : fmt(pos.current_price)}</td>
 
-                      <td className="py-4 text-right font-black text-white">{fmt(pos.market_value)}</td>
+                      <td className={`py-4 text-right font-black ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : 'text-white'}`}>{hideDollars ? '$***,***.**' : fmt(pos.market_value)}</td>
 
                       <td className="py-4 text-right font-bold text-gray-300 hidden lg:table-cell">
                         {pos.dividend_yield > 0 ? (

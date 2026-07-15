@@ -2578,8 +2578,8 @@ def get_trade_chart():
     with CHART_MEM_CACHE_LOCK:
         cached = CHART_MEM_CACHE.get(cache_key)
         if cached:
-            cached_ts, png_bytes = cached
-            if time.time() - cached_ts < CHART_CACHE_TTL_SECONDS:
+            expiry_ts, png_bytes = cached
+            if time.time() < expiry_ts:
                 import io
                 return send_file(
                     io.BytesIO(png_bytes),
@@ -2700,12 +2700,14 @@ def get_trade_chart():
             png_bytes = f.read()
             
         # Save to memory cache and enforce cleanup/size-bounding
+        ttl = 3600 if trade_type == "stock" else 900
+        expiry_ts = time.time() + ttl
         with CHART_MEM_CACHE_LOCK:
-            CHART_MEM_CACHE[cache_key] = (time.time(), png_bytes)
+            CHART_MEM_CACHE[cache_key] = (expiry_ts, png_bytes)
             
             # 1. Evict expired entries
             now = time.time()
-            expired_keys = [k for k, v in CHART_MEM_CACHE.items() if now - v[0] > CHART_CACHE_TTL_SECONDS]
+            expired_keys = [k for k, v in CHART_MEM_CACHE.items() if now > v[0]]
             for k in expired_keys:
                 CHART_MEM_CACHE.pop(k, None)
                 
