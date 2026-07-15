@@ -6,6 +6,7 @@ import api from '../lib/api';
 import SharePnLModal from './SharePnLModal';
 import LoadingDisplay from './LoadingDisplay';
 import { useAuthStore, useDashboardStore } from '../store/useStore';
+import { isStockMarketOpen } from '../utils/market';
 
 const TradesPage: React.FC = () => {
   const location = useLocation();
@@ -101,9 +102,19 @@ const TradesPage: React.FC = () => {
     }
   };
 
+  const openTradesRef = React.useRef(openTrades);
+  useEffect(() => {
+    openTradesRef.current = openTrades;
+  }, [openTrades]);
+
   useEffect(() => {
     fetchTrades();
-    const interval = setInterval(() => fetchTrades(false), 30000);
+    const interval = setInterval(() => {
+      const hasCryptoTrades = openTradesRef.current.some(t => t.type === 'crypto');
+      if (isStockMarketOpen() || hasCryptoTrades) {
+        fetchTrades(false);
+      }
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 

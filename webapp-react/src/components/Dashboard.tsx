@@ -6,6 +6,7 @@ import { useDashboardStore, useAuthStore } from '../store/useStore';
 import api from '../lib/api';
 import TradeCard from './TradeCard';
 import SharePnLModal from './SharePnLModal';
+import { isStockMarketOpen } from '../utils/market';
 
 const Dashboard: React.FC = () => {
   const { activeTab, setTab } = useDashboardStore();
@@ -45,11 +46,25 @@ const Dashboard: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const stateRef = React.useRef({ cryptoOpen: 0, cryptoSignals: 0 });
+  useEffect(() => {
+    stateRef.current = {
+      cryptoOpen: cryptoData.open,
+      cryptoSignals: cryptoSignalCount
+    };
+  }, [cryptoData.open, cryptoSignalCount]);
+
   useEffect(() => {
     fetchData();
     
     // Auto-refresh every 30 seconds
-    const interval = setInterval(() => fetchData(false), 30000);
+    const interval = setInterval(() => {
+      const { cryptoOpen, cryptoSignals } = stateRef.current;
+      const hasCryptoActivity = cryptoOpen > 0 || cryptoSignals > 0;
+      if (isStockMarketOpen() || hasCryptoActivity) {
+        fetchData(false, true);
+      }
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -66,9 +81,11 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const fetchData = async (bypassCache = false) => {
-    setLoading(true);
-    setSignalsLoading(true);
+  const fetchData = async (bypassCache = false, isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+      setSignalsLoading(true);
+    }
 
     fetchOpenTrades(bypassCache);
 
