@@ -80,13 +80,14 @@ async def build_forward_test_stats_block():
     import live_bot_multi
     
     open_sim_trades = database.get_open_theoretical_trades()
+    disabled = database.get_disabled_strategies()
     
     mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
     vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
     svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
     
     # Group open trades by strategy
-    strategy_names = ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"]
+    strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
     strategy_open_trades = {s: [] for s in strategy_names}
     for t in open_sim_trades:
         strat = t.get('strategy', '')
@@ -196,7 +197,7 @@ async def build_forward_test_stats_block():
         
         block = (
             f"{icon} *{name}*\n"
-            f"• Win Rate: `{stats['win_rate']:.1f}%` ({stats['wins']} W | {stats['losses']} L)\n"
+            f"• Win Rate: `{stats['win_rate']:.2f}%` ({stats['wins']} W | {stats['losses']} L)\n"
             f"• Realized PnL: `{realized_pct:+.2f}%`\n"
         )
         if open_count > 0:
@@ -211,16 +212,16 @@ async def build_forward_test_stats_block():
             block += "• Active Signals: `0`\n"
         return block
     
-    mr_block = _build_strategy_block("Mean Reversion Scalper")
-    vk_block = _build_strategy_block("Valkyrie Elite Scalper")
-    svp_block = _build_strategy_block("Sherpa Velocity Pullback")
+    mr_block = _build_strategy_block("Mean Reversion Scalper") if "Mean Reversion Scalper" in strategy_names else ""
+    vk_block = _build_strategy_block("Valkyrie Elite Scalper") if "Valkyrie Elite Scalper" in strategy_names else ""
+    svp_block = _build_strategy_block("Sherpa Velocity Pullback") if "Sherpa Velocity Pullback" in strategy_names else ""
+    
+    blocks = [b for b in [mr_block, vk_block, svp_block] if b]
     
     text = (
         "🧪 *Free Forward Testing*\n"
-        f"• Open Free Signals: `{len(open_sim_trades)}`\n\n"
-        f"{mr_block}\n"
-        f"{vk_block}\n"
-        f"{svp_block}\n"
+        f"• Open Free Signals: `{len([t for t in open_sim_trades if t.get('strategy') in strategy_names])}`\n\n"
+        + "\n\n".join(blocks)
     )
     
     return text
