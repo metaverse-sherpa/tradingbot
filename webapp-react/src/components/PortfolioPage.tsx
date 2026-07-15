@@ -44,54 +44,9 @@ const analysisMessages = [
   "Finalizing your ticket to the moon..."
 ];
 
-const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: {value: string, label: string}[] }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const currentLabel = options.find(o => o.value === value)?.label || value;
-
-  return (
-    <div className="relative w-full sm:w-auto" ref={ref}>
-      <button 
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full sm:w-48 bg-black/50 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 flex justify-between items-center outline-none focus:border-emerald-500/50 transition-colors"
-      >
-        <span className="truncate pr-2">{currentLabel}</span>
-        <ChevronDown size={14} className={`text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute z-[100] w-full mt-1 bg-[#1f2028] border border-[#2e303a] rounded-lg shadow-xl overflow-y-auto max-h-48 left-0">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs hover:bg-white/5 transition-colors ${value === opt.value ? 'text-emerald-400 font-bold bg-white/5' : 'text-gray-300'}`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-
 const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
-  const { user, setUser } = useAuthStore();
+  const { user } = useAuthStore();
 
   const formatMarkdownLine = (line: string) => {
     const tokenRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
