@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'recharts';
-import { Activity, Clock, Settings, Zap, Target, Loader2, RefreshCcw, Share2 } from 'lucide-react';
+import { Activity, Clock, Settings, Zap, Target, Loader2, RefreshCcw, Share2, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
 import { useDashboardStore, useAuthStore } from '../store/useStore';
 import api from '../lib/api';
 import TradeCard from './TradeCard';
@@ -11,6 +11,7 @@ import { isStockMarketOpen } from '../utils/market';
 const Dashboard: React.FC = () => {
   const { activeTab, setTab } = useDashboardStore();
   const { user } = useAuthStore();
+  const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
   const [revealValues, setRevealValues] = useState(false);
   const hideDollars = user?.hide_dollars && !revealValues;
 
@@ -36,9 +37,22 @@ const Dashboard: React.FC = () => {
   const [openTrades, setOpenTrades] = useState<any[]>([]);
   const [openTradesLoading, setOpenTradesLoading] = useState(true);
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
+  const [expandedSignalId, setExpandedSignalId] = useState<string | null>(null);
   const [shareTrade, setShareTrade] = useState<{trade: any, type: 'crypto'|'stock', roe: number, pnl: number} | null>(null);
   const [shareStat, setShareStat] = useState<{stat: any, type: 'crypto'|'stock'} | null>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  const formatTimeAgo = (timestamp: number) => {
+    if (!timestamp) return 'Just now';
+    const timeInSeconds = timestamp > 10000000000 ? Math.floor(timestamp / 1000) : timestamp;
+    const seconds = Math.floor(Date.now() / 1000 - timeInSeconds);
+    if (seconds < 60) return `${Math.max(0, seconds)}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
@@ -390,17 +404,94 @@ const Dashboard: React.FC = () => {
                <p className="text-sm text-gray-400">No active {type} signals</p>
             </div>
           ) : (
-            sortedSignals.map((s: any, idx: number) => (
-               <div key={idx} className="bg-[#1b1f2c]/50 border border-white/5 rounded-xl p-3 flex justify-between items-center">
-                 <div>
-                   <div className="font-bold text-white text-sm">{s.symbol?.split('/')[0]} <span className="text-xs text-gray-500">{s.side?.toUpperCase()}</span></div>
-                   <div className="text-xs text-gray-400">{s.strategy}</div>
-                 </div>
-                 <div className={`text-sm font-bold ${s.pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                   {s.pnl_pct >= 0 ? '+' : ''}{(s.pnl_pct || 0).toFixed(2)}%
-                 </div>
-               </div>
-            ))
+            sortedSignals.map((s: any, idx: number) => {
+              const pnlPct = s.pnl_pct || 0;
+              const isProfit = pnlPct >= 0;
+              const isLong = s.side?.toUpperCase() === 'LONG' || s.side?.toUpperCase() === 'BUY';
+              let tp_pct = s.entry_price > 0 && s.tp_price > 0 ? Math.abs((s.tp_price - s.entry_price) / s.entry_price * 100) : 0;
+              let sl_pct = s.entry_price > 0 && s.sl_price > 0 ? Math.abs((s.sl_price - s.entry_price) / s.entry_price * 100) : 0;
+              
+              if (type === 'crypto') {
+                tp_pct *= 20;
+                sl_pct *= 20;
+              }
+              const isExpanded = expandedSignalId === (s.id || idx.toString());
+              const markPrice = s.current_price || s.mark_price || s.exit_price || 0;
+              const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(s.symbol || '')}&entry=${s.entry_price || 0}&tp=${s.tp_price || 0}&sl=${s.sl_price || 0}&side=${s.side || ''}&open_ts=${s.open_time || s.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(s.strategy || '')}`;
+
+              return (
+                <div 
+                  key={s.id || idx} 
+                  className={`bg-[#1b1f2c]/50 border border-white/5 rounded-xl p-4 flex flex-col transition-all ${isPremium ? 'cursor-pointer hover:border-white/20' : ''}`}
+                  onClick={() => {
+                    if (!isPremium) {
+                      navigate('/premium');
+                      return;
+                    }
+                    setExpandedSignalId(isExpanded ? null : (s.id || idx.toString()));
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold text-white text-sm flex items-center gap-2">
+                        {s.symbol?.split('/')[0]} 
+                        {isLong ? <TrendingUp size={12} className="text-emerald-400"/> : <TrendingDown size={12} className="text-rose-400"/>}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-0.5">{s.strategy}</div>
+                      {s.open_time && (
+                        <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-500">
+                          <Clock size={10}/>
+                          {formatTimeAgo(s.open_time)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-right">
+                      <button
+                        className="text-gray-400 hover:text-white transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShareTrade({ trade: s, type, roe: pnlPct, pnl: s.pnl_raw || 0 });
+                        }}
+                      >
+                        <Share2 size={14} />
+                      </button>
+                      <div>
+                        <div className={`text-sm font-bold ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isProfit ? '+' : ''}{pnlPct.toFixed(2)}%
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          TARGET: {isPremium ? `${tp_pct.toFixed(0)}%` : <span className="blur-sm select-none">00%</span>}
+                        </div>
+                      </div>
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 text-[11px] text-gray-400 font-mono">
+                    {isPremium ? (
+                      <>
+                        <div>SL: ${(s.sl_price || 0).toFixed(2)} (-{sl_pct.toFixed(0)}%)</div>
+                        <div>TP: ${(s.tp_price || 0).toFixed(2)} (+{tp_pct.toFixed(0)}%)</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="blur-sm select-none opacity-50">SL: $0.00 (-0%)</div>
+                        <div className="blur-sm select-none opacity-50">TP: $0.00 (+0%)</div>
+                      </>
+                    )}
+                  </div>
+
+                  {isExpanded && isPremium && (
+                    <div className="mt-4 pt-4 border-t border-white/5 cursor-default" onClick={e => e.stopPropagation()}>
+                      <div className="font-bold text-white text-xs mb-2">{s.symbol?.split('/')[0]} ({s.side?.toUpperCase()}) - 1D Setup</div>
+                      <div className="relative w-full bg-[#0b0f19]/50 rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[160px]">
+                        <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
 
