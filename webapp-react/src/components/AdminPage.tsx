@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, ShieldAlert, Activity, Search, Loader2, MessageCircleQuestion, Plus, Edit, Trash2, FileText } from 'lucide-react';
+import { Users, ShieldAlert, Activity, Search, Loader2, MessageCircleQuestion, Plus, Edit, Trash2, FileText, CreditCard, Copy } from 'lucide-react';
 import api from '../lib/api';
 import { Link } from 'react-router-dom';
 
@@ -17,6 +17,10 @@ const AdminPage: React.FC = () => {
   const [editingDoc, setEditingDoc] = useState<any>(null);
 
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [paymentsUser, setPaymentsUser] = useState<any>(null);
+  const [userPayments, setUserPayments] = useState<any[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
 
   const handleSaveUserPremium = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,7 +300,25 @@ const AdminPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-4 px-4 text-sm text-gray-400">{u.joined?.slice(0, 10)}</td>
-                        <td className="py-4 px-4 text-right">
+                        <td className="py-4 px-4 text-right flex items-center justify-end gap-4">
+                          {u.payments_count > 0 && (
+                            <button 
+                              onClick={async () => {
+                                setPaymentsUser(u);
+                                setLoadingPayments(true);
+                                try {
+                                  const res = await api.get(`/admin/users/${u.id}/payments`);
+                                  setUserPayments(res.data);
+                                } catch (err) {
+                                  console.error('Error fetching payments', err);
+                                  setUserPayments([]);
+                                }
+                                setLoadingPayments(false);
+                              }}
+                              className="text-yellow-400 hover:text-yellow-300 text-sm font-bold transition-colors">
+                              Payments ({u.payments_count})
+                            </button>
+                          )}
                           <button 
                             onClick={() => setEditingUser({ ...u, new_premium_expiry: u.premium_expiry || 0 })}
                             className="text-cyan-400 hover:text-cyan-300 text-sm font-bold transition-colors">
@@ -562,6 +584,78 @@ const AdminPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {paymentsUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1b1f2c] border border-white/10 rounded-2xl p-6 w-full max-w-2xl shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <CreditCard className="text-yellow-400" /> Payment History
+              </h3>
+              <p className="text-gray-400 text-sm"><span className="text-cyan-400">{paymentsUser.email}</span></p>
+            </div>
+            
+            {loadingPayments ? (
+              <div className="flex justify-center py-8"><Loader2 className="animate-spin text-yellow-400 size-8" /></div>
+            ) : userPayments.length === 0 ? (
+              <p className="text-center text-gray-500 py-8 italic">No crypto payments found for this user.</p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                {userPayments.map((p, idx) => (
+                  <div key={idx} className="bg-[#131620] border border-white/10 p-4 rounded-xl">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1 min-w-0 mr-4">
+                        <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Transaction</div>
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={`https://tronscan.org/#/transaction/${p.tx_hash}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-cyan-400 hover:text-cyan-300 font-mono text-sm transition-colors hover:underline"
+                            title={p.tx_hash}
+                          >
+                            {p.tx_hash.substring(0, 8)}...{p.tx_hash.substring(p.tx_hash.length - 8)}
+                          </a>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.tx_hash);
+                            }}
+                            className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors"
+                            title="Copy transaction hash"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500 uppercase font-bold tracking-widest mb-1">Date</div>
+                        <div className="text-white text-sm">{new Date(p.timestamp * 1000).toISOString().slice(0, 10)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/5">
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Subscription Start</div>
+                        <div className="text-gray-300 text-sm">{new Date(p.start_date * 1000).toISOString().slice(0, 10)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Subscription End</div>
+                        <div className="text-gray-300 text-sm">{new Date(p.end_date * 1000).toISOString().slice(0, 10)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex justify-end pt-6 mt-2">
+              <button type="button" onClick={() => setPaymentsUser(null)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-8 rounded-xl transition-colors">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

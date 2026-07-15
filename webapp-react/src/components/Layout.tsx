@@ -90,6 +90,14 @@ const LightbulbIcon = ({ size = 20, className = '' }) => (
     <path d="M10 22h4" />
   </svg>
 );
+
+const CreditCardIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+    <line x1="1" y1="10" x2="23" y2="10" />
+  </svg>
+);
+
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 
@@ -195,6 +203,11 @@ const Layout: React.FC = () => {
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <UsersIcon size={16} className="text-emerald-400" /> Refer & Earn
                       </Link>
+                      {(user?.payments_count || 0) > 0 && (
+                        <Link to="/my-payments" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                          <CreditCardIcon size={16} className="text-blue-400" /> My Payments
+                        </Link>
+                      )}
                       {user?.is_admin && (
                         <Link to="/admin" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                           <ShieldAlertIcon size={16} className="text-purple-400" /> Admin

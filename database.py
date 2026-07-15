@@ -2749,3 +2749,20 @@ def mark_payment_processed(tx_hash, user_id, start_date, end_date):
         c = conn.cursor()
         c.execute("INSERT OR IGNORE INTO ProcessedPayments (tx_hash, user_id, timestamp, start_date, end_date) VALUES (?, ?, ?, ?, ?)", (tx_hash, user_id, now_ts, start_date, end_date))
         conn.commit()
+
+def get_user_payments(user_id):
+    """Get all processed payments for a specific user."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT tx_hash, timestamp, start_date, end_date FROM ProcessedPayments WHERE user_id = ? ORDER BY timestamp DESC", (user_id,))
+        rows = c.fetchall()
+        
+        payments = []
+        for row in rows:
+            payments.append({
+                "tx_hash": row[0],
+                "timestamp": row[1],
+                "start_date": row[2],
+                "end_date": row[3]
+            })
+        return payments

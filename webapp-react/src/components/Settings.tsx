@@ -354,9 +354,16 @@ const Settings: React.FC = () => {
                     {isPremium ? `Expires: ${new Date((user?.premium_expiry || 0) * 1000).toLocaleDateString()}` : "Upgrade to unlock automation"}
                   </div>
                 </div>
-                <Link to="/premium" className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg transition-colors">
-                  {isPremium ? "Renew" : "Upgrade Now"}
-                </Link>
+                <div className="flex items-center gap-2">
+                  {(user?.payments_count || 0) > 0 && (
+                    <Link to="/my-payments" className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition-colors border border-white/10">
+                      My Payments
+                    </Link>
+                  )}
+                  <Link to="/premium" className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg transition-colors">
+                    {isPremium ? "Renew" : "Upgrade Now"}
+                  </Link>
+                </div>
               </div>
             )}
           </div>

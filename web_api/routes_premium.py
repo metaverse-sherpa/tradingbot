@@ -281,7 +281,8 @@ def admin_users():
                     u2.email as referrer_email_by_id,
                     u3.email as referrer_email_by_tg,
                     t2.username as referrer_tg_username,
-                    t2.full_name as referrer_tg_fullname
+                    t2.full_name as referrer_tg_fullname,
+                    (SELECT COUNT(*) FROM ProcessedPayments p WHERE p.user_id = u1.id) as payments_count
                 FROM WebUsers u1
                 LEFT JOIN Users t ON u1.telegram_chat_id = t.telegram_chat_id
                 LEFT JOIN WebUsers u2 ON COALESCE(u1.referred_by, t.referred_by) = u2.id
@@ -314,12 +315,32 @@ def admin_users():
                 "telegram_chat_id": row[5],
                 "referred_by": ref_id,
                 "referrer_email": ref_email,
-                "telegram_username": row[7]
+                "telegram_username": row[7],
+                "payments_count": row[12]
             })
             
         return jsonify({"users": users_list}), 200
     except Exception as e:
         print(f"Error fetching admin users: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@premium_bp.route('/api/admin/users/<int:user_id>/payments', methods=['GET'])
+@require_auth
+def admin_user_payments(user_id):
+    user = g.user
+    tg_user = _get_telegram_user(user)
+    
+    is_super_admin = (user.get("telegram_chat_id") == 1567788633 or user.get("email") == "gilesasp@gmail.com")
+    is_admin = user.get("is_admin", False) or (tg_user and tg_user.get("is_admin", False)) or is_super_admin
+    
+    if not is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    try:
+        payments = database.get_user_payments(user_id)
+        return jsonify(payments), 200
+    except Exception as e:
+        print(f"Error fetching user payments: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 @premium_bp.route('/api/admin/users/<int:user_id>/premium', methods=['PUT'])
@@ -443,3 +464,30 @@ def update_admin_config():
     excluded = data.get("excluded_symbols", "").strip()
     database.update_config("excluded_symbols", excluded)
     return jsonify({"message": "Configuration updated successfully."}), 200
+
+@premium_bp.route('/api/premium/my-payments', methods=['GET'])
+@require_auth
+def my_payments():
+    user = g.user
+    payments = []
+    try:
+        from db_adapter import USE_POSTGRES
+        with database.db_session() as conn:
+            c = conn.cursor()
+            if USE_POSTGRES:
+                c.execute("SELECT tx_hash, timestamp, start_date, end_date FROM ProcessedPayments WHERE user_id = %s ORDER BY timestamp DESC", (user["id"],))
+            else:
+                c.execute("SELECT tx_hash, timestamp, start_date, end_date FROM ProcessedPayments WHERE user_id = ? ORDER BY timestamp DESC", (user["id"],))
+            rows = c.fetchall()
+            for r in rows:
+                payments.append({
+                    "tx_hash": r[0],
+                    "timestamp": r[1],
+                    "start_date": r[2],
+                    "end_date": r[3]
+                })
+    except Exception as e:
+        print(f"Could not load user payments: {e}")
+        return jsonify({"error": "Failed to load payments"}), 500
+        
+    return jsonify({"payments": payments}), 200

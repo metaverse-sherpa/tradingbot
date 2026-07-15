@@ -17,6 +17,7 @@ const LogsPage = React.lazy(() => import('./components/LogsPage'));
 const HelpPage = React.lazy(() => import('./components/HelpPage'));
 const LandingPage = React.lazy(() => import('./components/LandingPage'));
 const LoginPage = React.lazy(() => import('./components/LoginPage'));
+const MyPaymentsPage = React.lazy(() => import('./components/MyPaymentsPage'));
 import api from './lib/api';
 import { useAuthStore } from './store/useStore';
 
@@ -150,6 +151,7 @@ const App: React.FC = () => {
             <Route path="trades" element={<ProtectedRoute><TradesPage /></ProtectedRoute>} />
             <Route path="backtests" element={<ProtectedRoute><BacktestsPage /></ProtectedRoute>} />
             <Route path="premium" element={<ProtectedRoute><PremiumPage /></ProtectedRoute>} />
+            <Route path="my-payments" element={<ProtectedRoute><MyPaymentsPage /></ProtectedRoute>} />
             <Route path="referrals" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
             <Route path="portfolio" element={<PremiumRoute><PortfolioPage /></PremiumRoute>} />
             <Route path="recommendations" element={<PremiumRoute><RecommendationsPage /></PremiumRoute>} />

@@ -180,6 +180,24 @@ def profile():
         except Exception as e:
             print(f"Could not load recruits: {e}")
     user["recruit_list"] = recruit_list
+    
+    # Fetch payments count
+    payments_count = 0
+    try:
+        from db_adapter import USE_POSTGRES
+        with database.db_session() as conn:
+            c = conn.cursor()
+            if USE_POSTGRES:
+                c.execute("SELECT COUNT(*) FROM ProcessedPayments WHERE user_id = %s", (user["id"],))
+            else:
+                c.execute("SELECT COUNT(*) FROM ProcessedPayments WHERE user_id = ?", (user["id"],))
+            row = c.fetchone()
+            if row:
+                payments_count = row[0]
+    except Exception as e:
+        print(f"Could not load payments count: {e}")
+    user["payments_count"] = payments_count
+    
     user["disabled_strategies"] = database.get_disabled_strategies()
 
     user["server_time"] = now
