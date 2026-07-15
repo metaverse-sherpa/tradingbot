@@ -26,6 +26,10 @@ def set_premium_wallet():
     if not source_wallet:
         return jsonify({"error": "Source wallet address required"}), 400
         
+    master_wallet = os.getenv("MASTER_TREASURY_WALLET", "TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3")
+    if source_wallet == master_wallet:
+        return jsonify({"error": "You cannot set the Master Treasury address as your source wallet"}), 400
+        
     update_web_user_wallet(g.user["id"], source_wallet)
     return jsonify({"message": "TRON USDT source wallet set successfully"}), 200
 

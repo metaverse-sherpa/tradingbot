@@ -47,6 +47,10 @@ const PremiumPage: React.FC = () => {
       showToast('Please enter your source wallet address', 'error');
       return;
     }
+    if (sourceWallet === treasuryAddress) {
+      showToast('You cannot use the Treasury address as your source wallet', 'error');
+      return;
+    }
     try {
       await api.post('/premium/wallet', { source_wallet: sourceWallet });
       showToast('Source wallet saved. Please proceed to verify payment.', 'success');
