@@ -419,7 +419,7 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
         try:
             font_strategy = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", strategy_font_size)
         except:
-            font_strategy = find_font(strategy_font_size)
+            font_strategy = find_brand_font(strategy_font_size)
             
         try:
             bbox = draw.textbbox((0, 0), strategy_name.upper(), font=font_strategy)
@@ -451,7 +451,7 @@ def generate_forward_test_card(strategy_name, pnl_usdt, win_rate, total_trades, 
         try:
             font_massive = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", pnl_font_size)
         except:
-            font_massive = find_font(pnl_font_size)
+            font_massive = find_brand_font(pnl_font_size)
             
         try:
             bbox = draw.textbbox((0, 0), pnl_text, font=font_massive)
