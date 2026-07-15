@@ -83,10 +83,11 @@ const BriefcaseIcon = ({ size = 20, className = '' }) => (
   </svg>
 );
 
-const CompassIcon = ({ size = 20, className = '' }) => (
+const LightbulbIcon = ({ size = 20, className = '' }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="10" />
-    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5" />
+    <path d="M9 18h6" />
+    <path d="M10 22h4" />
   </svg>
 );
 import api from '../lib/api';
@@ -174,7 +175,7 @@ const Layout: React.FC = () => {
                       </Link>
                       {isPremium && (
                         <Link to="/recommendations" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                          <CompassIcon size={16} className="text-cyan-400" /> Recommendations
+                        <LightbulbIcon size={16} className="text-cyan-400" /> Recommendations
                         </Link>
                       )}
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
@@ -264,7 +265,7 @@ const Layout: React.FC = () => {
             )}
             {isPremium && (
               <Link to="/recommendations" className={`${showAdvancedTabs ? 'hidden md:flex' : 'flex'} flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/recommendations' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-                <CompassIcon size={20} className="md:w-4 md:h-4" />
+                <LightbulbIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Recommendations</span>
               </Link>
             )}

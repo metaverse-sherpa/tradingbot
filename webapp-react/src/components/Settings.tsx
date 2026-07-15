@@ -361,6 +361,54 @@ const Settings: React.FC = () => {
             )}
           </div>
 
+          {/* Privacy & UI Settings */}
+          {isPremium && user?.has_exchange_keys && (
+          <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-yellow-500/20 rounded-xl">
+                <EyeOff className="text-yellow-400" size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-white">Privacy Mode</h3>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-[#1f2028] rounded-xl border border-white/5">
+              <div>
+                <div className="font-bold text-white">Hide Balances</div>
+                <div className="text-xs text-gray-400 mt-1">Mask dollar amounts with asterisks</div>
+              </div>
+              <button 
+                onClick={() => togglePreference('hide_dollars', user?.hide_dollars)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${user?.hide_dollars ? 'bg-yellow-500' : 'bg-gray-600'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${user?.hide_dollars ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+          </div>
+          )}
+
+          {/* Autopilot Status */}
+          {isPremium && user?.has_exchange_keys && (
+            <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-500/20 rounded-xl">
+                  <Activity className="text-blue-400" size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-white">Autopilot Execution</h3>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-[#1f2028] rounded-xl border border-white/5">
+                <div>
+                  <div className="font-bold text-white">Trading Bot is {user?.is_active ? 'Active' : 'Paused'}</div>
+                  <div className="text-xs text-gray-400 mt-1">{user?.is_active ? 'Executing signals securely' : 'Not executing trades'}</div>
+                </div>
+                <button 
+                  onClick={toggleBotStatus}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${user?.is_active ? 'bg-cyan-500' : 'bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${user?.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Connected Exchanges */}
           {isPremium && (
             <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg animate-fade-in">
@@ -532,29 +580,7 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {/* Autopilot Status */}
-          {isPremium && user?.has_exchange_keys && (
-            <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-500/20 rounded-xl">
-                  <Activity className="text-blue-400" size={20} />
-                </div>
-                <h3 className="text-lg font-bold text-white">Autopilot Execution</h3>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-[#1f2028] rounded-xl border border-white/5">
-                <div>
-                  <div className="font-bold text-white">Trading Bot is {user?.is_active ? 'Active' : 'Paused'}</div>
-                  <div className="text-xs text-gray-400 mt-1">{user?.is_active ? 'Executing signals securely' : 'Not executing trades'}</div>
-                </div>
-                <button 
-                  onClick={toggleBotStatus}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${user?.is_active ? 'bg-cyan-500' : 'bg-gray-600'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${user?.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
-            </div>
-          )}
+
 
           {/* Telegram Sync */}
           <div className={`bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl shadow-lg transition-all duration-300 ${user?.telegram_chat_id ? 'p-4' : 'p-6'}`}>
@@ -603,29 +629,7 @@ const Settings: React.FC = () => {
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
 
-          {/* Privacy & UI Settings */}
-          {isPremium && user?.has_exchange_keys && (
-          <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-yellow-500/20 rounded-xl">
-                <EyeOff className="text-yellow-400" size={20} />
-              </div>
-              <h3 className="text-lg font-bold text-white">Privacy Mode</h3>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-[#1f2028] rounded-xl border border-white/5">
-              <div>
-                <div className="font-bold text-white">Hide Balances</div>
-                <div className="text-xs text-gray-400 mt-1">Mask dollar amounts with asterisks</div>
-              </div>
-              <button 
-                onClick={() => togglePreference('hide_dollars', user?.hide_dollars)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${user?.hide_dollars ? 'bg-yellow-500' : 'bg-gray-600'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${user?.hide_dollars ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-          </div>
-          )}
+
 
           {/* Notifications */}
           <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">

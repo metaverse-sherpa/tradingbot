@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Compass, Clock, RefreshCw, ChevronDown, Lock } from 'lucide-react';
+import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
@@ -26,7 +26,7 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
       <button 
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full sm:w-48 bg-[#1f2028] border border-white/10 text-white text-xs md:text-sm font-bold uppercase tracking-wider rounded-xl px-4 py-2.5 flex justify-between items-center outline-none hover:border-white/20 transition-colors"
+        className="w-full sm:w-56 lg:w-64 bg-[#1f2028] border border-white/10 text-white text-xs md:text-sm font-bold uppercase tracking-wider rounded-xl px-4 py-2.5 flex justify-between items-center outline-none hover:border-white/20 transition-colors"
       >
         <span className="truncate pr-2">{currentLabel}</span>
         <ChevronDown size={14} className={`text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -200,11 +200,11 @@ const RecommendationsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header and Filter Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#141620]/40 p-6 rounded-3xl border border-white/5 backdrop-blur-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#141620]/40 p-4 sm:p-6 rounded-3xl border border-white/5 backdrop-blur-sm">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-[#f3f4f6] flex items-center gap-3 tracking-wide uppercase">
+          <h1 className="text-xl md:text-3xl font-black text-[#f3f4f6] flex items-center gap-3 tracking-wide uppercase">
             <span className="bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/20 text-cyan-400">
-              <Compass size={22} />
+              <Lightbulb size={22} className="fill-[#131620]" />
             </span>
             RECOMMENDATION TRACKER
           </h1>
@@ -251,34 +251,35 @@ const RecommendationsPage: React.FC = () => {
                 }
               }}
               options={[
-                { value: "Income", label: "Income (Dividends & Yield)" },
-                { value: "Growth", label: "Growth (Capital Appreciation)" },
-                { value: "Speculation", label: "Speculation (High Risk)" }
+                { value: "Income", label: "Income" },
+                { value: "Growth", label: "Growth" },
+                { value: "Speculation", label: "Speculation" }
               ]}
             />
           </div>
 
           {/* Sort By Dropdown */}
-          <div className="flex flex-row items-center justify-between sm:justify-start gap-4 bg-white/5 sm:bg-transparent px-4 py-2 sm:p-0 rounded-xl">
+          <div className="flex flex-row items-center justify-between sm:justify-start gap-3 sm:gap-4 bg-white/5 sm:bg-transparent px-3 sm:px-4 py-2 sm:p-0 rounded-xl">
             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider whitespace-nowrap">Sort By</span>
-            <SmallCustomSelect
-              value={sortBy}
-              onChange={(v) => setSortBy(v)}
-              options={[
-                { value: "target_pnl", label: "Target PnL %" },
-                { value: "actual_pnl", label: "Actual PnL %" }
-              ]}
-            />
+            <div className="flex items-center gap-2">
+              <SmallCustomSelect
+                value={sortBy}
+                onChange={(v) => setSortBy(v)}
+                options={[
+                  { value: "target_pnl", label: "Target PnL %" },
+                  { value: "actual_pnl", label: "Actual PnL %" }
+                ]}
+              />
+              <button
+                onClick={() => fetchRecommendations(true)}
+                disabled={refreshing}
+                className="flex items-center justify-center p-2 text-gray-400 hover:text-cyan-400 hover:bg-white/5 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+                title="Refresh Recommendations"
+              >
+                <RefreshCw size={18} className={refreshing ? 'animate-spin text-cyan-400' : ''} />
+              </button>
+            </div>
           </div>
-
-          <button
-            onClick={() => fetchRecommendations(true)}
-            disabled={refreshing}
-            className="flex items-center justify-center gap-2 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 hover:border-cyan-500/40 text-cyan-400 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all uppercase tracking-wider mt-2 sm:mt-0 w-full sm:w-auto"
-          >
-            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
         </div>
       </div>
 
@@ -397,7 +398,7 @@ const RecommendationsPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Compass size={16} />
+                  <Lightbulb size={16} className="fill-[#131620]" />
                   Generate AI Buys
                 </>
               )}

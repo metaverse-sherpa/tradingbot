@@ -48,6 +48,7 @@ const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
   const { user } = useAuthStore();
   const hideDollars = user?.hide_dollars;
+  const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
 
   const formatMarkdownLine = (line: string) => {
     const tokenRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
@@ -599,6 +600,11 @@ const PortfolioPage: React.FC = () => {
               <Plus size={16} /> Add Position
             </button>
           </div>
+          {isPremium && (
+            <p className="text-md text-gray-400 pt-2">
+              Looking for recommendations? Be sure to check out our <Link to="/recommendations" className="text-cyan-400 hover:text-cyan-300 font-bold hover:underline">AI Powered Recommendations</Link>!
+            </p>
+          )}
         </div>
       ) : (
         <>
@@ -676,13 +682,7 @@ const PortfolioPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden col-span-2 lg:col-span-1">
-              <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Est. Annual Div</span>
-              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
-                {hideDollars ? '$***,***.**' : fmt(stats.annual_dividends)}
-              </h3>
-              <p className={`mt-1 font-bold ${hideDollars ? 'text-sm font-black text-white' : 'text-[9px] md:text-[10px] text-gray-500'}`}>{stats.dividend_yield_pct.toFixed(2)}% Yield</p>
-            </div>
+
           </div>
 
           {/* 🎉 Score Banner or Analyzing Overlay */}
@@ -803,11 +803,18 @@ const PortfolioPage: React.FC = () => {
           {analysis && (
             <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-3.5">
               <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                    🧭 Recommended Action Plan
-                  </h3>
-                  
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                  🧭 Recommended Action Plan
+                </h3>
+                
+                <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={() => setShowHowOpen(!showHowOpen)}
+                    className="flex items-center justify-center gap-1 bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all"
+                  >
+                    <Sparkles size={13} /> Show me how
+                  </button>
+
                   {analysisHistory.length > 1 && (
                     <div className="flex items-center gap-1 bg-black/40 rounded-lg p-0.5 border border-white/5">
                       <button 
@@ -832,12 +839,6 @@ const PortfolioPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={() => setShowHowOpen(!showHowOpen)}
-                  className="flex items-center gap-1 bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all"
-                >
-                  <Sparkles size={13} /> Show me how
-                </button>
               </div>
               <div className="space-y-2">
                 {analysis.action_plan && analysis.action_plan.map((act: string, idx: number) => {
