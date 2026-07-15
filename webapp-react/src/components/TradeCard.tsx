@@ -21,9 +21,10 @@ interface TradeCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onShare: () => void;
+  onTogglePrivacy?: () => void;
 }
 
-const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDollars, isExpanded, onToggleExpand, onShare }) => {
+const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDollars, isExpanded, onToggleExpand, onShare, onTogglePrivacy }) => {
   const isLong = trade.side?.toUpperCase() === 'LONG' || trade.side?.toUpperCase() === 'BUY';
   const isProfit = (trade.unrealized_pnl >= 0 || trade.pnl_raw >= 0);
   const pnlColor = isProfit ? 'text-emerald-400' : 'text-rose-400';
@@ -81,11 +82,17 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
               {isProfit ? '+' : ''}{roe?.toFixed(2)}% <span className="text-xs text-gray-500 font-normal">of {tp_pct.toFixed(0)}%</span>
             </p>
             {hideDollars ? (
-              <p className={`text-xs text-gray-500 mt-1 blur-sm opacity-70 select-none pointer-events-none`}>
+              <p 
+                onClick={(e) => { if (onTogglePrivacy) { e.stopPropagation(); onTogglePrivacy(); } }} 
+                className={`text-xs text-gray-500 mt-1 blur-sm opacity-70 select-none ${onTogglePrivacy ? 'cursor-pointer' : 'pointer-events-none'}`}
+              >
                 +***.** <span className="text-gray-500">/ +***.**</span>
               </p>
             ) : (
-              <p className={`text-xs ${pnlColor} mt-1`}>
+              <p 
+                onClick={(e) => { if (onTogglePrivacy) { e.stopPropagation(); onTogglePrivacy(); } }} 
+                className={`text-xs ${pnlColor} mt-1 ${onTogglePrivacy ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+              >
                 {isProfit ? '+' : ''}${pnlRaw?.toFixed(2)} <span className="text-gray-500">/ +${targetDollar.toFixed(2)}</span>
               </p>
             )}

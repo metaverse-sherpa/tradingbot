@@ -47,7 +47,18 @@ const analysisMessages = [
 const PortfolioPage: React.FC = () => {
   const { showToast } = useToast();
   const { user } = useAuthStore();
-  const hideDollars = user?.hide_dollars;
+  const [revealValues, setRevealValues] = useState(false);
+  const hideDollars = user?.hide_dollars && !revealValues;
+
+  const togglePrivacy = () => {
+    if (user?.hide_dollars) {
+      setRevealValues(!revealValues);
+    }
+  };
+
+  const privacyClasses = user?.hide_dollars 
+    ? (hideDollars ? 'blur-md opacity-70 select-none cursor-pointer' : 'cursor-pointer hover:opacity-80 transition-opacity') 
+    : '';
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
 
   const formatMarkdownLine = (line: string) => {
@@ -613,7 +624,7 @@ const PortfolioPage: React.FC = () => {
             {/* Card 1: Total Balance */}
             <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
               <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total Balance</span>
-              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+              <h3 onClick={togglePrivacy} className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${privacyClasses}`}>
                 {hideDollars ? '$***,***.**' : fmt(stats.total_portfolio_value || stats.market_value)}
               </h3>
               <p className="text-gray-500 text-[9px] md:text-[10px] mt-1">Positions + Cash</p>
@@ -630,7 +641,7 @@ const PortfolioPage: React.FC = () => {
                   <Edit2 size={12} />
                 </button>
               </span>
-              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+              <h3 onClick={togglePrivacy} className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${privacyClasses}`}>
                 {hideDollars ? '$***,***.**' : fmt(stats.cash_balance || 0)}
               </h3>
               <p 
@@ -644,17 +655,17 @@ const PortfolioPage: React.FC = () => {
             {/* Card 3: Holdings Value (Renamed from Market Value) */}
             <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
               <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Holdings Value</span>
-              <h3 className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+              <h3 onClick={togglePrivacy} className={`text-lg md:text-2xl font-black text-white mt-1 md:mt-2 ${privacyClasses}`}>
                 {hideDollars ? '$***,***.**' : fmt(stats.market_value)}
               </h3>
-              <p className={`text-gray-500 text-[9px] md:text-[10px] mt-1 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+              <p onClick={togglePrivacy} className={`text-gray-500 text-[9px] md:text-[10px] mt-1 ${privacyClasses}`}>
                 Invested: {hideDollars ? '$***,***.**' : fmt(stats.cost_basis)}
               </p>
             </div>
 
             <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
               <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total P/L</span>
-              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+              <h3 onClick={togglePrivacy} className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${hideDollars ? 'text-white' : (stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')} ${privacyClasses}`}>
                 {hideDollars ? '$***,***.**' : `${stats.total_pnl >= 0 ? '+' : ''}${fmt(stats.total_pnl)}`}
               </h3>
               <p className={`mt-1 font-bold ${hideDollars ? 'text-sm font-black' : 'text-[9px] md:text-[10px]'} ${stats.total_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -664,7 +675,7 @@ const PortfolioPage: React.FC = () => {
 
             <div className="bg-[#131620] border border-white/5 p-4 rounded-2xl relative overflow-hidden">
               <span className="text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider">Daily P/L</span>
-              <h3 className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (stats.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+              <h3 onClick={togglePrivacy} className={`text-lg md:text-2xl font-black mt-1 md:mt-2 ${hideDollars ? 'text-white' : (stats.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')} ${privacyClasses}`}>
                 {hideDollars ? '$***,***.**' : `${stats.daily_pnl >= 0 ? '+' : ''}${fmt(stats.daily_pnl)}`}
               </h3>
               <p className={`mt-1 font-bold ${hideDollars ? 'text-sm font-black' : 'text-[9px] md:text-[10px]'} ${stats.daily_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1124,7 +1135,7 @@ const PortfolioPage: React.FC = () => {
                       </td>
 
                       <td className="py-4 text-right">
-                        <span className={`font-bold block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (pos.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+                        <span onClick={togglePrivacy} className={`font-bold block ${hideDollars ? 'text-white' : (pos.daily_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')} ${privacyClasses}`}>
                           {hideDollars ? '$***,***.**' : `${pos.daily_pnl >= 0 ? '+' : ''}${fmt(pos.daily_pnl)}`}
                         </span>
                         <span className={`font-bold block ${hideDollars ? 'text-sm font-black' : 'text-[10px]'} ${pos.daily_change_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1133,7 +1144,7 @@ const PortfolioPage: React.FC = () => {
                       </td>
 
                       <td className="py-4 text-right">
-                        <span className={`font-bold block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : (pos.overall_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+                        <span onClick={togglePrivacy} className={`font-bold block ${hideDollars ? 'text-white' : (pos.overall_pnl >= 0 ? 'text-emerald-400' : 'text-rose-400')} ${privacyClasses}`}>
                           {hideDollars ? '$***,***.**' : `${pos.overall_pnl >= 0 ? '+' : ''}${fmt(pos.overall_pnl)}`}
                         </span>
                         <span className={`font-bold block ${hideDollars ? 'text-sm font-black' : 'text-[10px]'} ${pos.overall_pnl_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1142,15 +1153,15 @@ const PortfolioPage: React.FC = () => {
                       </td>
 
                       <td className="py-4 text-right hidden md:table-cell">
-                        <span className={`font-bold text-white block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>{hideDollars ? '$***,***.**' : fmt(pos.cost_basis)}</span>
-                        <span className={`text-[10px] text-gray-500 block ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none' : ''}`}>
+                        <span onClick={togglePrivacy} className={`font-bold text-white block cursor-pointer ${privacyClasses}`}>{hideDollars ? '$***,***.**' : fmt(pos.cost_basis)}</span>
+                        <span onClick={togglePrivacy} className={`text-[10px] text-gray-500 block cursor-pointer ${privacyClasses}`}>
                           {hideDollars ? '* @ $***.**' : `${pos.quantity.toString().slice(0, 6)} @ ${fmt(pos.avg_entry_price)}`}
                         </span>
                       </td>
 
-                      <td className={`py-4 text-right hidden md:table-cell font-bold ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : 'text-white'}`}>{hideDollars ? '$***,***.**' : fmt(pos.current_price)}</td>
+                      <td onClick={togglePrivacy} className={`py-4 text-right hidden md:table-cell font-bold text-white cursor-pointer ${privacyClasses}`}>{hideDollars ? '$***,***.**' : fmt(pos.current_price)}</td>
 
-                      <td className={`py-4 text-right font-black ${hideDollars ? 'blur-md opacity-70 select-none pointer-events-none text-white' : 'text-white'}`}>{hideDollars ? '$***,***.**' : fmt(pos.market_value)}</td>
+                      <td onClick={togglePrivacy} className={`py-4 text-right font-black text-white cursor-pointer ${privacyClasses}`}>{hideDollars ? '$***,***.**' : fmt(pos.market_value)}</td>
 
                       <td className="py-4 text-right font-bold text-gray-300 hidden lg:table-cell">
                         {pos.dividend_yield > 0 ? (

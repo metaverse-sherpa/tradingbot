@@ -10,7 +10,18 @@ import SharePnLModal from './SharePnLModal';
 const Dashboard: React.FC = () => {
   const { activeTab, setTab } = useDashboardStore();
   const { user } = useAuthStore();
-  const hideDollars = user?.hide_dollars;
+  const [revealValues, setRevealValues] = useState(false);
+  const hideDollars = user?.hide_dollars && !revealValues;
+
+  const togglePrivacy = () => {
+    if (user?.hide_dollars) {
+      setRevealValues(!revealValues);
+    }
+  };
+
+  const privacyClasses = user?.hide_dollars 
+    ? (hideDollars ? 'blur-md opacity-70 select-none cursor-pointer' : 'cursor-pointer hover:opacity-80 transition-opacity') 
+    : '';
 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -171,14 +182,14 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
           <div className="flex items-baseline gap-3 mb-2 flex-wrap">
-            <p className="text-2xl font-mono text-white">
-              {loading ? <Loader2 className="animate-spin text-gray-500 size-6" /> : hideDollars ? <span className="blur-md opacity-70 select-none pointer-events-none">$***,***.**</span> : `$${data.bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            </p>
+            <div onClick={togglePrivacy} className={`text-3xl md:text-5xl font-black mt-2 text-white ${privacyClasses}`}>
+              {loading ? <Loader2 className="animate-spin text-gray-500 size-6" /> : hideDollars ? '$***,***.**' : `$${data.bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </div>
             {!loading && (
-              <p className={`font-mono font-bold ${data.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <p onClick={togglePrivacy} className={`cursor-pointer font-mono font-bold ${data.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'} ${user?.hide_dollars ? 'hover:opacity-80 transition-opacity' : ''} ${hideDollars ? 'text-2xl md:text-3xl' : ''}`}>
                 {data.pnl >= 0 ? '+' : ''}{data.pnl_pct}% 
                 {hideDollars ? (
-                  <span className="text-sm text-gray-500 font-normal ml-1 blur-sm opacity-70 select-none pointer-events-none">(+***,***.**)</span>
+                  <span className="text-sm md:text-base text-gray-500 font-normal ml-1 blur-sm opacity-70 select-none pointer-events-none">(+***,***.**)</span>
                 ) : (
                   <span className="text-sm text-gray-500 font-normal ml-1">({data.pnl >= 0 ? '+' : ''}${(Math.abs(data.pnl) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
                 )}

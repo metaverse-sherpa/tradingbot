@@ -23,7 +23,14 @@ const TradesPage: React.FC = () => {
     }
   }, [initialCategory]);
 
-  const hideDollars = user?.hide_dollars;
+  const [revealValues, setRevealValues] = useState(false);
+  const hideDollars = user?.hide_dollars && !revealValues;
+
+  const togglePrivacy = () => {
+    if (user?.hide_dollars) {
+      setRevealValues(!revealValues);
+    }
+  };
   const [openTrades, setOpenTrades] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +148,7 @@ const TradesPage: React.FC = () => {
                 isExpanded={expandedTradeId === trade.id}
                 onToggleExpand={() => activeTab === 'active' && setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
                 onShare={() => setShareTrade({ trade, type, roe: activeTab === 'active' ? trade.roe : trade.pnl_pct || 0, pnl: activeTab === 'active' ? trade.unrealized_pnl : trade.pnl_raw || 0 })}
+                onTogglePrivacy={togglePrivacy}
               />
             );
           })}
