@@ -103,6 +103,20 @@ const Layout: React.FC = () => {
   const showAdvancedTabs = isPremium && (hasLinkedCrypto || hasLinkedStock);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  
+  const [isBannerDismissed, setIsBannerDismissed] = useState(
+    () => sessionStorage.getItem('premiumBannerDismissed') === 'true'
+  );
+
+  const handleDismissBanner = () => {
+    setIsBannerDismissed(true);
+    sessionStorage.setItem('premiumBannerDismissed', 'true');
+  };
+
+  const premiumExpiry = user?.premium_expiry || 0;
+  const now = Date.now() / 1000;
+  const daysUntilExpiry = Math.ceil((premiumExpiry - now) / 86400);
+  const showExpirationBanner = isAuthenticated && isPremium && !isBannerDismissed && daysUntilExpiry >= 0 && daysUntilExpiry <= 7;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -224,6 +238,25 @@ const Layout: React.FC = () => {
             </div>
           </footer>
         </main>
+
+        {showExpirationBanner && (
+          <div className="fixed bottom-0 left-0 right-0 md:bottom-24 md:left-1/2 md:-translate-x-1/2 md:right-auto z-40 px-4 pb-[80px] md:pb-0 pointer-events-none w-full max-w-lg">
+            <div className="bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-xl p-3 shadow-[0_0_20px_rgba(234,179,8,0.4)] flex items-center justify-between gap-4 pointer-events-auto text-black">
+              <div className="flex items-center gap-3">
+                <CrownIcon size={20} className="text-black shrink-0" />
+                <div className="text-xs sm:text-sm font-medium">
+                  Your Premium subscription expires in {daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''}. 
+                  <Link to="/premium" className="ml-1 underline font-bold hover:text-white transition-colors">
+                    Renew now
+                  </Link>
+                </div>
+              </div>
+              <button onClick={handleDismissBanner} className="text-black hover:text-white transition-colors shrink-0 p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Unified Bottom Navbar */}
         {isAuthenticated && (

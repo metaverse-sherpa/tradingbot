@@ -720,6 +720,14 @@ def init_db():
                           order_index INTEGER DEFAULT 0,
                           created_at INTEGER)''')
 
+        # 📄 Processed Payments Table
+        if "ProcessedPayments" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS ProcessedPayments
+                         (tx_hash TEXT PRIMARY KEY,
+                          user_id INTEGER,
+                          timestamp INTEGER,
+                          start_date INTEGER,
+                          end_date INTEGER)''')
 
         
         # Set default master wallet if not exists
@@ -2726,4 +2734,18 @@ def migrate_user_if_no_open_positions(chat_id, web_user_id=None):
                     c.execute("UPDATE WebUsers SET active_stock_strategy = 'None' WHERE id = ?", (web_user_id,))
             conn.commit()
 
+def is_payment_processed(tx_hash):
+    """Check if a transaction hash has already been processed."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM ProcessedPayments WHERE tx_hash = ?", (tx_hash,))
+        return c.fetchone() is not None
 
+def mark_payment_processed(tx_hash, user_id, start_date, end_date):
+    """Mark a transaction as processed and store dates."""
+    import time
+    now_ts = int(time.time())
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("INSERT OR IGNORE INTO ProcessedPayments (tx_hash, user_id, timestamp, start_date, end_date) VALUES (?, ?, ?, ?, ?)", (tx_hash, user_id, now_ts, start_date, end_date))
+        conn.commit()

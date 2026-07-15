@@ -44,8 +44,7 @@ def check_payment():
     master_wallet = os.getenv("MASTER_TREASURY_WALLET", "TUhiPWBbrJKV7cyrnSawZ7JUdLN8Qcg6u3")
     
     # Security: Do not allow using master wallet to bypass
-    super_admin_id = os.getenv("SUPER_ADMIN_ID")
-    if source_wallet == master_wallet and str(user.get("telegram_chat_id")) != super_admin_id:
+    if source_wallet == master_wallet:
         return jsonify({"message": "You cannot use the Master Treasury address as your source wallet."}), 400
 
     url = "https://apilist.tronscan.org/api/token_trc20/transfers"
@@ -66,17 +65,24 @@ def check_payment():
         required_price = max(0.1, 20.0 - credits)
         
         found = False
+        valid_tx_hash = None
         for tx in transfers:
             if tx.get('contract_address') == 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t':
                 amount = float(tx.get('quant')) / 10**6
                 if (required_price - 0.5) <= amount <= (required_price + 0.5):
-                    found = True
-                    break
+                    tx_hash = tx.get('transaction_id')
+                    if not database.is_payment_processed(tx_hash):
+                        found = True
+                        valid_tx_hash = tx_hash
+                        break
         
         if found:
             now = int(time.time())
             current_expiry = user.get("premium_expiry") or 0
-            new_expiry = max(now, current_expiry) + (30 * 86400)
+            start_date = max(now, current_expiry)
+            new_expiry = start_date + (30 * 86400)
+            
+            database.mark_payment_processed(valid_tx_hash, user["id"], start_date, new_expiry)
             
             with database.db_session() as conn:
                 c = conn.cursor()
@@ -97,7 +103,7 @@ def check_payment():
                 
             return jsonify({"message": "Payment verified! Premium activated for 30 days."}), 200
         else:
-            return jsonify({"message": "Audit completed. No recent transactions found for your source wallet. Please ensure you sent $20 USDT via TRON (TRC-20)."}), 200
+            return jsonify({"message": "Audit completed. No recent or unused transactions found for your source wallet. Please ensure you sent $20 USDT via TRON (TRC-20)."}), 200
             
     except Exception as e:
         print(f"Error checking payment: {e}")

@@ -47,8 +47,9 @@ const PremiumPage: React.FC = () => {
       showToast('Please enter your source wallet address', 'error');
       return;
     }
-    if (sourceWallet === treasuryAddress) {
+    if (sourceWallet.trim() === treasuryAddress) {
       showToast('You cannot use the Treasury address as your source wallet', 'error');
+      setSourceWallet('');
       return;
     }
     try {
@@ -75,7 +76,7 @@ const PremiumPage: React.FC = () => {
 
       showToast(res.data.message || 'Verification request submitted. Please allow up to 15 minutes for blockchain confirmation.', 'info');
     } catch (error: any) {
-      showToast(error.response?.data?.error || 'Verification failed', 'error');
+      showToast(error.response?.data?.error || 'Verification failed.  Most likely cause is your source wallet address.', 'error');
     }
   };
 
@@ -193,6 +194,10 @@ const PremiumPage: React.FC = () => {
             >
               🔎 Verify Blockchain Payment
             </button>
+
+            <div className="text-[10px] text-gray-500 text-center mt-2 px-2">
+              Payments are non-refundable. Metaverse Sherpa is not responsible for lost payments or payments sent to incorrect wallets.
+            </div>
           </div>
         </div>
       </div>
