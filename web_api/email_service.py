@@ -395,7 +395,8 @@ def get_signal_alert_html(symbol, side, strategy, entry, tp, sl, resolution=None
 def get_combined_daily_summary_html(is_premium=False,
                                      has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
                                      has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None,
-                                     stock_opened=None, stock_closed=None, crypto_opened=None, crypto_closed=None):
+                                     stock_opened=None, stock_closed=None, crypto_opened=None, crypto_closed=None,
+                                     recent_recommendations=None):
     """
     Generates premium/free tailored daily combined session summary HTML.
     """
@@ -639,6 +640,40 @@ def get_combined_daily_summary_html(is_premium=False,
     content += render_section("Stock Markets", "📈", "#3cd7ff", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data, stock_opened, stock_closed)
     content += render_section("Crypto Markets", "₿", "#D500F9", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data, crypto_opened, crypto_closed)
     
+    recommendations_section = ""
+    if is_premium and recent_recommendations:
+        recs_content = ""
+        for rec in recent_recommendations:
+            cat = rec.get("category", "stock").lower()
+            sym = rec.get("symbol", "")
+            icon = "📈" if cat == "stock" else "🪙"
+            name = rec.get("name") or sym
+            rationale = rec.get("rationale", "")
+            metrics = rec.get("metrics_summary", "")
+            tp = rec.get("target_price", 0)
+            sl = rec.get("stop_loss", 0)
+            growth = rec.get("expected_growth_pct", 0)
+            timeframe = rec.get("estimated_timeframe", "")
+            
+            recs_content += f"""
+            <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; padding: 15px; margin-bottom: 15px; text-align: left;">
+                <div style="font-size: 14px; font-weight: bold; color: #3cd7ff; margin-bottom: 5px;">{icon} {sym} <span style="color:#8892b0; font-size: 12px; font-weight:normal;">({name})</span></div>
+                <div style="font-size: 12px; color: #b3a9c9; margin-bottom: 5px;">{metrics}</div>
+                <div style="font-size: 12px; color: #00C853; font-weight: bold; margin-bottom: 8px;">Target: ${tp} (Stop Loss: ${sl}) | +{growth}% in {timeframe}</div>
+                <div style="font-size: 11px; color: #8892b0; line-height: 1.4;"><i>{rationale}</i></div>
+            </div>
+            """
+        
+        if recs_content:
+            recommendations_section = f"""
+            <h2 style="font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; color: #FFD700; margin: 30px 0 20px 0; border-bottom: 1px solid #2a3546; padding-bottom: 10px;">💡 Fresh Investment Ideas</h2>
+            <p style="font-size: 13px; color: #8892b0; margin: 0 0 15px 0;">Top AI-selected buys tailored to your profile generated in the last 24 hours.</p>
+            {recs_content}
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="https://bot.metaversesherpa.io/recommendations" style="display: inline-block; background: #1a222e; border: 1px solid #FFD700; color: #FFD700 !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">View Charts & Track Recommendations</a>
+            </div>
+            """
+    
     upsell_section = ""
     if not is_premium:
         upsell_section = f"""
@@ -673,6 +708,7 @@ def get_combined_daily_summary_html(is_premium=False,
                 {header_section}
                 <div style="padding: 30px;">
                     {content}
+                    {recommendations_section}
                     {upsell_section}
                     <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
                 </div>
@@ -692,7 +728,8 @@ def get_combined_daily_summary_html(is_premium=False,
 def get_combined_daily_summary_telegram(is_premium=False,
                                      has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
                                      has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None,
-                                     stock_opened=None, stock_closed=None, crypto_opened=None, crypto_closed=None):
+                                     stock_opened=None, stock_closed=None, crypto_opened=None, crypto_closed=None,
+                                     recent_recommendations=None):
     lines = ["🏔️ <b>Daily Digest</b>\nMetaverse Sherpa Daily Performance Summary\n"]
     
     def render_section(title, icon, has_exchange, portfolio_data, open_trades, hypothetical_data, global_opened, global_closed):
@@ -787,6 +824,22 @@ def get_combined_daily_summary_telegram(is_premium=False,
     lines.extend(render_section("Stock Markets", "📈", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data, stock_opened, stock_closed))
     lines.extend(render_section("Crypto Markets", "₿", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data, crypto_opened, crypto_closed))
 
+    if is_premium and recent_recommendations:
+        lines.append("\n💡 <b>Fresh Investment Ideas</b>")
+        lines.append("Top AI-selected buys tailored to your profile generated in the last 24 hours.\n")
+        for rec in recent_recommendations:
+            cat = rec.get("category", "stock").lower()
+            sym = rec.get("symbol", "")
+            icon = "📈" if cat == "stock" else "🪙"
+            name = rec.get("name") or sym
+            rationale = rec.get("rationale", "")
+            tp = rec.get("target_price", 0)
+            sl = rec.get("stop_loss", 0)
+            growth = rec.get("expected_growth_pct", 0)
+            timeframe = rec.get("estimated_timeframe", "")
+            lines.append(f"{icon} <b>{sym}</b> ({name})\nTarget: ${tp} (SL: ${sl}) | +{growth}% in {timeframe}\n<i>{rationale}</i>\n")
+        lines.append("<a href='https://bot.metaversesherpa.io/recommendations'>View Charts & Track Recommendations</a>")
+
     if not is_premium:
         lines.append("\n🚀 <b>UNLOCK FULL AUTOPILOT</b>\nUpgrade to <b>Premium Access</b> today to unlock automated fractional execution and see exact entry/SL/TP parameters in real time.\n<a href='https://bot.metaversesherpa.io/premium'>Upgrade to Premium Now</a>")
 
@@ -797,7 +850,8 @@ def get_combined_daily_summary_telegram(is_premium=False,
 
 def get_combined_weekly_summary_html(is_premium=False, 
                                      has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
-                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None):
+                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None,
+                                     recent_recommendations=None):
     """
     Generates combined weekly stock & crypto performance update HTML.
     """
@@ -971,6 +1025,40 @@ def get_combined_weekly_summary_html(is_premium=False,
     content += render_section("Stock Markets", "📈", "#3cd7ff", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data)
     content += render_section("Crypto Markets", "₿", "#D500F9", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data)
     
+    recommendations_section = ""
+    if is_premium and recent_recommendations:
+        recs_content = ""
+        for rec in recent_recommendations:
+            cat = rec.get("category", "stock").lower()
+            sym = rec.get("symbol", "")
+            icon = "📈" if cat == "stock" else "🪙"
+            name = rec.get("name") or sym
+            rationale = rec.get("rationale", "")
+            metrics = rec.get("metrics_summary", "")
+            tp = rec.get("target_price", 0)
+            sl = rec.get("stop_loss", 0)
+            growth = rec.get("expected_growth_pct", 0)
+            timeframe = rec.get("estimated_timeframe", "")
+            
+            recs_content += f"""
+            <div style="background-color: #1a222e; border-radius: 8px; border: 1px solid #2a3546; padding: 15px; margin-bottom: 15px; text-align: left;">
+                <div style="font-size: 14px; font-weight: bold; color: #3cd7ff; margin-bottom: 5px;">{icon} {sym} <span style="color:#8892b0; font-size: 12px; font-weight:normal;">({name})</span></div>
+                <div style="font-size: 12px; color: #b3a9c9; margin-bottom: 5px;">{metrics}</div>
+                <div style="font-size: 12px; color: #00C853; font-weight: bold; margin-bottom: 8px;">Target: ${tp} (Stop Loss: ${sl}) | +{growth}% in {timeframe}</div>
+                <div style="font-size: 11px; color: #8892b0; line-height: 1.4;"><i>{rationale}</i></div>
+            </div>
+            """
+        
+        if recs_content:
+            recommendations_section = f"""
+            <h2 style="font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; color: #FFD700; margin: 30px 0 20px 0; border-bottom: 1px solid #2a3546; padding-bottom: 10px;">💡 Fresh Investment Ideas</h2>
+            <p style="font-size: 13px; color: #8892b0; margin: 0 0 15px 0;">Top AI-selected buys tailored to your profile generated in the last 7 days.</p>
+            {recs_content}
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="https://bot.metaversesherpa.io/recommendations" style="display: inline-block; background: #1a222e; border: 1px solid #FFD700; color: #FFD700 !important; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">View Charts & Track Recommendations</a>
+            </div>
+            """
+    
     upsell_section = ""
     if not is_premium:
         upsell_section = f"""
@@ -1005,6 +1093,7 @@ def get_combined_weekly_summary_html(is_premium=False,
                 {header_section}
                 <div style="padding: 30px;">
                     {content}
+                    {recommendations_section}
                     {upsell_section}
                     <a href="https://bot.metaversesherpa.io" style="display: block; width: 220px; margin: 30px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #D500F9 100%); color: #000000 !important; text-decoration: none; font-weight: bold; padding: 12px 24px; border-radius: 8px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Access Trading Console</a>
                 </div>
@@ -1035,7 +1124,8 @@ def _chunk_telegram_message(text, limit=4000):
     return chunks
 def get_combined_weekly_summary_telegram(is_premium=False, 
                                      has_stock_exchange=False, stock_portfolio_data=None, stock_open_trades=None, stock_hypothetical_data=None,
-                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None):
+                                     has_crypto_exchange=False, crypto_portfolio_data=None, crypto_open_trades=None, crypto_hypothetical_data=None,
+                                     recent_recommendations=None):
     lines = ["🏔️ <b>Weekly Update</b>\nMetaverse Sherpa Combined Weekly Performance Summary\n"]
     
     def render_section(title, icon, has_exchange, portfolio_data, open_trades, hypothetical_data):
@@ -1087,6 +1177,22 @@ def get_combined_weekly_summary_telegram(is_premium=False,
 
     lines.extend(render_section("Stock Markets", "📈", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data))
     lines.extend(render_section("Crypto Markets", "₿", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data))
+
+    if is_premium and recent_recommendations:
+        lines.append("\n💡 <b>Fresh Investment Ideas</b>")
+        lines.append("Top AI-selected buys tailored to your profile generated in the last 7 days.\n")
+        for rec in recent_recommendations:
+            cat = rec.get("category", "stock").lower()
+            sym = rec.get("symbol", "")
+            icon = "📈" if cat == "stock" else "🪙"
+            name = rec.get("name") or sym
+            rationale = rec.get("rationale", "")
+            tp = rec.get("target_price", 0)
+            sl = rec.get("stop_loss", 0)
+            growth = rec.get("expected_growth_pct", 0)
+            timeframe = rec.get("estimated_timeframe", "")
+            lines.append(f"{icon} <b>{sym}</b> ({name})\nTarget: ${tp} (SL: ${sl}) | +{growth}% in {timeframe}\n<i>{rationale}</i>\n")
+        lines.append("<a href='https://bot.metaversesherpa.io/recommendations'>View Charts & Track Recommendations</a>")
 
     if not is_premium:
         lines.append("\n🚀 <b>UNLOCK FULL AUTOPILOT</b>\nStop leaving money on the table. Upgrade to <b>Premium Access</b> today to turn those hypothetical returns into reality with automated execution.\n<a href='https://bot.metaversesherpa.io/#/premium'>Upgrade to Premium Now</a>")

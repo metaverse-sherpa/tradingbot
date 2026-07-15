@@ -517,6 +517,61 @@ async def fetch_premium_open_trades(tg_user, asset_class, stock_prices_cache=Non
     return open_positions
 
 
+async def daily_recommendations_generator_engine(application):
+    """
+    Daily loop to pre-generate AI recommendations for all 9 combinations of Risk Profile & Investment Goal.
+    Runs once a day at 01:00 AM EST.
+    """
+    logger.debug("⏳ Starting Daily Recommendations Generator Engine...")
+    
+    risk_profiles = ["Conservative", "Moderate", "Aggressive"]
+    investment_goals = ["Income", "Growth", "Speculation"]
+    
+    while True:
+        try:
+            tz = ZoneInfo('US/Eastern')
+            now = datetime.now(tz)
+            # Find next target: 01:00 AM EST
+            target = now.replace(hour=1, minute=0, second=0, microsecond=0)
+            if now >= target:
+                target += timedelta(days=1)
+                
+            wait_time = (target - now).total_seconds()
+            logger.debug(f"Daily Recommendations Generator Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            await asyncio.sleep(wait_time)
+            
+            logger.debug("🤖 Generating daily AI recommendations for all combinations...")
+            
+            from web_api.app import app
+            from web_api.routes_portfolio import generate_and_cache_recommendations
+            
+            with app.app_context():
+                for risk in risk_profiles:
+                    for goal in investment_goals:
+                        try:
+                            logger.debug(f"Generating recommendations for {risk} & {goal}...")
+                            result = generate_and_cache_recommendations(
+                                user_id=None, 
+                                risk_profile=risk, 
+                                investment_goal=goal, 
+                                force_regenerate=True, 
+                                is_admin=True
+                            )
+                            logger.debug(f"Result for {risk} & {goal}: Status {result.get('status_code')}")
+                        except Exception as e:
+                            logger.error(f"Error generating recommendations for {risk} & {goal}: {e}")
+                        
+                        await asyncio.sleep(10) # 10 second delay between combinations
+                        
+            logger.info("✅ Daily AI recommendations generated successfully.")
+            
+        except asyncio.CancelledError:
+            logger.debug("⏳ Daily Recommendations Generator Engine cancelled.")
+            break
+        except Exception as e:
+            logger.error(f"⏳ Daily Recommendations Generator Engine error: {e}")
+            await asyncio.sleep(3600)
+
 async def daily_combined_email_engine(application):
     """
     Daily loop to compile and email daily summaries of stock and crypto trading signals.
@@ -738,6 +793,12 @@ async def daily_combined_email_engine(application):
             stock_prices_float_cache = {k: v["daily"] for k, v in live_prices_stock.items()}
             crypto_prices_float_cache = {k: v["daily"] for k, v in live_prices_crypto.items()}
             
+            with database.db_session() as conn:
+                conn.row_factory = sqlite3.Row
+                rc = conn.cursor()
+                rc.execute("SELECT * FROM AIRecommendations WHERE created_at >= ?", (int(time.time() * 1000) - 24*60*60*1000,))
+                all_recent_recs = [dict(row) for row in rc.fetchall()]
+            
             daily_mail_users = [ru for ru in daily_users if ru.get("wants_daily_email")]
             if daily_mail_users:
                 subject = f"🏔️ Metaverse Sherpa Daily Digest - {datetime.now(tz).strftime('%Y-%m-%d')}"
@@ -751,6 +812,7 @@ async def daily_combined_email_engine(application):
                         stock_open_trades = None
                         crypto_portfolio_data = None
                         crypto_open_trades = None
+                        recent_recs = []
                         
                         if is_prem:
                             from database import get_user
@@ -763,13 +825,18 @@ async def daily_combined_email_engine(application):
                                 if has_crypto_exch:
                                     crypto_portfolio_data = await fetch_daily_crypto_stats(tg_user)
                                     crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto", stock_prices_float_cache, crypto_prices_float_cache)
+                                
+                                risk_profile = tg_user.get("risk_profile", "Moderate")
+                                inv_goal = tg_user.get("investment_goal", "Growth")
+                                recent_recs = [r for r in all_recent_recs if r["risk_profile"] == risk_profile and r["investment_goal"] == inv_goal]
                         
                         html_content = get_combined_daily_summary_html(
                             is_premium=is_prem,
                             has_stock_exchange=has_stock_exch, stock_portfolio_data=stock_portfolio_data, stock_open_trades=stock_open_trades, stock_hypothetical_data=stock_hypothetical_data,
                             has_crypto_exchange=has_crypto_exch, crypto_portfolio_data=crypto_portfolio_data, crypto_open_trades=crypto_open_trades, crypto_hypothetical_data=crypto_hypothetical_data,
                             stock_opened=stock_opened, stock_closed=stock_closed,
-                            crypto_opened=crypto_opened, crypto_closed=crypto_closed
+                            crypto_opened=crypto_opened, crypto_closed=crypto_closed,
+                            recent_recommendations=recent_recs
                         )
                         send_alert_email(ru["email"], subject, html_content)
                 logger.info(f"✅ Daily combined summary emails dispatched to {len(daily_mail_users)} subscribers.")
@@ -785,6 +852,7 @@ async def daily_combined_email_engine(application):
                     stock_open_trades = None
                     crypto_portfolio_data = None
                     crypto_open_trades = None
+                    recent_recs = []
                     
                     if is_prem:
                         from database import get_user
@@ -797,13 +865,18 @@ async def daily_combined_email_engine(application):
                             if has_crypto_exch:
                                 crypto_portfolio_data = await fetch_daily_crypto_stats(tg_user)
                                 crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto", stock_prices_float_cache, crypto_prices_float_cache)
+                                
+                            risk_profile = tg_user.get("risk_profile", "Moderate")
+                            inv_goal = tg_user.get("investment_goal", "Growth")
+                            recent_recs = [r for r in all_recent_recs if r["risk_profile"] == risk_profile and r["investment_goal"] == inv_goal]
                     
                     tg_chunks = get_combined_daily_summary_telegram(
                         is_premium=is_prem,
                         has_stock_exchange=has_stock_exch, stock_portfolio_data=stock_portfolio_data, stock_open_trades=stock_open_trades, stock_hypothetical_data=stock_hypothetical_data,
                         has_crypto_exchange=has_crypto_exch, crypto_portfolio_data=crypto_portfolio_data, crypto_open_trades=crypto_open_trades, crypto_hypothetical_data=crypto_hypothetical_data,
                         stock_opened=stock_opened, stock_closed=stock_closed,
-                        crypto_opened=crypto_opened, crypto_closed=crypto_closed
+                        crypto_opened=crypto_opened, crypto_closed=crypto_closed,
+                        recent_recommendations=recent_recs
                     )
                     for chunk in tg_chunks:
                         try:
@@ -873,6 +946,15 @@ async def weekly_combined_email_engine(application):
             except Exception as e:
                 logger.error(f"Error pre-fetching crypto prices: {e}")
                 
+            try:
+                with database.db_session() as conn:
+                    conn.row_factory = sqlite3.Row
+                    rc = conn.cursor()
+                    rc.execute("SELECT * FROM AIRecommendations WHERE created_at >= ?", (int(time.time() * 1000) - 7*24*60*60*1000,))
+                    all_recent_recs = [dict(row) for row in rc.fetchall()]
+            except Exception as e:
+                logger.error(f"Error fetching weekly recommendations: {e}")
+                all_recent_recs = []
             
             for ru in weekly_users:
                 is_prem = ru.get("is_premium_user", False)
@@ -883,6 +965,7 @@ async def weekly_combined_email_engine(application):
                 stock_open_trades = None
                 crypto_portfolio_data = None
                 crypto_open_trades = None
+                recent_recs = []
                 
                 if is_prem:
                     from database import get_user
@@ -896,6 +979,10 @@ async def weekly_combined_email_engine(application):
                             crypto_portfolio_data = await fetch_premium_crypto_stats(tg_user)
                             crypto_open_trades = await fetch_premium_open_trades(tg_user, "crypto", stock_prices_cache, crypto_prices_cache)
                         
+                        risk_profile = tg_user.get("risk_profile", "Moderate")
+                        inv_goal = tg_user.get("investment_goal", "Growth")
+                        recent_recs = [r for r in all_recent_recs if r["risk_profile"] == risk_profile and r["investment_goal"] == inv_goal]
+                        
                 if ru.get("email"):
                     subject = f"🏔️ Metaverse Sherpa Weekly Summary - {datetime.now(tz).strftime('%Y-%m-%d')}"
                     html_content = get_combined_weekly_summary_html(
@@ -907,7 +994,8 @@ async def weekly_combined_email_engine(application):
                         has_crypto_exchange=has_crypto_exch,
                         crypto_portfolio_data=crypto_portfolio_data,
                         crypto_open_trades=crypto_open_trades,
-                        crypto_hypothetical_data=crypto_hypothetical_data
+                        crypto_hypothetical_data=crypto_hypothetical_data,
+                        recent_recommendations=recent_recs
                     )
                     send_alert_email(ru["email"], subject, html_content)
                     
@@ -921,7 +1009,8 @@ async def weekly_combined_email_engine(application):
                         has_crypto_exchange=has_crypto_exch,
                         crypto_portfolio_data=crypto_portfolio_data,
                         crypto_open_trades=crypto_open_trades,
-                        crypto_hypothetical_data=crypto_hypothetical_data
+                        crypto_hypothetical_data=crypto_hypothetical_data,
+                        recent_recommendations=recent_recs
                     )
                     for chunk in tg_chunks:
                         try:

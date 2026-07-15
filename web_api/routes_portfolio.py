@@ -1249,13 +1249,7 @@ def check_action_plan_item(analysis_id):
 @portfolio_bp.route('/api/portfolio/good-buys', methods=['POST'])
 @require_auth
 @require_premium
-def good_buys():
-    user_id = g.user["id"]
-    data = request.json or {}
-    risk_profile = data.get("risk_profile") or g.user.get("risk_profile") or "Moderate"
-    investment_goal = data.get("investment_goal") or g.user.get("investment_goal") or "Growth"
-    force_regenerate = data.get("force_regenerate", False)
-
+def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, force_regenerate=False, is_admin=False):
     cache_key = f"good_buys_{risk_profile}_{investment_goal}"
     
     cached_data_str = get_config(cache_key)
@@ -1270,20 +1264,20 @@ def good_buys():
             pass
 
     # If force_regenerate is requested but it was already generated in the last 24 hours
-    if force_regenerate and not is_user_admin(g.user):
+    if force_regenerate and not is_admin:
         if time.time() - cached_timestamp < 86400:
-            return jsonify({"error": f"This list was recently generated in the last 24 hours for {risk_profile} & {investment_goal}."}), 429
+            return {"error": f"This list was recently generated in the last 24 hours for {risk_profile} & {investment_goal}.", "status_code": 429}
 
     # 1. First Pass: Check Cache (No Lock)
     if not force_regenerate and cached_recommendations:
         if time.time() - cached_timestamp < 86400:
-            return jsonify(cached_recommendations), 200
+            return {"recommendations": cached_recommendations, "status_code": 200}
 
     # 2. Acquire Lock for this specific combination
     lock = _GOOD_BUYS_LOCKS[cache_key]
     acquired = lock.acquire(blocking=False)
     if not acquired:
-        return jsonify({"error": f"An analysis is currently in progress for {risk_profile} & {investment_goal}. Please wait a moment."}), 429
+        return {"error": f"An analysis is currently in progress for {risk_profile} & {investment_goal}. Please wait a moment.", "status_code": 429}
 
     try:
         # 3. Double-Check Cache
@@ -1294,31 +1288,27 @@ def good_buys():
                     cached_data = json.loads(cached_data_str)
                     timestamp = cached_data.get("timestamp", 0)
                     if time.time() - timestamp < 86400:
-                        return jsonify(cached_data["recommendations"]), 200
+                        return {"recommendations": cached_data["recommendations"], "status_code": 200}
                 except Exception:
                     pass
 
         # 4. Generate New Recommendations
-        # Fetch latest analysis to append if applicable
-        with db_session() as conn:
-            c = conn.cursor()
-            c.execute('SELECT id, analysis_text, timestamp FROM PortfolioAnalysisHistory WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1', (user_id,))
-            last_analysis = c.fetchone()
-
         analysis_id = None
         analysis_data = {}
-        if last_analysis:
-            analysis_id = last_analysis[0]
-            try:
-                analysis_data = json.loads(last_analysis[1])
-            except Exception:
-                pass
+        if user_id:
+            with db_session() as conn:
+                c = conn.cursor()
+                c.execute('SELECT id, analysis_text, timestamp FROM PortfolioAnalysisHistory WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1', (user_id,))
+                last_analysis = c.fetchone()
 
-        if "good_buys" in analysis_data and not is_user_admin(g.user) and not force_regenerate:
-             # This prevents abuse of forcing generation by just clicking the button.
-             # Wait, if force_regenerate is True, they can bypass.
-             # But let's restrict force_regenerate to admins or something?
-             # The user asked to show "Recommended Buys" even without an analysis.
+            if last_analysis:
+                analysis_id = last_analysis[0]
+                try:
+                    analysis_data = json.loads(last_analysis[1])
+                except Exception:
+                    pass
+
+        if "good_buys" in analysis_data and not is_admin and not force_regenerate:
              pass 
 
         # Build the market research brief from cached data
@@ -1468,11 +1458,17 @@ def good_buys():
                     existing = c.fetchone()
                     
                     if not existing:
+                        rec_name = rec.get('name', sym)
+                        expected_growth_pct = rec.get('expected_growth_pct', 0)
+                        estimated_timeframe = rec.get('estimated_timeframe', '')
+                        rationale = rec.get('rationale', '')
+                        metrics_summary = rec.get('metrics_summary', '')
+                        
                         c.execute('''
                             INSERT INTO AIRecommendations 
-                            (symbol, category, risk_profile, investment_goal, entry_price, current_price, target_price, stop_loss, status, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
-                        ''', (sym, cat, risk_profile, investment_goal, entry_price, entry_price, target_price, stop_loss, now_ts))
+                            (symbol, name, category, risk_profile, investment_goal, entry_price, current_price, target_price, stop_loss, expected_growth_pct, estimated_timeframe, rationale, metrics_summary, status, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+                        ''', (sym, rec_name, cat, risk_profile, investment_goal, entry_price, entry_price, target_price, stop_loss, expected_growth_pct, estimated_timeframe, rationale, metrics_summary, now_ts))
                 conn.commit()
 
             # Build markdown for the Detailed Implementation Plan
@@ -1512,11 +1508,32 @@ def good_buys():
                     ''', (json.dumps(analysis_data), analysis_id))
                     conn.commit()
 
-            return jsonify(recommendations), 200
+            return {"recommendations": recommendations, "status_code": 200}
         except Exception as e:
-            return jsonify({"error": f"Failed to generate recommendations: {str(e)}"}), 500
+            return {"error": f"Failed to generate recommendations: {str(e)}", "status_code": 500}
     finally:
         lock.release()
+
+@portfolio_bp.route('/api/portfolio/good-buys', methods=['POST'])
+@require_auth
+@require_premium
+def good_buys():
+    user_id = g.user["id"]
+    data = request.json or {}
+    risk_profile = data.get("risk_profile") or g.user.get("risk_profile") or "Moderate"
+    investment_goal = data.get("investment_goal") or g.user.get("investment_goal") or "Growth"
+    force_regenerate = data.get("force_regenerate", False)
+
+    result = generate_and_cache_recommendations(
+        user_id=user_id,
+        risk_profile=risk_profile,
+        investment_goal=investment_goal,
+        force_regenerate=force_regenerate,
+        is_admin=is_user_admin(g.user)
+    )
+    
+    status_code = result.pop("status_code", 200)
+    return jsonify(result), status_code
 
 
 # --- 📰 Yahoo Finance News Sentiment ---

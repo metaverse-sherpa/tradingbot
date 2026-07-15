@@ -966,6 +966,7 @@ def init_db():
                 c.execute('''CREATE TABLE IF NOT EXISTS AIRecommendations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     symbol TEXT NOT NULL,
+                    name TEXT,
                     category TEXT NOT NULL,
                     risk_profile TEXT NOT NULL,
                     investment_goal TEXT NOT NULL,
@@ -973,6 +974,10 @@ def init_db():
                     current_price REAL NOT NULL,
                     target_price REAL NOT NULL,
                     stop_loss REAL NOT NULL,
+                    expected_growth_pct REAL,
+                    estimated_timeframe TEXT,
+                    rationale TEXT,
+                    metrics_summary TEXT,
                     status TEXT DEFAULT 'active',
                     created_at INTEGER NOT NULL,
                     closed_at INTEGER
@@ -982,6 +987,29 @@ def init_db():
                 conn.rollback()
                 import logging
                 logging.getLogger(__name__).error(f"Failed to create AIRecommendations table: {e}")
+        else:
+            # Migration to add missing columns to existing AIRecommendations table
+            try:
+                c.execute("PRAGMA table_info(AIRecommendations)")
+                columns = [col[1] for col in c.fetchall()]
+                
+                missing_columns = {
+                    "name": "TEXT",
+                    "expected_growth_pct": "REAL",
+                    "estimated_timeframe": "TEXT",
+                    "rationale": "TEXT",
+                    "metrics_summary": "TEXT"
+                }
+                
+                for col_name, col_type in missing_columns.items():
+                    if col_name not in columns:
+                        c.execute(f"ALTER TABLE AIRecommendations ADD COLUMN {col_name} {col_type}")
+                
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                import logging
+                logging.getLogger(__name__).error(f"Failed to migrate AIRecommendations table: {e}")
 
 
 
