@@ -7,7 +7,7 @@ import {
   RefreshCw, X, Wallet,
   UploadCloud, Zap, ArrowUp, ArrowDown,
   Landmark, Coins, ChevronLeft, ChevronRight, Check,
-  AlertTriangle, ChevronDown
+  AlertTriangle
 } from 'lucide-react';
 import api from '../lib/api';
 
