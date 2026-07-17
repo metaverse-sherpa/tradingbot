@@ -1,0 +1,39 @@
+# Metaversesherpa AI Trading Platform
+
+> Metaversesherpa is an automated algorithmic trading platform designed for both traditional equities and cryptocurrencies, featuring AI-driven portfolio diagnostic tools.
+
+## Core Features
+1. **Automated Trade Execution**: Hands-free bots executing proprietary quantitative strategies via API.
+2. **AI Portfolio Auditing**: Gemini AI-powered diagnostic engine that evaluates static portfolios, provides health scores, and recommends actionable reallocation plans.
+
+## Proprietary Strategies
+
+### Valkyrie Elite Scalper
+- **Asset Class**: Cryptocurrency
+- **Philosophy**: Targets high-integrity trend continuation pullbacks on high-volume assets using Bollinger Bands, volatility squeeze, and ADX.
+- **Backtest (3 Years)**: 58.4% Win Rate, 4.12 Sharpe Ratio, -19.5% Maximum Drawdown.
+- **Frequency**: High-frequency scalping.
+
+### Sherpa Velocity Pullback
+- **Asset Class**: US Equities
+- **Philosophy**: Captures short-term oversold pullback cycles on megacap US equities during robust uptrends.
+- **Backtest (5 Years)**: 68.4% Win Rate, 2.14 Sharpe Ratio, -22.7% Maximum Drawdown.
+- **Frequency**: Daily swing trading.
+
+## Broker & Exchange Integrations
+- **Stocks/Equities**: Alpaca
+- **Cryptocurrency**: Binance, Coinbase, Blofin, Bitget
+
+## Pricing
+- **Standard Tier**: Free. Includes portfolio diagnostics and basic tracking (read-only).
+- **Premium Tier**: $20.00 USD (paid via TRON USDT). Unlocks full automated trade execution, live algorithmic signals, and API broker integration.
+
+## Optional
+
+[Home Page](/)
+[Valkyrie Elite Strategy](/strategies/valkyrie-elite)
+[Sherpa Velocity Strategy](/strategies/sherpa-velocity)
+[Premium Upgrades](/premium)
+
+## Legal Disclaimer
+Trading stocks, cryptocurrencies, and other financial instruments involves a high degree of risk and may not be suitable for all investors. Past performance of any trading system or methodology is not necessarily indicative of future results.

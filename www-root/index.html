@@ -27,92 +27,22 @@
     <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
     
-    <!-- Tailwind CSS (with plugins) -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-        try {
-            tailwind.config = {
-                darkMode: "class",
-                theme: {
-                    extend: {
-                        "colors": {
-                            "primary": "#ffffff",
-                            "on-primary-container": "#7d7e82",
-                            "outline-variant": "#45474a",
-                            "on-error-container": "#ffdad6",
-                            "primary-fixed-dim": "#c6c6ca",
-                            "surface-container-lowest": "#0f131f",
-                            "on-primary": "#2f3034",
-                            "primary-fixed": "#e2e2e6",
-                            "outline": "#8f9094",
-                            "surface-container-highest": "#353437",
-                            "secondary-fixed-dim": "#e9c349",
-                            "surface-dim": "#131316",
-                            "tertiary-fixed-dim": "#68dba9",
-                            "on-secondary-fixed-variant": "#574500",
-                            "on-tertiary": "#003825",
-                            "surface-container-high": "#2a2a2d",
-                            "error-container": "#93000a",
-                            "on-secondary": "#3c2f00",
-                            "inverse-surface": "#e4e1e5",
-                            "on-background": "#e4e1e5",
-                            "on-surface": "#e4e1e5",
-                            "on-primary-fixed-variant": "#45474a",
-                            "on-secondary-container": "#342800",
-                            "inverse-primary": "#5d5e62",
-                            "secondary-container": "#af8d11",
-                            "background": "#0f131f",
-                            "on-tertiary-container": "#009065",
-                            "surface-bright": "#39393c",
-                            "tertiary": "#0099ff",
-                            "surface-tint": "#c6c6ca",
-                            "primary-container": "#121417",
-                            "inverse-on-surface": "#303033",
-                            "on-surface-variant": "#c6c6ca",
-                            "on-primary-fixed": "#1a1c1f",
-                            "on-tertiary-fixed": "#002114",
-                            "on-tertiary-fixed-variant": "#005137",
-                            "secondary-fixed": "#ffe088",
-                            "tertiary-fixed": "#85f8c4",
-                            "surface": "#131620",
-                            "on-secondary-fixed": "#241a00",
-                            "error": "#ffb4ab",
-                            "surface-container-low": "#1b1b1e",
-                            "surface-variant": "#1f2028",
-                            "secondary": "#3cd7ff",
-                            "surface-container": "#1f1f22",
-                            "tertiary-container": "#00180e",
-                            "on-error": "#690005"
-                        },
-                        "borderRadius": {
-                            "DEFAULT": "0.125rem",
-                            "lg": "0.25rem",
-                            "xl": "0.5rem",
-                            "full": "0.75rem"
-                        },
-                        "spacing": {
-                            "margin-desktop": "64px",
-                            "margin-mobile": "20px",
-                            "gutter": "24px",
-                            "unit": "4px",
-                            "container-max": "1440px"
-                        },
-                        
-                        "fontSize": {
-                            "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
-                            "data-display": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
-                            "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
-                            "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
-                            "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
-                            "data-signal": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "400" }],
-                            "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700" }],
-                            "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
-                        }
-                    }
-                }
-            };
-        } catch (_e) {}
+    <!-- Google Tag Manager (Delayed) -->
+    <script>
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-MB9BCQSV');
+        }, 1000);
+      });
     </script>
+    <!-- End Google Tag Manager -->
+    
+    <!-- Tailwind CSS (compiled) -->
+    <link href="css/tailwind.css" rel="stylesheet">
 
     <!-- Schema.org JSON-LD Structured Data for AI & Search Crawlers -->
     <script type="application/ld+json">
@@ -218,6 +148,10 @@
     </style>
 </head>
 <body class="bg-background text-on-background antialiased min-h-screen flex flex-col relative overflow-x-hidden">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MB9BCQSV"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
 
     <!-- Header Navigation -->
     <nav class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface-container-lowest/80 backdrop-blur-md border-b border-outline-variant/20">
@@ -473,7 +407,7 @@
                             </li>
                         </ul>
                     </div>
-                    <a href="https://bot.metaversesherpa.io" class="w-full py-4 border border-outline-variant/30 text-center font-label-caps text-label-caps hover:bg-surface-container-high transition-colors block uppercase tracking-wider" target="_blank">Start Free</a>
+                    <a href="https://bot.metaversesherpa.io" class="w-full py-4 border border-outline-variant/30 text-center font-label-caps text-label-caps hover:bg-surface-container-high transition-colors block uppercase tracking-wider text-primary" target="_blank">Start Free</a>
                 </div>
 
                 <!-- Premium Plan -->
@@ -595,17 +529,17 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
                             <div class="flex flex-col gap-2">
-                                <label class="font-label-caps text-xs text-on-surface-variant">Your Name</label>
-                                <input class="input-terminal font-data-signal text-sm p-3 w-full rounded" name="name" placeholder="John Doe" type="text" required>
+                                <label for="name" class="font-label-caps text-xs text-on-surface-variant">Your Name</label>
+                                <input id="name" class="input-terminal font-data-signal text-sm p-3 w-full rounded" name="name" placeholder="John Doe" type="text" required>
                             </div>
                             <div class="flex flex-col gap-2">
-                                <label class="font-label-caps text-xs text-on-surface-variant">Email Address</label>
-                                <input class="input-terminal font-data-signal text-sm p-3 w-full rounded" name="email" placeholder="you@example.com" type="email" required>
+                                <label for="email" class="font-label-caps text-xs text-on-surface-variant">Email Address</label>
+                                <input id="email" class="input-terminal font-data-signal text-sm p-3 w-full rounded" name="email" placeholder="you@example.com" type="email" required>
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <label class="font-label-caps text-xs text-on-surface-variant">Who are you representing?</label>
-                            <select name="entity" class="input-terminal font-data-signal text-sm p-3 w-full rounded appearance-none">
+                            <label for="entity" class="font-label-caps text-xs text-on-surface-variant">Who are you representing?</label>
+                            <select id="entity" name="entity" class="input-terminal font-data-signal text-sm p-3 w-full rounded appearance-none">
                                 <option>High-Net-Worth Individual</option>
                                 <option>Family Office</option>
                                 <option>Corporate Enterprise / Startup</option>
@@ -613,8 +547,8 @@
                             </select>
                         </div>
                         <div class="flex flex-col gap-2">
-                            <label class="font-label-caps text-xs text-on-surface-variant">How can we help you?</label>
-                            <textarea class="input-terminal font-data-signal text-sm p-3 w-full h-32 resize-none rounded" name="message" placeholder="Tell us about your project..." required></textarea>
+                            <label for="message" class="font-label-caps text-xs text-on-surface-variant">How can we help you?</label>
+                            <textarea id="message" class="input-terminal font-data-signal text-sm p-3 w-full h-32 resize-none rounded" name="message" placeholder="Tell us about your project..." required></textarea>
                         </div>
                         <button class="w-full bg-gradient-to-r from-secondary to-tertiary text-white font-bold rounded-xl shadow-lg hover:shadow-secondary/25 transition-all hover:-translate-y-0.5 py-4 flex justify-center items-center gap-2 text-xs uppercase tracking-wider" type="submit">
                             <span>Send Message</span>
