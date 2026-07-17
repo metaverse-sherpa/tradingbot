@@ -1,0 +1,24 @@
+# HTTP server block: Serves the static website initially, and will be updated by Certbot
+server {
+    listen 80;
+    listen [::]:80;
+    server_name metaversesherpa.io www.metaversesherpa.io;
+
+    root /home/gilesasp/tradingbot/www-root;
+    index index.html;
+
+    # Enable Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    access_log /var/log/nginx/metaversesherpa.access.log;
+    error_log /var/log/nginx/metaversesherpa.error.log;
+}
+

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metaverse Sherpa - Algorithmic Trading Platform & Consultancy</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Metaverse Sherpa is an institutional-grade algorithmic trading platform and quantitative research firm for crypto and stock markets. Founded by a Silicon Valley veteran, we offer automated trading bots, AI portfolio optimization, and nightly market scans.">
+    <meta name="keywords" content="algorithmic trading, crypto trading bot, stock trading bot, AI portfolio optimization, portfolio analyst, automated trading, Elliott Wave, John Giles">
+    <meta name="author" content="John Giles">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://metaversesherpa.io/">
+    <meta property="og:title" content="Metaverse Sherpa - Algorithmic Trading Platform">
+    <meta property="og:description" content="Automated trading bots, AI portfolio optimization, and nightly market scans. Founded by a Silicon Valley veteran.">
+    <meta property="og:image" content="https://lh3.googleusercontent.com/aida-public/AB6AXuCeFw4UWcGnXNh8L0fqCiA6LrgVT472mj1YXt-18hJvZQQXka7hFZGOvN9PJX9DNhd-7wePS7H7wBvKYUvH9UJLdsho8pyTxc-lfV5O_tt2Q_tK3F2z0aFfvNxfVAZo_486hlilr60-WEk8Y75KX-6VW2pyXqyoxIO-Rku0XuabD4fYYH_lkuJwdvt37I8yhP1HgjOYWO_SJwhJ6ZGqvcIMM6s26Zz2sF404MsrWBOYLEY-nNDW4hreZYdZYrAReeiKrXDxWLPUvZKU">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://metaversesherpa.io/">
+    <meta property="twitter:title" content="Metaverse Sherpa - Algorithmic Trading Platform">
+    <meta property="twitter:description" content="Automated trading bots, AI portfolio optimization, and nightly market scans. Founded by a Silicon Valley veteran.">
+    
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    
+    <!-- Tailwind CSS (with plugins) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        "colors": {
+                            "primary": "#ffffff",
+                            "on-primary-container": "#7d7e82",
+                            "outline-variant": "#45474a",
+                            "on-error-container": "#ffdad6",
+                            "primary-fixed-dim": "#c6c6ca",
+                            "surface-container-lowest": "#0f131f",
+                            "on-primary": "#2f3034",
+                            "primary-fixed": "#e2e2e6",
+                            "outline": "#8f9094",
+                            "surface-container-highest": "#353437",
+                            "secondary-fixed-dim": "#e9c349",
+                            "surface-dim": "#131316",
+                            "tertiary-fixed-dim": "#68dba9",
+                            "on-secondary-fixed-variant": "#574500",
+                            "on-tertiary": "#003825",
+                            "surface-container-high": "#2a2a2d",
+                            "error-container": "#93000a",
+                            "on-secondary": "#3c2f00",
+                            "inverse-surface": "#e4e1e5",
+                            "on-background": "#e4e1e5",
+                            "on-surface": "#e4e1e5",
+                            "on-primary-fixed-variant": "#45474a",
+                            "on-secondary-container": "#342800",
+                            "inverse-primary": "#5d5e62",
+                            "secondary-container": "#af8d11",
+                            "background": "#0f131f",
+                            "on-tertiary-container": "#009065",
+                            "surface-bright": "#39393c",
+                            "tertiary": "#0099ff",
+                            "surface-tint": "#c6c6ca",
+                            "primary-container": "#121417",
+                            "inverse-on-surface": "#303033",
+                            "on-surface-variant": "#c6c6ca",
+                            "on-primary-fixed": "#1a1c1f",
+                            "on-tertiary-fixed": "#002114",
+                            "on-tertiary-fixed-variant": "#005137",
+                            "secondary-fixed": "#ffe088",
+                            "tertiary-fixed": "#85f8c4",
+                            "surface": "#131620",
+                            "on-secondary-fixed": "#241a00",
+                            "error": "#ffb4ab",
+                            "surface-container-low": "#1b1b1e",
+                            "surface-variant": "#1f2028",
+                            "secondary": "#3cd7ff",
+                            "surface-container": "#1f1f22",
+                            "tertiary-container": "#00180e",
+                            "on-error": "#690005"
+                        },
+                        "borderRadius": {
+                            "DEFAULT": "0.125rem",
+                            "lg": "0.25rem",
+                            "xl": "0.5rem",
+                            "full": "0.75rem"
+                        },
+                        "spacing": {
+                            "margin-desktop": "64px",
+                            "margin-mobile": "20px",
+                            "gutter": "24px",
+                            "unit": "4px",
+                            "container-max": "1440px"
+                        },
+                        
+                        "fontSize": {
+                            "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+                            "data-display": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                            "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                            "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                            "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                            "data-signal": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "400" }],
+                            "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                            "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                        }
+                    }
+                }
+            };
+        } catch (_e) {}
+    </script>
+
+    <!-- Schema.org JSON-LD Structured Data for AI & Search Crawlers -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Metaverse Sherpa",
+      "applicationCategory": "FinancialApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "0.00",
+        "highPrice": "20.00",
+        "offerCount": "2",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free Access",
+            "price": "0.00",
+            "priceCurrency": "USD",
+            "description": "Signals via Telegram & Email (excl. sell details)"
+          },
+          {
+            "@type": "Offer",
+            "name": "Premium Terminal",
+            "price": "20.00",
+            "priceCurrency": "USD",
+            "description": "Full details, automated exchange execution, AI Portfolio Analyst, and Nightly Scans"
+          }
+        ]
+      },
+      "creator": {
+        "@type": "Person",
+        "name": "John Giles",
+        "jobTitle": "Founder",
+        "description": "Silicon Valley veteran with 20+ years tech experience leading global engineering and product teams."
+      },
+      "description": "Institutional-grade algorithmic trading platform for stocks and crypto, featuring automated bot execution, portfolio optimization, and nightly AI market recommendations."
+    }
+    </script>
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        .grid-bg {
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 50px 160px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1.5px 1.5px at 90px 40px, rgba(255,255,255,1), transparent),
+                radial-gradient(1.5px 1.5px at 130px 80px, rgba(255,255,255,1), transparent),
+                radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 180px 180px, rgba(255,255,255,0.8), transparent);
+            background-repeat: repeat;
+            background-size: 200px 200px;
+        }
+        .glass-panel {
+            background: rgba(31, 31, 34, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel-active {
+            background: rgba(31, 31, 34, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(233, 195, 73, 0.2);
+            box-shadow: inset 0 0 20px rgba(233, 195, 73, 0.03);
+        }
+        .signal-emerald { color: #68dba9; }
+        .signal-slate { color: #8f9094; }
+        .signal-red { color: #ffb4ab; }
+        
+        .input-terminal {
+            background: rgba(18, 20, 23, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e4e1e5;
+            transition: all 0.2s ease;
+        }
+        .input-terminal:focus {
+            outline: none;
+            border-color: #e9c349;
+            box-shadow: 0 0 10px rgba(233, 195, 73, 0.15);
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0e0e11;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #353437;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col relative overflow-x-hidden">
+
+    <!-- Header Navigation -->
+    <nav class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface-container-lowest/80 backdrop-blur-md border-b border-outline-variant/20">
+        <div class="font-label-caps text-label-caps tracking-widest text-secondary"><div class="flex items-center gap-2"><a href="index.html#home"><img src="images/favicon.svg" alt="Metaverse Sherpa Logo" class="w-8 h-8"></a><span><a href="index.html#home">METAVERSE SHERPA</a></span></div></div>
+        
+        <div class="hidden md:flex space-x-8 font-label-caps text-xs">
+            <a href="index.html#signals" class="text-on-surface-variant hover:text-secondary transition-colors">Signals & Engines</a>
+            <a href="index.html#ai-analyst" class="text-on-surface-variant hover:text-secondary transition-colors">AI Optimization</a>
+            <a href="index.html#pricing" class="text-on-surface-variant hover:text-secondary transition-colors">Pricing</a>
+            <a href="index.html#history" class="text-on-surface-variant hover:text-secondary transition-colors">Our History</a>
+            <a href="index.html#consulting" class="text-on-surface-variant hover:text-secondary transition-colors">Consulting</a>
+        </div>
+
+        <div class="flex items-center space-x-4">
+             <a href="https://bot.metaversesherpa.io" class="nav-btn bg-gradient-to-r from-secondary to-tertiary text-white font-bold rounded-xl shadow-lg hover:shadow-secondary/25 transition-all hover:-translate-y-0.5 px-4 py-2 text-xs uppercase tracking-wider" target="_blank">Access Terminal</a>
+        </div>
+    </nav>
+    <main class="flex-grow pt-32 pb-24 px-8 max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-white mb-8">Privacy Policy</h1>
+        <div class="text-gray-400 space-y-6 leading-relaxed">
+            
+<p>At Metaverse Sherpa, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website or use our trading bot services.</p>
+<h2 class="text-xl font-bold text-white mt-8 mb-4">1. Information We Collect</h2>
+<p>We may collect personal information such as your name, email address, and wallet addresses when you register for an account or contact us. We also automatically collect certain information about your device and usage patterns.</p>
+<h2 class="text-xl font-bold text-white mt-8 mb-4">2. How We Use Your Information</h2>
+<p>We use the information we collect to provide and improve our services, process your transactions, send you technical notices and support messages, and communicate with you about products, services, and events.</p>
+<h2 class="text-xl font-bold text-white mt-8 mb-4">3. Data Security</h2>
+<p>We implement appropriate technical and organizational security measures designed to protect the security of any personal information we process. However, please also remember that we cannot guarantee that the internet itself is 100% secure.</p>
+<h2 class="text-xl font-bold text-white mt-8 mb-4">4. Contact Us</h2>
+<p>If you have questions or comments about this Privacy Policy, please contact us at metaversesherpa@gmail.com.</p>
+
+        </div>
+    </main>
+    <!-- Footer -->
+    <footer class="w-full py-12 px-margin-mobile md:px-margin-desktop border-t border-outline-variant/10 bg-surface-container-lowest/50 z-50">
+        <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-start gap-8">
+            <div>
+                <div class="font-label-caps text-label-caps text-secondary mb-4"><div class="flex items-center gap-2"><img src="images/favicon.svg" alt="Metaverse Sherpa Logo" class="w-8 h-8"><span class="">METAVERSE SHERPA</span></div></div>
+                <p class="font-body-md text-body-md text-on-surface-variant max-w-sm">
+                    © 2026 METAVERSE SHERPA. AUTOMATED ALGORITHMIC TRADING BOT SERVICES.
+                </p>
+            </div>
+            
+            <div class="flex flex-wrap gap-x-8 gap-y-4 text-sm">
+                <a href="https://t.me/metaversesherpa_trading_bot" class="text-gray-400 hover:text-white transition-colors" target="_blank">Telegram</a>
+                <a href="https://elliottwaves.ai" class="text-gray-400 hover:text-white transition-colors" target="_blank">ElliottWaves.ai</a>
+                <a href="risk-disclosure.html" class="text-gray-400 hover:text-white transition-colors">Risk Disclosure</a>
+                <a href="privacy-policy.html" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
+

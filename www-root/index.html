@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metaverse Sherpa - Algorithmic Trading Platform & Consultancy</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Metaverse Sherpa is an institutional-grade algorithmic trading platform and quantitative research firm for crypto and stock markets. Founded by a Silicon Valley veteran, we offer automated trading bots, AI portfolio optimization, and nightly market scans.">
+    <meta name="keywords" content="algorithmic trading, crypto trading bot, stock trading bot, AI portfolio optimization, portfolio analyst, automated trading, Elliott Wave, John Giles">
+    <meta name="author" content="John Giles">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://metaversesherpa.io/">
+    <meta property="og:title" content="Metaverse Sherpa - Algorithmic Trading Platform">
+    <meta property="og:description" content="Automated trading bots, AI portfolio optimization, and nightly market scans. Founded by a Silicon Valley veteran.">
+    <meta property="og:image" content="https://lh3.googleusercontent.com/aida-public/AB6AXuCeFw4UWcGnXNh8L0fqCiA6LrgVT472mj1YXt-18hJvZQQXka7hFZGOvN9PJX9DNhd-7wePS7H7wBvKYUvH9UJLdsho8pyTxc-lfV5O_tt2Q_tK3F2z0aFfvNxfVAZo_486hlilr60-WEk8Y75KX-6VW2pyXqyoxIO-Rku0XuabD4fYYH_lkuJwdvt37I8yhP1HgjOYWO_SJwhJ6ZGqvcIMM6s26Zz2sF404MsrWBOYLEY-nNDW4hreZYdZYrAReeiKrXDxWLPUvZKU">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://metaversesherpa.io/">
+    <meta property="twitter:title" content="Metaverse Sherpa - Algorithmic Trading Platform">
+    <meta property="twitter:description" content="Automated trading bots, AI portfolio optimization, and nightly market scans. Founded by a Silicon Valley veteran.">
+    
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    
+    <!-- Tailwind CSS (with plugins) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        try {
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        "colors": {
+                            "primary": "#ffffff",
+                            "on-primary-container": "#7d7e82",
+                            "outline-variant": "#45474a",
+                            "on-error-container": "#ffdad6",
+                            "primary-fixed-dim": "#c6c6ca",
+                            "surface-container-lowest": "#0f131f",
+                            "on-primary": "#2f3034",
+                            "primary-fixed": "#e2e2e6",
+                            "outline": "#8f9094",
+                            "surface-container-highest": "#353437",
+                            "secondary-fixed-dim": "#e9c349",
+                            "surface-dim": "#131316",
+                            "tertiary-fixed-dim": "#68dba9",
+                            "on-secondary-fixed-variant": "#574500",
+                            "on-tertiary": "#003825",
+                            "surface-container-high": "#2a2a2d",
+                            "error-container": "#93000a",
+                            "on-secondary": "#3c2f00",
+                            "inverse-surface": "#e4e1e5",
+                            "on-background": "#e4e1e5",
+                            "on-surface": "#e4e1e5",
+                            "on-primary-fixed-variant": "#45474a",
+                            "on-secondary-container": "#342800",
+                            "inverse-primary": "#5d5e62",
+                            "secondary-container": "#af8d11",
+                            "background": "#0f131f",
+                            "on-tertiary-container": "#009065",
+                            "surface-bright": "#39393c",
+                            "tertiary": "#0099ff",
+                            "surface-tint": "#c6c6ca",
+                            "primary-container": "#121417",
+                            "inverse-on-surface": "#303033",
+                            "on-surface-variant": "#c6c6ca",
+                            "on-primary-fixed": "#1a1c1f",
+                            "on-tertiary-fixed": "#002114",
+                            "on-tertiary-fixed-variant": "#005137",
+                            "secondary-fixed": "#ffe088",
+                            "tertiary-fixed": "#85f8c4",
+                            "surface": "#131620",
+                            "on-secondary-fixed": "#241a00",
+                            "error": "#ffb4ab",
+                            "surface-container-low": "#1b1b1e",
+                            "surface-variant": "#1f2028",
+                            "secondary": "#3cd7ff",
+                            "surface-container": "#1f1f22",
+                            "tertiary-container": "#00180e",
+                            "on-error": "#690005"
+                        },
+                        "borderRadius": {
+                            "DEFAULT": "0.125rem",
+                            "lg": "0.25rem",
+                            "xl": "0.5rem",
+                            "full": "0.75rem"
+                        },
+                        "spacing": {
+                            "margin-desktop": "64px",
+                            "margin-mobile": "20px",
+                            "gutter": "24px",
+                            "unit": "4px",
+                            "container-max": "1440px"
+                        },
+                        
+                        "fontSize": {
+                            "headline-md": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+                            "data-display": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                            "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                            "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                            "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                            "data-signal": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "400" }],
+                            "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                            "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                        }
+                    }
+                }
+            };
+        } catch (_e) {}
+    </script>
+
+    <!-- Schema.org JSON-LD Structured Data for AI & Search Crawlers -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Metaverse Sherpa",
+      "applicationCategory": "FinancialApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "0.00",
+        "highPrice": "20.00",
+        "offerCount": "2",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free Access",
+            "price": "0.00",
+            "priceCurrency": "USD",
+            "description": "Signals via Telegram & Email (excl. sell details)"
+          },
+          {
+            "@type": "Offer",
+            "name": "Premium Terminal",
+            "price": "20.00",
+            "priceCurrency": "USD",
+            "description": "Full details, automated exchange execution, AI Portfolio Analyst, and Nightly Scans"
+          }
+        ]
+      },
+      "creator": {
+        "@type": "Person",
+        "name": "John Giles",
+        "jobTitle": "Founder",
+        "description": "Silicon Valley veteran with 20+ years tech experience leading global engineering and product teams."
+      },
+      "description": "Institutional-grade algorithmic trading platform for stocks and crypto, featuring automated bot execution, portfolio optimization, and nightly AI market recommendations."
+    }
+    </script>
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        .grid-bg {
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 50px 160px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1.5px 1.5px at 90px 40px, rgba(255,255,255,1), transparent),
+                radial-gradient(1.5px 1.5px at 130px 80px, rgba(255,255,255,1), transparent),
+                radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 180px 180px, rgba(255,255,255,0.8), transparent);
+            background-repeat: repeat;
+            background-size: 200px 200px;
+        }
+        .glass-panel {
+            background: rgba(31, 31, 34, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel-active {
+            background: rgba(31, 31, 34, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(233, 195, 73, 0.2);
+            box-shadow: inset 0 0 20px rgba(233, 195, 73, 0.03);
+        }
+        .signal-emerald { color: #68dba9; }
+        .signal-slate { color: #8f9094; }
+        .signal-red { color: #ffb4ab; }
+        
+        .input-terminal {
+            background: rgba(18, 20, 23, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e4e1e5;
+            transition: all 0.2s ease;
+        }
+        .input-terminal:focus {
+            outline: none;
+            border-color: #e9c349;
+            box-shadow: 0 0 10px rgba(233, 195, 73, 0.15);
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0e0e11;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #353437;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col relative overflow-x-hidden">
+
+    <!-- Header Navigation -->
+    <nav class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface-container-lowest/80 backdrop-blur-md border-b border-outline-variant/20">
+        <div class="font-label-caps text-label-caps tracking-widest text-secondary"><div class="flex items-center gap-2"><a href="#home"><img src="images/favicon.svg" alt="Metaverse Sherpa Logo" class="w-8 h-8"></a><span><a href="#home">METAVERSE SHERPA</a></span></div></div>
+        
+        <div class="hidden md:flex space-x-8 font-label-caps text-xs">
+            <a href="#signals" class="text-on-surface-variant hover:text-secondary transition-colors">Signals & Engines</a>
+            <a href="#ai-analyst" class="text-on-surface-variant hover:text-secondary transition-colors">AI Optimization</a>
+            <a href="#pricing" class="text-on-surface-variant hover:text-secondary transition-colors">Pricing</a>
+            <a href="#history" class="text-on-surface-variant hover:text-secondary transition-colors">Our History</a>
+            <a href="#consulting" class="text-on-surface-variant hover:text-secondary transition-colors">Consulting</a>
+        </div>
+
+        <div class="flex items-center space-x-4">
+             <a href="https://bot.metaversesherpa.io" class="nav-btn bg-gradient-to-r from-secondary to-tertiary text-white font-bold rounded-xl shadow-lg hover:shadow-secondary/25 transition-all hover:-translate-y-0.5 px-4 py-2 text-xs uppercase tracking-wider" target="_blank">Access Terminal</a>
+        </div>
+    </nav>
+
+    <!-- Main Content Canvas -->
+    <main class="flex-grow pt-16">
+        
+        <!-- Hero Section -->
+        <section id="home" class="py-12 md:py-24 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop relative z-10 border-b border-outline-variant/10 grid-bg">
+            <div class="flex flex-col lg:flex-row items-center gap-16">
+                <div class="flex-1 space-y-8">
+                    <div class="inline-flex items-center space-x-2 border border-tertiary/30 bg-tertiary/10 px-3 py-1 rounded">
+                        <span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+                        <span class="font-data-signal text-data-signal text-tertiary text-xs uppercase tracking-wider">SYSTEM ONLINE: ALGORITHMS ACTIVE</span>
+                    </div>
+                    
+                    <h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary tracking-tight">
+                        Institutional Grade Algorithmic Trading for the <span class="text-secondary">Digital Frontier.</span>
+                    </h1>
+                    
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                        From community roots to automated precision. Leverage rigorous backtested strategies and AI-driven insights engineered for professional deployment across equities and digital assets.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                        <a href="https://bot.metaversesherpa.io" class="bg-gradient-to-r from-secondary to-tertiary text-white font-bold rounded-xl shadow-lg hover:shadow-secondary/25 transition-all hover:-translate-y-0.5 py-4 px-8 text-center uppercase tracking-wider" target="_blank">Access the Terminal</a>
+                        <a href="#signals" class="bg-white/5 text-white border border-white/20 font-bold rounded-xl uppercase py-4 px-8 hover:bg-white/10 transition-all text-center tracking-wider">View Performance</a>
+                    </div>
+                </div>
+                
+                <div class="flex-1 w-full relative">
+                    <!-- Decorative Glow -->
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-secondary/5 blur-[100px] rounded-full"></div>
+                    
+                    <!-- Terminal Preview Glass Card -->
+                    <div class="glass-panel-active rounded-lg p-6 relative overflow-hidden">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-outline-variant/30">
+                            <span class="font-label-caps text-label-caps text-primary">LIVE SIGNAL DASHBOARD</span>
+                            <span class="font-data-signal text-data-signal text-secondary">NODE_ID: MS-092</span>
+                        </div>
+                        
+                        <div class="space-y-4 font-data-signal text-data-signal">
+                            <div class="flex justify-between items-center p-3 bg-surface-container-lowest/50 border border-outline-variant/20 rounded">
+                                <span class="text-primary">BTC/USD (H4)</span>
+                                <span class="signal-emerald flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">arrow_upward</span> LONG ENTRY</span>
+                                <span class="text-on-surface-variant">@ $64,210.50</span>
+                            </div>
+                            <div class="flex justify-between items-center p-3 bg-surface-container-lowest/50 border border-outline-variant/20 rounded">
+                                <span class="text-primary">ETH/USD (D1)</span>
+                                <span class="signal-slate flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">horizontal_rule</span> HOLD</span>
+                                <span class="text-on-surface-variant">TARGET 1 MET</span>
+                            </div>
+                             <div class="flex justify-between items-center p-3 bg-surface-container-lowest/50 border border-outline-variant/20 rounded">
+                                <span class="text-primary">NVDA (D1)</span>
+                                <span class="signal-red flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">arrow_downward</span> SHORT EXPOSURE</span>
+                                <span class="text-on-surface-variant">RISK OFF</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Signals & Engines Section -->
+        <section id="signals" class="py-12 md:py-24 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop border-b border-outline-variant/10">
+             <div class="mb-8 md:mb-16 max-w-3xl">
+                <span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest block mb-2">Dual Core Trading Strategies</span>
+                <h2 class="font-headline-md text-headline-md text-primary mb-4">The Trading Engines</h2>
+                <p class="font-body-lg text-body-lg text-on-surface-variant">Rigorous backtesting across dual asset classes. Automated bot execution optimized for digital asset and traditional equities portfolios.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Stock Strategy -->
+                <div class="glass-panel p-8 rounded-lg relative overflow-hidden group hover:border-primary transition-colors flex flex-col justify-between">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-8">
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-primary">Sherpa Velocity (Equities)</h3>
+                                <p class="font-label-caps text-label-caps text-on-surface-variant mt-2 uppercase tracking-wider text-xs">5-YEAR BACKTEST VALIDATED</p>
+                            </div>
+                            <span class="border border-outline-variant px-2 py-1 font-data-signal text-[10px] text-primary uppercase">Equities Engine</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 font-data-display text-data-display mb-8">
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">NET PnL</div>
+                                <div class="text-tertiary font-bold">+179%</div>
+                            </div>  
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">WIN RATE</div>
+                                <div class="text-tertiary font-bold">69.6%</div>
+                            </div>
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">SHARPE</div>
+                                <div class="text-primary font-bold">1.31</div>
+                            </div>
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">MAX DRAWDOWN</div>
+                                <div class="text-primary font-bold">-18.9%</div>
+                            </div>        
+                        </div>
+                    </div>
+                    <a href="https://bot.metaversesherpa.io/strategies/sherpa-velocity" target="_blank" class="w-full text-left font-label-caps text-label-caps text-secondary hover:text-primary flex items-center justify-between mt-auto">
+                        VIEW METHODOLOGY <span class="material-symbols-outlined">arrow_forward</span>
+                    </a>
+                </div>
+
+                <!-- Crypto Strategy -->
+                <div class="glass-panel p-8 rounded-lg relative overflow-hidden group hover:border-secondary transition-colors flex flex-col justify-between">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-secondary"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-8">
+                            <div>
+                                <h3 class="font-headline-md text-headline-md text-primary">Valkyrie Elite (Crypto)</h3>
+                                <p class="font-label-caps text-label-caps text-on-surface-variant mt-2 uppercase tracking-wider text-xs">3-YEAR BACKTEST VALIDATED</p>
+                            </div>
+                            <span class="border border-secondary/50 px-2 py-1 font-data-signal text-[10px] text-secondary uppercase">Crypto Engine</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 font-data-display text-data-display mb-8">
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">NET PnL</div>
+                                <div class="text-tertiary font-bold">+593%</div>
+                            </div>
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">WIN RATE</div>
+                                <div class="text-tertiary font-bold">58.5%</div>
+                            </div>
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">SHARPE</div>
+                                <div class="text-primary font-bold">4.2</div>
+                            </div>
+                            <div class="bg-surface-container-lowest/50 p-4 border border-outline-variant/20 rounded">
+                                <div class="font-label-caps text-xs text-on-surface-variant mb-1">MAX DRAWDOWN</div>
+                                <div class="text-primary font-bold">-25%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="https://bot.metaversesherpa.io/strategies/valkyrie-elite" target="_blank" class="w-full text-left font-label-caps text-label-caps text-secondary hover:text-primary flex items-center justify-between mt-auto">
+                        VIEW METHODOLOGY <span class="material-symbols-outlined">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Analyst & Nightly Scans Section -->
+        <section id="ai-analyst" class="py-12 md:py-24 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop border-b border-outline-variant/10 grid-bg">
+            <div class="flex flex-col lg:flex-row gap-16 items-center">
+                <!-- AI Analyst Details -->
+                <div class="flex-1 space-y-8">
+                    <span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest block mb-2">Automated Portfolio Guidance</span>
+                    <h2 class="font-headline-md text-headline-md text-primary">AI Portfolio Optimization & Nightly Scans</h2>
+                    
+                    <div class="space-y-6">
+                        <div class="flex gap-4">
+                            <span class="material-symbols-outlined text-secondary text-3xl">psychology</span>
+                            <div>
+                                <h3 class="font-data-display text-lg text-primary font-bold">AI Portfolio Analyst</h3>
+                                <p class="font-body-md text-on-surface-variant mt-1">Examines your current stock and crypto portfolios securely. Receives instant recommendations on rebalancing and optimization aligned directly to your target risk strategy and financial goals.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <span class="material-symbols-outlined text-secondary text-3xl">query_stats</span>
+                            <div>
+                                <h3 class="font-data-display text-lg text-primary font-bold">Nightly Market Scans</h3>
+                                <p class="font-body-md text-on-surface-variant mt-1">Our neural models perform a complete scan of stock and crypto markets every night. Locates optimal buy-and-hold recommendations, complete with expected percentage gains and precise timeframes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live AI Terminal Mockup Widget -->
+                <div class="flex-grow w-full lg:max-w-xl glass-panel rounded-lg p-6 overflow-hidden relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+                    <div class="flex justify-between items-center mb-4 border-b border-outline-variant/20 pb-2">
+                        <h3 class="font-label-caps text-label-caps text-primary flex items-center gap-2">
+                            <span class="material-symbols-outlined text-secondary text-sm">auto_awesome</span> Live Optimization Recommendations
+                        </h3>
+                        <span class="text-xs font-data-signal text-tertiary">ACTIVE</span>
+                    </div>
+                    
+                    <div class="space-y-4 font-data-signal text-xs">
+                        <div class="p-3 bg-surface-container-lowest/50 border border-outline-variant/20 rounded">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-primary font-bold">Rebalance Ticker [ETH]</span>
+                                <span class="text-[10px] text-tertiary bg-tertiary/10 px-1.5 py-0.5 rounded">HIGH PRIORITY</span>
+                            </div>
+                            <p class="text-on-surface-variant">Exposure exceeds target volatility parameters. Reduce allocation by 12% to align with risk parity profile.</p>
+                        </div>
+                        <div class="p-3 bg-surface-container-lowest/50 border border-outline-variant/20 rounded">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-primary font-bold">Nightly Scan: Ticker [SOL]</span>
+                                <span class="text-[10px] text-secondary bg-secondary/10 px-1.5 py-0.5 rounded">AI RECOM [BUY & HOLD]</span>
+                            </div>
+                            <p class="text-on-surface-variant">Breakout model projects +18.4% gains over the next 14-day cycle. Confidence: 89%.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section id="pricing" class="py-12 md:py-24 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop border-b border-outline-variant/10">
+            <div class="text-center mb-8 md:mb-16 max-w-3xl mx-auto">
+                <span class="font-label-caps text-label-caps text-secondary mb-2 block tracking-widest uppercase">Pricing & Plans</span>
+                <h2 class="font-headline-md text-headline-md text-primary mb-4">Choose Your Tier</h2>
+                <p class="font-body-lg text-body-lg text-on-surface-variant">Start receiving signals via Telegram for free, or upgrade to Premium for complete trading automation.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <!-- Free Plan -->
+                <div class="glass-panel p-8 flex flex-col h-full rounded-lg justify-between">
+                    <div>
+                        <div class="mb-8 border-b border-outline-variant/20 pb-8">
+                            <h3 class="font-headline-md text-headline-md mb-2 text-primary">Free Access</h3>
+                            <p class="font-data-signal text-data-signal text-on-surface-variant text-sm">Essential market reconnaissance.</p>
+                            <div class="flex items-baseline gap-2 mt-4">
+                                <span class="font-headline-lg text-headline-lg">$0</span>
+                                <span class="font-label-caps text-label-caps text-on-surface-variant">/MONTH</span>
+                            </div>
+                        </div>
+                        <ul class="space-y-4 mb-8">
+                            <li class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-tertiary text-sm">check</span>
+                                <span class="font-body-md text-body-md text-on-surface-variant">Signals via Telegram & Email</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-tertiary text-sm">check</span>
+                                <span class="font-body-md text-body-md text-on-surface-variant">Entry Price Recommendations</span>
+                            </li>
+                            <li class="flex items-start gap-3 opacity-40">
+                                <span class="material-symbols-outlined text-outline text-sm">close</span>
+                                <span class="font-body-md text-body-md text-on-surface-variant">Exit Parameters (No Sell Details)</span>
+                            </li>
+                            <li class="flex items-start gap-3 opacity-40">
+                                <span class="material-symbols-outlined text-outline text-sm">close</span>
+                                <span class="font-body-md text-body-md text-on-surface-variant">Automated Exchange Execution</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="https://bot.metaversesherpa.io" class="w-full py-4 border border-outline-variant/30 text-center font-label-caps text-label-caps hover:bg-surface-container-high transition-colors block uppercase tracking-wider" target="_blank">Start Free</a>
+                </div>
+
+                <!-- Premium Plan -->
+                <div class="glass-panel-active p-8 flex flex-col h-full rounded-lg relative overflow-hidden justify-between">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-secondary/5 blur-[40px] pointer-events-none"></div>
+                    <div>
+                        <div class="mb-8 border-b border-outline-variant/20 pb-8">
+                            <h3 class="font-headline-md text-headline-md mb-2 text-secondary">Premium Terminal</h3>
+                            <p class="font-data-signal text-data-signal text-on-surface-variant text-sm">Complete algorithmic dominance.</p>
+                            <div class="flex items-baseline gap-2 mt-4">
+                                <span class="font-headline-lg text-headline-lg">$20</span>
+                                <span class="font-label-caps text-label-caps text-on-surface-variant">/MONTH</span>
+                            </div>
+                        </div>
+                        <ul class="space-y-4 mb-8">
+                            <li class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-secondary text-sm">check</span>
+                                <span class="font-body-md text-body-md">Full Trade Details (Entry & Sell Signals)</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-secondary text-sm">check</span>
+                                <span class="font-body-md text-body-md">Automated Exchange Integration (APIs)</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-secondary text-sm">check</span>
+                                <span class="font-body-md text-body-md">AI Portfolio Optimization Analyst</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-secondary text-sm">check</span>
+                                <span class="font-body-md text-body-md">Nightly AI Powered Buy-and-Hold Scans</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="https://bot.metaversesherpa.io" class="w-full py-4 bg-secondary text-background font-label-caps text-label-caps hover:opacity-90 transition-opacity text-center block font-bold uppercase tracking-wider" target="_blank">Upgrade to Premium</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Our History & Founder Section -->
+        <section id="history" class="py-12 md:py-24 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop border-b border-outline-variant/10 grid-bg">
+            <div class="flex flex-col lg:flex-row gap-16 items-start">
+                
+                <!-- Founder Bio (Left / Sticky) -->
+                <div class="flex-1 lg:sticky lg:top-24 space-y-8">
+                    <span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest block">About the Founder</span>
+                    <h2 class="font-headline-md text-headline-md text-primary">Silicon Valley Technical Expertise</h2>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant">
+                        Metaverse Sherpa was founded by John Giles, a Silicon Valley veteran with over 20 years of hands-on technology experience. 
+                    </p>
+                    <p class="font-body-md text-on-surface-variant">
+                        Spanning roles from developer to Senior Director, John has spent two decades building scalable software and leading global engineering teams. This architecture-first approach is embedded directly in the design of the trading bots, ensuring secure API connectivity and robust quantitative modeling.
+                    </p>
+                    <div class="glass-panel p-6 border-l-2 border-l-primary flex items-center gap-4">
+                        <div class="w-12 h-12 rounded bg-surface-container-high flex items-center justify-center font-data-display text-secondary text-xl font-bold">SV</div>
+                        <div>
+                            <div class="font-data-display text-sm text-primary font-bold">John Giles</div>
+                            <div class="font-label-caps text-[10px] text-on-surface-variant">Silicon Valley Veteran & Chief Architect</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Timeline (Right) -->
+                <div class="flex-grow w-full lg:max-w-2xl relative border-l border-outline-variant/20 pl-8 space-y-16">
+                    
+                    <!-- Timeline Point 1 -->
+                    <div class="relative">
+                        <div class="absolute -left-[37px] top-1.5 w-4 h-4 bg-background border-2 border-secondary rounded-full"></div>
+                        <span class="font-data-display text-secondary text-sm">Q3 2021</span>
+                        <h3 class="font-headline-md text-lg text-primary mt-2 font-bold">Community Genesis (The Meetup)</h3>
+                        <p class="font-body-md text-on-surface-variant mt-2">
+                            Following the Covid pandemic, John started hosting a small meetup in central London to analyze emerging decentralized systems. The monthly event grew rapidly from 5 people to a community of over 600 members, discussing algorithms, crypto, and market structural shifts.
+                        </p>
+                    </div>
+
+                    <!-- Timeline Point 2 -->
+                    <div class="relative">
+                        <div class="absolute -left-[37px] top-1.5 w-4 h-4 bg-background border-2 border-secondary rounded-full"></div>
+                        <span class="font-data-display text-secondary text-sm">Q4 2022</span>
+                        <h3 class="font-headline-md text-lg text-primary mt-2 font-bold">MarketMasters.ai Merger</h3>
+                        <p class="font-body-md text-on-surface-variant mt-2">
+                            As trading interest surged, John pivoted into custom trading bot development. He merged his trading group with MarketMasters.ai to build a comprehensive stock and crypto research platform. The service provided customized Telegram alerts, Elliott Wave tracking, and automated Chart Pattern scanners.
+                        </p>
+                    </div>
+
+                    <!-- Timeline Point 3 -->
+                    <div class="relative">
+                        <div class="absolute -left-[37px] top-1.5 w-4 h-4 bg-secondary rounded-full shadow-[0_0_10px_rgba(233,195,73,0.5)]"></div>
+                        <span class="font-data-display text-secondary text-sm">Present Day</span>
+                        <h3 class="font-headline-md text-lg text-primary mt-2 font-bold">The Pivot to Autopilot Code</h3>
+                        <p class="font-body-md text-on-surface-variant mt-2">
+                            Recognizing that retail and prosumer traders wanted to bypass complex analysis and directly automate execution, John created the unified Metaverse Sherpa algorithmic terminal. Today, we deliver direct signal transmission and fully automated API trade execution on behalf of retail and institutional customers globally.
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Consulting Section -->
+        <section id="consulting" class="py-12 md:py-24 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                <div class="lg:col-span-5 space-y-6">
+                    <span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest block">Advisory Services</span>
+                    <h2 class="font-headline-md text-headline-md text-primary">Institutional & Custom Advisory</h2>
+                    <p class="font-body-lg text-on-surface-variant">
+                        Leveraging John Giles' 20+ years of Silicon Valley engineering experience, we offer custom development and algorithmic advisory services for startups, family offices, and HNW individuals.
+                    </p>
+                    <div class="glass-panel p-6 border-l-2 border-l-secondary flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary">lock</span>
+                        <span class="font-data-signal text-xs text-on-surface uppercase tracking-wider">END-TO-END ENCRYPTED INQUIRY CHANNEL</span>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 glass-panel p-8 rounded-lg relative overflow-hidden">
+                    <form class="space-y-6" action="https://formsubmit.co/metaversesherpa@gmail.com" method="POST">
+                        
+                        <input type="hidden" name="_subject" value="New Contact from Metaverse Sherpa Website!">
+                        <input type="hidden" name="_captcha" value="false">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                            <div class="flex flex-col gap-2">
+                                <label class="font-label-caps text-xs text-on-surface-variant">Your Name</label>
+                                <input class="input-terminal font-data-signal text-sm p-3 w-full rounded" name="name" placeholder="John Doe" type="text" required>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="font-label-caps text-xs text-on-surface-variant">Email Address</label>
+                                <input class="input-terminal font-data-signal text-sm p-3 w-full rounded" name="email" placeholder="you@example.com" type="email" required>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="font-label-caps text-xs text-on-surface-variant">Who are you representing?</label>
+                            <select name="entity" class="input-terminal font-data-signal text-sm p-3 w-full rounded appearance-none">
+                                <option>High-Net-Worth Individual</option>
+                                <option>Family Office</option>
+                                <option>Corporate Enterprise / Startup</option>
+                                <option>Institutional Fund</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="font-label-caps text-xs text-on-surface-variant">How can we help you?</label>
+                            <textarea class="input-terminal font-data-signal text-sm p-3 w-full h-32 resize-none rounded" name="message" placeholder="Tell us about your project..." required></textarea>
+                        </div>
+                        <button class="w-full bg-gradient-to-r from-secondary to-tertiary text-white font-bold rounded-xl shadow-lg hover:shadow-secondary/25 transition-all hover:-translate-y-0.5 py-4 flex justify-center items-center gap-2 text-xs uppercase tracking-wider" type="submit">
+                            <span>Send Message</span>
+                            <span class="material-symbols-outlined text-sm">send</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-12 px-margin-mobile md:px-margin-desktop border-t border-outline-variant/10 bg-surface-container-lowest/50 z-50">
+        <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-start gap-8">
+            <div>
+                <div class="font-bold text-sm text-secondary mb-4 tracking-widest uppercase"><div class="flex items-center gap-2"><img src="images/favicon.svg" alt="Metaverse Sherpa Logo" class="w-8 h-8"><span>METAVERSE SHERPA</span></div></div>
+                <p class="text-sm text-gray-400 max-w-sm leading-relaxed">
+                    © 2026 METAVERSE SHERPA. AUTOMATED ALGORITHMIC TRADING BOT SERVICES.
+                </p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-x-8 gap-y-4 text-sm text-gray-400">
+                <a href="https://t.me/metaversesherpa_trading_bot" class="hover:text-white transition-colors" target="_blank">Telegram</a>
+                <a href="https://elliottwaves.ai" class="hover:text-white transition-colors" target="_blank">ElliottWaves.ai</a>
+                <a href="risk-disclosure.html" class="hover:text-white transition-colors">Risk Disclosure</a>
+                <a href="privacy-policy.html" class="hover:text-white transition-colors">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
