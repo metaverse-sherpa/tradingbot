@@ -88,7 +88,7 @@ BAD_HOURS_UTC = {4, 12}
 TIMEFRAME     = "15m"
 LEVERAGE      = 20
 RISK_PER_TRADE = 0.015         # Default 1.5% compounding risk (Valkyrie Sweet Spot)
-CANDLE_LIMIT   = 250
+CANDLE_LIMIT   = 1000
 DRY_RUN        = os.getenv("BLOFIN_DRY_RUN", "true").lower() == "true"
 
 os.makedirs("results", exist_ok=True)

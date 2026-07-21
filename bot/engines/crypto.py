@@ -198,7 +198,7 @@ async def signal_engine(application):
                 mdm.ohlcv_cache = {}
                 
                 # Fetch all OHLCV in parallel using public API
-                await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=100) for sym in live_bot_multi.SYMBOLS))
+                await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=1000) for sym in live_bot_multi.SYMBOLS))
 
                 # (Theoretical trade resolution is handled separately by theory_trades_resolution_engine every 60s)
 

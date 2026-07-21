@@ -85,7 +85,7 @@ async def run_force_pass():
         mdm.ohlcv_cache = {}
         
         logger.info("📡 Fetching fresh market data for all symbols...")
-        await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=100) for sym in live_bot_multi.SYMBOLS))
+        await asyncio.gather(*(mdm.fetch_ohlcv(sym, "15m", limit=1000) for sym in live_bot_multi.SYMBOLS))
 
         # 🧪 A. RESOLVE OPEN THEORETICAL TRADES
         logger.info("🧪 Step A: Resolving Open Theoretical Trades...")
