@@ -44,7 +44,7 @@ async def coinbase_ws_client():
     uri = "wss://ws-feed.exchange.coinbase.com"
     while True:
         try:
-            async with websockets.connect(uri) as websocket:
+            async with websockets.connect(uri, ping_interval=None) as websocket:
                 logger.info("Connected to Coinbase WebSocket.")
                 sub_msg = {
                     "type": "subscribe",

@@ -761,7 +761,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                     clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                     is_long = t.get('side', '').upper() in ['BUY', 'LONG']
                     dir_emoji = "📈" if is_long else "📉"
-                    sym_html = f"<span>{sym}</span>"
+                    sym_html = f"<b>{sym}</b>"
                     
                     section_lines.append(f"{dir_emoji} {sym_html} | Entry: ${t['entry_price']:.4f} SL: ${t['sl_price']:.4f} TP: ${t['tp_price']:.4f} | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_pnl_pct:.1f}%")
             
@@ -777,7 +777,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                         clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                         is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                         dir_emoji = "📈" if is_long else "📉"
-                        sym_html = f"<span>{sym}</span>"
+                        sym_html = f"<b>{sym}</b>"
                         
                         section_lines.append(f"⚠️ {dir_emoji} {sym_html} | Not Positioned | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_tp_pct:.1f}%")
                         
@@ -793,7 +793,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                     clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                     is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                     dir_emoji = "📈" if is_long else "📉"
-                    sym_html = f"<span>{sym}</span>"
+                    sym_html = f"<b>{sym}</b>"
                     
                     section_lines.append(f"{dir_emoji} {sym_html} | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_tp_pct:.1f}%")
 
@@ -810,7 +810,7 @@ def get_combined_daily_summary_telegram(is_premium=False,
                 pnl_pct = s.get('pnl_pct', 0.0)
                 is_long = s.get('side', '').upper() in ['BUY', 'LONG']
                 dir_emoji = "📈" if is_long else "📉"
-                sym_html = f"<span>{sym}</span>"
+                sym_html = f"<b>{sym}</b>"
                 
                 if is_premium:
                     exit_price = s.get('close_price') or 0.0
@@ -1150,7 +1150,7 @@ def get_combined_weekly_summary_telegram(is_premium=False,
                         clean_sym = sym.replace('/', '').replace(':USDT', '').replace(':BUSD', '')
                         is_long = t.get('side', '').upper() in ['BUY', 'LONG']
                         dir_emoji = "📈" if is_long else "📉"
-                        sym_html = f"<span>{sym}</span>"
+                        sym_html = f"<b>{sym}</b>"
                         
                         section_lines.append(f"{dir_emoji} {sym_html} | Entry: ${t['entry_price']:.4f} SL: ${t['sl_price']:.4f} TP: ${t['tp_price']:.4f} | Daily: {daily_pnl_pct:+.2f}% | Total: {pnl_pct:+.2f}% | Target: +{target_pnl_pct:.1f}%")
                 

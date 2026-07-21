@@ -186,7 +186,9 @@ async def fetch_daily_crypto_stats(tg_user):
             
             total_equity = free_asset
             try:
-                positions = await loop.run_in_executor(None, client.fetch_positions)
+                positions = []
+                if crypto_exchange_id != 'coinbase':
+                    positions = await loop.run_in_executor(None, client.fetch_positions)
                 for p in positions:
                     margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
                     upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
@@ -313,7 +315,9 @@ async def fetch_premium_crypto_stats(tg_user):
             
             total_equity = free_asset
             try:
-                positions = await loop.run_in_executor(None, client.fetch_positions)
+                positions = []
+                if crypto_exchange_id != 'coinbase':
+                    positions = await loop.run_in_executor(None, client.fetch_positions)
                 for p in positions:
                     margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
                     upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
@@ -461,6 +465,8 @@ async def fetch_premium_open_trades(tg_user, asset_class, stock_prices_cache=Non
                     client.urls['api']['rest'] = 'https://api-sandbox.coinbase.com'
                 
                 async def fetch_positions_async():
+                    if crypto_exchange_id == 'coinbase':
+                        return []
                     loop = asyncio.get_event_loop()
                     return await loop.run_in_executor(None, client.fetch_positions)
                 
@@ -542,7 +548,7 @@ async def daily_recommendations_generator_engine(application):
             
             logger.debug("🤖 Generating daily AI recommendations for all combinations...")
             
-            from web_api.app import app
+            from server import app
             from web_api.routes_portfolio import generate_and_cache_recommendations
             
             with app.app_context():
