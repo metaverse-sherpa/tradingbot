@@ -2728,7 +2728,8 @@ def get_trade_chart():
             interval = "1d" if timeframe == "1D" else "15m"
             try:
                 # Sourcing OHLCV from Binance public API is fast (less than 1s) and avoids CCXT overhead
-                clean_sym = symbol.split(":")[0].replace("/", "")
+                base_sym = symbol.split("/")[0].split("-")[0].split(":")[0]
+                clean_sym = f"{base_sym}USDT"
                 endpoints = [
                     f"https://api.binance.com/api/v3/klines?symbol={clean_sym}&interval={interval}&limit=250",
                     f"https://api.binance.us/api/v3/klines?symbol={clean_sym}&interval={interval}&limit=250"
@@ -2763,7 +2764,7 @@ def get_trade_chart():
                     asyncio.set_event_loop(loop)
                     try:
                         ccxt_timeframe = "1d" if timeframe == "1D" else "15m"
-                        df_chart = loop.run_until_complete(mdm.fetch_ohlcv(symbol, ccxt_timeframe))
+                        df_chart = loop.run_until_complete(mdm.fetch_ohlcv(f"{base_sym}/USDT", ccxt_timeframe))
                     finally:
                         loop.run_until_complete(mdm.close())
                     loop.close()
@@ -2771,7 +2772,7 @@ def get_trade_chart():
                 print(f"Error fetching OHLCV: {e}", flush=True)
 
         if df_chart is None or df_chart.empty:
-            dates = pd.date_range(end=pd.Timestamp.now(), periods=30, freq='D' if trade_type == "stock" else '15T')
+            dates = pd.date_range(end=pd.Timestamp.now(), periods=30, freq='D' if trade_type == "stock" else '15min')
             df_chart = pd.DataFrame({
                 'timestamp': dates.astype('datetime64[ms]').astype('int64'),
                 'open': [entry] * 30,
