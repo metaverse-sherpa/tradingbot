@@ -2011,6 +2011,14 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
         qty_margin = (buying_power * 0.98) / current_price if current_price > 0 else 0
         qty = round(min(qty_risk, qty_margin), 4)
         
+        # Enforce Alpaca's minimum cost basis requirement ($1.00)
+        min_notional = 1.05
+        if qty * current_price < 1.0:
+            if buying_power * 0.98 >= min_notional:
+                qty = round(min_notional / current_price, 4)
+            else:
+                return False, f"⚠️ Available buying power (${buying_power:.2f}) is too small to meet Alpaca's $1.00 minimum order requirement."
+        
         if qty <= 0:
             return False, f"⚠️ Your allocated risk (${risk_amt:.2f}) or available buying power (${buying_power:.2f}) is too small to open a position for {sym}."
             

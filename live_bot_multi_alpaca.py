@@ -833,8 +833,12 @@ async def run_real_trader_execution(today_opens):
                         qty_margin = max_notional_per_trade / o_price if max_notional_per_trade > 0 else 0
                         qty = round(min(qty_risk, qty_margin), 4)
                         
-                        if qty <= 0:
-                            logger.warning(f"Sizing quantity is 0 for {sym} (User: {chat_id or f'web_{web_user_id}'}). Risk ${risk_amt:.2f}, Margin Cap ${max_notional_per_trade:.2f}.")
+                        # Enforce Alpaca's minimum cost basis requirement ($1.00)
+                        if qty * o_price < 1.0 and buying_power * 0.98 >= 1.05:
+                            qty = round(1.05 / o_price, 4)
+                        
+                        if qty <= 0 or qty * o_price < 1.0:
+                            logger.warning(f"Sizing quantity is insufficient for {sym} (User: {chat_id or f'web_{web_user_id}'}). Cost basis ${qty * o_price:.2f} < $1.00 min.")
                             continue
                             
                         order_payload = {
