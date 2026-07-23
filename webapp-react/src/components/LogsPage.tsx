@@ -124,6 +124,7 @@ const LogsPage: React.FC = () => {
       const lower = line.toLowerCase();
       const isRestartLine = ['restarted', 'reloaded', 'restart', 'reload', 'starting', 'stopping', 'started', 'stopped']
         .some(kw => lower.includes(kw));
+      const isErrorLine = ['error', 'warn'].some(kw => lower.includes(kw));
 
       // Build highlighted HTML
       let escaped = line
@@ -131,13 +132,14 @@ const LogsPage: React.FC = () => {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-      escaped = escaped.replace(/(error)/gi, '<span class="text-[#ff4444] font-bold">$1</span>');
-      escaped = escaped.replace(/(warning)/gi, '<span class="text-yellow-400 font-bold">$1</span>');
       escaped = escaped.replace(/(started|reloaded)/gi, '<b class="text-white font-black">$1</b>');
 
-      const content = isRestartLine
-        ? `<span class="bg-[#ff4444]/30 text-[#ff4444] px-1 rounded font-bold">${escaped}</span>`
-        : escaped;
+      let content = escaped;
+      if (isErrorLine) {
+        content = `<span class="text-[#ff4444] font-bold">${escaped}</span>`;
+      } else if (isRestartLine) {
+        content = `<span class="text-white font-bold">${escaped}</span>`;
+      }
 
       return (
         <div
