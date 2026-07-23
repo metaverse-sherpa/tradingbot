@@ -1925,11 +1925,16 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
     from bot.config import is_stock
     import re
     
-    if is_stock(sym):
+    cat = str(t.get('category') or '').lower()
+    is_stock_trade = (cat == 'stock') or (not cat and is_stock(sym))
+    
+    if is_stock_trade:
         from live_bot_multi_alpaca import check_is_market_open
         if not check_is_market_open():
             return False, "❌ Stock market is currently closed. Live stock trades can only be opened during market hours."
     else:
+        if '/' not in sym and 'USDT' not in sym:
+            sym = f"{sym}/USDT"
         ex_id = user.get('exchange_id', 'blofin')
         sym = database.normalize_symbol(sym, ex_id)
         # Extract contract multiplier (e.g. 1000 from 1000PEPE)
@@ -1944,7 +1949,7 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
     current_price = None
     import live_bot_multi
     
-    if is_stock(sym):
+    if is_stock_trade:
         import aiohttp
         url = f"https://data.alpaca.markets/v2/stocks/bars/latest?symbols={sym}"
         headers = {
@@ -1966,9 +1971,15 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
         if not user.get('api_key'):
             return False, "❌ Crypto API keys are missing. Please setup your exchange account first."
             
+        fetch_sym = t['symbol']
+        if '/' not in fetch_sym and 'USDT' not in fetch_sym:
+            fetch_sym = f"{fetch_sym}/USDT"
+        else:
+            fetch_sym = fetch_sym.replace("-", "/").split(":")[0]
+
         mdm = live_bot_multi.MarketDataManager()
         try:
-            df = await mdm.fetch_ohlcv(sym, "1m", limit=2)
+            df = await mdm.fetch_ohlcv(fetch_sym, "1m", limit=2)
             if df is not None and not df.empty:
                 current_price = float(df['close'].iloc[-1])
         finally:
@@ -1994,7 +2005,7 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
          return False, "❌ Stop Loss distance calculation error. Cancelling trade."
 
     # 2. Execution Logic
-    if is_stock(sym):
+    if is_stock_trade:
         # Alpaca Logic
         try:
             account = await database.make_alpaca_request_async(user, "GET", "/v2/account")

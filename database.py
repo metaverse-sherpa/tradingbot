@@ -2580,10 +2580,13 @@ def get_theoretical_trade(trade_id):
                 c.execute("SELECT * FROM AIRecommendations WHERE id = ?", (rec_id,))
                 row = c.fetchone()
                 if row:
-                    rec = dict(row)
+                    cat = rec.get('category', 'stock').lower()
+                    sym = rec['symbol']
+                    if cat == 'crypto' and '/' not in sym and 'USDT' not in sym:
+                        sym = f"{sym}/USDT"
                     return {
                         "id": f"rec_{rec['id']}",
-                        "symbol": rec['symbol'],
+                        "symbol": sym,
                         "side": "BUY",
                         "entry_price": float(rec.get('entry_price', 0.0)),
                         "tp_price": float(rec.get('target_price', 0.0)),
@@ -2591,7 +2594,7 @@ def get_theoretical_trade(trade_id):
                         "open_time": rec.get('created_at', 0),
                         "status": "open" if rec.get('status') == 'active' else rec.get('status', 'closed'),
                         "strategy": "AI Recommendation",
-                        "category": rec.get('category', 'stock'),
+                        "category": cat,
                         "is_recommendation": True
                     }
         except ValueError:
