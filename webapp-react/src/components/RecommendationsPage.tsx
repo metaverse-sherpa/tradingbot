@@ -94,10 +94,21 @@ const RecommendationsPage: React.FC = () => {
   const [executingSignalId, setExecutingSignalId] = useState<string | number | null>(null);
   const [pendingTrades, setPendingTrades] = useState<Record<string, any>>({});
   const [cancellingSignalId, setCancellingSignalId] = useState<string | number | null>(null);
+  const [openTrades, setOpenTrades] = useState<any[]>([]);
+  const [closingTradeId, setClosingTradeId] = useState<string | null>(null);
 
   const [queueModalSignal, setQueueModalSignal] = useState<any | null>(null);
   const [selectedQueueOption, setSelectedQueueOption] = useState<'auto_execute' | 'email_reminder'>('auto_execute');
   const [submittingQueue, setSubmittingQueue] = useState(false);
+
+  const fetchOpenTrades = useCallback(async () => {
+    try {
+      const res = await api.get('/trades/open?bypass_cache=true');
+      setOpenTrades(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Error fetching open trades:', err);
+    }
+  }, []);
 
   const fetchPendingTrades = useCallback(async () => {
     try {
@@ -121,13 +132,43 @@ const RecommendationsPage: React.FC = () => {
       const res = await api.get(url);
       setRecommendations(res.data?.recommendations || []);
       fetchPendingTrades();
+      fetchOpenTrades();
     } catch (err) {
       console.error("Error fetching recommendations:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [fetchPendingTrades]);
+  }, [fetchPendingTrades, fetchOpenTrades]);
+
+  const handleCloseLiveTrade = async (rec: any, activePos: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const confirmed = window.confirm(`⚠️ Are you sure you want to market close your open position for ${rec.symbol}?`);
+    if (!confirmed) return;
+
+    const posId = activePos.id || activePos.trade_id || rec.id;
+    setClosingTradeId(String(posId));
+    try {
+      const res = await api.post('/trades/close', {
+        id: posId,
+        type: activePos.type || rec.category || 'crypto',
+        symbol: activePos.symbol || rec.symbol
+      });
+      if (res.data?.message) {
+        alert(`✅ Position for ${rec.symbol} closed successfully!`);
+      } else {
+        alert(res.data?.error || 'Failed to close position.');
+      }
+    } catch (err: any) {
+      console.error('Error closing trade:', err);
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to close position.';
+      alert(`❌ ${errMsg}`);
+    } finally {
+      setClosingTradeId(null);
+      fetchRecommendations(true);
+      fetchOpenTrades();
+    }
+  };
 
   const handleOpenLiveTrade = async (rec: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -791,11 +832,36 @@ const RecommendationsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Create Live Trade / Pending Order Button */}
+                  {/* Create Live Trade / Close Trade / Pending Order Button */}
                   {(() => {
                     const recSignalId = `rec_${rec.id}`;
                     const pendingOrder = pendingTrades[recSignalId];
-                    if (pendingOrder) {
+                    const activePos = openTrades.find((t: any) => {
+                      const recBase = String(rec.symbol || '').toUpperCase().replace('/USDT', '').replace('-USDT', '').replace('/USD', '').replace('-USD', '').replace('-', '');
+                      const posBase = String(t.symbol || '').toUpperCase().replace('/USDT', '').replace('-USDT', '').replace('/USD', '').replace('-USD', '').replace('-', '').split(':')[0];
+                      return recBase === posBase;
+                    });
+
+                    if (activePos) {
+                      const posId = String(activePos.id || activePos.trade_id || rec.id);
+                      return (
+                        <button
+                          onClick={(e) => handleCloseLiveTrade(rec, activePos, e)}
+                          disabled={closingTradeId === posId}
+                          className="mt-4 w-full py-2.5 px-4 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(244,63,94,0.2)] disabled:opacity-50 text-xs uppercase tracking-wider"
+                        >
+                          {closingTradeId === posId ? (
+                            <>
+                              <RefreshCw size={16} className="animate-spin" /> Closing Position...
+                            </>
+                          ) : (
+                            <>
+                              🚨 Close at Market Price
+                            </>
+                          )}
+                        </button>
+                      );
+                    } else if (pendingOrder) {
                       return (
                         <div className="mt-4 flex items-center gap-2">
                           <button
