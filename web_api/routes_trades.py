@@ -2968,9 +2968,192 @@ def cancel_pending_trade():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-@trades_bp.route('/api/user/quick-exec-token', methods=['GET'])
+def _render_quick_exec_confirmation_html(token, symbol, side, entry_price, tp_price, sl_price):
+    from html import escape
+    safe_sym = escape(str(symbol))
+    safe_side = escape(str(side).upper())
+    safe_entry = f"{entry_price:,.2f}" if isinstance(entry_price, (int, float)) and entry_price > 0 else "Market"
+    safe_tp = f"{tp_price:,.2f}" if isinstance(tp_price, (int, float)) and tp_price > 0 else "N/A"
+    safe_sl = f"{sl_price:,.2f}" if isinstance(sl_price, (int, float)) and sl_price > 0 else "N/A"
+    
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Trade Execution - Metaverse Sherpa</title>
+    <style>
+        body {{
+            background-color: #0b0e14;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }}
+        .card {{
+            background-color: #141a24;
+            border: 1px solid rgba(60, 215, 255, 0.25);
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            text-align: center;
+        }}
+        .badge {{
+            display: inline-block;
+            background: rgba(60, 215, 255, 0.1);
+            color: #3cd7ff;
+            border: 1px solid rgba(60, 215, 255, 0.3);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 4px 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }}
+        h2 {{
+            margin: 0 0 12px 0;
+            font-size: 22px;
+            font-weight: 900;
+            color: #ffffff;
+        }}
+        p {{
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0 0 24px 0;
+        }}
+        .grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: left;
+        }}
+        .grid-item span {{
+            display: block;
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+        }}
+        .grid-item strong {{
+            display: block;
+            font-size: 14px;
+            color: #ffffff;
+            margin-top: 2px;
+        }}
+        .btn-submit {{
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }}
+        .btn-submit:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }}
+        .cancel-link {{
+            display: inline-block;
+            margin-top: 16px;
+            color: #64748b;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+        }}
+        .cancel-link:hover {{
+            color: #94a3b8;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge">Market Open Execution</div>
+        <h2>Confirm Live Trade</h2>
+        <p>Are you sure you want to execute a live order on your exchange account for <strong>{safe_sym}</strong>?</p>
+        
+        <div class="grid">
+            <div class="grid-item">
+                <span>Symbol</span>
+                <strong>{safe_sym}</strong>
+            </div>
+            <div class="grid-item">
+                <span>Side</span>
+                <strong style="color: #10b981;">{safe_side}</strong>
+            </div>
+            <div class="grid-item">
+                <span>Target Price</span>
+                <strong style="color: #10b981;">${safe_tp}</strong>
+            </div>
+            <div class="grid-item">
+                <span>Stop Loss</span>
+                <strong style="color: #f43f5e;">${safe_sl}</strong>
+            </div>
+        </div>
+
+        <form method="POST" action="https://bot.metaversesherpa.io/api/user/quick-exec-token">
+            <input type="hidden" name="token" value="{token}">
+            <input type="hidden" name="confirm" value="1">
+            <button type="submit" class="btn-submit">⚡ Yes, Execute Live Trade Now</button>
+        </form>
+
+        <a href="https://bot.metaversesherpa.io/trades" class="cancel-link">Cancel & Return to App</a>
+    </div>
+</body>
+</html>"""
+
+
+def _render_already_executed_html(symbol, status_title, status_desc):
+    from html import escape
+    safe_sym = escape(str(symbol))
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Status - Metaverse Sherpa</title>
+    <style>
+        body {{ background-color: #0b0e14; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }}
+        .card {{ background-color: #141a24; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 32px; max-width: 440px; width: 100%; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); text-align: center; }}
+        .icon {{ font-size: 48px; margin-bottom: 16px; }}
+        h2 {{ margin: 0 0 12px 0; font-size: 22px; font-weight: 800; color: #ffffff; }}
+        p {{ color: #94a3b8; font-size: 14px; line-height: 1.5; margin: 0 0 24px 0; }}
+        .btn {{ display: inline-block; width: 100%; background: #3cd7ff; color: #0b0e14; border: none; border-radius: 12px; padding: 14px 20px; font-size: 14px; font-weight: 800; text-decoration: none; box-sizing: border-box; }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">⚠️</div>
+        <h2>Order {status_title}</h2>
+        <p>The trade request for <strong>{safe_sym}</strong> has {status_desc}.</p>
+        <a href="https://bot.metaversesherpa.io/trades" class="btn">Go to Trading Console</a>
+    </div>
+</body>
+</html>"""
+
+
+@trades_bp.route('/api/user/quick-exec-token', methods=['GET', 'POST'])
 def quick_exec_token():
-    token = request.args.get("token")
+    token = request.args.get("token") or request.form.get("token")
+    is_confirmed = request.method == 'POST' or request.args.get("confirm") == "1"
     from urllib.parse import quote
     if not token:
         return redirect("https://bot.metaversesherpa.io/trades?error=" + quote("Invalid execution token"))
@@ -2986,15 +3169,33 @@ def quick_exec_token():
                 return redirect("https://bot.metaversesherpa.io/trades?error=" + quote("Invalid or expired token"))
             
             order = dict(row)
-            if order.get('status') in ['executed']:
-                return redirect(f"https://bot.metaversesherpa.io/trades?trade_opened={quote(order['symbol'])}")
-                
             user_id = order['user_id']
             signal_id = order['signal_id']
             symbol = order['symbol']
-            
             chat_id = user_id if user_id > 1000000 else user_id + 1000000000
-            
+
+            # 1. Check if token status is already executed or cancelled
+            if order.get('status') == 'executed':
+                return make_response(_render_already_executed_html(symbol, "Already Executed", "already been placed on your exchange account"), 200)
+            elif order.get('status') == 'cancelled':
+                return make_response(_render_already_executed_html(symbol, "Was Cancelled", "been cancelled"), 200)
+
+            # 2. Check if an active open position already exists for this symbol/user
+            c.execute("SELECT id FROM AlpacaActiveTrades WHERE (telegram_chat_id = ? OR web_user_id = ?) AND symbol = ? AND status = 'open'", (chat_id, user_id, symbol))
+            existing_active_trade = c.fetchone()
+            if existing_active_trade:
+                return make_response(_render_already_executed_html(symbol, "Already Active", "already got created and is active on your exchange"), 200)
+
+            # 3. If GET request without confirm parameter, render confirmation HTML page
+            if not is_confirmed:
+                t = database.get_theoretical_trade(signal_id) or {}
+                side = t.get('side', 'LONG')
+                entry_price = t.get('entry_price', 0.0)
+                tp_price = t.get('tp_price', 0.0)
+                sl_price = t.get('sl_price', 0.0)
+                return make_response(_render_quick_exec_confirmation_html(token, symbol, side, entry_price, tp_price, sl_price), 200)
+
+            # 4. If confirmed, execute manual trade
             from bot.handlers.trading import execute_manual_trade
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
