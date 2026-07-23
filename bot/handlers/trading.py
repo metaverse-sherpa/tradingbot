@@ -1971,19 +1971,42 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
         if not user.get('api_key'):
             return False, "❌ Crypto API keys are missing. Please setup your exchange account first."
             
-        fetch_sym = t['symbol']
-        if '/' not in fetch_sym and 'USDT' not in fetch_sym:
-            fetch_sym = f"{fetch_sym}/USDT"
-        else:
-            fetch_sym = fetch_sym.replace("-", "/").split(":")[0]
-
-        mdm = live_bot_multi.MarketDataManager()
+        # Crypto Market Price Fetcher with multi-provider fallbacks (Binance Public API -> YFinance -> MDM)
+        base_sym = t['symbol'].upper().replace('/USDT', '').replace('-USDT', '').replace('/USD', '').replace('-USD', '')
+        binance_pair = f"{base_sym}USDT"
+        
+        import aiohttp
         try:
-            df = await mdm.fetch_ohlcv(fetch_sym, "1m", limit=2)
-            if df is not None and not df.empty:
-                current_price = float(df['close'].iloc[-1])
-        finally:
-            await mdm.close()
+            url = f"https://api.binance.com/api/v3/ticker/price?symbol={binance_pair}"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=3) as resp:
+                    if resp.status == 200:
+                        b_data = await resp.json()
+                        if "price" in b_data:
+                            current_price = float(b_data["price"])
+        except Exception as b_err:
+            logger.warning(f"Binance ticker price fetch failed for {binance_pair}: {b_err}")
+
+        if not current_price:
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(f"{base_sym}-USD")
+                price_val = ticker.fast_info.get("lastPrice", 0.0)
+                if price_val and price_val > 0:
+                    current_price = float(price_val)
+            except Exception as yf_err:
+                logger.warning(f"YFinance ticker price fetch failed for {base_sym}: {yf_err}")
+
+        if not current_price:
+            mdm = live_bot_multi.MarketDataManager()
+            try:
+                df = await mdm.fetch_ohlcv(f"{base_sym}/USDT", "1m", limit=2)
+                if df is not None and not df.empty:
+                    current_price = float(df['close'].iloc[-1])
+            except Exception:
+                pass
+            finally:
+                await mdm.close()
             
     if not current_price:
         return False, "❌ Failed to fetch the current market price. Cannot execute trade."
@@ -2067,85 +2090,38 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
             return False, f"❌ Failed to execute trade: {e}"
             
     else:
-        # Crypto Logic
+        # Crypto Logic - Delegate directly to trading bot engine
         equity = user.get('equity', 1000)
-        user_risk = float(user.get('risk_pct', 1.5)) / 100.0
+        user_risk = float(user.get('risk_pct', 1.5))
         
-        ex_id = user.get('exchange_id', 'blofin')
-        futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-        ex_class = getattr(ccxt, ex_id)
-        default_type = 'swap'
-        exchange = ex_class({
-            "apiKey": user['api_key'],
-            "secret": user['api_secret'],
-            **({"password": user['api_password']} if user['api_password'] else {}),
-            "options": {"defaultType": default_type},
-            "enableRateLimit": True,
-        })
+        exchange = database.get_exchange_client(user, is_async=True)
         try:
             await exchange.load_markets()
-            if sym not in exchange.markets:
-                sym = sym.replace("/", "")
+            norm_sym = database.normalize_symbol(sym, exchange.id, client=exchange)
             
-            market = exchange.market(sym)
-            contract_size = float(market.get('contractSize', 1))
+            signal_data = {
+                "side": exec_side,
+                "entry": t['entry_price'],
+                "sl_dist": abs(current_price - sl_price),
+                "rr": abs(tp_price - current_price) / abs(current_price - sl_price) if abs(current_price - sl_price) > 0 else 2.0
+            }
             
-            leverage = 20
-            margin_mode = "isolated"
-            try:
-                positions = await exchange.fetch_positions()
-                pos = next((p for p in positions if p.get('symbol') == sym), None)
-                if pos:
-                    if pos.get('leverage'):
-                        leverage = float(pos['leverage'])
-                    elif 'info' in pos and pos['info'].get('leverage'):
-                        leverage = float(pos['info']['leverage'])
-                        
-                    mode = pos.get('marginMode') or pos.get('info', {}).get('marginMode')
-                    if mode:
-                        margin_mode = mode.lower()
-            except Exception as e:
-                logger.warning(f"Could not fetch positions to determine leverage/margin mode, using defaults: {e}")
-                
-            target_margin = equity * user_risk
-            raw_qty = (target_margin * leverage) / (current_price * contract_size)
-            qty = float(exchange.amount_to_precision(sym, raw_qty))
-            
-            if qty < market['limits']['amount']['min']:
-                return False, f"⚠️ Your position size ({qty}) is below the exchange minimum for {sym}."
-                
-            if ex_id == 'coinbase':
-                params = {
-                    "attached_order_configuration": {
-                        "trigger_bracket_gtc": {
-                            "limit_price": exchange.price_to_precision(sym, tp_price),
-                            "stop_trigger_price": exchange.price_to_precision(sym, sl_price)
-                        }
-                    }
-                }
+            res = await live_bot_multi.place_order(exchange, norm_sym, signal_data, equity, risk_pct=user_risk, is_manual=True)
+            if res:
+                msg = (
+                    "✅ *MANUAL TRADE EXECUTED (Crypto)* 🪙\n\n"
+                    f"Successfully opened `{res.get('size', '')}` units {side.upper()} position on **{sym}**!\n"
+                    f"• Target Entry: `{t['entry_price']}`\n"
+                    f"• Actual Entry: `{current_price}`\n"
+                    f"• Target TP: `{tp_price}`\n"
+                    f"• Target SL: `{sl_price}`\n\n"
+                    f"_The live auto-trader will actively manage this position going forward._"
+                )
+                return True, msg
             else:
-                params = {
-                    "marginMode": margin_mode,
-                    "takeProfit": {"triggerPrice": tp_price},
-                    "stopLoss": {"triggerPrice": sl_price}
-                }
-                if ex_id == 'bitget':
-                    params['tdMode'] = 'isolated'
-                
-            await exchange.create_order(sym, "market", exec_side, qty, params=params)
-                
-            msg = (
-                "✅ *MANUAL TRADE EXECUTED (Crypto)* 🪙\n\n"
-                f"Successfully opened a `{qty}` unit {side.upper()} position on **{sym}**!\n"
-                f"• Target Entry: `{t['entry_price']}`\n"
-                f"• Actual Entry: `{current_price}`\n"
-                f"• Target TP: `{tp_price}`\n"
-                f"• Target SL: `{sl_price}`\n\n"
-                f"_The live auto-trader will actively manage this position going forward._"
-            )
-            return True, msg
+                return False, f"❌ Trading engine order placement failed for {sym}. Please check exchange risk limits or margin balance."
         except Exception as e:
-            logger.error(f"Crypto manual exec error on exchange {ex_id} ({futures_type} futures) for user {chat_id}: {e}")
+            logger.error(f"Crypto manual exec engine error: {e}")
             return False, f"❌ Failed to execute trade: {e}"
         finally:
             await exchange.close()

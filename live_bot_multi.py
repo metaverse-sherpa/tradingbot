@@ -204,21 +204,17 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper", web_
     }
 
 
-async def place_order(exchange, symbol, signal, equity, risk_pct=None):
+async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual=False):
     """
     Core Order Execution Engine
-    
-    Responsibilities:
-    1. Position Sizing: Converts user's equity and risk % into a raw contract size based on Stop Loss distance.
-    2. Max Constraints: Ensures position size respects exchange max limits and account leverage constraints.
-    3. Leverage Sync: Forces the target leverage (e.g., 20x) on the exchange before placing the order.
-    4. Liquidation Defense: Projects the liquidation price. If the Stop Loss is behind the liquidation 
-       price (meaning the user would get liquidated before the SL triggers), the trade is rejected.
     """
     try:
         # Use user-specific risk or fallback to global default
         risk_val = (risk_pct / 100.0) if risk_pct is not None else RISK_PER_TRADE
         
+        if not getattr(exchange, 'markets', None):
+            await exchange.load_markets()
+
         market = exchange.market(symbol)
         ticker = await exchange.fetch_ticker(symbol)
         lp = ticker["last"]
@@ -231,9 +227,9 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None):
         
         scaled_entry = signal["entry"] * multiplier
         scaled_sl_dist = signal["sl_dist"] * multiplier
-        rr = signal["rr"]
+        rr = signal.get("rr", 2.0)
         
-        if abs(lp - scaled_entry) / scaled_entry > 0.01: return None
+        if not is_manual and abs(lp - scaled_entry) / scaled_entry > 0.01: return None
 
         # Keep SL and TP fixed to the theoretical targets based on the signal entry price
         if signal["side"] == "buy":
