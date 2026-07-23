@@ -310,7 +310,7 @@ def admin_users():
                     LEFT JOIN WebUsers u3 ON t.referred_by = u3.telegram_chat_id
                     LEFT JOIN Users t2 ON t.referred_by = t2.telegram_chat_id
                     WHERE t.telegram_chat_id NOT IN (SELECT telegram_chat_id FROM WebUsers WHERE telegram_chat_id IS NOT NULL)
-                )
+                ) AS combined_users
                 ORDER BY created_at DESC 
                 LIMIT 100
             ''')
