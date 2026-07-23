@@ -2075,6 +2075,13 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
                 sl_price=sl_price,
                 open_time=open_ts
             )
+            database.update_position_status(chat_id, True, web_user_id=user.get('id'))
+            try:
+                from web_api.routes_trades import RESPONSE_CACHE, RESPONSE_CACHE_LOCK
+                with RESPONSE_CACHE_LOCK:
+                    RESPONSE_CACHE.clear()
+            except Exception:
+                pass
             msg = (
                 "✅ *MANUAL TRADE EXECUTED (Alpaca)* 🦙\n\n"
                 f"Successfully opened a `{qty}` share {side.upper()} position on **{sym}**!\n"
@@ -2108,6 +2115,13 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
             
             res = await live_bot_multi.place_order(exchange, norm_sym, signal_data, equity, risk_pct=user_risk, is_manual=True)
             if res:
+                database.update_position_status(chat_id, True, web_user_id=user.get('id'))
+                try:
+                    from web_api.routes_trades import RESPONSE_CACHE, RESPONSE_CACHE_LOCK
+                    with RESPONSE_CACHE_LOCK:
+                        RESPONSE_CACHE.clear()
+                except Exception:
+                    pass
                 msg = (
                     "✅ *MANUAL TRADE EXECUTED (Crypto)* 🪙\n\n"
                     f"Successfully opened `{res.get('size', '')}` units {side.upper()} position on **{sym}**!\n"
