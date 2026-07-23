@@ -1246,9 +1246,6 @@ def check_action_plan_item(analysis_id):
     return jsonify({"success": True}), 200
 
 
-@portfolio_bp.route('/api/portfolio/good-buys', methods=['POST'])
-@require_auth
-@require_premium
 def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, force_regenerate=False, is_admin=False):
     cache_key = f"good_buys_{risk_profile}_{investment_goal}"
     
