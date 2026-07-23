@@ -104,6 +104,8 @@ class CoinbaseWrapper(ccxt.coinbase):
                     self.options['retail_portfolio_id'] = portfolios[0]['id']
             except Exception:
                 pass
+        if self.options.get('portfolio') and 'retail_portfolio_id' not in params and 'portfolio_uuid' not in params:
+            params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
         return await super().fetch_positions(symbols, params)
 
     async def create_order(self, symbol, type, side, amount, price=None, params={}):
@@ -118,6 +120,7 @@ class CoinbaseWrapper(ccxt.coinbase):
         if self.options.get('portfolio') and 'retail_portfolio_id' not in params:
             params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
         return await super().create_order(symbol, type, side, amount, price, params)
+
 
 class CoinbaseWrapperSync(ccxt_sync.coinbase):
     def fetch_balance(self, params={}):
@@ -157,6 +160,8 @@ class CoinbaseWrapperSync(ccxt_sync.coinbase):
                     self.options['retail_portfolio_id'] = portfolios[0]['id']
             except Exception:
                 pass
+        if self.options.get('portfolio') and 'retail_portfolio_id' not in params and 'portfolio_uuid' not in params:
+            params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
         return super().fetch_positions(symbols, params)
 
     def create_order(self, symbol, type, side, amount, price=None, params={}):
