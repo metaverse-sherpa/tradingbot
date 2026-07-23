@@ -234,16 +234,28 @@ def normalize_symbol(symbol, exchange_id, client=None):
             m_base = str(market.get('base') or '').upper()
             m_id = str(market.get('id') or '').upper()
             m_sym = m_symbol.upper()
-            if m_base == base or m_id == base or m_id == f"{base}USDT" or m_id == f"{base}-USDT" or m_sym.startswith(f"{base}/") or m_sym.startswith(f"{base}-"):
+            if m_base == base or m_id == base or m_id.startswith(base) or m_sym.startswith(f"{base}/") or m_sym.startswith(f"{base}-"):
                 is_swap = market.get('swap') or market.get('future') or market.get('type') in ('swap', 'future') or market.get('contract')
+                quote = str(market.get('quote') or market.get('settle') or '').upper()
+                score = 0
+                if quote == 'USDT' or 'USDT' in m_sym or 'USDT' in m_id:
+                    score += 100
+                elif quote == 'USD' or 'USD' in m_sym:
+                    score += 50
+                elif quote == 'USDC' or 'USDC' in m_sym:
+                    score += 10
+                
                 if is_swap:
-                    matching_swap.append(m_symbol)
+                    matching_swap.append((score, m_symbol))
                 else:
-                    matching_any.append(m_symbol)
+                    matching_any.append((score, m_symbol))
+                    
         if matching_swap:
-            return matching_swap[0]
+            matching_swap.sort(key=lambda x: x[0], reverse=True)
+            return matching_swap[0][1]
         if matching_any:
-            return matching_any[0]
+            matching_any.sort(key=lambda x: x[0], reverse=True)
+            return matching_any[0][1]
 
     # Exchange-specific symbol mapping tables
     MAPPINGS = {
