@@ -2570,7 +2570,33 @@ def get_recent_theoretical_trades(limit=10):
     return [dict(r) for r in rows]
 
 def get_theoretical_trade(trade_id):
-    """Returns a theoretical trade by ID."""
+    """Returns a theoretical trade by ID, supporting both TheoreticalTrades and AIRecommendations (via 'rec_<id>')."""
+    if trade_id is not None and str(trade_id).startswith("rec_"):
+        rec_id_str = str(trade_id).replace("rec_", "")
+        try:
+            rec_id = int(rec_id_str)
+            with db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT * FROM AIRecommendations WHERE id = ?", (rec_id,))
+                row = c.fetchone()
+                if row:
+                    rec = dict(row)
+                    return {
+                        "id": f"rec_{rec['id']}",
+                        "symbol": rec['symbol'],
+                        "side": "BUY",
+                        "entry_price": float(rec.get('entry_price', 0.0)),
+                        "tp_price": float(rec.get('target_price', 0.0)),
+                        "sl_price": float(rec.get('stop_loss', 0.0)),
+                        "open_time": rec.get('created_at', 0),
+                        "status": "open" if rec.get('status') == 'active' else rec.get('status', 'closed'),
+                        "strategy": "AI Recommendation",
+                        "category": rec.get('category', 'stock'),
+                        "is_recommendation": True
+                    }
+        except ValueError:
+            pass
+
     with db_session() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM TheoreticalTrades WHERE id = ?", (trade_id,))

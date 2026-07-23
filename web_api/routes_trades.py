@@ -19,7 +19,7 @@ BINANCE_SESSION = requests.Session()
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STOCK_DB_PATH = os.path.join(ROOT_DIR, "data", "stock_daily_cache.db")
 
-from flask import Blueprint, request, jsonify, make_response, g, send_file
+from flask import Blueprint, request, jsonify, make_response, g, send_file, redirect
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import database
 import utils_gcp
