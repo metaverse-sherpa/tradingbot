@@ -2869,3 +2869,146 @@ def manual_trade():
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         loop.close()
+
+
+@trades_bp.route('/api/user/queue-trade', methods=['POST'])
+@require_auth
+def queue_trade():
+    user = g.user
+    data = request.json or {}
+    signal_id = data.get("signal_id")
+    action_type = data.get("action_type", "auto_execute")
+    
+    if not signal_id:
+        return jsonify({"success": False, "error": "signal_id is required"}), 400
+        
+    t = database.get_theoretical_trade(signal_id)
+    if not t or t.get('status') != 'open':
+        return jsonify({"success": False, "error": "Signal is no longer active"}), 400
+        
+    import uuid
+    import time
+    token = str(uuid.uuid4())
+    user_id = user.get("id") or user.get("telegram_chat_id")
+    symbol = t.get("symbol")
+    now = int(time.time())
+    
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute('''
+                UPDATE PendingMarketOrders SET status = 'cancelled'
+                WHERE user_id = ? AND signal_id = ? AND status = 'pending'
+            ''', (user_id, str(signal_id)))
+            c.execute('''
+                INSERT INTO PendingMarketOrders (user_id, signal_id, symbol, action_type, token, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'pending', ?)
+            ''', (user_id, str(signal_id), symbol, action_type, token, now))
+            conn.commit()
+            
+        action_msg = "scheduled to auto-execute when the market opens." if action_type == "auto_execute" else "set for an email reminder when the market opens."
+        return jsonify({
+            "success": True, 
+            "message": f"✅ Trade for {symbol} has been {action_msg}"
+        }), 200
+    except Exception as e:
+        print(f"Error queueing trade: {e}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
+@trades_bp.route('/api/user/pending-trades', methods=['GET'])
+@require_auth
+def get_pending_trades():
+    user = g.user
+    user_id = user.get("id") or user.get("telegram_chat_id")
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute('''
+                SELECT id, signal_id, symbol, action_type, created_at 
+                FROM PendingMarketOrders 
+                WHERE user_id = ? AND status = 'pending'
+            ''', (user_id,))
+            rows = [dict(r) for r in c.fetchall()]
+        return jsonify({"success": True, "pending_trades": rows}), 200
+    except Exception as e:
+        print(f"Error fetching pending trades: {e}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
+@trades_bp.route('/api/user/cancel-pending-trade', methods=['POST'])
+@require_auth
+def cancel_pending_trade():
+    user = g.user
+    data = request.json or {}
+    signal_id = data.get("signal_id")
+    pending_id = data.get("pending_id")
+    user_id = user.get("id") or user.get("telegram_chat_id")
+    
+    if not signal_id and not pending_id:
+        return jsonify({"success": False, "error": "signal_id or pending_id required"}), 400
+        
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            if pending_id:
+                c.execute('''
+                    UPDATE PendingMarketOrders SET status = 'cancelled'
+                    WHERE id = ? AND user_id = ? AND status = 'pending'
+                ''', (pending_id, user_id))
+            else:
+                c.execute('''
+                    UPDATE PendingMarketOrders SET status = 'cancelled'
+                    WHERE signal_id = ? AND user_id = ? AND status = 'pending'
+                ''', (str(signal_id), user_id))
+            conn.commit()
+        return jsonify({"success": True, "message": "Pending order cancelled successfully"}), 200
+    except Exception as e:
+        print(f"Error cancelling pending trade: {e}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
+@trades_bp.route('/api/user/quick-exec-token', methods=['GET'])
+def quick_exec_token():
+    token = request.args.get("token")
+    from urllib.parse import quote
+    if not token:
+        return redirect("https://bot.metaversesherpa.io/trades?error=" + quote("Invalid execution token"))
+        
+    import asyncio
+    
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT * FROM PendingMarketOrders WHERE token = ?", (token,))
+            row = c.fetchone()
+            if not row:
+                return redirect("https://bot.metaversesherpa.io/trades?error=" + quote("Invalid or expired token"))
+            
+            order = dict(row)
+            if order.get('status') in ['executed']:
+                return redirect(f"https://bot.metaversesherpa.io/trades?trade_opened={quote(order['symbol'])}")
+                
+            user_id = order['user_id']
+            signal_id = order['signal_id']
+            symbol = order['symbol']
+            
+            chat_id = user_id if user_id > 1000000 else user_id + 1000000000
+            
+            from bot.handlers.trading import execute_manual_trade
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                success, msg = loop.run_until_complete(execute_manual_trade(chat_id, signal_id))
+            finally:
+                loop.close()
+                
+            if success:
+                c.execute("UPDATE PendingMarketOrders SET status = 'executed', executed_at = ? WHERE token = ?", (int(time.time()), token))
+                conn.commit()
+                return redirect(f"https://bot.metaversesherpa.io/trades?trade_opened={quote(symbol)}")
+            else:
+                return redirect(f"https://bot.metaversesherpa.io/trades?error={quote(msg)}")
+    except Exception as e:
+        return redirect(f"https://bot.metaversesherpa.io/trades?error={quote(str(e))}")
+

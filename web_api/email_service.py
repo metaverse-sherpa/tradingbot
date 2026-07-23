@@ -1202,3 +1202,84 @@ def get_combined_weekly_summary_telegram(is_premium=False,
     return _chunk_telegram_message("\n".join(lines))
 
 
+def get_market_open_reminder_html(symbol, side, strategy, entry, tp, sl, current_price, token, is_late_entry=False, diff_pct=0.0):
+    """
+    Generates HTML email for Market Open trade reminders or Late Entry warnings, matching existing email template.
+    """
+    exec_url = f"https://bot.metaversesherpa.io/api/user/quick-exec-token?token={token}"
+    
+    color_bg = "#0B0E14"
+    color_card = "#141A24"
+    
+    if is_late_entry:
+        status_header = f"⚠️ LATE ENTRY WARNING: {symbol}"
+        status_sub = f"Market opened {diff_pct:+.2f}% above target entry. Auto-exec was held off to protect your risk."
+        status_color = "#FF9100"
+        banner_html = f"""
+        <div style="background-color: rgba(255, 145, 0, 0.15); border: 1px solid rgba(255, 145, 0, 0.4); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; color: #FFB74D; font-size: 13px; line-height: 1.5;">
+            <strong>⚠️ Late Entry Alert:</strong> The current market price (${current_price:.2f}) is currently {diff_pct:+.2f}% relative to the target entry (${entry:.2f}). You can review the trade below and execute manually if desired.
+        </div>
+        """
+    else:
+        status_header = f"⏰ STOCK MARKET IS OPEN: {symbol}"
+        status_sub = f"The market is open! Review your signal and execute live trade."
+        status_color = "#3cd7ff"
+        banner_html = ""
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Stock Market Open Signal Reminder</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: {color_bg}; color: #FFFFFF; margin: 0; padding: 0;">
+        <div style="max-width: 600px; margin: 20px auto; background-color: {color_card}; border: 1px solid rgba(60, 215, 255, 0.15); border-radius: 12px; overflow: hidden;">
+            <div style="padding: 30px; text-align: center; background: linear-gradient(135deg, rgba(60, 215, 255, 0.1) 0%, rgba(12, 31, 48, 0.5) 100%); border-bottom: 1px solid rgba(60, 215, 255, 0.1);">
+                <h1 style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: {status_color};">{status_header}</h1>
+                <p style="font-size: 13px; color: rgba(255, 255, 255, 0.6); margin: 5px 0 0 0;">{status_sub}</p>
+            </div>
+            <div style="padding: 30px;">
+                {banner_html}
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #1a222e; border-radius: 8px; margin-bottom: 20px; border: 1px solid #2a3546; border-collapse: separate; overflow: hidden;">
+                    <tr>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #8892b0; font-size: 12px; text-transform: uppercase;">Symbol</td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #ffffff; font-size: 14px; font-weight: bold;" align="right">{symbol} ({side.upper()})</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #8892b0; font-size: 12px; text-transform: uppercase;">Strategy</td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #ffffff; font-size: 13px;" align="right">{strategy}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #8892b0; font-size: 12px; text-transform: uppercase;">Current Price</td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #3cd7ff; font-size: 14px; font-weight: bold;" align="right">${current_price:.2f} ({diff_pct:+.2f}%)</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #8892b0; font-size: 12px; text-transform: uppercase;">Target Entry</td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #ffffff; font-size: 14px;" align="right">${entry:.2f}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #8892b0; font-size: 12px; text-transform: uppercase;">Stop Loss (SL)</td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #2a3546; color: #FF1744; font-size: 14px;" align="right">${sl:.2f}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 20px; color: #8892b0; font-size: 12px; text-transform: uppercase;">Take Profit (TP)</td>
+                        <td style="padding: 12px 20px; color: #00C853; font-size: 14px;" align="right">${tp:.2f}</td>
+                    </tr>
+                </table>
+
+                <a href="{exec_url}" target="_blank" style="display: block; width: 220px; margin: 25px auto 10px auto; text-align: center; background: linear-gradient(90deg, #3cd7ff 0%, #00C853 100%); color: #000000; text-decoration: none; font-weight: bold; padding: 14px 24px; border-radius: 8px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">
+                    ▶️ Open Live Trade Now
+                </a>
+            </div>
+            <div style="padding: 20px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); font-size: 11px; color: rgba(255, 255, 255, 0.3);">
+                {NFA_MEDIUM_HTML}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+

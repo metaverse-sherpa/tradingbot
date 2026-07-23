@@ -6,6 +6,8 @@ import { useAuthStore, useDashboardStore } from '../store/useStore';
 import SharePnLModal from './SharePnLModal';
 import LoadingDisplay from './LoadingDisplay';
 
+import { isStockMarketOpen } from '../utils/market';
+
 const SignalsPage: React.FC = () => {
   const { user } = useAuthStore();
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
@@ -26,6 +28,27 @@ const SignalsPage: React.FC = () => {
   const [shareStat, setShareStat] = useState<{stat: any, type: string} | null>(null);
   const [userOpenTrades, setUserOpenTrades] = useState<any[]>([]);
   const [executingSignalId, setExecutingSignalId] = useState<string | number | null>(null);
+  const [pendingTrades, setPendingTrades] = useState<Record<string, any>>({});
+  const [cancellingSignalId, setCancellingSignalId] = useState<string | number | null>(null);
+
+  const [queueModalSignal, setQueueModalSignal] = useState<any | null>(null);
+  const [selectedQueueOption, setSelectedQueueOption] = useState<'auto_execute' | 'email_reminder'>('auto_execute');
+  const [submittingQueue, setSubmittingQueue] = useState(false);
+
+  const fetchPendingTrades = useCallback(async () => {
+    try {
+      const res = await api.get('/user/pending-trades');
+      if (res.data?.success && Array.isArray(res.data?.pending_trades)) {
+        const map: Record<string, any> = {};
+        res.data.pending_trades.forEach((p: any) => {
+          map[String(p.signal_id)] = p;
+        });
+        setPendingTrades(map);
+      }
+    } catch (err) {
+      console.error('Error fetching pending trades:', err);
+    }
+  }, []);
 
   const fetchSignalsAndStats = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -40,20 +63,28 @@ const SignalsPage: React.FC = () => {
       setClosedSignals(closedRes.data || []);
       setFreeStats(statsRes.data?.strategies || []);
       setUserOpenTrades((openTradesRes.data || []).filter((t: any) => !t.id?.startsWith('local-')));
+      fetchPendingTrades();
     } catch (err) {
       console.error("Error fetching signals/stats:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchPendingTrades]);
 
-  const handleOpenLiveTrade = async (signalId: string | number, e: React.MouseEvent) => {
+  const handleOpenLiveTrade = async (signal: any, e: React.MouseEvent) => {
     e.stopPropagation();
     if (executingSignalId) return;
-    setExecutingSignalId(signalId);
+
+    if (!isCryptoSymbol(signal.symbol) && !isStockMarketOpen()) {
+      setQueueModalSignal(signal);
+      setSelectedQueueOption('auto_execute');
+      return;
+    }
+
+    setExecutingSignalId(signal.id);
     try {
-      const res = await api.post('/user/manual-trade', { signal_id: signalId });
+      const res = await api.post('/user/manual-trade', { signal_id: signal.id });
       if (res.data?.success) {
         alert(res.data?.message || '✅ Live trade executed successfully!');
       } else {
@@ -66,6 +97,50 @@ const SignalsPage: React.FC = () => {
     } finally {
       setExecutingSignalId(null);
       fetchSignalsAndStats(true);
+    }
+  };
+
+  const handleConfirmQueueOrder = async () => {
+    if (!queueModalSignal || submittingQueue) return;
+    setSubmittingQueue(true);
+    try {
+      const res = await api.post('/user/queue-trade', {
+        signal_id: queueModalSignal.id,
+        action_type: selectedQueueOption
+      });
+      if (res.data?.success) {
+        alert(res.data?.message || '✅ Trade queued successfully!');
+      } else {
+        alert(res.data?.error || 'Failed to queue trade.');
+      }
+    } catch (err: any) {
+      console.error('Queue trade error:', err);
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to queue trade.';
+      alert(`❌ ${errMsg}`);
+    } finally {
+      setSubmittingQueue(false);
+      setQueueModalSignal(null);
+      fetchPendingTrades();
+    }
+  };
+
+  const handleCancelPendingTrade = async (signalId: string | number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (cancellingSignalId) return;
+    setCancellingSignalId(signalId);
+    try {
+      const res = await api.post('/user/cancel-pending-trade', { signal_id: String(signalId) });
+      if (res.data?.success) {
+        alert('✅ Pending trade request cancelled.');
+      } else {
+        alert(res.data?.error || 'Failed to cancel pending trade.');
+      }
+    } catch (err: any) {
+      console.error('Cancel pending trade error:', err);
+      alert('❌ Failed to cancel pending trade.');
+    } finally {
+      setCancellingSignalId(null);
+      fetchPendingTrades();
     }
   };
 
@@ -267,21 +342,49 @@ const SignalsPage: React.FC = () => {
         </div>
 
         {tabState === 'active' && isPremium && !hasActiveTrade && (
-          <button
-            onClick={(e) => handleOpenLiveTrade(signal.id, e)}
-            disabled={executingSignalId === signal.id}
-            className="mt-4 w-full py-2.5 px-4 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)] disabled:opacity-50"
-          >
-            {executingSignalId === signal.id ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" /> Opening Live Trade...
-              </>
-            ) : (
-              <>
-                ▶️ Open Live Trade
-              </>
-            )}
-          </button>
+          pendingTrades[String(signal.id)] ? (
+            <div className="mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <button
+                disabled
+                className="flex-1 py-2.5 px-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium rounded-xl flex items-center justify-center gap-2 cursor-not-allowed text-xs sm:text-sm"
+              >
+                <Clock size={15} className="text-amber-400 animate-pulse flex-shrink-0" />
+                <span className="truncate">
+                  {pendingTrades[String(signal.id)].action_type === 'auto_execute' 
+                    ? '⏳ Pending Auto-Execute at Market Open' 
+                    : '📧 Pending Email Reminder at Market Open'}
+                </span>
+              </button>
+              <button
+                onClick={(e) => handleCancelPendingTrade(signal.id, e)}
+                disabled={cancellingSignalId === signal.id}
+                className="py-2.5 px-4 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-400 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(244,63,94,0.15)] flex-shrink-0 disabled:opacity-50"
+                title="Cancel pending order"
+              >
+                {cancellingSignalId === signal.id ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  'Cancel'
+                )}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => handleOpenLiveTrade(signal, e)}
+              disabled={executingSignalId === signal.id}
+              className="mt-4 w-full py-2.5 px-4 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)] disabled:opacity-50"
+            >
+              {executingSignalId === signal.id ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" /> Opening Live Trade...
+                </>
+              ) : (
+                <>
+                  ▶️ Open Live Trade
+                </>
+              )}
+            </button>
+          )
         )}
 
         {isExpanded && (
@@ -453,6 +556,90 @@ const SignalsPage: React.FC = () => {
           pnl={shareStat.stat.realized_pct}
           onClose={() => setShareStat(null)}
         />
+      )}
+
+      {queueModalSignal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+          <div className="bg-[#1b1f2c] border border-cyan-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative">
+            <div className="flex items-center gap-3 text-cyan-400 font-bold text-lg border-b border-white/10 pb-3">
+              <Clock className="size-6 text-cyan-400 shrink-0" />
+              <span>STOCK MARKET CLOSED</span>
+            </div>
+            
+            <p className="text-gray-300 text-sm leading-relaxed">
+              The US Equities Market is currently closed. How would you like to handle your live trade for <strong className="text-white">{queueModalSignal.symbol}</strong>?
+            </p>
+
+            <div className="space-y-3 pt-1">
+              <label
+                onClick={() => setSelectedQueueOption('auto_execute')}
+                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  selectedQueueOption === 'auto_execute'
+                    ? 'bg-cyan-500/10 border-cyan-500/50 text-white'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="queueOption"
+                  checked={selectedQueueOption === 'auto_execute'}
+                  onChange={() => setSelectedQueueOption('auto_execute')}
+                  className="mt-1 accent-cyan-400"
+                />
+                <div>
+                  <div className="font-bold text-sm text-cyan-300 flex items-center gap-1.5">
+                    ⚡ Auto-Execute at Market Open
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    Order will automatically be placed on Alpaca at 9:30 AM EST (provided price hasn't opened &gt;1% higher).
+                  </div>
+                </div>
+              </label>
+
+              <label
+                onClick={() => setSelectedQueueOption('email_reminder')}
+                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  selectedQueueOption === 'email_reminder'
+                    ? 'bg-cyan-500/10 border-cyan-500/50 text-white'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="queueOption"
+                  checked={selectedQueueOption === 'email_reminder'}
+                  onChange={() => setSelectedQueueOption('email_reminder')}
+                  className="mt-1 accent-cyan-400"
+                />
+                <div>
+                  <div className="font-bold text-sm text-cyan-300 flex items-center gap-1.5">
+                    📧 Email Reminder at Market Open
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    Receive a Resend email at 9:30 AM EST with signal progress and a 1-click execution button.
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3 pt-3">
+              <button
+                onClick={() => setQueueModalSignal(null)}
+                disabled={submittingQueue}
+                className="flex-1 py-2.5 px-4 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-bold rounded-xl text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmQueueOrder}
+                disabled={submittingQueue}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(60,215,255,0.3)] flex items-center justify-center gap-2"
+              >
+                {submittingQueue ? 'Saving...' : 'Confirm Choice'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Legal Disclaimer */}

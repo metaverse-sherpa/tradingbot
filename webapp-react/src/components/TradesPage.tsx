@@ -22,7 +22,14 @@ const TradesPage: React.FC = () => {
     if (initialCategory && initialCategory !== categoryTab) {
       setCategoryTab(initialCategory);
     }
-  }, [initialCategory]);
+    const tradeOpened = searchParams.get('trade_opened');
+    const urlError = searchParams.get('error');
+    if (tradeOpened) {
+      alert(`✅ Live trade for ${tradeOpened} successfully opened!`);
+    } else if (urlError) {
+      alert(`❌ Execution note: ${urlError}`);
+    }
+  }, [initialCategory, location.search]);
 
   const [revealValues, setRevealValues] = useState(false);
   const hideDollars = user?.hide_dollars && !revealValues;

@@ -836,6 +836,120 @@ async def run_real_trader_execution(today_opens):
         except Exception as e:
             logger.error(f"Error executing trades for user {chat_id or f'web_{web_user_id}'}: {e}")
 
+async def process_pending_market_orders():
+    """
+    Processes queued stock orders when the market opens.
+    Enforces the 1.0% Late Entry safety rule:
+    - If price opened > 1.0% above entry (for LONG), abort auto-execute & send Late Entry email.
+    - Else if action_type == 'auto_execute', execute trade & send notification email.
+    - Else (action_type == 'email_reminder'), send reminder email.
+    """
+    import database
+    import time
+    from web_api.email_service import get_market_open_reminder_html, send_alert_email
+    
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("SELECT * FROM PendingMarketOrders WHERE status = 'pending'")
+            rows = c.fetchall()
+            if not rows:
+                return
+                
+            orders = [dict(r) for r in rows]
+            logger.info(f"Found {len(orders)} pending market orders to process at market open.")
+            
+            for o in orders:
+                order_id = o['id']
+                user_id = o['user_id']
+                signal_id = o['signal_id']
+                symbol = o['symbol']
+                action_type = o['action_type']
+                token = o['token']
+                
+                # Fetch theoretical trade signal
+                t = database.get_theoretical_trade(signal_id)
+                if not t or t.get('status') != 'open':
+                    c.execute("UPDATE PendingMarketOrders SET status = 'expired' WHERE id = ?", (order_id,))
+                    conn.commit()
+                    continue
+                    
+                entry_price = float(t.get('entry_price', 0))
+                tp_price = float(t.get('tp_price', 0))
+                sl_price = float(t.get('sl_price', 0))
+                side = t.get('side', 'LONG')
+                strategy = t.get('strategy', 'Sherpa Velocity Pullback')
+                
+                # Fetch user details to get email & chat_id
+                user_email = None
+                if user_id > 1000000:
+                    chat_id = user_id
+                    u_db = database.get_user(chat_id)
+                    if u_db:
+                        user_email = u_db.get('email')
+                else:
+                    chat_id = user_id + 1000000000
+                    try:
+                        import web_api.db_web as db_web
+                        web_u = db_web.get_web_user_by_id(user_id)
+                        if web_u:
+                            user_email = web_u.get('email')
+                    except Exception as web_err:
+                        logger.error(f"Error fetching web user for pending order: {web_err}")
+
+                # Fetch current market price via Alpaca
+                current_price = entry_price
+                try:
+                    import aiohttp
+                    import utils_gcp
+                    url = f"https://data.alpaca.markets/v2/stocks/bars/latest?symbols={symbol}"
+                    sys_key = utils_gcp.get_secret("ALPACA_API_KEY") or os.getenv("ALPACA_API_KEY", "")
+                    sys_sec = utils_gcp.get_secret("ALPACA_API_SECRET") or os.getenv("ALPACA_API_SECRET", "")
+                    headers = {"APCA-API-KEY-ID": sys_key, "APCA-API-SECRET-KEY": sys_sec}
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, headers=headers) as resp:
+                            if resp.status == 200:
+                                b_data = await resp.json()
+                                bars = b_data.get("bars", {})
+                                if symbol in bars:
+                                    current_price = float(bars[symbol].get('c', entry_price))
+                except Exception as price_err:
+                    logger.error(f"Error fetching current price for pending order {symbol}: {price_err}")
+                    
+                is_long = side.upper() in ['BUY', 'LONG', 'L']
+                if is_long:
+                    diff_pct = ((current_price - entry_price) / entry_price) * 100 if entry_price > 0 else 0
+                else:
+                    diff_pct = ((entry_price - current_price) / entry_price) * 100 if entry_price > 0 else 0
+                    
+                is_late_entry = diff_pct > 1.0 or (is_long and (current_price <= sl_price or current_price >= tp_price))
+                
+                # Check if we should override auto_execute to late entry email
+                if action_type == 'auto_execute' and not is_late_entry:
+                    from bot.handlers.trading import execute_manual_trade
+                    success, msg = await execute_manual_trade(chat_id, signal_id)
+                    now_ts = int(time.time())
+                    if success:
+                        c.execute("UPDATE PendingMarketOrders SET status = 'executed', executed_at = ? WHERE id = ?", (now_ts, order_id))
+                        conn.commit()
+                        if user_email:
+                            subject = f"🚀 Live Trade Executed on Market Open: {symbol}"
+                            html = get_market_open_reminder_html(symbol, side, strategy, entry_price, tp_price, sl_price, current_price, token, is_late_entry=False, diff_pct=diff_pct)
+                            send_alert_email(user_email, subject, html)
+                    else:
+                        c.execute("UPDATE PendingMarketOrders SET status = 'failed', error_log = ? WHERE id = ?", (str(msg), order_id))
+                        conn.commit()
+                else:
+                    # Send reminder / late entry warning email
+                    c.execute("UPDATE PendingMarketOrders SET status = ? WHERE id = ?", ('overridden_late_entry' if is_late_entry else 'reminded', order_id))
+                    conn.commit()
+                    if user_email:
+                        subject = f"⚠️ Late Entry Alert: {symbol}" if is_late_entry else f"⏰ Market Open Signal Reminder: {symbol}"
+                        html = get_market_open_reminder_html(symbol, side, strategy, entry_price, tp_price, sl_price, current_price, token, is_late_entry=is_late_entry, diff_pct=diff_pct)
+                        send_alert_email(user_email, subject, html)
+    except Exception as e:
+        logger.error(f"Error in process_pending_market_orders: {e}")
+
 async def main():
     logger.info("Starting Daily stock swing execution...")
     
@@ -843,6 +957,12 @@ async def main():
     if not check_is_market_open():
         logger.info("US Equities Market is closed today. Skipping swing execution.")
         return
+        
+    # Process queued pending market orders at market open
+    try:
+        await process_pending_market_orders()
+    except Exception as e:
+        logger.error(f"Error processing pending market orders: {e}")
         
     # 2. Update stock daily cache from Alpaca
     try:

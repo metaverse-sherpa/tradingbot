@@ -1070,6 +1070,21 @@ def init_db():
             )''')
             conn.commit()
 
+        if "PendingMarketOrders" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS PendingMarketOrders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                signal_id TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                action_type TEXT NOT NULL,
+                token TEXT UNIQUE,
+                status TEXT DEFAULT 'pending',
+                created_at INTEGER NOT NULL,
+                executed_at INTEGER,
+                error_log TEXT
+            )''')
+            conn.commit()
+
 
 def reset_crypto_stats(chat_id):
     with db_session() as conn:
