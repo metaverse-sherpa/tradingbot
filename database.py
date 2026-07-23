@@ -2284,7 +2284,7 @@ def get_detailed_user_report():
         now = time.time()
         for r in rows:
             item = dict(r)
-            item['is_premium'] = r['premium_expiry'] > now
+            item['is_premium'] = (r['premium_expiry'] or 0) > now
             
             # Check if linked to the Web App and get their email
             c.execute("SELECT email FROM WebUsers WHERE telegram_chat_id = ?", (r['telegram_chat_id'],))
