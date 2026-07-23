@@ -57,7 +57,7 @@ async def coinbase_ws_client():
                     # TODO: Process ticker updates
                     pass
         except Exception as e:
-            logger.error(f"Coinbase WS Error: {e}. Reconnecting in 5s...")
+            logger.debug(f"Coinbase WS Error: {e}. Reconnecting in 5s...")
             await asyncio.sleep(5)
 
 async def alpaca_ws_client():

@@ -348,7 +348,7 @@ async def signal_engine(application):
                                 if sig: user_signals[symbol] = sig
                         
                         if not user_signals:
-                            logger.info(f"No signals generated for strategy '{strat_name}'. Skipping user trade check.")
+                            logger.debug(f"No signals generated for strategy '{strat_name}'. Skipping user trade check.")
                             continue
                             
                         async def execute_user_signals(user):
@@ -467,7 +467,7 @@ async def signal_engine(application):
                         
                         await asyncio.gather(*(execute_user_signals(u) for u in users))
                 
-                logger.info(f"Engine pass complete.")
+                logger.debug(f"Engine pass complete.")
             except Exception as e:
                 logger.error(f"Engine pass critical failure: {e}")
                 
