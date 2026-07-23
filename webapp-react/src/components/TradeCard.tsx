@@ -22,9 +22,10 @@ interface TradeCardProps {
   onToggleExpand: () => void;
   onShare: () => void;
   onTogglePrivacy?: () => void;
+  onClosePosition?: (trade: any) => void;
 }
 
-const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDollars, isExpanded, onToggleExpand, onShare, onTogglePrivacy }) => {
+const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDollars, isExpanded, onToggleExpand, onShare, onTogglePrivacy, onClosePosition }) => {
   const isLong = trade.side?.toUpperCase() === 'LONG' || trade.side?.toUpperCase() === 'BUY';
   const isProfit = (trade.unrealized_pnl >= 0 || trade.pnl_raw >= 0);
   const pnlColor = isProfit ? 'text-emerald-400' : 'text-rose-400';
@@ -105,6 +106,20 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
         <div>SL: ${(trade.sl_price || 0).toFixed(2)} (-{sl_pct.toFixed(0)}%)</div>
         <div>TP: ${(trade.tp_price || 0).toFixed(2)} ({tp_pct.toFixed(0)}%)</div>
       </div>
+
+      {activeTab === 'active' && onClosePosition && (
+        <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClosePosition(trade);
+            }}
+            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            🚨 Market Close
+          </button>
+        </div>
+      )}
       
       {isExpanded && (
         <div className="mt-6 pt-6 border-t border-white/5 space-y-4 cursor-default" onClick={e => e.stopPropagation()}>

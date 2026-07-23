@@ -40,6 +40,41 @@ const TradesPage: React.FC = () => {
   const [closedSortBy, setClosedSortBy] = useState<'pnl' | 'date'>('date');
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [shareTrade, setShareTrade] = useState<{trade: any, type: 'crypto'|'stock', roe: number, pnl: number} | null>(null);
+  const [confirmCloseTrade, setConfirmCloseTrade] = useState<any | null>(null);
+  const [closingTrade, setClosingTrade] = useState(false);
+
+  const handleExecuteSingleClose = async () => {
+    if (!confirmCloseTrade) return;
+    setClosingTrade(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/trades/close', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          id: confirmCloseTrade.id || confirmCloseTrade.trade_id, 
+          type: confirmCloseTrade.type, 
+          symbol: confirmCloseTrade.symbol 
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ Position for ${confirmCloseTrade.symbol} closed successfully.`);
+      } else {
+        alert(`❌ Failed to close trade: ${data.error || data.message || 'Unknown error'}`);
+      }
+    } catch (e: any) {
+      console.error("Failed to close trade", confirmCloseTrade.symbol, e);
+      alert(`❌ Failed to close position: ${e.message}`);
+    } finally {
+      setClosingTrade(false);
+      setConfirmCloseTrade(null);
+      await fetchTrades(true);
+    }
+  };
 
   const handlePanic = async (type: 'crypto' | 'stock') => {
     const tradesToClose = openTrades.filter(t => t.type === type);
@@ -160,6 +195,7 @@ const TradesPage: React.FC = () => {
                 onToggleExpand={() => activeTab === 'active' && setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
                 onShare={() => setShareTrade({ trade, type, roe: activeTab === 'active' ? trade.roe : trade.pnl_pct || 0, pnl: activeTab === 'active' ? trade.unrealized_pnl : trade.pnl_raw || 0 })}
                 onTogglePrivacy={togglePrivacy}
+                onClosePosition={(t) => setConfirmCloseTrade(t)}
               />
             );
           })}
@@ -290,6 +326,45 @@ const TradesPage: React.FC = () => {
           pnl={shareTrade.pnl} 
           onClose={() => setShareTrade(null)} 
         />
+      )}
+
+      {confirmCloseTrade && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="bg-[#1b1f2c] border border-rose-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative">
+            <div className="flex items-center gap-3 text-rose-400 font-bold text-lg border-b border-white/10 pb-3">
+              <AlertTriangle className="size-6 text-rose-500 shrink-0" />
+              <span>CLOSE {confirmCloseTrade.symbol} CONFIRMATION</span>
+            </div>
+            
+            <p className="text-gray-300 text-sm leading-relaxed">
+              You are about to close your <strong className="text-white font-bold">{confirmCloseTrade.symbol}</strong> position manually at market price.
+            </p>
+
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs leading-relaxed">
+              <strong>❗ Strategic Warning:</strong><br/>
+              By closing early, you may miss out on significant profit potential. Your performance statistics will also deviate from the official Sherpa strategy results.
+            </div>
+
+            <p className="text-gray-400 text-xs font-medium">Are you absolutely sure you want to exit now?</p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setConfirmCloseTrade(null)}
+                disabled={closingTrade}
+                className="flex-1 py-2.5 px-4 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-bold rounded-xl text-sm transition-colors"
+              >
+                ❌ Keep Open
+              </button>
+              <button
+                onClick={handleExecuteSingleClose}
+                disabled={closingTrade}
+                className="flex-1 py-2.5 px-4 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(244,63,94,0.3)] flex items-center justify-center gap-2"
+              >
+                {closingTrade ? <RefreshCcw size={16} className="animate-spin" /> : '✅ Close Now'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

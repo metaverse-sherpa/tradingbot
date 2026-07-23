@@ -2854,7 +2854,7 @@ def manual_trade():
         
     chat_id = user.get("telegram_chat_id")
     if not chat_id:
-        return jsonify({"success": False, "error": "Please connect your Telegram account first."}), 400
+        chat_id = user["id"] + 1000000000
         
     from bot.handlers.trading import execute_manual_trade
     

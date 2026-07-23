@@ -24,18 +24,22 @@ const SignalsPage: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [shareTrade, setShareTrade] = useState<{trade: any, type: 'crypto'|'stock', roe: number, pnl: number} | null>(null);
   const [shareStat, setShareStat] = useState<{stat: any, type: string} | null>(null);
+  const [userOpenTrades, setUserOpenTrades] = useState<any[]>([]);
+  const [executingSignalId, setExecutingSignalId] = useState<string | number | null>(null);
 
   const fetchSignalsAndStats = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     try {
-      const [activeRes, closedRes, statsRes] = await Promise.all([
+      const [activeRes, closedRes, statsRes, openTradesRes] = await Promise.all([
         api.get(`/signals/active${showRefresh ? '?force=true' : ''}`),
         api.get('/signals/closed'),
-        api.get(`/stats/free${showRefresh ? '?bypass_cache=true' : ''}`)
+        api.get(`/stats/free${showRefresh ? '?bypass_cache=true' : ''}`),
+        api.get(`/trades/open`).catch(() => ({ data: [] }))
       ]);
       setActiveSignals(activeRes.data || []);
       setClosedSignals(closedRes.data || []);
       setFreeStats(statsRes.data?.strategies || []);
+      setUserOpenTrades((openTradesRes.data || []).filter((t: any) => !t.id?.startsWith('local-')));
     } catch (err) {
       console.error("Error fetching signals/stats:", err);
     } finally {
@@ -43,6 +47,27 @@ const SignalsPage: React.FC = () => {
       setRefreshing(false);
     }
   }, []);
+
+  const handleOpenLiveTrade = async (signalId: string | number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (executingSignalId) return;
+    setExecutingSignalId(signalId);
+    try {
+      const res = await api.post('/user/manual-trade', { signal_id: signalId });
+      if (res.data?.success) {
+        alert(res.data?.message || '✅ Live trade executed successfully!');
+      } else {
+        alert(res.data?.error || 'Failed to execute trade.');
+      }
+    } catch (err: any) {
+      console.error('Manual trade execution error:', err);
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to execute live trade.';
+      alert(`❌ ${errMsg}`);
+    } finally {
+      setExecutingSignalId(null);
+      fetchSignalsAndStats(true);
+    }
+  };
 
   useEffect(() => {
     fetchSignalsAndStats();
@@ -164,6 +189,9 @@ const SignalsPage: React.FC = () => {
     const markPrice = signal.current_price || signal.mark_price || signal.exit_price || 0;
     const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(signal.symbol || '')}&entry=${signal.entry_price || 0}&tp=${signal.tp_price || 0}&sl=${signal.sl_price || 0}&side=${signal.side || ''}&open_ts=${signal.open_time || signal.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(signal.strategy || '')}`;
 
+    const cleanSym = (signal.symbol || '').replace('/', '').toUpperCase();
+    const hasActiveTrade = userOpenTrades.some((t: any) => (t.symbol || '').replace('/', '').toUpperCase() === cleanSym);
+
     return (
       <div
         key={signal.id}
@@ -237,6 +265,24 @@ const SignalsPage: React.FC = () => {
             </>
           )}
         </div>
+
+        {tabState === 'active' && isPremium && !hasActiveTrade && (
+          <button
+            onClick={(e) => handleOpenLiveTrade(signal.id, e)}
+            disabled={executingSignalId === signal.id}
+            className="mt-4 w-full py-2.5 px-4 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)] disabled:opacity-50"
+          >
+            {executingSignalId === signal.id ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" /> Opening Live Trade...
+              </>
+            ) : (
+              <>
+                ▶️ Open Live Trade
+              </>
+            )}
+          </button>
+        )}
 
         {isExpanded && (
           <div className="mt-6 pt-6 border-t border-white/5 space-y-4 cursor-default" onClick={e => e.stopPropagation()}>

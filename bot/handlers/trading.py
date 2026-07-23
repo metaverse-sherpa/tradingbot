@@ -1883,8 +1883,32 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
     import time
     
     user = database.get_user(chat_id)
+    if not user and isinstance(chat_id, int) and chat_id >= 1000000000:
+        web_user_id = chat_id - 1000000000
+        try:
+            import web_api.db_web as db_web
+            web_u = db_web.get_web_user_by_id(web_user_id)
+            if web_u:
+                user = {
+                    "api_key": web_u.get('api_key') or web_u.get('blofin_api_key'),
+                    "api_secret": web_u.get('api_secret') or web_u.get('blofin_api_secret'),
+                    "api_password": web_u.get('api_password') or web_u.get('blofin_api_password'),
+                    "alpaca_api_key": web_u.get('alpaca_api_key'),
+                    "alpaca_api_secret": web_u.get('alpaca_api_secret'),
+                    "alpaca_endpoint": web_u.get('alpaca_endpoint'),
+                    "alpaca_start_equity": web_u.get('alpaca_start_equity'),
+                    "equity": web_u.get('starting_equity') or 1000,
+                    "risk_pct": web_u.get('risk_pct') if web_u.get('risk_pct') is not None else 1.5,
+                    "stock_risk_pct": web_u.get('stock_risk_pct') if web_u.get('stock_risk_pct') is not None else 2.0,
+                    "exchange_id": web_u.get('exchange_id', 'blofin'),
+                    "bingx_futures_type": web_u.get('bingx_futures_type', 'standard'),
+                    "coinbase_sandbox": web_u.get('coinbase_sandbox', 0),
+                }
+        except Exception as ex:
+            logger.error(f"Failed to load WebUser credentials for manual exec: {ex}")
+
     if not user:
-        return False, "User not found."
+        return False, "User account or exchange credentials not found."
         
     t = database.get_theoretical_trade(trade_id)
     if not t:
@@ -1901,7 +1925,11 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
     from bot.config import is_stock
     import re
     
-    if not is_stock(sym):
+    if is_stock(sym):
+        from live_bot_multi_alpaca import check_is_market_open
+        if not check_is_market_open():
+            return False, "❌ Stock market is currently closed. Live stock trades can only be opened during market hours."
+    else:
         ex_id = user.get('exchange_id', 'blofin')
         sym = database.normalize_symbol(sym, ex_id)
         # Extract contract multiplier (e.g. 1000 from 1000PEPE)
