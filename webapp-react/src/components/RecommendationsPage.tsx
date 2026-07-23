@@ -70,7 +70,7 @@ const RecommendationsPage: React.FC = () => {
   // Filters initialized from user preference
   const [riskProfile, setRiskProfile] = useState<string>(user?.risk_profile || 'Moderate');
   const [investmentGoal, setInvestmentGoal] = useState<string>(user?.investment_goal || 'Growth');
-  const [sortBy, setSortBy] = useState<string>('target_pnl');
+  const [sortBy, setSortBy] = useState<string>('actual_pnl');
 
   useEffect(() => {
     if (user) {
@@ -422,8 +422,8 @@ const RecommendationsPage: React.FC = () => {
                 value={sortBy}
                 onChange={(v) => setSortBy(v)}
                 options={[
-                  { value: "target_pnl", label: "Target PnL %" },
-                  { value: "actual_pnl", label: "Actual PnL %" }
+                  { value: "actual_pnl", label: "Actual PnL %" },
+                  { value: "target_pnl", label: "Target PnL %" }
                 ]}
               />
               {user?.is_admin && (
@@ -582,8 +582,18 @@ const RecommendationsPage: React.FC = () => {
               const targetPct = ((rec.target_price - rec.entry_price) / rec.entry_price) * 100;
               const stopPct = ((rec.stop_loss - rec.entry_price) / rec.entry_price) * 100;
 
+              const isNearTarget = targetPct > 0 && pnl >= targetPct - 3;
+              const isNearStop = stopPct < 0 && pnl <= stopPct + 3;
+
+              let cardClass = "bg-[#181a24]/90 border border-white/10 hover:border-white/20 transition-all rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between";
+              if (isNearTarget) {
+                cardClass = "bg-[#181a24]/90 border border-emerald-500/50 hover:border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all rounded-3xl p-5 relative overflow-hidden flex flex-col justify-between";
+              } else if (isNearStop) {
+                cardClass = "bg-[#181a24]/90 border border-rose-500/50 hover:border-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.25)] transition-all rounded-3xl p-5 relative overflow-hidden flex flex-col justify-between";
+              }
+
               return (
-                <div key={rec.id} className="bg-[#181a24]/90 border border-white/10 hover:border-white/20 transition-all rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
+                <div key={rec.id} className={cardClass}>
                   <div>
                     {/* Top Row */}
                     <div className="flex items-start justify-between gap-2 mb-3">
