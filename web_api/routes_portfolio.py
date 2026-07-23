@@ -315,14 +315,55 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
         for row in c.fetchall():
             held_symbols.add(database.decrypt(row[0]).upper())
 
+    # Determine Macro Market Regime (via SPY if present, or overall average stock 7d return)
+    spy_7d = stock_data.get("SPY", {}).get("7d_return", 0.0) if "SPY" in stock_data else 0.0
+    if not spy_7d and stock_data:
+        spy_7d = sum(d.get("7d_return", 0.0) for d in stock_data.values()) / len(stock_data)
+
+    if spy_7d >= 1.5:
+        market_regime = f"BULLISH MOMENTUM (SPY 7d: {spy_7d:+.1f}%) - Favor growth & breakouts"
+    elif spy_7d <= -1.5:
+        market_regime = f"PULLBACK / CONSOLIDATION (SPY 7d: {spy_7d:+.1f}%) - Favor defensive value, dip buys, & wider support SLs"
+    else:
+        market_regime = f"NEUTRAL / RANGEBOUND (SPY 7d: {spy_7d:+.1f}%) - Favor high-conviction signals with tight technical levels"
+
     # 4. Build the text brief
     brief_lines = []
+    brief_lines.append(f"=== MACRO MARKET REGIME ===")
+    brief_lines.append(f"Current Environment: {market_regime}")
+    brief_lines.append("")
+    
     brief_lines.append("=== STOCK CANDIDATES ===")
-    brief_lines.append("(Sorted by 30-day return. Assets the user already holds are excluded.)")
+    brief_lines.append("(Excludes assets user currently holds. Grouped into Momentum Leaders and Pullback/Dip Opportunities.)")
     brief_lines.append("")
 
-    for sym in sorted(stock_data.keys(), key=lambda s: stock_data[s].get("30d_return", 0), reverse=True):
-        if sym in held_symbols:
+    all_stock_syms = [s for s in stock_data.keys() if s not in held_symbols]
+    
+    # 1. Momentum Leaders (Top 30d return)
+    momentum_stocks = sorted(all_stock_syms, key=lambda s: stock_data[s].get("30d_return", 0), reverse=True)[:10]
+    
+    # 2. Pullback / Dip Opportunities (5% - 25% below 52w high, sorted by market cap or 30d quality)
+    dip_candidates = [s for s in all_stock_syms if -25.0 <= stock_data[s].get("pct_from_52w_high", 0) <= -5.0]
+    dip_stocks = sorted(dip_candidates, key=lambda s: stock_data[s].get("market_cap", 0), reverse=True)[:10]
+
+    brief_lines.append("--- CATEGORY A: MOMENTUM LEADERS (Top 30d Gains) ---")
+    for sym in momentum_stocks:
+        d = stock_data[sym]
+        sig = signal_lookup.get(sym)
+        line = (
+            f"  {sym}: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
+            f"Vol={d['avg_volume']:,} | 52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}% from high) | "
+            f"MktCap=${d['market_cap']:,}"
+        )
+        if sig:
+            tp_upside = ((sig['tp_price'] - sig['entry_price']) / sig['entry_price'] * 100) if sig['entry_price'] > 0 else 0
+            line += f" | ⚡ ACTIVE BOT SIGNAL (Strategy: {sig['strategy']}, TP Upside: {tp_upside:+.1f}%)"
+        brief_lines.append(line)
+
+    brief_lines.append("")
+    brief_lines.append("--- CATEGORY B: PULLBACK & DIP OPPORTUNITIES (Quality assets 5%-25% off 52w Highs) ---")
+    for sym in dip_stocks:
+        if sym in momentum_stocks:
             continue
         d = stock_data[sym]
         sig = signal_lookup.get(sym)
@@ -333,13 +374,13 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
         )
         if sig:
             tp_upside = ((sig['tp_price'] - sig['entry_price']) / sig['entry_price'] * 100) if sig['entry_price'] > 0 else 0
-            line += f" | ⚡ ACTIVE SIGNAL (Strategy: {sig['strategy']}, TP Upside: {tp_upside:+.1f}%)"
+            line += f" | ⚡ ACTIVE BOT SIGNAL (Strategy: {sig['strategy']}, TP Upside: {tp_upside:+.1f}%)"
         brief_lines.append(line)
 
     brief_lines.append("")
     brief_lines.append("=== CRYPTO CANDIDATES ===")
-    brief_lines.append("(Sorted by 30-day return. Assets the user already holds are excluded.)")
-    brief_lines.append("(Note: Our crypto bot signals are 15-minute scalps, NOT buy-and-hold. Weigh them less.)")
+    brief_lines.append("(Sorted by 30-day return. Assets user already holds excluded.)")
+    brief_lines.append("(Note: Crypto bot signals are 15-minute scalps, NOT buy-and-hold. Weigh them less.)")
     brief_lines.append("")
 
     for sym in sorted(crypto_data.keys(), key=lambda s: crypto_data[s].get("30d_return", 0), reverse=True):
@@ -356,7 +397,7 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
             line += f" | ⚡ ACTIVE SIGNAL (Strategy: {sig['strategy']}, short-term scalp)"
         brief_lines.append(line)
 
-    return "\\n".join(brief_lines)
+    return "\n".join(brief_lines)
 
 def get_stock_prices(symbols):
     """Fetch batch stock prices from Alpaca snapshots API using system credentials."""
@@ -507,24 +548,19 @@ def get_cached_prices(symbols, categories):
 
 # --- 🤖 Gemini Helper Function ---
 def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=None, mime_type="image/jpeg", custom_url=None):
-    """Call Google Gemini API using configured env variables/secrets."""
-    url = custom_url or os.getenv("PORTFOLIO_AI_URL") or "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    """Call Google Gemini API using configured env variables/secrets with model fallback."""
     api_key = utils_gcp.get_secret("GEMINI_API_KEY")
-
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not configured.")
 
-    if "generativelanguage.googleapis.com" in url:
-        url_with_key = f"{url}?key={api_key}"
-    else:
-        url_with_key = url
-
-    headers = {
-        "Content-Type": "application/json"
-    }
-    if "generativelanguage.googleapis.com" not in url:
-        headers["x-goog-api-key"] = api_key
-        headers["Authorization"] = f"Bearer {api_key}"
+    preferred_url = custom_url or os.getenv("PORTFOLIO_AI_URL") or "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    fallback_urls = [
+        preferred_url,
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    ]
+    # Remove duplicates preserving order
+    urls_to_try = list(dict.fromkeys(fallback_urls))
 
     parts = []
     if image_base64:
@@ -542,27 +578,41 @@ def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=N
             "temperature": 0.2
         }
     }
-
+    if system_instruction:
+        payload["systemInstruction"] = {
+            "parts": [{"text": system_instruction}]
+        }
     if json_mode:
         payload["generationConfig"]["responseMimeType"] = "application/json"
 
-    if system_instruction:
-        payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
-
-    try:
-        res = requests.post(url_with_key, headers=headers, json=payload, timeout=120)
-        if res.status_code == 200:
-            res_data = res.json()
-            candidates = res_data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if parts:
-                    return parts[0].get("text", "")
-            return ""
+    last_error = None
+    for url in urls_to_try:
+        if "generativelanguage.googleapis.com" in url:
+            url_with_key = f"{url}?key={api_key}"
         else:
-            raise RuntimeError(f"Gemini API returned status {res.status_code}: {res.text}")
-    except Exception as e:
-        raise e
+            url_with_key = url
+
+        headers = {"Content-Type": "application/json"}
+        if "generativelanguage.googleapis.com" not in url:
+            headers["x-goog-api-key"] = api_key
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        try:
+            resp = requests.post(url_with_key, json=payload, headers=headers, timeout=90)
+            if resp.status_code == 200:
+                res_data = resp.json()
+                try:
+                    return res_data["candidates"][0]["content"]["parts"][0]["text"]
+                except (KeyError, IndexError):
+                    raise ValueError(f"Unexpected response structure from Gemini API: {res_data}")
+            else:
+                last_error = f"Status {resp.status_code}: {resp.text}"
+                print(f"[Gemini API] Call to {url} failed with {last_error}. Trying fallback...")
+        except Exception as e:
+            last_error = str(e)
+            print(f"[Gemini API] Exception calling {url}: {e}. Trying fallback...")
+
+    raise ValueError(f"All Gemini API endpoints failed. Last error: {last_error}")
 
 
 # --- 📂 DB / Positions API Handlers ---
@@ -1313,60 +1363,61 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
 
         # Construct the AI Prompt
         system_instruction = (
-            "You are a senior portfolio analyst AI for Metaverse Sherpa. "
-            "You are selecting the best buy-and-hold investment ideas for a user.\\n\\n"
-            f"User's risk profile: '{risk_profile}'\\n"
-            f"User's investment goal: '{investment_goal}'\\n\\n"
-            "IMPORTANT RULES:\\n"
-            "1. Base your analysis ONLY on the market data provided below.\\n"
-            "2. Do NOT fabricate earnings data, revenue figures, P/E ratios, or any information not present in the research brief.\\n"
-            "3. Your rationale must reference the actual numbers from the data (e.g., '30d momentum of +12.3%').\\n"
-            "4. Assets marked with ⚡ ACTIVE SIGNAL have been identified by our trading algorithm. Stock signals are high-conviction momentum plays. Crypto signals are short-term scalps (weigh less for buy-and-hold).\\n"
-            "5. Prefer assets with: strong 30d momentum, reasonable distance from 52-week highs (room to run), high liquidity.\\n"
-            "6. Diversify across sectors/categories. Do not recommend 5 tech stocks.\\n"
-            "7. Generate realistic technical target prices (`target_price`) and stop loss prices (`stop_loss`) based on 52-week highs, momentum, and technical supports/resistances. Calculate the `expected_growth_pct` (number) mathematically from the current price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\\n"
+            "You are a senior quantitative portfolio analyst AI for Metaverse Sherpa. "
+            "You are selecting the best buy-and-hold investment ideas for a user.\n\n"
+            f"User's risk profile: '{risk_profile}'\n"
+            f"User's investment goal: '{investment_goal}'\n\n"
+            "IMPORTANT STRATEGY & RISK MANAGEMENT RULES:\n"
+            "1. Base your analysis ONLY on the market data provided below. Do NOT fabricate numbers.\n"
+            "2. ADAPT TO MACRO REGIME: Read the MACRO MARKET REGIME section at top of brief. If market is in Pullback/Consolidation, prioritize Category B (Pullback/Dip candidates) and defensive value. If Bullish, prioritize Category A (Momentum leaders).\n"
+            "3. BALANCED SELECTION: Select a healthy mix of both Category A (Momentum Leaders) and Category B (Pullback / Dip Opportunities). Avoid selecting exclusively top-performing stocks that are overextended at local tops.\n"
+            "4. STRICT RISK-TO-REWARD (MINIMUM 2:1 R:R): The potential upside to `target_price` MUST be at least TWO TIMES the potential downside to `stop_loss`. (e.g., if Stop Loss is -10% below entry, Target Price MUST be at least +20% above entry).\n"
+            "5. TECHNICAL LEVEL PLACEMENT: Place `stop_loss` at logical technical support levels based on 52-week price ranges and price action, not arbitrary round numbers.\n"
+            "6. Assets marked with ⚡ ACTIVE BOT SIGNAL have been identified by our algorithm. Stock signals are high-conviction momentum plays.\n"
+            "7. Diversify across sectors. Do not recommend 5 stocks in the exact same sub-industry.\n"
+            "8. Calculate `expected_growth_pct` (number) mathematically from current price to target_price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\n"
         )
         if risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation":
             system_instruction += (
-                "8. **AGGRESSIVE/SPECULATION OVERRIDE**: The user wants high risk, high reward. Select highly volatile, high-volume assets. Target substantial gains (e.g., 20-50%+) and project shorter timeframes (e.g., '1-3 Months'). Focus heavily on short-term momentum and liquidity turnover rather than market cap.\\n"
+                "9. **AGGRESSIVE/SPECULATION OVERRIDE**: Target higher volatility assets, larger projected gains (e.g., 25-50%+), and shorter timeframes ('1-3 Months'). Maintain the >= 2:1 R:R requirement.\n"
             )
         system_instruction += (
-            "\\nReturn a JSON object with exactly this structure (no markdown, no extra text):\\n"
-            "{\\n"
-            '  "stocks": [\\n'
-            "    {\\n"
-            '      "symbol": "AAPL",\\n'
-            '      "name": "Apple Inc.",\\n'
-            '      "type": "stock",\\n'
-            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
-            '      "is_active_signal": true,\\n'
-            '      "conviction": "high",\\n'
-            '      "metrics_summary": "Price: $198 | 30d: +5.2% | 8% below 52w high",\\n'
-            '      "target_price": "$220.00",\\n'
-            '      "stop_loss": "$180.00",\\n'
-            '      "expected_growth_pct": 11.1,\\n'
-            '      "estimated_timeframe": "3-6 Months"\\n'
-            "    }\\n"
-            "  ],\\n"
-            '  "crypto": [\\n'
-            "    {\\n"
-            '      "symbol": "SOL",\\n'
-            '      "name": "Solana",\\n'
-            '      "type": "crypto",\\n'
-            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\\n'
-            '      "is_active_signal": false,\\n'
-            '      "conviction": "medium",\\n'
-            '      "metrics_summary": "Price: $142 | 30d: +18.4% | 22% below 52w high",\\n'
-            '      "target_price": "$175.00",\\n'
-            '      "stop_loss": "$120.00",\\n'
-            '      "expected_growth_pct": 23.2,\\n'
-            '      "estimated_timeframe": "2-4 Months"\\n'
-            "    }\\n"
-            "  ]\\n"
-            "}\\n\\n"
+            "\nReturn a JSON object with exactly this structure (no markdown, no extra text):\n"
+            "{\n"
+            '  "stocks": [\n'
+            "    {\n"
+            '      "symbol": "AAPL",\n'
+            '      "name": "Apple Inc.",\n'
+            '      "type": "stock",\n'
+            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\n'
+            '      "is_active_signal": true,\n'
+            '      "conviction": "high",\n'
+            '      "metrics_summary": "Price: $198 | 30d: +5.2% | 8% below 52w high",\n'
+            '      "target_price": "$220.00",\n'
+            '      "stop_loss": "$180.00",\n'
+            '      "expected_growth_pct": 11.1,\n'
+            '      "estimated_timeframe": "3-6 Months"\n'
+            '    }\n'
+            '  ],\n'
+            '  "crypto": [\n'
+            '    {\n'
+            '      "symbol": "SOL",\n'
+            '      "name": "Solana",\n'
+            '      "type": "crypto",\n'
+            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\n'
+            '      "is_active_signal": false,\n'
+            '      "conviction": "medium",\n'
+            '      "metrics_summary": "Price: $142 | 30d: +18.4% | 22% below 52w high",\n'
+            '      "target_price": "$175.00",\n'
+            '      "stop_loss": "$120.00",\n'
+            '      "expected_growth_pct": 23.2,\n'
+            '      "estimated_timeframe": "2-4 Months"\n'
+            '    }\n'
+            '  ]\n'
+            '}\n\n'
             "Select exactly 5 stocks and exactly 5 crypto assets. "
-            "Set conviction to 'high' if the asset has an active signal AND strong momentum, otherwise 'medium'.\\n\\n"
-            "--- MARKET DATA RESEARCH BRIEF ---\\n\\n"
+            "Set conviction to 'high' if the asset has an active signal AND strong momentum, otherwise 'medium'.\n\n"
+            "--- MARKET DATA RESEARCH BRIEF ---\n\n"
             f"{research_brief}"
         )
 
@@ -1706,18 +1757,39 @@ def get_tracked_recommendations():
                         if price > 0.0:
                             status = 'active'
                             closed_at = None
+                            final_price = price
+                            
+                            # Trailing Stop / Breakeven Protection:
+                            # If gain >= 15%, raise stop_loss to entry_price * 1.02 (Breakeven + 2%)
+                            rec_entry = 0.0
+                            for ar in active_recs:
+                                if ar["id"] == rec_id:
+                                    rec_entry = ar.get("entry_price", 0.0)
+                                    break
+                            
+                            new_sl = sl
+                            if rec_entry > 0.0:
+                                current_gain_pct = ((price - rec_entry) / rec_entry) * 100.0
+                                if current_gain_pct >= 15.0:
+                                    breakeven_sl = round(rec_entry * 1.02, 2)
+                                    if breakeven_sl > sl:
+                                        new_sl = breakeven_sl
+
                             if price >= target:
                                 status = 'hit_target'
                                 closed_at = now_ts
-                            elif price <= sl:
+                                final_price = round(max(price, target), 2)
+                            elif price <= new_sl:
                                 status = 'hit_stop_loss'
                                 closed_at = now_ts
+                                # Cap exit price at stop loss minus 1% slippage for realistic risk-managed exit stats
+                                final_price = round(new_sl * 0.99, 2)
                                 
                             c.execute('''
                                 UPDATE AIRecommendations 
-                                SET current_price = ?, status = ?, closed_at = ?
+                                SET current_price = ?, stop_loss = ?, status = ?, closed_at = ?
                                 WHERE id = ?
-                            ''', (price, status, closed_at, rec_id))
+                            ''', (final_price, new_sl, status, closed_at, rec_id))
                     conn.commit()
                 LAST_RECOMMENDATIONS_UPDATE_TIME = now_ts
             except Exception as e:
@@ -1772,4 +1844,19 @@ def get_tracked_recommendations():
             "crypto": crypto_stats
         }
     }), 200
+
+
+@portfolio_bp.route('/api/portfolio/recommendations/<int:rec_id>', methods=['DELETE'])
+@require_auth
+@require_premium
+def delete_recommendation(rec_id):
+    if not is_user_admin(g.user):
+        return jsonify({"error": "Admin permission required"}), 403
+
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM AIRecommendations WHERE id = ?", (rec_id,))
+        conn.commit()
+
+    return jsonify({"success": True, "message": "Recommendation deleted successfully"}), 200
 

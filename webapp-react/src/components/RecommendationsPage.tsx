@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock } from 'lucide-react';
+import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
@@ -79,6 +79,17 @@ const RecommendationsPage: React.FC = () => {
       if (user.investment_goal) setInvestmentGoal(user.investment_goal);
     }
   }, [user]);
+
+  const handleDeleteRecommendation = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this recommendation record?")) return;
+    try {
+      await api.delete(`/portfolio/recommendations/${id}`);
+      setRecommendations(prev => prev.filter(r => r.id !== id));
+    } catch (err) {
+      console.error("Failed to delete recommendation:", err);
+      alert("Failed to delete recommendation.");
+    }
+  };
 
   const fetchRecommendations = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -454,9 +465,20 @@ const RecommendationsPage: React.FC = () => {
                           {rec.category}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-400">
-                        <Clock size={12} />
-                        {getDurationString(rec.created_at)}
+                      <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Clock size={12} />
+                          {getDurationString(rec.created_at)}
+                        </span>
+                        {user?.is_admin && (
+                          <button
+                            onClick={() => handleDeleteRecommendation(rec.id)}
+                            className="p-1 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors ml-1"
+                            title="Delete recommendation (Admin)"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -558,6 +580,7 @@ const RecommendationsPage: React.FC = () => {
                     <th className="px-6 py-4">PnL</th>
                     <th className="px-6 py-4">Duration</th>
                     <th className="px-6 py-4">Result</th>
+                    {user?.is_admin && <th className="px-6 py-4 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-xs text-gray-300">
@@ -592,6 +615,17 @@ const RecommendationsPage: React.FC = () => {
                             {isTarget ? 'Target Hit' : 'Stopped Out'}
                           </span>
                         </td>
+                        {user?.is_admin && (
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleDeleteRecommendation(rec.id)}
+                              className="p-1.5 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors inline-flex items-center gap-1"
+                              title="Delete recommendation (Admin Only)"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

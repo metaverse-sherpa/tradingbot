@@ -57,7 +57,7 @@ from contextlib import contextmanager
 # Cache Coinbase portfolio UUID per user (keyed by api_key prefix) - doesn't change
 _COINBASE_PORTFOLIO_ID_CACHE = {}
 
-from db_adapter import db_session_adapter, sa_db_session
+from db_adapter import db_session_adapter, sa_db_session, USE_POSTGRES
 from sqlalchemy import select, update, insert, delete
 from db_models import users_table, webusers_table
 
@@ -995,29 +995,30 @@ def init_db():
                 conn.rollback()
                 import logging
                 logging.getLogger(__name__).error(f"Failed to create AIRecommendations table: {e}")
-        else:
-            # Migration to add missing columns to existing AIRecommendations table
-            try:
+        # Ensure missing columns exist in AIRecommendations table for both SQLite & PostgreSQL
+        missing_columns = {
+            "name": "TEXT",
+            "expected_growth_pct": "REAL" if not USE_POSTGRES else "DOUBLE PRECISION",
+            "estimated_timeframe": "TEXT",
+            "rationale": "TEXT",
+            "metrics_summary": "TEXT"
+        }
+        try:
+            if USE_POSTGRES:
+                for col_name, col_type in missing_columns.items():
+                    c.execute(f"ALTER TABLE AIRecommendations ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+                conn.commit()
+            else:
                 c.execute("PRAGMA table_info(AIRecommendations)")
                 columns = [col[1] for col in c.fetchall()]
-                
-                missing_columns = {
-                    "name": "TEXT",
-                    "expected_growth_pct": "REAL",
-                    "estimated_timeframe": "TEXT",
-                    "rationale": "TEXT",
-                    "metrics_summary": "TEXT"
-                }
-                
                 for col_name, col_type in missing_columns.items():
                     if col_name not in columns:
                         c.execute(f"ALTER TABLE AIRecommendations ADD COLUMN {col_name} {col_type}")
-                
                 conn.commit()
-            except Exception as e:
-                conn.rollback()
-                import logging
-                logging.getLogger(__name__).error(f"Failed to migrate AIRecommendations table: {e}")
+        except Exception as e:
+            conn.rollback()
+            import logging
+            logging.getLogger(__name__).error(f"Failed to migrate AIRecommendations table: {e}")
 
         # Custom Strategies metadata, parameters, and configs
         if "UserStrategies" not in existing_tables:
