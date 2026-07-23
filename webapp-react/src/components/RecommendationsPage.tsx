@@ -57,7 +57,6 @@ const RecommendationsPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<'stocks' | 'crypto'>('stocks');
   const [expandedCharts, setExpandedCharts] = useState<Record<string | number, boolean>>({});
 
@@ -113,18 +112,61 @@ const RecommendationsPage: React.FC = () => {
     }
   }, [fetchRecommendations, isPremium]);
 
+  const [generating, setGenerating] = useState(false);
+  const [genStep, setGenStep] = useState(1);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [genNotification, setGenNotification] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  const stepMessages = [
+    "📡 Step 1/4: Fetching market snapshots & technical metrics...",
+    "🧠 Step 2/4: Evaluating macro regime & candidate universe with Gemini AI...",
+    "📐 Step 3/4: Calculating support stop-losses & >= 2:1 R:R targets...",
+    "💾 Step 4/4: Finalizing recommendations & updating database records..."
+  ];
+
   const handleGenerateBuys = async () => {
     setGenerating(true);
+    setGenStep(1);
+    setElapsedSeconds(0);
+    setGenNotification(null);
+
+    // Timer interval for elapsed time
+    const timerInterval = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1);
+    }, 1000);
+
+    // Step transitions based on typical timing
+    const step2Timeout = setTimeout(() => setGenStep(2), 4000);
+    const step3Timeout = setTimeout(() => setGenStep(3), 11000);
+    const step4Timeout = setTimeout(() => setGenStep(4), 17000);
+
     try {
-      await api.post('/portfolio/good-buys', {
+      const res = await api.post('/portfolio/good-buys', {
         risk_profile: riskProfile,
         investment_goal: investmentGoal,
         force_regenerate: true
       });
       await fetchRecommendations(true);
+
+      const returnedRecs = res.data?.recommendations?.stocks || [];
+      const cryptoRecs = res.data?.recommendations?.crypto || [];
+      const totalFound = returnedRecs.length + cryptoRecs.length;
+
+      setGenNotification({
+        type: 'success',
+        text: `✅ AI Recommendations updated successfully! Generated ${totalFound} fresh buy ideas for ${riskProfile} / ${investmentGoal}.`
+      });
     } catch (err: any) {
       console.error("Failed to generate good buys", err);
+      setGenNotification({
+        type: 'error',
+        text: "❌ Failed to generate AI recommendations. Please check server logs or try again."
+      });
     } finally {
+      clearInterval(timerInterval);
+      clearTimeout(step2Timeout);
+      clearTimeout(step3Timeout);
+      clearTimeout(step4Timeout);
       setGenerating(false);
     }
   };
@@ -221,7 +263,98 @@ const RecommendationsPage: React.FC = () => {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Status Notification Banner */}
+      {genNotification && (
+        <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2 duration-300 ${
+          genNotification.type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+        }`}>
+          <div className="flex items-center gap-2 text-xs md:text-sm font-bold">
+            {genNotification.text}
+          </div>
+          <button
+            onClick={() => setGenNotification(null)}
+            className="text-gray-400 hover:text-white text-xs font-black uppercase px-2 py-1"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* AI Generation Progress Modal Overlay */}
+      {generating && (
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#141620] border border-cyan-500/30 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl shadow-cyan-500/10 relative overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-cyan-500/20 p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400">
+                  <RefreshCw size={20} className="animate-spin" />
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg font-black text-white uppercase tracking-wider">AI Analyst Re-analyzing Market...</h3>
+                  <p className="text-xs text-gray-400">Targeting {riskProfile} risk / {investmentGoal} strategy</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20">
+                  {elapsedSeconds}s elapsed
+                </span>
+                <p className="text-[10px] text-gray-500 mt-1 font-semibold">⏱️ ~15-25s avg</p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-black/40 h-2 rounded-full overflow-hidden mb-6 border border-white/5">
+              <div
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-700 ease-out shadow-sm shadow-cyan-500/50"
+                style={{
+                  width: genStep === 1 ? '25%' : genStep === 2 ? '60%' : genStep === 3 ? '85%' : '98%'
+                }}
+              />
+            </div>
+
+            {/* Current Step Display */}
+            <div className="bg-[#0c0d12] p-4 rounded-2xl border border-white/5 mb-6">
+              <p className="text-xs font-bold text-cyan-400 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                {stepMessages[genStep - 1]}
+              </p>
+            </div>
+
+            {/* Step List Breakdown */}
+            <div className="space-y-2.5 text-xs">
+              <div className={`flex items-center gap-2.5 transition-colors ${genStep >= 1 ? 'text-gray-200' : 'text-gray-600'}`}>
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${genStep > 1 ? 'bg-emerald-500 text-black' : genStep === 1 ? 'bg-cyan-500 text-black animate-pulse' : 'bg-white/10 text-gray-500'}`}>
+                  {genStep > 1 ? '✓' : '1'}
+                </span>
+                <span>Fetch real-time stock & crypto market snapshots</span>
+              </div>
+              <div className={`flex items-center gap-2.5 transition-colors ${genStep >= 2 ? 'text-gray-200' : 'text-gray-600'}`}>
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${genStep > 2 ? 'bg-emerald-500 text-black' : genStep === 2 ? 'bg-cyan-500 text-black animate-pulse' : 'bg-white/10 text-gray-500'}`}>
+                  {genStep > 2 ? '✓' : '2'}
+                </span>
+                <span>Evaluate macro market regime & candidate pools with Gemini AI</span>
+              </div>
+              <div className={`flex items-center gap-2.5 transition-colors ${genStep >= 3 ? 'text-gray-200' : 'text-gray-600'}`}>
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${genStep > 3 ? 'bg-emerald-500 text-black' : genStep === 3 ? 'bg-cyan-500 text-black animate-pulse' : 'bg-white/10 text-gray-500'}`}>
+                  {genStep > 3 ? '✓' : '3'}
+                </span>
+                <span>Calculate technical support stop-losses & &ge; 2:1 R:R targets</span>
+              </div>
+              <div className={`flex items-center gap-2.5 transition-colors ${genStep >= 4 ? 'text-gray-200' : 'text-gray-600'}`}>
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${genStep === 4 ? 'bg-cyan-500 text-black animate-pulse' : 'bg-white/10 text-gray-500'}`}>
+                  4
+                </span>
+                <span>Cache recommendations & update database</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header and Filter Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#141620]/40 p-4 sm:p-6 rounded-3xl border border-white/5 backdrop-blur-sm">
         <div>

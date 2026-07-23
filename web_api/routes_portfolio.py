@@ -1452,9 +1452,14 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
                 
                 speculative_cache = _get_speculative_market_data() or {}
 
+                for rec in stock_recs:
+                    rec['_cat_override'] = 'stock'
+                for rec in crypto_recs:
+                    rec['_cat_override'] = 'crypto'
+
                 for rec in stock_recs + crypto_recs:
                     sym = rec.get("symbol", "").upper()
-                    cat = rec.get("type", "stock").lower()
+                    cat = rec.get("_cat_override") or rec.get("type", "stock").lower()
                     
                     t_price_str = str(rec.get("target_price", "0")).replace("$", "").replace(",", "").strip()
                     try:
