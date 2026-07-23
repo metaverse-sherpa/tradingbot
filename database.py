@@ -2580,7 +2580,8 @@ def get_theoretical_trade(trade_id):
                 c.execute("SELECT * FROM AIRecommendations WHERE id = ?", (rec_id,))
                 row = c.fetchone()
                 if row:
-                    cat = rec.get('category', 'stock').lower()
+                    rec = dict(row)
+                    cat = str(rec.get('category', 'stock') or 'stock').lower()
                     sym = rec['symbol']
                     if cat == 'crypto' and '/' not in sym and 'USDT' not in sym:
                         sym = f"{sym}/USDT"
