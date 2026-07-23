@@ -269,26 +269,49 @@ def admin_users():
         with database.db_session() as conn:
             c = conn.cursor()
             c.execute('''
-                SELECT 
-                    u1.id, 
-                    u1.email, 
-                    u1.full_name, 
-                    u1.premium_expiry, 
-                    u1.created_at, 
-                    u1.telegram_chat_id, 
-                    COALESCE(u1.referred_by, t.referred_by) as referred_by, 
-                    t.username as telegram_username,
-                    u2.email as referrer_email_by_id,
-                    u3.email as referrer_email_by_tg,
-                    t2.username as referrer_tg_username,
-                    t2.full_name as referrer_tg_fullname,
-                    (SELECT COUNT(*) FROM ProcessedPayments p WHERE p.user_id = u1.id) as payments_count
-                FROM WebUsers u1
-                LEFT JOIN Users t ON u1.telegram_chat_id = t.telegram_chat_id
-                LEFT JOIN WebUsers u2 ON COALESCE(u1.referred_by, t.referred_by) = u2.id
-                LEFT JOIN WebUsers u3 ON COALESCE(u1.referred_by, t.referred_by) = u3.telegram_chat_id
-                LEFT JOIN Users t2 ON COALESCE(u1.referred_by, t.referred_by) = t2.telegram_chat_id
-                ORDER BY u1.created_at DESC 
+                SELECT * FROM (
+                    SELECT 
+                        u1.id, 
+                        u1.email, 
+                        COALESCE(u1.full_name, t.full_name) as full_name, 
+                        COALESCE(u1.premium_expiry, t.premium_expiry) as premium_expiry, 
+                        u1.created_at, 
+                        u1.telegram_chat_id, 
+                        COALESCE(u1.referred_by, t.referred_by) as referred_by, 
+                        t.username as telegram_username,
+                        u2.email as referrer_email_by_id,
+                        u3.email as referrer_email_by_tg,
+                        t2.username as referrer_tg_username,
+                        t2.full_name as referrer_tg_fullname,
+                        (SELECT COUNT(*) FROM ProcessedPayments p WHERE p.user_id = u1.id) as payments_count
+                    FROM WebUsers u1
+                    LEFT JOIN Users t ON u1.telegram_chat_id = t.telegram_chat_id
+                    LEFT JOIN WebUsers u2 ON COALESCE(u1.referred_by, t.referred_by) = u2.id
+                    LEFT JOIN WebUsers u3 ON COALESCE(u1.referred_by, t.referred_by) = u3.telegram_chat_id
+                    LEFT JOIN Users t2 ON COALESCE(u1.referred_by, t.referred_by) = t2.telegram_chat_id
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        NULL as id, 
+                        NULL as email, 
+                        t.full_name, 
+                        t.premium_expiry, 
+                        0 as created_at, 
+                        t.telegram_chat_id, 
+                        t.referred_by as referred_by, 
+                        t.username as telegram_username,
+                        NULL as referrer_email_by_id,
+                        u3.email as referrer_email_by_tg,
+                        t2.username as referrer_tg_username,
+                        t2.full_name as referrer_tg_fullname,
+                        0 as payments_count
+                    FROM Users t
+                    LEFT JOIN WebUsers u3 ON t.referred_by = u3.telegram_chat_id
+                    LEFT JOIN Users t2 ON t.referred_by = t2.telegram_chat_id
+                    WHERE t.telegram_chat_id NOT IN (SELECT telegram_chat_id FROM WebUsers WHERE telegram_chat_id IS NOT NULL)
+                )
+                ORDER BY created_at DESC 
                 LIMIT 100
             ''')
             rows = c.fetchall()
@@ -343,7 +366,7 @@ def admin_user_payments(user_id):
         print(f"Error fetching user payments: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-@premium_bp.route('/api/admin/users/<int:user_id>/premium', methods=['PUT'])
+@premium_bp.route('/api/admin/users/<user_id>/premium', methods=['PUT'])
 @require_auth
 def admin_update_premium(user_id):
     user = g.user
@@ -363,12 +386,16 @@ def admin_update_premium(user_id):
     try:
         with database.db_session() as conn:
             c = conn.cursor()
-            c.execute("UPDATE WebUsers SET premium_expiry = ? WHERE id = ?", (new_expiry, user_id))
-            
-            c.execute("SELECT telegram_chat_id FROM WebUsers WHERE id = ?", (user_id,))
-            row = c.fetchone()
-            if row and row[0]:
-                c.execute("UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?", (new_expiry, row[0]))
+            if str(user_id).startswith('tg-'):
+                tg_id = str(user_id).replace('tg-', '')
+                c.execute("UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?", (new_expiry, tg_id))
+            else:
+                c.execute("UPDATE WebUsers SET premium_expiry = ? WHERE id = ?", (new_expiry, user_id))
+                
+                c.execute("SELECT telegram_chat_id FROM WebUsers WHERE id = ?", (user_id,))
+                row = c.fetchone()
+                if row and row[0]:
+                    c.execute("UPDATE Users SET premium_expiry = ? WHERE telegram_chat_id = ?", (new_expiry, row[0]))
                 
             conn.commit()
             

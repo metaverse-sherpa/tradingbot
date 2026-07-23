@@ -23,6 +23,7 @@ export interface User {
   email_notifications?: boolean;
   email_frequency?: string;
   browser_notifications?: boolean;
+  ai_strategy_builder_enabled?: boolean;
   payments_count?: number;
   invite_link?: string;
   referral_count?: number;

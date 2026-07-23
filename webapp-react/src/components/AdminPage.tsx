@@ -39,7 +39,8 @@ const AdminPage: React.FC = () => {
     e.preventDefault();
     if (!editingUser) return;
     try {
-      await api.put(`/admin/users/${editingUser.id}/premium`, {
+      const targetId = editingUser.id || ('tg-' + editingUser.telegram_chat_id);
+      await api.put(`/admin/users/${targetId}/premium`, {
         premium_expiry: editingUser.new_premium_expiry
       });
       setEditingUser(null);
@@ -51,15 +52,24 @@ const AdminPage: React.FC = () => {
   };
 
   const hierarchicalUsers = React.useMemo(() => {
+    const getId = (u: any) => u.id || ('tg-' + u.telegram_chat_id);
     const userMap = new Map();
-    users.forEach(u => userMap.set(u.id, u));
+    users.forEach(u => userMap.set(getId(u), u));
 
     const childrenMap = new Map();
     users.forEach(u => {
+      // referred_by can be an id or a tg chat id.
+      // In the database query, referred_by is the raw DB value which could be either an ID or tg chat id.
+      // We will just try both possibilities or match directly.
       const parentId = u.referred_by;
       if (parentId) {
-        if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
-        childrenMap.get(parentId).push(u);
+        // we'll try to match parentId directly or 'tg-'+parentId
+        let mappedParentId = parentId;
+        if (!userMap.has(parentId) && userMap.has('tg-' + parentId)) {
+          mappedParentId = 'tg-' + parentId;
+        }
+        if (!childrenMap.has(mappedParentId)) childrenMap.set(mappedParentId, []);
+        childrenMap.get(mappedParentId).push(u);
       }
     });
 
@@ -67,16 +77,22 @@ const AdminPage: React.FC = () => {
     const visited = new Set();
 
     const addNode = (u: any, depth: number) => {
-      if (visited.has(u.id)) return;
-      visited.add(u.id);
+      const uid = getId(u);
+      if (visited.has(uid)) return;
+      visited.add(uid);
       flatList.push({ ...u, depth });
-      const children = childrenMap.get(u.id) || [];
+      const children = childrenMap.get(uid) || [];
       children.forEach((child: any) => addNode(child, depth + 1));
     };
 
-    const roots = users.filter(u => !u.referred_by || !userMap.has(u.referred_by));
+    const roots = users.filter(u => {
+      const parentId = u.referred_by;
+      if (!parentId) return true;
+      const mappedParentId = (!userMap.has(parentId) && userMap.has('tg-' + parentId)) ? ('tg-' + parentId) : parentId;
+      return !userMap.has(mappedParentId);
+    });
+    
     roots.forEach(u => addNode(u, 0));
-
     users.forEach(u => addNode(u, 0));
 
     return flatList;
@@ -286,11 +302,14 @@ const AdminPage: React.FC = () => {
                     <tr><td colSpan={7} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
                   ) : (
                     hierarchicalUsers.map(u => (
-                      <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                      <tr key={u.id || ('tg-' + u.telegram_chat_id)} className="hover:bg-white/5 transition-colors">
                         <td className="py-4 px-4 text-sm text-white font-medium">
-                          <div style={{ paddingLeft: `${u.depth * 1.5}rem` }} className="flex items-center gap-2">
-                            {u.depth > 0 && <span className="text-gray-500 text-xs">↳</span>}
-                            {u.email}
+                          <div style={{ paddingLeft: `${u.depth * 1.5}rem` }} className="flex flex-col">
+                            <span className="flex items-center gap-2">
+                              {u.depth > 0 && <span className="text-gray-500 text-xs">↳</span>}
+                              {u.email ? u.email : <span className="text-gray-500 italic">No Web Account</span>}
+                            </span>
+                            {u.full_name && <span className="text-xs text-gray-400 pl-[calc(1.5rem * ${u.depth})]">{u.full_name}</span>}
                           </div>
                         </td>
                         <td className="py-4 px-4 text-sm text-gray-400">{u.referrer_email || '-'}</td>
