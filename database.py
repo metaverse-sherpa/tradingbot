@@ -2183,7 +2183,7 @@ def is_premium(user):
     # 👑 Overlord Privilege (Suspended in Undercover Mode)
     if user.get('telegram_chat_id') == 1567788633 and not user.get('undercover_mode'):
         return True
-    return user.get('premium_expiry', 0) > time.time()
+    return (user.get('premium_expiry') or 0) > time.time()
 
 def set_admin_status(chat_id, status: bool):
     """Promotes or demotes a user to Admin status."""
@@ -2220,7 +2220,7 @@ def toggle_undercover(chat_id):
 def get_premium_days_left(user):
     """Returns the number of days remaining in the user's premium subscription."""
     if not user: return 0
-    expiry = user.get('premium_expiry', 0)
+    expiry = user.get('premium_expiry') or 0
     now = time.time()
     if expiry <= now: return 0
     return int((expiry - now) / 86400)
