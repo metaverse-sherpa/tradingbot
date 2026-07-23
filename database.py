@@ -96,6 +96,7 @@ class CoinbaseWrapper(ccxt.coinbase):
         return balance
 
     async def fetch_positions(self, symbols=None, params={}):
+        positions = []
         if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
             try:
                 portfolios = await self.fetch_portfolios()
@@ -106,7 +107,40 @@ class CoinbaseWrapper(ccxt.coinbase):
                 pass
         if self.options.get('portfolio') and 'retail_portfolio_id' not in params and 'portfolio_uuid' not in params:
             params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
-        return await super().fetch_positions(symbols, params)
+
+        try:
+            positions = await super().fetch_positions(symbols, params)
+        except Exception:
+            positions = []
+
+        if not positions:
+            try:
+                cfm_func = getattr(self, 'v3_private_get_brokerage_cfm_positions', None) or getattr(self, 'v3PrivateGetBrokerageCfmPositions', None)
+                if cfm_func:
+                    res = await cfm_func()
+                    pos_list = res.get('positions') or res.get('cfm_positions') or res.get('data') or []
+                    for item in pos_list:
+                        num_contracts = float(item.get('number_of_contracts') or item.get('contracts') or item.get('amount') or 0.0)
+                        if num_contracts != 0:
+                            prod_id = item.get('product_id') or item.get('symbol') or ''
+                            entry = float(item.get('avg_entry_price') or item.get('entry_price') or 0.0)
+                            mark = float(item.get('current_price') or item.get('mark_price') or entry)
+                            pnl = float(item.get('unrealized_pnl') or item.get('unrealized_pl') or 0.0)
+                            side = str(item.get('side') or 'LONG').upper()
+                            positions.append({
+                                'id': f"cb-{prod_id}",
+                                'symbol': prod_id.replace('-', '/'),
+                                'contracts': num_contracts,
+                                'contractSize': 1.0,
+                                'unrealizedPnl': pnl,
+                                'entryPrice': entry,
+                                'markPrice': mark,
+                                'side': side,
+                                'info': item
+                            })
+            except Exception:
+                pass
+        return positions
 
     async def create_order(self, symbol, type, side, amount, price=None, params={}):
         if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
@@ -152,6 +186,7 @@ class CoinbaseWrapperSync(ccxt_sync.coinbase):
         return balance
 
     def fetch_positions(self, symbols=None, params={}):
+        positions = []
         if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
             try:
                 portfolios = self.fetch_portfolios()
@@ -162,7 +197,40 @@ class CoinbaseWrapperSync(ccxt_sync.coinbase):
                 pass
         if self.options.get('portfolio') and 'retail_portfolio_id' not in params and 'portfolio_uuid' not in params:
             params = self.extend({'retail_portfolio_id': self.options['portfolio']}, params)
-        return super().fetch_positions(symbols, params)
+
+        try:
+            positions = super().fetch_positions(symbols, params)
+        except Exception:
+            positions = []
+
+        if not positions:
+            try:
+                cfm_func = getattr(self, 'v3_private_get_brokerage_cfm_positions', None) or getattr(self, 'v3PrivateGetBrokerageCfmPositions', None)
+                if cfm_func:
+                    res = cfm_func()
+                    pos_list = res.get('positions') or res.get('cfm_positions') or res.get('data') or []
+                    for item in pos_list:
+                        num_contracts = float(item.get('number_of_contracts') or item.get('contracts') or item.get('amount') or 0.0)
+                        if num_contracts != 0:
+                            prod_id = item.get('product_id') or item.get('symbol') or ''
+                            entry = float(item.get('avg_entry_price') or item.get('entry_price') or 0.0)
+                            mark = float(item.get('current_price') or item.get('mark_price') or entry)
+                            pnl = float(item.get('unrealized_pnl') or item.get('unrealized_pl') or 0.0)
+                            side = str(item.get('side') or 'LONG').upper()
+                            positions.append({
+                                'id': f"cb-{prod_id}",
+                                'symbol': prod_id.replace('-', '/'),
+                                'contracts': num_contracts,
+                                'contractSize': 1.0,
+                                'unrealizedPnl': pnl,
+                                'entryPrice': entry,
+                                'markPrice': mark,
+                                'side': side,
+                                'info': item
+                            })
+            except Exception:
+                pass
+        return positions
 
     def create_order(self, symbol, type, side, amount, price=None, params={}):
         if not self.options.get('portfolio') and not self.options.get('retail_portfolio_id'):
