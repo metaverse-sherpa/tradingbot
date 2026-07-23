@@ -220,37 +220,30 @@ def normalize_symbol(symbol, exchange_id, client=None):
 
     ex_id = exchange_id.lower()
 
-    # Dynamic symbol resolution for Coinbase if client has markets loaded
-    if ex_id == 'coinbase' and client and hasattr(client, 'markets') and client.markets:
-        base = sym.split('/')[0]
-        matching = []
+    # Universal dynamic symbol resolution if client has markets loaded
+    if client and hasattr(client, 'markets') and client.markets:
+        if symbol in client.markets:
+            return symbol
+        if sym in client.markets:
+            return sym
+            
+        base = sym.split('/')[0].split('-')[0].split(':')[0]
+        matching_swap = []
+        matching_any = []
         for m_symbol, market in client.markets.items():
-            if market.get('base') == base and (market.get('future') or market.get('swap') or market.get('type') in ('swap', 'future') or market.get('contract')):
-                matching.append((m_symbol, market))
-        if matching:
-            best_symbol = None
-            best_score = -99
-            for m_symbol, market in matching:
-                info = market.get('info', {})
-                disp_name = str(info.get('display_name', '')).upper()
-                prod_id = str(info.get('product_id', '')).upper()
-                score = 0
-                if 'PERP' in prod_id or 'PERP' in disp_name or 'PERPETUAL' in disp_name:
-                    score += 10
-                if m_symbol.endswith('301220'):
-                    score += 5
-                if any(month in disp_name for month in ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']):
-                    if 'PERPETUAL' not in disp_name and 'PERP' not in disp_name:
-                        if '301220' not in m_symbol:
-                            score -= 15
-                settle_currency = market.get('settle') or market.get('quote') or 'USD'
-                if settle_currency == 'USD':
-                    score += 2
-                if score > best_score:
-                    best_score = score
-                    best_symbol = m_symbol
-            if best_symbol:
-                return best_symbol
+            m_base = str(market.get('base') or '').upper()
+            m_id = str(market.get('id') or '').upper()
+            m_sym = m_symbol.upper()
+            if m_base == base or m_id == base or m_id == f"{base}USDT" or m_id == f"{base}-USDT" or m_sym.startswith(f"{base}/") or m_sym.startswith(f"{base}-"):
+                is_swap = market.get('swap') or market.get('future') or market.get('type') in ('swap', 'future') or market.get('contract')
+                if is_swap:
+                    matching_swap.append(m_symbol)
+                else:
+                    matching_any.append(m_symbol)
+        if matching_swap:
+            return matching_swap[0]
+        if matching_any:
+            return matching_any[0]
 
     # Exchange-specific symbol mapping tables
     MAPPINGS = {

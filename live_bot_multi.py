@@ -215,6 +215,7 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         if not getattr(exchange, 'markets', None):
             await exchange.load_markets()
 
+        symbol = database.normalize_symbol(symbol, exchange.id, client=exchange)
         market = exchange.market(symbol)
         ticker = await exchange.fetch_ticker(symbol)
         lp = ticker["last"]
