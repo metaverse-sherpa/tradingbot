@@ -293,14 +293,16 @@ const RecommendationsPage: React.FC = () => {
                   { value: "actual_pnl", label: "Actual PnL %" }
                 ]}
               />
-              <button
-                onClick={() => fetchRecommendations(true)}
-                disabled={refreshing}
-                className="flex items-center justify-center p-2 text-gray-400 hover:text-cyan-400 hover:bg-white/5 rounded-lg transition-colors shrink-0 disabled:opacity-50"
-                title="Refresh Recommendations"
-              >
-                <RefreshCw size={18} className={refreshing ? 'animate-spin text-cyan-400' : ''} />
-              </button>
+              {user?.is_admin && (
+                <button
+                  onClick={handleGenerateBuys}
+                  disabled={generating || refreshing}
+                  className="flex items-center justify-center p-2 text-gray-400 hover:text-cyan-400 hover:bg-white/5 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+                  title="Re-run AI Recommendation Algorithm (Admin Only)"
+                >
+                  <RefreshCw size={18} className={generating || refreshing ? 'animate-spin text-cyan-400' : ''} />
+                </button>
+              )}
             </div>
           </div>
         </div>
