@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const Dashboard = React.lazy(() => import('./components/Dashboard'));
 const Settings = React.lazy(() => import('./components/Settings'));
@@ -137,7 +138,8 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
-      <React.Suspense fallback={<PageLoader />}>
+      <ErrorBoundary>
+        <React.Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<LandingPage />} />
@@ -167,6 +169,7 @@ const App: React.FC = () => {
           </Route>
         </Routes>
       </React.Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 
