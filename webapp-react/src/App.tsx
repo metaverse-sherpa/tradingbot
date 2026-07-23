@@ -18,6 +18,7 @@ const HelpPage = React.lazy(() => import('./components/HelpPage'));
 const LandingPage = React.lazy(() => import('./components/LandingPage'));
 const LoginPage = React.lazy(() => import('./components/LoginPage'));
 const MyPaymentsPage = React.lazy(() => import('./components/MyPaymentsPage'));
+const StrategyBuilderPage = React.lazy(() => import('./components/StrategyBuilderPage'));
 import api from './lib/api';
 import { useAuthStore } from './store/useStore';
 
@@ -142,6 +143,7 @@ const App: React.FC = () => {
             <Route index element={<LandingPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="strategies" element={<StrategiesPage />} />
+            <Route path="strategies/builder" element={<ProtectedRoute><StrategyBuilderPage /></ProtectedRoute>} />
             <Route path="strategies/valkyrie-elite" element={<ValkyrieElitePage />} />
             <Route path="strategies/sherpa-velocity" element={<SherpaVelocityPage />} />
             <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

@@ -1019,6 +1019,56 @@ def init_db():
                 import logging
                 logging.getLogger(__name__).error(f"Failed to migrate AIRecommendations table: {e}")
 
+        # Custom Strategies metadata, parameters, and configs
+        if "UserStrategies" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS UserStrategies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                asset_type TEXT NOT NULL,
+                timeframe TEXT NOT NULL,
+                strategy_config TEXT NOT NULL,
+                performance_metrics TEXT,
+                is_active BOOLEAN DEFAULT 0,
+                is_paper_trading BOOLEAN DEFAULT 0,
+                sharing_status TEXT DEFAULT 'private',
+                original_strategy_id INTEGER,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES WebUsers(id) ON DELETE CASCADE
+            )''')
+            c.execute("CREATE INDEX IF NOT EXISTS idx_userstrategies_user ON UserStrategies(user_id)")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_userstrategies_sharing ON UserStrategies(sharing_status)")
+            conn.commit()
+
+        # Asynchronous Backtest Queue
+        if "BacktestTasks" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS BacktestTasks (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                strategy_config TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                result TEXT,
+                error TEXT,
+                created_at INTEGER NOT NULL,
+                completed_at INTEGER
+            )''')
+            c.execute("CREATE INDEX IF NOT EXISTS idx_backtesttasks_user ON BacktestTasks(user_id, status)")
+            conn.commit()
+
+        # Gemini multi-turn conversation tracker
+        if "StrategyBuilderSessions" not in existing_tables:
+            c.execute('''CREATE TABLE IF NOT EXISTS StrategyBuilderSessions (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                messages TEXT NOT NULL,
+                current_config TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES WebUsers(id) ON DELETE CASCADE
+            )''')
+            conn.commit()
 
 
 def reset_crypto_stats(chat_id):
@@ -2190,6 +2240,7 @@ def update_config(key, value):
     with db_session() as conn:
         c = conn.cursor()
         c.execute("INSERT OR REPLACE INTO Config (key, value) VALUES (?, ?)", (key, value))
+        conn.commit()
 
 def get_platform_stats():
     """Returns high-level platform analytics for the admin."""
@@ -2617,6 +2668,20 @@ async def make_alpaca_request_async(user, method, path, params=None, json_data=N
     return await asyncio.to_thread(make_alpaca_request, user, method, path, params, json_data)
 
 # --- 🚫 Strategy Disablement & Graceful Retirement ---
+
+def get_custom_strategy_config(user_id, name):
+    """Fetches the JSON strategy_config for a custom strategy by name and user_id."""
+    import json
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("SELECT strategy_config FROM UserStrategies WHERE name = ? AND (user_id = ? OR sharing_status = 'approved')", (name, user_id))
+        row = c.fetchone()
+        if row and row[0]:
+            try:
+                return json.loads(row[0])
+            except:
+                pass
+    return None
 
 def get_disabled_strategies():
     """Returns a list of disabled strategies from Config."""

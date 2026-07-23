@@ -81,6 +81,7 @@ from web_api.routes_premium import premium_bp
 from web_api.routes_faq import faq_bp
 from web_api.routes_docs import docs_bp
 from web_api.routes_portfolio import portfolio_bp
+from web_api.routes_custom_strategies import custom_strategies_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(settings_bp)
@@ -89,6 +90,7 @@ app.register_blueprint(premium_bp)
 app.register_blueprint(faq_bp)
 app.register_blueprint(docs_bp)
 app.register_blueprint(portfolio_bp)
+app.register_blueprint(custom_strategies_bp)
 
 from web_api.routes_ssr import ssr_bp
 app.register_blueprint(ssr_bp)

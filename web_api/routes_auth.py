@@ -45,6 +45,7 @@ def sync_firebase_user():
     safe_user.pop("alpaca_api_secret", None)
     
     safe_user["disabled_strategies"] = database.get_disabled_strategies()
+    safe_user["ai_strategy_builder_enabled"] = database.get_config("ai_strategy_builder_enabled", "true") == "true"
     
     # Sync telegram bot user data if linked
     tg_id = user.get("telegram_chat_id")

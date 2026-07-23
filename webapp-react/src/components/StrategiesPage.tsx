@@ -42,6 +42,26 @@ const strategies = [
       chart: "/api/charts/sherpa_equity.webp",
       infographic: "/api/charts/sherpa_velocity_infographic_ai.webp"
     }
+  },
+  {
+    name: "Custom AI Builder",
+    icon: <TrendingUp className="text-cyan-400" size={24} />,
+    philosophy: "Build your own custom algorithmic trading strategies by chatting with AI, uploading PineScript, or sharing chart screenshots.",
+    indicators: "Anything you can imagine. Powered by Gemini AI.",
+    pace: "Customizable. Works on 1m to Daily timeframes.",
+    drawdown: "Backtest your ideas to see the potential drawdown and optimize with AI.",
+    backtest: {
+      period: "Custom Backtests",
+      desc: "Simulate your strategy over historical data to evaluate its performance before going live.",
+      winRate: "N/A",
+      trades: "N/A",
+      sharpe: "N/A",
+      maxDrawdown: "N/A",
+      netPnl: "N/A",
+      finalBalance: "N/A",
+      chart: "",
+      infographic: ""
+    }
   }
 ];
 
@@ -68,7 +88,6 @@ const StrategiesPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {strategies.map((strat, idx) => {
           const isCrypto = strat.name.includes("Valkyrie");
-          const linkPath = isCrypto ? '/strategies/valkyrie-elite' : '/strategies/sherpa-velocity';
 
           return (
             <div key={idx} className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-lg flex flex-col h-full">
@@ -100,8 +119,8 @@ const StrategiesPage: React.FC = () => {
               </div>
 
               <div className="mt-8 pt-6 border-t border-white/5">
-                <Link to={linkPath} className={`w-full py-3 rounded-xl flex items-center justify-center font-bold transition-all ${isCrypto ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}`}>
-                  Explore Strategy
+                <Link to={isCrypto ? '/strategies/valkyrie-elite' : strat.name === "Custom AI Builder" ? '/strategies/builder' : '/strategies/sherpa-velocity'} className={`w-full py-3 rounded-xl flex items-center justify-center font-bold transition-all ${isCrypto ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : strat.name === "Custom AI Builder" ? 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}`}>
+                  {strat.name === "Custom AI Builder" ? "Build Custom Strategy" : "Explore Strategy"}
                 </Link>
               </div>
             </div>

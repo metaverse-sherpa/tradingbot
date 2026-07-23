@@ -50,7 +50,26 @@ const BacktestsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   
-  const allStrategies = ["Valkyrie Elite Scalper", "Sherpa Velocity Pullback", "Mean Reversion Scalper"];
+  const [customStrategies, setCustomStrategies] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchCustomStrats = async () => {
+      try {
+        const res = await api.get('/custom-strategies/list');
+        if (res.data?.strategies) {
+          setCustomStrategies(res.data.strategies);
+        }
+      } catch (e) {
+        console.error("Failed to load custom strategies on backtest page", e);
+      }
+    };
+    fetchCustomStrats();
+  }, []);
+
+  const baseStrategies = ["Valkyrie Elite Scalper", "Sherpa Velocity Pullback", "Mean Reversion Scalper"];
+  const customNames = customStrategies.map((s: any) => s.name);
+  const allStrategies = Array.from(new Set([...baseStrategies, ...customNames]));
+
   const disabledStrategies = user?.disabled_strategies || [];
   const enabledStrategies = allStrategies.filter(s => !disabledStrategies.includes(s));
   

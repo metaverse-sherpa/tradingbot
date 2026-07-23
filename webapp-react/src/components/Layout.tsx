@@ -200,6 +200,11 @@ const Layout: React.FC = () => {
                         <LightbulbIcon size={16} className="text-cyan-400" /> Recommendations
                         </Link>
                       )}
+                      {isPremium && user?.ai_strategy_builder_enabled !== false && (
+                        <Link to="/strategies/builder" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
+                        <TrendingUpIcon size={16} className="text-purple-400" /> Strategy Builder
+                        </Link>
+                      )}
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <UsersIcon size={16} className="text-emerald-400" /> Refer & Earn
                       </Link>

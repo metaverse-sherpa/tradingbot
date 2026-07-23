@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Users, ShieldAlert, Activity, Search, Loader2, MessageCircleQuestion, Plus, Edit, Trash2, FileText, CreditCard, Copy } from 'lucide-react';
 import api from '../lib/api';
 import { Link } from 'react-router-dom';
+import { useAuthStore } from '../store/useStore';
+import { useToast } from './Toast';
 
 const AdminPage: React.FC = () => {
+  const { user, setUser } = useAuthStore();
+  const { showToast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'faqs' | 'docs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'faqs' | 'docs' | 'config'>('users');
   
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loadingFaqs, setLoadingFaqs] = useState(false);
@@ -20,7 +24,16 @@ const AdminPage: React.FC = () => {
   const [paymentsUser, setPaymentsUser] = useState<any>(null);
   const [userPayments, setUserPayments] = useState<any[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [aiBuilderEnabled, setAiBuilderEnabled] = useState(true);
 
+  const fetchConfig = async () => {
+    try {
+      const res = await api.get('/admin/config');
+      setAiBuilderEnabled(res.data.ai_strategy_builder_enabled !== false);
+    } catch (e) {
+      console.error('Failed to fetch config', e);
+    }
+  };
 
   const handleSaveUserPremium = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +128,9 @@ const AdminPage: React.FC = () => {
     if (activeTab === 'docs' && docs.length === 0) {
       fetchDocs();
     }
+    if (activeTab === 'config') {
+      fetchConfig();
+    }
   }, [activeTab]);
 
   const handleSaveFaq = async (e: React.FormEvent) => {
@@ -202,6 +218,12 @@ const AdminPage: React.FC = () => {
           className={`pb-4 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === 'docs' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
         >
           Documents
+        </button>
+        <button
+          onClick={() => setActiveTab('config')}
+          className={`pb-4 text-sm font-bold uppercase tracking-widest transition-colors ${activeTab === 'config' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          System Config
         </button>
       </div>
 
@@ -655,6 +677,44 @@ const AdminPage: React.FC = () => {
               <button type="button" onClick={() => setPaymentsUser(null)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-8 rounded-xl transition-colors">
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'config' && (
+        <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
+          <h3 className="text-lg font-bold text-white mb-6">System Configuration</h3>
+          
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-black/20 rounded-lg border border-white/5">
+              <div>
+                <h4 className="text-white font-bold mb-1">AI Strategy Builder</h4>
+                <p className="text-sm text-gray-400">Allow users to generate custom trading strategies using AI.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={aiBuilderEnabled}
+                  onChange={async (e) => {
+                    const newVal = e.target.checked;
+                    setAiBuilderEnabled(newVal);
+                    try {
+                      await api.post('/admin/config', { ai_strategy_builder_enabled: newVal });
+                      showToast(`AI Strategy Builder ${newVal ? 'enabled' : 'disabled'}`, 'success');
+                      if (user) {
+                        setUser({ ...user, ai_strategy_builder_enabled: newVal } as any);
+                      }
+                    } catch (err) {
+                      console.error("Failed to update config");
+                      setAiBuilderEnabled(!newVal);
+                      showToast("Failed to update system config", 'error');
+                    }
+                  }}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+              </label>
             </div>
           </div>
         </div>

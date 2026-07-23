@@ -134,6 +134,34 @@ async def alpaca_fractional_monitor_engine(application):
                             elif low_price <= sl:
                                 exit_reason = "STOP LOSS"
                                 exit_price = sl
+                            else:
+                                strategy_name = user.get("active_stock_strategy", "None")
+                                is_custom = strategy_name not in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback", "None"]
+                                if is_custom:
+                                    strategy_config = database.get_custom_strategy_config(user_id=user.get('web_user_id'), name=strategy_name)
+                                    if strategy_config:
+                                        import sqlite3
+                                        import pandas as pd
+                                        from custom_strategy_interpreter import CustomStrategyInterpreter
+                                        interpreter = CustomStrategyInterpreter(strategy_config)
+                                        db_conn_2 = sqlite3.connect("data/stock_market_data.db")
+                                        df = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", db_conn_2, params=(sym,))
+                                        db_conn_2.close()
+                                        if len(df) >= 60:
+                                            df['date'] = pd.to_datetime(df['date'])
+                                            df.set_index('date', inplace=True)
+                                            df.sort_index(inplace=True)
+                                            today_str = datetime.now().strftime('%Y-%m-%d')
+                                            if pd.to_datetime(today_str) in df.index:
+                                                df.loc[pd.to_datetime(today_str), 'close'] = close_price
+                                            else:
+                                                new_row = pd.DataFrame({'close': [close_price], 'high': [high_price], 'low': [low_price], 'open': [daily_bar.get('o', close_price)], 'volume': [daily_bar.get('v', 0)]}, index=[pd.to_datetime(today_str)])
+                                                df = pd.concat([df, new_row])
+                                            processed_df = interpreter.build_indicators(df)
+                                            signal = interpreter.check_signal(processed_df, len(processed_df)-1)
+                                            if signal == "CLOSE_LONG" or signal == "SHORT":
+                                                exit_reason = f"Dynamic Exit ({strategy_name})"
+                                                exit_price = close_price
                                 
                             if exit_reason:
                                 logger.info(f"Closing fractional {sym} for {chat_id}. Reason: {exit_reason} at {exit_price}")

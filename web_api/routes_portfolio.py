@@ -506,9 +506,9 @@ def get_cached_prices(symbols, categories):
 
 
 # --- 🤖 Gemini Helper Function ---
-def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=None, mime_type="image/jpeg"):
+def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=None, mime_type="image/jpeg", custom_url=None):
     """Call Google Gemini API using configured env variables/secrets."""
-    url = os.getenv("PORTFOLIO_AI_URL") or "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    url = custom_url or os.getenv("PORTFOLIO_AI_URL") or "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     api_key = utils_gcp.get_secret("GEMINI_API_KEY")
 
     if not api_key:

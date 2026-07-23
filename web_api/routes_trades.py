@@ -1544,8 +1544,85 @@ def run_backtest():
             all_trades = json.load(f)
             
         strategy_trades = [t for t in all_trades if t["strategy"] == strategy]
+        
+        # Support running backtest for custom AI strategies
         if not strategy_trades:
-            return jsonify({"error": f"No baseline trades found for strategy {strategy}."}), 400
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT strategy_config, asset_type, timeframe FROM UserStrategies WHERE name = ? AND (user_id = ? OR sharing_status = 'approved')", (strategy, g.user["id"]))
+                custom_row = c.fetchone()
+                
+            if custom_row and custom_row[0]:
+                custom_cfg = json.loads(custom_row[0])
+                asset_type = custom_row[1] or custom_cfg.get("asset_type", "crypto")
+                timeframe = custom_row[2] or custom_cfg.get("timeframe", "1h")
+                
+                from web_api.routes_custom_strategies import load_historical_data
+                from custom_strategy_interpreter import CustomStrategyInterpreter, run_combined_backtest
+                
+                data_dict = load_historical_data(asset_type=asset_type, timeframe=timeframe)
+                interpreter = CustomStrategyInterpreter(custom_cfg)
+                
+                res = run_combined_backtest(
+                    data_dict,
+                    interpreter,
+                    risk_pct=risk_pct / 100.0,
+                    initial_cash=capital,
+                    leverage=20.0 if asset_type == "crypto" else 1.6
+                )
+                
+                metrics = res.get("metrics", {})
+                pnl_pct = float(metrics.get("pnl_pct", 0.0))
+                win_rate = float(metrics.get("win_rate", 0.0))
+                total_trades = int(metrics.get("total_trades", 0))
+                max_dd = float(metrics.get("max_dd_pct", 0.0))
+                profit_factor = float(metrics.get("profit_factor", 1.0))
+                net_pnl = capital * (pnl_pct / 100.0)
+                
+                # Generate equity curve chart URI
+                eq_list = res.get("equity_curve") or []
+                img_base64 = ""
+                if eq_list:
+                    df_eq = pd.DataFrame(eq_list)
+                    if "date" in df_eq.columns:
+                        df_eq["date"] = pd.to_datetime(df_eq["date"])
+                        df_eq = df_eq.set_index("date")
+                        
+                    from matplotlib.figure import Figure
+                    fig = Figure(figsize=(8, 4), facecolor="#0B0E14")
+                    ax = fig.add_subplot(111)
+                    ax.set_facecolor("#0B0E14")
+                    ax.plot(df_eq.index, df_eq["equity"], color="#00E5FF", linewidth=1.5)
+                    ax.set_title(f"{strategy} - Equity Curve", color="white", fontsize=10)
+                    ax.tick_params(colors="gray")
+                    for spine in ax.spines.values():
+                        spine.set_color("#2A2E39")
+                    import io, base64
+                    fig.tight_layout()
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format="png", dpi=95, facecolor="#0B0E14")
+                    buf.seek(0)
+                    img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+                
+                chart_data_uri = f"data:image/png;base64,{img_base64}" if img_base64 else ""
+
+                return jsonify({
+                    "status": "success",
+                    "result": {
+                        "strategy": strategy,
+                        "win_rate": round(win_rate, 1),
+                        "total_trades": total_trades,
+                        "net_pnl": round(net_pnl, 2),
+                        "pnl_pct": round(pnl_pct, 2),
+                        "profit_factor": round(profit_factor, 2),
+                        "max_drawdown": round(max_dd, 1),
+                        "chart_url": chart_data_uri,
+                        "risk_pct": risk_pct,
+                        "capital": capital
+                    }
+                }), 200
+            else:
+                return jsonify({"error": f"No baseline trades found for strategy {strategy}."}), 400
             
         from datetime import datetime
         for t in strategy_trades:

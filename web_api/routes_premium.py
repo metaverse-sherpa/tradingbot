@@ -448,7 +448,8 @@ def get_admin_config():
         return jsonify({"error": "Unauthorized"}), 403
         
     excluded = database.get_config("excluded_symbols", "")
-    return jsonify({"excluded_symbols": excluded}), 200
+    ai_builder = database.get_config("ai_strategy_builder_enabled", "true") == "true"
+    return jsonify({"excluded_symbols": excluded, "ai_strategy_builder_enabled": ai_builder}), 200
 
 @premium_bp.route('/api/admin/config', methods=['POST'])
 @require_auth
@@ -460,9 +461,12 @@ def update_admin_config():
     if not is_admin:
         return jsonify({"error": "Unauthorized"}), 403
         
-    data = request.get_json() or {}
-    excluded = data.get("excluded_symbols", "").strip()
-    database.update_config("excluded_symbols", excluded)
+    data = request.json or {}
+    if "excluded_symbols" in data:
+        database.update_config("excluded_symbols", data["excluded_symbols"])
+    if "ai_strategy_builder_enabled" in data:
+        database.update_config("ai_strategy_builder_enabled", "true" if data["ai_strategy_builder_enabled"] else "false")
+        
     return jsonify({"message": "Configuration updated successfully."}), 200
 
 @premium_bp.route('/api/premium/my-payments', methods=['GET'])

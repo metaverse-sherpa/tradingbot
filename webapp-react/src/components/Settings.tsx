@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   MessageCircle, Save, Terminal, 
   Activity, Star, LogOut, Bell, Mail, RefreshCw,
-  Gift, Code, EyeOff, Trash2, Cpu, ChevronDown, PlayCircle, Copy, ExternalLink, Key
+  Gift, Code, EyeOff, Trash2, Cpu, ChevronDown, PlayCircle, Copy, ExternalLink, Key, Wand2
 } from 'lucide-react';
 import { useAuthStore } from '../store/useStore';
 import { useToast } from './Toast';
@@ -82,6 +82,39 @@ const Settings: React.FC = () => {
   const [giftMonths, setGiftMonths] = useState(1);
   const [giftResult, setGiftResult] = useState<any>(null);
   const [isGeneratingGift, setIsGeneratingGift] = useState(false);
+
+  // Custom strategies state
+  const [customStrategies, setCustomStrategies] = useState<any[]>([]);
+
+  const fetchCustomStrats = async () => {
+    try {
+      const res = await api.get('/custom-strategies/list');
+      if (res.data?.strategies) {
+        setCustomStrategies(res.data.strategies);
+      }
+    } catch (e) {
+      console.error("Failed to load custom strategies in settings", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomStrats();
+  }, []);
+
+  const handleDeleteCustomStrategy = async (stratName: string, type: 'crypto' | 'stock') => {
+    const strat = customStrategies.find(s => s.name === stratName);
+    if (!strat) return;
+    if (!window.confirm(`Are you sure you want to delete ${stratName}?`)) return;
+    try {
+      await api.delete(`/custom-strategies/delete/${strat.id}`);
+      await fetchCustomStrats();
+      handleStrategyChange(type, 'None');
+      showToast('Custom strategy deleted successfully', 'success');
+    } catch (e) {
+      console.error('Failed to delete strategy', e);
+      showToast('Failed to delete strategy', 'error');
+    }
+  };
 
   // Sync state if user changes
   useEffect(() => {
@@ -692,11 +725,22 @@ const Settings: React.FC = () => {
           {/* Strategy & Risk */}
           {isPremium && user?.has_exchange_keys && (
           <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-emerald-500/20 rounded-xl">
-                <Cpu className="text-emerald-400" size={20} />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 rounded-xl">
+                  <Cpu className="text-emerald-400" size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-white">Algorithms & Risk</h3>
               </div>
-              <h3 className="text-lg font-bold text-white">Algorithms & Risk</h3>
+              {user?.ai_strategy_builder_enabled !== false && (
+              <button
+                onClick={() => navigate('/strategies/builder')}
+                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg text-indigo-400 transition-colors text-sm font-semibold"
+              >
+                <Wand2 size={16} />
+                Strategy AI Wizard
+              </button>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -710,9 +754,24 @@ const Settings: React.FC = () => {
                     options={[
                       { value: "None", label: "None (Paused)" },
                       { value: "Mean Reversion Scalper", label: "Mean Reversion Scalper", disabled: user?.disabled_strategies?.includes("Mean Reversion Scalper") },
-                      { value: "Valkyrie Elite Scalper", label: "Valkyrie Elite Scalper", disabled: user?.disabled_strategies?.includes("Valkyrie Elite Scalper") }
+                      { value: "Valkyrie Elite Scalper", label: "Valkyrie Elite Scalper", disabled: user?.disabled_strategies?.includes("Valkyrie Elite Scalper") },
+                      ...customStrategies
+                        .filter((s: any) => s.asset_type === 'crypto' || !s.asset_type)
+                        .map((s: any) => ({
+                          value: s.name,
+                          label: `✨ ${s.name} (Custom AI)`
+                        }))
                     ]}
                   />
+                  {customStrategies.some(s => s.name === user?.active_crypto_strategy) && (
+                    <button 
+                      onClick={() => handleDeleteCustomStrategy(user?.active_crypto_strategy || '', 'crypto')}
+                      className="px-4 bg-[#1f2028] border border-red-500/30 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center justify-center"
+                      title="Delete Custom Strategy"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(user?.active_crypto_strategy || 'Valkyrie Elite Scalper')}&risk=${riskPct}&run=true`)}
                     className="px-4 bg-[#1f2028] border border-[#2e303a] rounded-xl text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center justify-center"
@@ -732,9 +791,24 @@ const Settings: React.FC = () => {
                     onChange={(v) => handleStrategyChange('stock', v)}
                     options={[
                       { value: "None", label: "None (Paused)" },
-                      { value: "Sherpa Velocity Pullback", label: "Sherpa Velocity Pullback", disabled: user?.disabled_strategies?.includes("Sherpa Velocity Pullback") }
+                      { value: "Sherpa Velocity Pullback", label: "Sherpa Velocity Pullback", disabled: user?.disabled_strategies?.includes("Sherpa Velocity Pullback") },
+                      ...customStrategies
+                        .filter((s: any) => s.asset_type === 'stock')
+                        .map((s: any) => ({
+                          value: s.name,
+                          label: `✨ ${s.name} (Custom AI)`
+                        }))
                     ]}
                   />
+                  {customStrategies.some(s => s.name === user?.active_stock_strategy) && (
+                    <button 
+                      onClick={() => handleDeleteCustomStrategy(user?.active_stock_strategy || '', 'stock')}
+                      className="px-4 bg-[#1f2028] border border-red-500/30 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center justify-center"
+                      title="Delete Custom Strategy"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
                   <button 
                     onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(user?.active_stock_strategy || 'Sherpa Velocity Pullback')}&risk=${stockRiskPct}&run=true`)}
                     className="px-4 bg-[#1f2028] border border-[#2e303a] rounded-xl text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center justify-center"

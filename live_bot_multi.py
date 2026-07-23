@@ -145,7 +145,7 @@ def create_github_issue(subject, body):
 
 import strategies
 
-def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
+def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper", web_user_id=None):
     """
     Modular Signal Generator
     
@@ -156,14 +156,30 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper"):
     3. Calculates dynamic Stop Loss distance using rolling Average True Range (ATR).
     4. Evaluates `BAD_HOURS_UTC` to suppress trading during low-liquidity institutional rollover windows.
     """
-    strat = strategies.get_strategy(strategy_name)
-    side = strat.check_signal(df, symbol_name)
+    is_custom = strategy_name not in ["Mean Reversion Scalper", "Valkyrie Elite Scalper"]
+    custom_cfg = None
+    if is_custom:
+        import database
+        custom_cfg = database.get_custom_strategy_config(user_id=web_user_id, name=strategy_name)
+        if not custom_cfg:
+            return None
+        from custom_strategy_interpreter import CustomStrategyInterpreter
+        interpreter = CustomStrategyInterpreter(custom_cfg)
+        processed_df = interpreter.build_indicators(df.copy())
+        side = interpreter.check_signal(processed_df, len(processed_df)-1)
+    else:
+        strat = strategies.get_strategy(strategy_name)
+        side = strat.check_signal(df, symbol_name)
     
-    if not side:
+    if not side or side not in ["LONG", "SHORT"]:
         return None
         
     # Standardize output using strategy-specific configurations
-    if strategy_name == "Valkyrie Elite Scalper":
+    if is_custom and custom_cfg:
+        rr = custom_cfg.get("risk", {}).get("rr_ratio", 1.5)
+        atr_mult = custom_cfg.get("risk", {}).get("sl_atr_mult", 3.0)
+        cfg = {"atr": atr_mult, "rr": rr}
+    elif strategy_name == "Valkyrie Elite Scalper":
         cfg = VALKYRIE_SYMBOL_CONFIGS.get(symbol_name)
         if not cfg:
             return None
@@ -511,10 +527,18 @@ async def run():
                 log.info(f"Strategy '{strat_name}' is disabled. Skipping new signal entries.")
                 continue
                 
+            is_custom = strat_name not in ["Mean Reversion Scalper", "Valkyrie Elite Scalper"]
+            custom_cfg = None
+            tf = TIMEFRAME
+            if is_custom:
+                custom_cfg = database.get_custom_strategy_config(users[0].get('web_user_id'), strat_name)
+                if custom_cfg:
+                    tf = custom_cfg.get('timeframe', TIMEFRAME)
+                    
             for symbol in SYMBOLS:
-                df = await mdm.fetch_ohlcv(symbol, TIMEFRAME)
+                df = await mdm.fetch_ohlcv(symbol, tf)
                 if df is not None:
-                    signal = compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
+                    signal = compute_signal(df, symbol.split("/")[0], strategy_name=strat_name, web_user_id=users[0].get('web_user_id') if is_custom else None)
                     if signal:
                         for user in users:
                             async def wrapped_process(u=user, s=symbol, sig=signal):

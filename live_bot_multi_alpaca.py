@@ -257,7 +257,7 @@ def check_is_market_open():
     import database
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != '' AND active_stock_strategy = 'Sherpa Velocity Pullback' LIMIT 1")
+        c.execute("SELECT * FROM Users WHERE is_active = 1 AND alpaca_api_key IS NOT NULL AND alpaca_api_key != '' AND active_stock_strategy != 'None' LIMIT 1")
         row = c.fetchone()
         
     if not row:
@@ -532,7 +532,8 @@ async def run_hourly_portfolio_sync(today_opens=None):
     for user in active_users:
         chat_id = user.get('telegram_chat_id')
         web_user_id = user.get('web_user_id')
-        if not user or user.get("active_stock_strategy") != "Sherpa Velocity Pullback":
+        strategy_name = user.get("active_stock_strategy", "None")
+        if not user or strategy_name == "None":
             continue
             
         try:
@@ -596,15 +597,37 @@ async def run_hourly_portfolio_sync(today_opens=None):
                 y_high = y_row[0] if y_row else 0.0
                 y_low = y_row[1] if y_row else 999999.0
 
-                indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
-                
+                is_custom = strategy_name not in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"]
                 exit_reason = None
-                if indicator_dict and indicator_dict['rsi'] > 75:
-                    exit_reason = "Dynamic Exit (RSI > 75)"
-                elif sl_price and y_low <= sl_price:
-                    exit_reason = "STOP LOSS"
-                elif tp_price and y_high >= tp_price:
-                    exit_reason = "TAKE PROFIT"
+                
+                if is_custom:
+                    strategy_config = database.get_custom_strategy_config(user_id=web_user_id, name=strategy_name)
+                    if strategy_config:
+                        from custom_strategy_interpreter import CustomStrategyInterpreter
+                        import pandas as pd
+                        interpreter = CustomStrategyInterpreter(strategy_config)
+                        
+                        db_conn_2 = sqlite3.connect(STOCK_DB_PATH)
+                        df = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", db_conn_2, params=(sym,))
+                        db_conn_2.close()
+                        if len(df) >= 60:
+                            df['date'] = pd.to_datetime(df['date'])
+                            df.set_index('date', inplace=True)
+                            df.sort_index(inplace=True)
+                            processed_df = interpreter.build_indicators(df)
+                            signal = interpreter.check_signal(processed_df, len(processed_df)-1)
+                            if signal == "CLOSE_LONG" or signal == "SHORT":
+                                exit_reason = f"Dynamic Exit ({strategy_name})"
+                else:
+                    indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
+                    if indicator_dict and indicator_dict['rsi'] > 75:
+                        exit_reason = "Dynamic Exit (RSI > 75)"
+                
+                if not exit_reason:
+                    if sl_price and y_low <= sl_price:
+                        exit_reason = "STOP LOSS"
+                    elif tp_price and y_high >= tp_price:
+                        exit_reason = "TAKE PROFIT"
                 
                 if exit_reason:
                     logger.info(f"{exit_reason} triggered for real user {chat_id or f'web_{web_user_id}'} symbol {sym}. Liquidating...")
@@ -669,7 +692,8 @@ async def run_real_trader_execution(today_opens):
     for user in active_users:
         chat_id = user.get('telegram_chat_id')
         web_user_id = user.get('web_user_id')
-        if not user or user.get("active_stock_strategy") != "Sherpa Velocity Pullback":
+        strategy_name = user.get("active_stock_strategy", "None")
+        if not user or strategy_name == "None":
             continue
             
         logger.info(f"Processing real trade execution for user chat_id={chat_id} web_user_id={web_user_id}...")
@@ -680,7 +704,7 @@ async def run_real_trader_execution(today_opens):
             active_positions = {p['symbol']: p for p in positions if float(p.get("qty", 0)) != 0}
             
             # Graceful strategy retirement check
-            is_disabled = database.is_strategy_disabled("Sherpa Velocity Pullback")
+            is_disabled = database.is_strategy_disabled(strategy_name)
             if is_disabled and len(active_positions) == 0:
                 database.migrate_user_if_no_open_positions(chat_id, web_user_id=web_user_id)
                 logger.info(f"User {chat_id or f'web_{web_user_id}'} stock strategy retired gracefully (0 active positions).")
@@ -696,20 +720,53 @@ async def run_real_trader_execution(today_opens):
                 logger.info(f"Stock strategy is disabled. Skipping new entries for user {chat_id or f'web_{web_user_id}'}.")
                 continue
             
+            is_custom = strategy_name not in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"]
+            strategy_config = None
+            interpreter = None
+            if is_custom:
+                strategy_config = database.get_custom_strategy_config(user_id=web_user_id, name=strategy_name)
+                if not strategy_config:
+                    logger.error(f"Strategy config not found for {strategy_name}")
+                    continue
+                from custom_strategy_interpreter import CustomStrategyInterpreter
+                import pandas as pd
+                interpreter = CustomStrategyInterpreter(strategy_config)
+            
             import stock_data_cache_daily
             for sym in stock_data_cache_daily.SYMBOLS:
                 if sym in active_positions:
                     continue
                     
-                indicator_dict, signal = calculate_symbol_indicators_and_signal(sym)
-                if signal == "LONG":
-                    o_price = today_opens.get(sym)
-                    if not o_price:
+                signal = None
+                atr = 0.0
+                if is_custom:
+                    db_conn = sqlite3.connect(STOCK_DB_PATH)
+                    df = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", db_conn, params=(sym,))
+                    db_conn.close()
+                    if df.empty or len(df) < 60:
                         continue
-                        
-                    atr = indicator_dict['atr']
-                    tp_price = o_price + 4.8 * atr
-                    sl_price = o_price - 3.0 * atr
+                    df['date'] = pd.to_datetime(df['date'])
+                    df.set_index('date', inplace=True)
+                    df.sort_index(inplace=True)
+                    processed_df = interpreter.build_indicators(df)
+                    signal = interpreter.check_signal(processed_df, len(processed_df)-1)
+                    if signal == "LONG":
+                        atr = float(processed_df.get('atr', processed_df['close']).iloc[-1])
+                        o_price = today_opens.get(sym)
+                        if not o_price: continue
+                        D = strategy_config.get("risk", {}).get("sl_atr_mult", 3.0) * atr
+                        tp_price = o_price + (strategy_config.get("risk", {}).get("rr_ratio", 1.5) * D)
+                        sl_price = o_price - D
+                else:
+                    indicator_dict, signal = calculate_symbol_indicators_and_signal(sym)
+                    if signal == "LONG":
+                        o_price = today_opens.get(sym)
+                        if not o_price: continue
+                        atr = indicator_dict['atr']
+                        tp_price = o_price + 4.8 * atr
+                        sl_price = o_price - 3.0 * atr
+
+                if signal == "LONG":
                     
                     try:
                         account = await database.make_alpaca_request_async(user, "GET", "/v2/account")

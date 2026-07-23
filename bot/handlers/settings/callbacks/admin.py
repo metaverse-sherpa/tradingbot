@@ -530,4 +530,24 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
             await safe_edit_text(update, context, msg, reply_markup=InlineKeyboardMarkup(kb))
         return True
 
+    if query.data.startswith("admin_approve_strat_"):
+        if chat_id != SUPER_ADMIN_ID: return True
+        strat_id = query.data.replace("admin_approve_strat_", "")
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("UPDATE UserStrategies SET sharing_status = 'approved' WHERE id = ?", (strat_id,))
+        await query.answer("Strategy approved!")
+        await safe_edit_text(update, context, f"Strategy ID {strat_id} has been approved for the marketplace.")
+        return True
+        
+    if query.data.startswith("admin_reject_strat_"):
+        if chat_id != SUPER_ADMIN_ID: return True
+        strat_id = query.data.replace("admin_reject_strat_", "")
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("UPDATE UserStrategies SET sharing_status = 'rejected' WHERE id = ?", (strat_id,))
+        await query.answer("Strategy rejected!")
+        await safe_edit_text(update, context, f"Strategy ID {strat_id} has been rejected from the marketplace.")
+        return True
+
     return False
