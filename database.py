@@ -2359,7 +2359,7 @@ def redeem_gift_code(chat_id, code, current_username=None):
         current_time = int(time.time())
         c.execute('SELECT premium_expiry FROM Users WHERE telegram_chat_id = ?', (chat_id,))
         u_row = c.fetchone()
-        current_expiry = u_row['premium_expiry'] if u_row else 0
+        current_expiry = (u_row['premium_expiry'] or 0) if u_row else 0
         
         new_expiry = max(current_expiry, current_time) + (days * 86400)
         c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = '0', premium_warning_notified = '0' WHERE telegram_chat_id = ?", (new_expiry, chat_id))
@@ -2416,7 +2416,7 @@ def redeem_gift_code_web(web_user_id, code):
         if telegram_chat_id:
             c.execute('SELECT premium_expiry FROM Users WHERE telegram_chat_id = ?', (telegram_chat_id,))
             u_row = c.fetchone()
-            current_expiry = u_row['premium_expiry'] if u_row else 0
+            current_expiry = (u_row['premium_expiry'] or 0) if u_row else 0
             new_bot_expiry = max(current_expiry, current_time) + (days * 86400)
             c.execute("UPDATE Users SET premium_expiry = ?, premium_expired_notified = '0', premium_warning_notified = '0' WHERE telegram_chat_id = ?", (new_bot_expiry, telegram_chat_id))
             
