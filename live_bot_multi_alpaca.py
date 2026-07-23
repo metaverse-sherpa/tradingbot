@@ -442,6 +442,7 @@ async def run_theoretical_tally_engine(today_opens):
             
     # 2. Check for new buy entries
     import stock_data_cache_daily
+    candidate_theoretical = []
     for sym in stock_data_cache_daily.SYMBOLS:
         c.execute("SELECT 1 FROM TheoreticalTrades WHERE symbol = ? AND strategy = 'Sherpa Velocity Pullback' AND status = 'open'", (sym,))
         if c.fetchone():
@@ -449,21 +450,45 @@ async def run_theoretical_tally_engine(today_opens):
             
         indicator_dict, signal = calculate_symbol_indicators_and_signal(sym)
         if signal == "LONG":
+            o_price = today_opens.get(sym)
+            if not o_price:
+                continue
+            atr = indicator_dict['atr']
+            tp_price = o_price + 4.8 * atr
+            sl_price = o_price - 3.0 * atr
+            candidate_theoretical.append({
+                'symbol': sym,
+                'o_price': o_price,
+                'tp_price': tp_price,
+                'sl_price': sl_price,
+                'atr': atr
+            })
+
+    if candidate_theoretical:
+        c.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
+        bal_row = c.fetchone()
+        bal = float(bal_row[0]) if bal_row else 1000.0
+        
+        n_cand = len(candidate_theoretical)
+        max_notional_per_trade = (bal * 0.98) / n_cand
+        
+        for cand in candidate_theoretical:
             try:
-                o_price = today_opens.get(sym)
-                if not o_price:
-                    continue
-                    
-                atr = indicator_dict['atr']
-                tp_price = o_price + 4.8 * atr
-                sl_price = o_price - 3.0 * atr
-                
-                c.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
-                bal_row = c.fetchone()
-                bal = float(bal_row[0]) if bal_row else 1000.0
+                sym = cand['symbol']
+                o_price = cand['o_price']
+                tp_price = cand['tp_price']
+                sl_price = cand['sl_price']
+                atr = cand['atr']
                 
                 risk_amt = bal * 0.02
-                shares = risk_amt / (3.0 * atr)
+                sl_dist = 3.0 * atr
+                if sl_dist <= 0:
+                    continue
+                qty_risk = risk_amt / sl_dist
+                qty_margin = max_notional_per_trade / o_price
+                shares = round(min(qty_risk, qty_margin), 4)
+                if shares <= 0:
+                    continue
                 position_size_usd = shares * o_price
                 
                 c.execute("""
@@ -510,7 +535,7 @@ async def run_theoretical_tally_engine(today_opens):
                     logger.warning(f"Failed to send free signal entry broadcast to targets: {b_err}")
                     
             except Exception as e:
-                logger.error(f"Failed to open theoretical trade for {sym}: {e}")
+                logger.error(f"Failed to open theoretical trade for {cand.get('symbol')}: {e}")
                 
     conn.close()
 
@@ -733,6 +758,7 @@ async def run_real_trader_execution(today_opens):
                 interpreter = CustomStrategyInterpreter(strategy_config)
             
             import stock_data_cache_daily
+            candidate_real_trades = []
             for sym in stock_data_cache_daily.SYMBOLS:
                 if sym in active_positions:
                     continue
@@ -757,6 +783,14 @@ async def run_real_trader_execution(today_opens):
                         D = strategy_config.get("risk", {}).get("sl_atr_mult", 3.0) * atr
                         tp_price = o_price + (strategy_config.get("risk", {}).get("rr_ratio", 1.5) * D)
                         sl_price = o_price - D
+                        candidate_real_trades.append({
+                            'symbol': sym,
+                            'o_price': o_price,
+                            'tp_price': tp_price,
+                            'sl_price': sl_price,
+                            'sl_dist': D,
+                            'atr': atr
+                        })
                 else:
                     indicator_dict, signal = calculate_symbol_indicators_and_signal(sym)
                     if signal == "LONG":
@@ -765,21 +799,42 @@ async def run_real_trader_execution(today_opens):
                         atr = indicator_dict['atr']
                         tp_price = o_price + 4.8 * atr
                         sl_price = o_price - 3.0 * atr
+                        candidate_real_trades.append({
+                            'symbol': sym,
+                            'o_price': o_price,
+                            'tp_price': tp_price,
+                            'sl_price': sl_price,
+                            'sl_dist': 3.0 * atr,
+                            'atr': atr
+                        })
 
-                if signal == "LONG":
+            if candidate_real_trades:
+                try:
+                    account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
+                    equity = float(account.get("equity", 0) or account.get("portfolio_value", 0))
+                    buying_power = float(account.get("buying_power") or account.get("cash") or equity)
                     
-                    try:
-                        account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
-                        equity = float(account.get("equity", 0) or account.get("portfolio_value", 0))
+                    n_trades = len(candidate_real_trades)
+                    max_notional_per_trade = (buying_power * 0.98) / n_trades if n_trades > 0 else 0
+                    user_risk = float(user.get('stock_risk_pct', 2.0)) / 100.0
+                    risk_amt = equity * user_risk
+                    
+                    for cand in candidate_real_trades:
+                        sym = cand['symbol']
+                        o_price = cand['o_price']
+                        tp_price = cand['tp_price']
+                        sl_price = cand['sl_price']
+                        sl_dist = cand['sl_dist']
                         
-                        user_risk = float(user.get('stock_risk_pct', 2.0)) / 100.0
-                        risk_amt = equity * user_risk
-                        
-                        qty = risk_amt / (3.0 * atr)
-                        qty = round(qty, 4)
+                        if sl_dist <= 0 or o_price <= 0:
+                            continue
+                            
+                        qty_risk = risk_amt / sl_dist
+                        qty_margin = max_notional_per_trade / o_price if max_notional_per_trade > 0 else 0
+                        qty = round(min(qty_risk, qty_margin), 4)
                         
                         if qty <= 0:
-                            logger.warning(f"Sizing quantity is 0 for {sym} (User: {chat_id or f'web_{web_user_id}'}). Risk amount ${risk_amt:.2f} is too small.")
+                            logger.warning(f"Sizing quantity is 0 for {sym} (User: {chat_id or f'web_{web_user_id}'}). Risk ${risk_amt:.2f}, Margin Cap ${max_notional_per_trade:.2f}.")
                             continue
                             
                         order_payload = {
@@ -828,10 +883,10 @@ async def run_real_trader_execution(today_opens):
                         else:
                             logger.info(f"Buy trade logged for web user {web_user_id}. Symbol: {sym}")
                         
-                    except Exception as e:
-                        logger.error(f"Failed to execute real trade for user {chat_id or f'web_{web_user_id}'} symbol {sym}: {e}")
-                        if chat_id:
-                            await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Buy signal for {sym} failed to execute: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to execute real trade batch for user {chat_id or f'web_{web_user_id}'}: {e}")
+                    if chat_id:
+                        await send_telegram_message(chat_id, f"⚠️ *Alpaca Alert*: Buy signals failed to execute: {e}")
                         
         except Exception as e:
             logger.error(f"Error executing trades for user {chat_id or f'web_{web_user_id}'}: {e}")

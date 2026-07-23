@@ -1996,16 +1996,23 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
     # 2. Execution Logic
     if is_stock(sym):
         # Alpaca Logic
-        equity = user.get('alpaca_start_equity')
-        if not equity:
-            equity = user.get('equity', 1000)
+        try:
+            account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
+            equity = float(account.get("equity", 0) or account.get("portfolio_value", 0))
+            buying_power = float(account.get("buying_power") or account.get("cash") or equity)
+        except Exception:
+            equity = user.get('alpaca_start_equity') or user.get('equity', 1000)
+            buying_power = equity
             
         user_risk = float(user.get('stock_risk_pct', 2.0)) / 100.0
         risk_amt = equity * user_risk
-        qty = round(risk_amt / sl_dist, 4)
+        
+        qty_risk = risk_amt / sl_dist if sl_dist > 0 else 0
+        qty_margin = (buying_power * 0.98) / current_price if current_price > 0 else 0
+        qty = round(min(qty_risk, qty_margin), 4)
         
         if qty <= 0:
-            return False, f"⚠️ Your allocated risk (${risk_amt:.2f}) is too small to open a fractional position for {sym}."
+            return False, f"⚠️ Your allocated risk (${risk_amt:.2f}) or available buying power (${buying_power:.2f}) is too small to open a position for {sym}."
             
         order_payload = {
             "symbol": sym,
