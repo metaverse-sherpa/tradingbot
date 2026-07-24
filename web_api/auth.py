@@ -59,15 +59,23 @@ def require_auth(f):
             return jsonify({"error": "Authentication required"}), 401
             
         try:
-            # Symmetrically verify the Firebase ID Token
+            # Verify the Firebase ID Token
             decoded_token = firebase_auth.verify_id_token(token)
             email = decoded_token.get("email")
             uid = decoded_token.get("uid")
             
             if not email:
                 return jsonify({"error": "Invalid token: Email missing"}), 401
-                
-            # Fetch user from PostgreSQL
+        except Exception as e:
+            err_msg = str(e)
+            if "expired" in err_msg.lower():
+                logger.debug("Firebase token expired")
+            else:
+                logger.error(f"Firebase verify_id_token failed: {e}")
+            return jsonify({"error": "Invalid or expired session"}), 401
+            
+        # Fetch user from PostgreSQL
+        try:
             user = get_web_user_by_email(email)
             if not user:
                 # Dynamically provision user record locally in PostgreSQL if they exist in Firebase but not in DB
@@ -83,13 +91,11 @@ def require_auth(f):
                 user = get_web_user_by_email(email)
                 
             g.user = user
-        except Exception as e:
-            err_msg = str(e)
-            if "expired" in err_msg.lower():
-                logger.debug(f"Firebase token expired")
-            else:
-                logger.error(f"Firebase verify_id_token failed: {e}")
-            return jsonify({"error": "Invalid or expired session"}), 401
+        except Exception as db_err:
+            logger.error(f"PostgreSQL user lookup failed in require_auth: {db_err}")
+            return jsonify({"error": "Database error validating user session"}), 500
+            
+        return f(*args, **kwargs)
             
         return f(*args, **kwargs)
     return decorated
