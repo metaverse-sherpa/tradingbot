@@ -389,7 +389,15 @@ const SignalsPage: React.FC = () => {
 
         {isExpanded && (
           <div className="mt-6 pt-6 border-t border-white/5 space-y-4 cursor-default" onClick={e => e.stopPropagation()}>
-            <div className="font-bold text-white mb-2">{(signal.symbol || '').split('/')[0]} ({signal.side?.toUpperCase()}) - 1D Setup | {signal.strategy}</div>
+            {(() => {
+              const isAiRec = (signal.strategy || '').toLowerCase().includes('ai') || (signal.strategy || '').toLowerCase().includes('recommendation');
+              const timeframeLabel = isAiRec || type === 'stock' ? '1D' : '15M';
+              return (
+                <div className="font-bold text-white mb-2">
+                  {(signal.symbol || '').split('/')[0]} ({signal.side?.toUpperCase()}) - {timeframeLabel} Setup | {signal.strategy}
+                </div>
+              );
+            })()}
             <div className="relative w-full bg-[#0b0f19]/50 rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[220px]">
               <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
             </div>

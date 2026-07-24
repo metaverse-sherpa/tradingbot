@@ -289,12 +289,14 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
 
     color_neon = (0, 255, 150, 255) if roe >= 0 else (255, 50, 50, 255)
     
-    # Progress Bar Geometry
-    bar_x_start = 100
-    bar_x_end = width - 100
-    bar_y = height // 2 + 20
-    bar_width = bar_x_end - bar_x_start
-    
+    is_long = side.upper() in ['LONG', 'BUY', 'L']
+
+    # Ensure SL and TP defaults if missing/zero to avoid crazy percentages like -2000%
+    if sl <= 0 and entry > 0:
+        sl = entry * (0.95 if is_long else 1.05)
+    if tp <= 0 and entry > 0:
+        tp = entry * (1.05 if is_long else 0.95)
+
     # Range: SL to TP
     p_min = min(sl, tp, entry)
     p_max = max(sl, tp, entry)
@@ -313,14 +315,14 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     draw.line([(get_x(entry), bar_y - 10), (get_x(entry), bar_y + 10)], fill=(255, 255, 255, 200), width=2)
     
     # Labels
-    draw.text((get_x(sl), bar_y - 60), "SL", font=font_sub, fill=(255, 50, 50, 255), anchor="mm")
-    draw.text((get_x(tp), bar_y - 60), "TP", font=font_sub, fill=(0, 200, 83, 255), anchor="mm")
-    draw.text((get_x(entry), bar_y + 40), "ENTRY", font=font_sub, fill=(200, 200, 200, 255), anchor="mm")
+    draw.text((get_x(sl), bar_y - 65), "SL", font=font_sub, fill=(255, 50, 50, 255), anchor="mm")
+    draw.text((get_x(tp), bar_y - 65), "TP", font=font_sub, fill=(0, 200, 83, 255), anchor="mm")
+    draw.text((get_x(entry), bar_y + 65), "ENTRY", font=font_sub, fill=(200, 200, 200, 255), anchor="mm")
     
     # SL/TP Percentages
     if entry > 0:
-        sl_roe = ((sl - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - sl) / entry * 100)
-        tp_roe = ((tp - entry) / entry * 100) if side.upper() == 'LONG' else ((entry - tp) / entry * 100)
+        sl_roe = ((sl - entry) / entry * 100) if is_long else ((entry - sl) / entry * 100)
+        tp_roe = ((tp - entry) / entry * 100) if is_long else ((entry - tp) / entry * 100)
     else:
         sl_roe = 0.0
         tp_roe = 0.0
@@ -328,8 +330,8 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     sl_roe *= lev
     tp_roe *= lev
     
-    draw.text((get_x(sl), bar_y + 40), f"{sl_roe:.1f}%", font=font_sub, fill=(255, 100, 100, 255), anchor="mm")
-    draw.text((get_x(tp), bar_y + 40), f"{tp_roe:+.1f}%", font=font_sub, fill=(0, 255, 150, 255), anchor="mm")
+    draw.text((get_x(sl), bar_y + 35), f"{sl_roe:.1f}%", font=font_sub, fill=(255, 100, 100, 255), anchor="mm")
+    draw.text((get_x(tp), bar_y + 35), f"{tp_roe:+.1f}%", font=font_sub, fill=(0, 255, 150, 255), anchor="mm")
     
     # Current Position Dot
     dot_x = get_x(current)

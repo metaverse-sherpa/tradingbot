@@ -126,7 +126,15 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Market Analysis & Setup</h4>
           </div>
-          <div className="font-bold text-white mb-2">{(trade.symbol || '').split('/')[0]} ({trade.side?.toUpperCase()}) - 1D Setup | {trade.strategy}</div>
+          {(() => {
+            const isAiRec = (trade.strategy || '').toLowerCase().includes('ai') || (trade.strategy || '').toLowerCase().includes('recommendation');
+            const timeframeLabel = isAiRec || type === 'stock' ? '1D' : '15M';
+            return (
+              <div className="font-bold text-white mb-2">
+                {(trade.symbol || '').split('/')[0]} ({trade.side?.toUpperCase()}) - {timeframeLabel} Setup | {trade.strategy}
+              </div>
+            );
+          })()}
           <div className="relative w-full bg-[#0b0f19]/50 rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[220px]">
             <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
           </div>

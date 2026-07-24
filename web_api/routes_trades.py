@@ -917,10 +917,17 @@ def get_open_trades():
                                     open_time = int(row_t[2] or 0)
                                     strategy = row_t[3] or merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                                 else:
-                                    strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
+                                    c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE symbol = ? AND status = 'active' ORDER BY id DESC LIMIT 1", (p.get("symbol"),))
+                                    rec_row = c.fetchone()
+                                    if rec_row:
+                                        tp_price = float(rec_row[0] or 0.0)
+                                        sl_price = float(rec_row[1] or 0.0)
+                                        open_time = int(rec_row[2] or 0)
+                                        strategy = "AI Recommendation"
+                                    else:
+                                        strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                     except Exception as db_err:
                         strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
-                    except Exception as db_err:
                         print(f"Alpaca DB lookup error: {db_err}")
 
                     if open_time == 0:
@@ -1018,6 +1025,7 @@ def get_open_trades():
                                  import re
                                  symbol_clean = re.sub(r'^(\d+)', '', symbol_clean)
                                  symbol_clean = symbol_clean.replace('TONCOIN', 'TON')
+                                 base_ticker = symbol_clean.split('/')[0]
                                  c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ?) AND status = 'open' LIMIT 1", (pos.get('symbol'), f"%{symbol_clean}%"))
                                  row = c.fetchone()
                                  if row:
@@ -1026,7 +1034,15 @@ def get_open_trades():
                                      open_time = int(row[2] or 0)
                                      strategy = row[3] or merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                                  else:
-                                     strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
+                                     c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE (symbol = ? OR symbol LIKE ?) AND status = 'active' ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%"))
+                                     rec_row = c.fetchone()
+                                     if rec_row:
+                                         tp_price = float(rec_row[0] or 0.0)
+                                         sl_price = float(rec_row[1] or 0.0)
+                                         open_time = int(rec_row[2] or 0)
+                                         strategy = "AI Recommendation"
+                                     else:
+                                         strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                         except Exception as db_err:
                             strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                             print(f"Crypto DB lookup error: {db_err}")

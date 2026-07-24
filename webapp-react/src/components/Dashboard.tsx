@@ -483,7 +483,15 @@ const Dashboard: React.FC = () => {
 
                   {isExpanded && isPremium && (
                     <div className="mt-4 pt-4 border-t border-white/5 cursor-default" onClick={e => e.stopPropagation()}>
-                      <div className="font-bold text-white text-xs mb-2">{s.symbol?.split('/')[0]} ({s.side?.toUpperCase()}) - 1D Setup</div>
+                      {(() => {
+                        const isAiRec = (s.strategy || '').toLowerCase().includes('ai') || (s.strategy || '').toLowerCase().includes('recommendation');
+                        const timeframeLabel = isAiRec || type === 'stock' ? '1D' : '15M';
+                        return (
+                          <div className="font-bold text-white text-xs mb-2">
+                            {s.symbol?.split('/')[0]} ({s.side?.toUpperCase()}) - {timeframeLabel} Setup | {s.strategy}
+                          </div>
+                        );
+                      })()}
                       <div className="relative w-full bg-[#0b0f19]/50 rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[160px]">
                         <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
                       </div>
