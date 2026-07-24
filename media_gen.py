@@ -297,6 +297,12 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
     if tp <= 0 and entry > 0:
         tp = entry * (1.05 if is_long else 0.95)
 
+    # Progress Bar Geometry
+    bar_x_start = 100
+    bar_x_end = width - 100
+    bar_y = height // 2 + 20
+    bar_width = bar_x_end - bar_x_start
+
     # Range: SL to TP
     p_min = min(sl, tp, entry)
     p_max = max(sl, tp, entry)
