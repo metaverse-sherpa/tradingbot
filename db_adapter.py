@@ -19,13 +19,17 @@ if USE_POSTGRES:
         from psycopg2 import pool
         from psycopg2.extras import DictCursor
         
-        # Parse connection URL to ensure thread-safe pooling config
+        # Parse connection URL to ensure thread-safe pooling config with TCP keepalive
         pg_pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=2,
             maxconn=30,
-            dsn=DATABASE_URL
+            dsn=DATABASE_URL,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5
         )
-        print("Database Adapter: Initialized PostgreSQL connection pool successfully.")
+        print("Database Adapter: Initialized PostgreSQL connection pool successfully with TCP keepalive.")
 
         try:
             from psycopg2.extensions import register_adapter, AsIs
@@ -223,21 +227,48 @@ class PgConnectionAdapter:
         return getattr(self._conn, name)
 
 
+def get_clean_pg_conn():
+    if not pg_pool:
+        return None
+    for _ in range(3):
+        conn = None
+        try:
+            conn = pg_pool.getconn()
+            if conn and conn.closed == 0:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1;")
+                return conn
+            elif conn:
+                try:
+                    pg_pool.putconn(conn, close=True)
+                except Exception:
+                    pass
+        except Exception:
+            if conn:
+                try:
+                    pg_pool.putconn(conn, close=True)
+                except Exception:
+                    pass
+    return pg_pool.getconn()
+
+
 @contextmanager
 def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0):
     if USE_POSTGRES and pg_pool:
         conn = None
+        conn_is_bad = False
         try:
-            conn = pg_pool.getconn()
+            conn = get_clean_pg_conn()
             try:
                 conn.rollback()
             except BaseException:
-                pass
+                conn_is_bad = True
             conn.autocommit = False
             adapter = PgConnectionAdapter(conn)
             yield adapter
             conn.commit()
         except BaseException as e:
+            conn_is_bad = True
             if conn:
                 try:
                     conn.rollback()
@@ -249,8 +280,11 @@ def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0):
                 try:
                     conn.rollback()
                 except BaseException:
+                    conn_is_bad = True
+                try:
+                    pg_pool.putconn(conn, close=conn_is_bad)
+                except Exception:
                     pass
-                pg_pool.putconn(conn)
     else:
         # Fallback to standard SQLite connection
         conn = sqlite3.connect(sqlite_db_path, timeout=sqlite_timeout)
