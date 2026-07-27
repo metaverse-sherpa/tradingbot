@@ -104,7 +104,7 @@ const RecommendationsPage: React.FC = () => {
 
   const fetchOpenTrades = useCallback(async () => {
     try {
-      const res = await api.get('/trades/open?bypass_cache=true');
+      const res = await api.get('/trades/open');
       setOpenTrades(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching open trades:', err);
