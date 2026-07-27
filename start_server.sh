@@ -14,4 +14,4 @@ else
 fi
 
 echo "🚀 Starting server.py..."
-python server.py
+./venv/bin/python server.py
