@@ -22,6 +22,10 @@ export const getAuthInstance = () => {
 };
 
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
+
 
 export const signInWithGoogle = async () => {
   try {
