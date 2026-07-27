@@ -1034,7 +1034,7 @@ def get_open_trades():
                                      open_time = int(row[2]) if isinstance(row[2], (int, float)) else 0
                                      strategy = row[3] or merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                                  else:
-                                     c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%%' || symbol || '%%') ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
+                                     c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%%' || symbol || '%%') AND status = 'active' ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
                                      rec_row = c.fetchone()
                                      if rec_row:
                                          tp_price = float(rec_row[0] or 0.0)

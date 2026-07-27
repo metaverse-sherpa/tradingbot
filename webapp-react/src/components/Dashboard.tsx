@@ -461,7 +461,7 @@ const Dashboard: React.FC = () => {
                           {isProfit ? '+' : ''}{pnlPct.toFixed(2)}%
                         </div>
                         <div className="text-[10px] text-gray-500 mt-0.5">
-                          TARGET: {isPremium ? `${tp_pct.toFixed(0)}%` : <span className="blur-sm select-none">00%</span>}
+                          TARGET: {isPremium ? (s.tp_price > 0 ? `${tp_pct.toFixed(0)}%` : 'None') : <span className="blur-sm select-none">00%</span>}
                         </div>
                       </div>
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -471,8 +471,8 @@ const Dashboard: React.FC = () => {
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 text-[11px] text-gray-400 font-mono">
                     {isPremium ? (
                       <>
-                        <div>SL: ${formatPrice(s.sl_price)} (-{sl_pct.toFixed(0)}%)</div>
-                        <div>TP: ${formatPrice(s.tp_price)} (+{tp_pct.toFixed(0)}%)</div>
+                        <div>SL: {s.sl_price > 0 ? `$${formatPrice(s.sl_price)} (-${sl_pct.toFixed(0)}%)` : 'Not Set'}</div>
+                        <div>TP: {s.tp_price > 0 ? `$${formatPrice(s.tp_price)} (+${tp_pct.toFixed(0)}%)` : 'Not Set'}</div>
                       </>
                     ) : (
                       <>

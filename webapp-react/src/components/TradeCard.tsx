@@ -81,7 +81,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
           </button>
           <div>
             <p className={`font-bold text-lg leading-tight flex items-center justify-end gap-1 ${pnlColor}`}>
-              {isProfit ? '+' : ''}{roe?.toFixed(2)}% <span className="text-xs text-gray-500 font-normal">of {tp_pct.toFixed(0)}%</span>
+              {isProfit ? '+' : ''}{roe?.toFixed(2)}% <span className="text-xs text-gray-500 font-normal">{trade.tp_price > 0 ? `of ${tp_pct.toFixed(0)}%` : 'No Target'}</span>
             </p>
             {hideDollars ? (
               <p 
@@ -95,7 +95,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
                 onClick={(e) => { if (onTogglePrivacy) { e.stopPropagation(); onTogglePrivacy(); } }} 
                 className={`text-xs ${pnlColor} mt-1 ${onTogglePrivacy ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
               >
-                {isProfit ? '+' : ''}${pnlRaw?.toFixed(2)} <span className="text-gray-500">/ +${targetDollar.toFixed(2)}</span>
+                {isProfit ? '+' : ''}${pnlRaw?.toFixed(2)} <span className="text-gray-500">/ {trade.tp_price > 0 ? `+$${targetDollar.toFixed(2)}` : 'No Target'}</span>
               </p>
             )}
           </div>
@@ -104,8 +104,8 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
       </div>
 
       <div className="flex justify-between items-center mt-6 text-xs text-gray-400 font-mono">
-        <div>SL: ${formatPrice(trade.sl_price)} (-{sl_pct.toFixed(0)}%)</div>
-        <div>TP: ${formatPrice(trade.tp_price)} ({tp_pct.toFixed(0)}%)</div>
+        <div>SL: {trade.sl_price > 0 ? `$${formatPrice(trade.sl_price)} (-${sl_pct.toFixed(0)}%)` : 'Not Set'}</div>
+        <div>TP: {trade.tp_price > 0 ? `$${formatPrice(trade.tp_price)} (+${tp_pct.toFixed(0)}%)` : 'Not Set'}</div>
       </div>
 
       {activeTab === 'active' && onClosePosition && (
