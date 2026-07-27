@@ -37,6 +37,7 @@ from bot.engines import (
     daily_combined_email_engine,
     weekly_combined_email_engine,
     daily_recommendations_generator_engine,
+    recommendations_resolution_engine,
     theory_trades_resolution_engine
 )
 from bot.engines.websockets import websocket_engine
@@ -118,13 +119,14 @@ async def post_init(application):
     task6_1 = asyncio.create_task(daily_combined_email_engine(application))
     task6_2 = asyncio.create_task(weekly_combined_email_engine(application))
     task6_3 = asyncio.create_task(daily_recommendations_generator_engine(application))
+    task6_4 = asyncio.create_task(recommendations_resolution_engine(application))
     task7 = asyncio.create_task(theory_trades_resolution_engine(application))
     task8 = asyncio.create_task(websocket_engine(application))
     
     # Store references to prevent garbage collection
     application.bot_data["bg_tasks"] = [
         task1, task2, task3, task4, task4_1, task5,
-        task6_1, task6_2, task6_3,
+        task6_1, task6_2, task6_3, task6_4,
         task7, task8
     ]
 

@@ -1037,3 +1037,149 @@ async def weekly_combined_email_engine(application):
                 send_telegram_alert("Engine Error (Weekly Combined Email Audit Loop)", e)
             except: pass
             await asyncio.sleep(3600)
+
+async def recommendations_resolution_engine(application):
+    """
+    Checks active AI recommendations every 15 minutes.
+    Marks them as hit_target or hit_stop_loss if their prices reach the thresholds.
+    Alerts all admins when a recommendation is closed.
+    """
+    logger.debug("⏳ Starting AI Recommendations Resolution Engine (15m Loop)...")
+    
+    def is_us_market_open():
+        from datetime import datetime
+        import pytz
+        ny_tz = pytz.timezone('America/New_York')
+        now = datetime.now(ny_tz)
+        if now.weekday() >= 5:
+            return False
+        market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
+        market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+        return market_open <= now <= market_close
+
+    import yfinance as yf
+    
+    while True:
+        try:
+            await asyncio.sleep(30) # Initial delay
+            
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("SELECT * FROM AIRecommendations WHERE status = 'active'")
+                active_recs = [dict(row) for row in c.fetchall()]
+                
+            if not active_recs:
+                await asyncio.sleep(900)
+                continue
+                
+            market_open = is_us_market_open()
+            symbols_to_fetch = []
+            
+            for rec in active_recs:
+                # Only check stocks if US market is open
+                if rec["category"] == "stock" and not market_open:
+                    continue
+                sym = rec["symbol"]
+                yf_sym = sym if rec["category"] == "stock" else f"{sym}-USD"
+                symbols_to_fetch.append((rec["id"], yf_sym, rec["target_price"], rec["stop_loss"], rec["entry_price"]))
+                
+            if symbols_to_fetch:
+                now_ts = int(time.time())
+                yf_symbols = [item[1] for item in symbols_to_fetch]
+                
+                try:
+                    data = yf.download(yf_symbols, period="1d", group_by="ticker", progress=False)
+                    closed_recs_alerts = []
+                    
+                    with database.db_session() as conn:
+                        c = conn.cursor()
+                        for rec_id, yf_sym, target, sl, entry_price in symbols_to_fetch:
+                            price = 0.0
+                            high_price = 0.0
+                            low_price = 0.0
+                            
+                            try:
+                                if len(yf_symbols) == 1:
+                                    df = data
+                                else:
+                                    df = data[yf_sym]
+                                
+                                closes = df["Close"].dropna()
+                                highs = df["High"].dropna()
+                                lows = df["Low"].dropna()
+                                
+                                if not closes.empty:
+                                    price = float(closes.iloc[-1])
+                                    high_price = float(highs.max()) if not highs.empty else price
+                                    low_price = float(lows.min()) if not lows.empty else price
+                            except Exception:
+                                try:
+                                    ticker = yf.Ticker(yf_sym)
+                                    price = float(ticker.fast_info.get("lastPrice", 0.0))
+                                    high_price = price
+                                    low_price = price
+                                except Exception:
+                                    pass
+                                    
+                            if price > 0.0:
+                                status = 'active'
+                                closed_at = None
+                                final_price = price
+                                
+                                # Trailing stop logic (breakeven)
+                                new_sl = sl
+                                if entry_price > 0.0:
+                                    current_gain_pct = ((price - entry_price) / entry_price) * 100.0
+                                    if current_gain_pct >= 15.0:
+                                        breakeven_sl = round(entry_price * 1.02, 2)
+                                        if breakeven_sl > sl:
+                                            new_sl = breakeven_sl
+                                            
+                                if low_price <= new_sl and new_sl > 0:
+                                    status = 'hit_stop_loss'
+                                    closed_at = now_ts
+                                    final_price = round(new_sl * 0.99, 2)
+                                elif high_price >= target and target > 0:
+                                    status = 'hit_target'
+                                    closed_at = now_ts
+                                    final_price = round(max(high_price, target), 2)
+                                    
+                                c.execute('''
+                                    UPDATE AIRecommendations 
+                                    SET current_price = ?, stop_loss = ?, status = ?, closed_at = ?
+                                    WHERE id = ?
+                                ''', (final_price, new_sl, status, closed_at, rec_id))
+                                
+                                if status != 'active':
+                                    pct_change = ((final_price - entry_price) / entry_price) * 100
+                                    sign = '+' if pct_change > 0 else ''
+                                    sym_clean = yf_sym.replace('-USD', '')
+                                    verb = "hit Target Price!" if status == 'hit_target' else "hit Stop Loss."
+                                    closed_recs_alerts.append(f"🔔 *AI Recommendation Closed: {sym_clean}* {verb} ({sign}{pct_change:.2f}%)")
+                        conn.commit()
+                        
+                    # Notify admins
+                    if closed_recs_alerts:
+                        admin_ids = database.get_all_admins()
+                        from bot.config import SUPER_ADMIN_ID
+                        if str(SUPER_ADMIN_ID) not in [str(a) for a in admin_ids]:
+                            admin_ids.append(SUPER_ADMIN_ID)
+                        
+                        msg = "\n\n".join(closed_recs_alerts)
+                        for a_id in set(admin_ids):
+                            try:
+                                await application.bot.send_message(chat_id=a_id, text=msg, parse_mode="Markdown")
+                            except Exception as e:
+                                logger.error(f"Failed to send AI rec alert to admin {a_id}: {e}")
+                                
+                except Exception as e:
+                    logger.error(f"[Recommendations Resolution Engine] Error downloading yfinance data: {e}")
+                    
+            await asyncio.sleep(900) # Sleep 15 minutes
+            
+        except asyncio.CancelledError:
+            logger.debug("⏳ Recommendations Resolution Engine cancelled.")
+            break
+        except Exception as e:
+            logger.error(f"⏳ Recommendations Resolution Engine error: {e}")
+            await asyncio.sleep(60)

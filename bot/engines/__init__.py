@@ -1,4 +1,4 @@
 from bot.engines.sync import sync_engine
 from bot.engines.crypto import signal_engine, theory_trades_resolution_engine
 from bot.engines.stocks import alpaca_equities_engine, alpaca_fractional_monitor_engine, alpaca_hourly_sync_engine
-from bot.engines.system import premium_expiration_engine, daily_combined_email_engine, weekly_combined_email_engine, daily_recommendations_generator_engine
+from bot.engines.system import premium_expiration_engine, daily_combined_email_engine, weekly_combined_email_engine, daily_recommendations_generator_engine, recommendations_resolution_engine

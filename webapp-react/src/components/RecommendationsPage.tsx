@@ -59,6 +59,7 @@ const RecommendationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'stocks' | 'crypto'>('stocks');
+  const [statusTab, setStatusTab] = useState<'active' | 'closed'>('active');
   const [expandedCharts, setExpandedCharts] = useState<Record<string | number, boolean>>({});
 
   const toggleChart = (id: string | number) => {
@@ -581,7 +582,7 @@ const RecommendationsPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-[#141620]/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm w-full max-w-sm mb-6">
+      <div className="flex bg-[#141620]/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm w-full max-w-sm mb-4">
         <button
           onClick={() => setActiveTab('crypto')}
           className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
@@ -604,8 +605,31 @@ const RecommendationsPage: React.FC = () => {
         </button>
       </div>
 
+      <div className="flex bg-[#141620]/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm w-full max-w-sm mb-6">
+        <button
+          onClick={() => setStatusTab('active')}
+          className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
+            statusTab === 'active'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          Active
+        </button>
+        <button
+          onClick={() => setStatusTab('closed')}
+          className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
+            statusTab === 'closed'
+              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/20'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          Closed ({closedCount})
+        </button>
+      </div>
+
       {/* Stats Panels */}
-      {(hits > 0 || stops > 0) && (
+      {statusTab === 'closed' && (hits > 0 || stops > 0) && (
         <div className="w-full mb-6">
         {/* Stocks Hold Stats */}
         {activeTab === 'stocks' && (
@@ -684,6 +708,7 @@ const RecommendationsPage: React.FC = () => {
       )}
 
       {/* Active Recommendations Section */}
+      {statusTab === 'active' && (
       <div>
         <h2 className="text-lg font-black text-[#f3f4f6] uppercase tracking-wider mb-4 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -915,8 +940,10 @@ const RecommendationsPage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Historical Recommendations Section */}
+      {statusTab === 'closed' && (
       <div>
         <h2 className="text-lg font-black text-[#f3f4f6] uppercase tracking-wider mb-4 flex items-center gap-2">
           <Clock size={18} className="text-gray-400" />
@@ -997,6 +1024,7 @@ const RecommendationsPage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {queueModalSignal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
