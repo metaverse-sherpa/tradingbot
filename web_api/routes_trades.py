@@ -752,7 +752,7 @@ def get_active_signals_internal(bypass_cache=False):
     # Fallback query if no cache exists
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT id, symbol, strategy, side, entry_price, tp_price, sl_price, open_time, status FROM ActiveSignals WHERE status = 'open' ORDER BY open_time DESC")
+        c.execute("SELECT id, symbol, strategy, side, entry_price, tp_price, sl_price, open_time, status FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC")
         rows = c.fetchall()
     signals = []
     for r in rows:
