@@ -909,7 +909,7 @@ def get_open_trades():
                                 strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                             else:
                                 # Fallback: Check TheoreticalTrades for active signal data
-                                c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE symbol = ? AND status = 'open' LIMIT 1", (p.get("symbol"),))
+                                c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE symbol = ? AND status = 'open' AND tp_price > 0 AND sl_price > 0 LIMIT 1", (p.get("symbol"),))
                                 row_t = c.fetchone()
                                 if row_t:
                                     tp_price = float(row_t[0] or 0.0)
@@ -917,7 +917,7 @@ def get_open_trades():
                                     open_time = int(row_t[2] or 0)
                                     strategy = row_t[3] or merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                                 else:
-                                    c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE symbol = ? AND status = 'active' ORDER BY id DESC LIMIT 1", (p.get("symbol"),))
+                                    c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE symbol = ? AND status = 'active' AND target_price > 0 AND stop_loss > 0 ORDER BY id DESC LIMIT 1", (p.get("symbol"),))
                                     rec_row = c.fetchone()
                                     if rec_row:
                                         tp_price = float(rec_row[0] or 0.0)
@@ -1026,7 +1026,7 @@ def get_open_trades():
                                  symbol_clean = re.sub(r'^(\d+)', '', symbol_clean)
                                  symbol_clean = symbol_clean.replace('TONCOIN', 'TON')
                                  base_ticker = symbol_clean.split('/')[0]
-                                 c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%%' || symbol || '%%') AND status = 'open' ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
+                                 c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%%' || symbol || '%%') AND status = 'open' AND tp_price > 0 AND sl_price > 0 ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
                                  row = c.fetchone()
                                  if row:
                                      tp_price = float(row[0] or 0.0)
@@ -1034,7 +1034,7 @@ def get_open_trades():
                                      open_time = int(row[2]) if isinstance(row[2], (int, float)) else 0
                                      strategy = row[3] or merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
                                  else:
-                                     c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%%' || symbol || '%%') AND status = 'active' ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
+                                     c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%%' || symbol || '%%') AND status = 'active' AND target_price > 0 AND stop_loss > 0 ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
                                      rec_row = c.fetchone()
                                      if rec_row:
                                          tp_price = float(rec_row[0] or 0.0)
