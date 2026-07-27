@@ -39,13 +39,13 @@ def get_secret(secret_id, project_id="cyber-sherpa-trading", fallback_env_key=No
         try:
             client = secretmanager.SecretManagerServiceClient()
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-            response = client.access_secret_version(request={"name": name}, timeout=10.0)
+            response = client.access_secret_version(request={"name": name}, timeout=15.0)
             val = response.payload.data.decode("UTF-8")
             break
         except Exception as e:
             gcp_error_msg = str(e)
             if attempt < max_retries - 1:
-                logger.warning(f"Attempt {attempt + 1} failed to fetch '{secret_id}' from GCP: {e}. Retrying in {retry_delay}s...")
+                logger.debug(f"Attempt {attempt + 1} failed to fetch '{secret_id}' from GCP: {e}. Retrying in {retry_delay}s...")
                 time.sleep(retry_delay)
                 retry_delay *= 2
             else:

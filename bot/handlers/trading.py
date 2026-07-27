@@ -2120,8 +2120,8 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
                     with database.db_session() as conn:
                         c = conn.cursor()
                         c.execute("""
-                            INSERT INTO TheoreticalTrades (symbol, side, entry_price, tp_price, sl_price, open_time, status, strategy, category)
-                            VALUES (?, ?, ?, ?, ?, ?, 'open', ?, 'crypto')
+                            INSERT INTO TheoreticalTrades (symbol, side, entry_price, tp_price, sl_price, open_time, status, strategy)
+                            VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
                         """, (sym, side.upper(), current_price, tp_price, sl_price, int(time.time() * 1000), t.get('strategy', 'AI Recommendation')))
                         conn.commit()
                 except Exception as db_err:

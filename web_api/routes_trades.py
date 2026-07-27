@@ -78,10 +78,10 @@ def run_with_timeout(func, timeout_sec, fallback):
     try:
         future = THREAD_POOL.submit(func)
         return future.result(timeout=timeout_sec)
+    except TimeoutError:
+        return fallback
     except Exception as e:
-        # print(f"[DEBUG] run_with_timeout error for {func.__name__ if hasattr(func, '__name__') else func}: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
+        logger.debug(f"run_with_timeout error: {e}")
         return fallback
 
 # Module-level variable to prevent concurrent background updates for active signals
