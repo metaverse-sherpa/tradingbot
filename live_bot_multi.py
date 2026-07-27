@@ -243,17 +243,17 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         # Reject the trade if the live price has already crossed the fixed SL or TP
         if signal["side"] == "buy":
             if lp <= sl:
-                log.warning("⚠️ Skipping %s: current price %.4f is already at or below fixed SL %.4f", symbol, lp, sl)
+                log.warning("⚠️ Skipping %s: current price %.8g is already at or below fixed SL %.8g", symbol, lp, sl)
                 return None
             if lp >= tp:
-                log.warning("⚠️ Skipping %s: current price %.4f is already at or above fixed TP %.4f", symbol, lp, tp)
+                log.warning("⚠️ Skipping %s: current price %.8g is already at or above fixed TP %.8g", symbol, lp, tp)
                 return None
         else:
             if lp >= sl:
-                log.warning("⚠️ Skipping %s: current price %.4f is already at or above fixed SL %.4f", symbol, lp, sl)
+                log.warning("⚠️ Skipping %s: current price %.8g is already at or above fixed SL %.8g", symbol, lp, sl)
                 return None
             if lp <= tp:
-                log.warning("⚠️ Skipping %s: current price %.4f is already at or below fixed TP %.4f", symbol, lp, tp)
+                log.warning("⚠️ Skipping %s: current price %.8g is already at or below fixed TP %.8g", symbol, lp, tp)
                 return None
             
         max_possible_leverage = 10 if exchange.id == 'coinbase' else LEVERAGE
@@ -273,7 +273,7 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         trade_leverage = max(1, trade_leverage)
         
         if trade_leverage < (10 if exchange.id == 'coinbase' else LEVERAGE):
-            log.info("ℹ️ Dynamic Leverage adjustment for %s: reduced from %dx to %dx to protect SL (%.4f)", symbol, (10 if exchange.id == 'coinbase' else LEVERAGE), trade_leverage, sl)
+            log.info("ℹ️ Dynamic Leverage adjustment for %s: reduced from %dx to %dx to protect SL (%.8g)", symbol, (10 if exchange.id == 'coinbase' else LEVERAGE), trade_leverage, sl)
 
         contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
@@ -317,15 +317,15 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         if signal["side"] == "buy":
             est_liq = lp * (1 - liq_buffer)
             if sl <= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Long SL (%.4f) is beyond safety Liq (%.4f) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
+                log.warning("⚠️ RISK ALERT: %s Long SL (%.8g) is beyond safety Liq (%.8g) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
                 return None
         else: # Short
             est_liq = lp * (1 + liq_buffer)
             if sl >= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Short SL (%.4f) is beyond safety Liq (%.4f) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
+                log.warning("⚠️ RISK ALERT: %s Short SL (%.8g) is beyond safety Liq (%.8g) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
                 return None
 
-        log.info("🔔 SIGNAL on %s: %s | Entry: %.8f | SL: %.8f | TP: %.8f", symbol, signal["side"].upper(), lp, sl, tp)
+        log.info("🔔 SIGNAL on %s: %s | Entry: %.8g | SL: %.8g | TP: %.8g", symbol, signal["side"].upper(), lp, sl, tp)
         if DRY_RUN: return None
 
         # Integrated exchanges like Blofin

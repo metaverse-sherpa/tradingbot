@@ -72,9 +72,10 @@ def translate_query(sql):
         """
 
     # 3. Translate placeholders: ? -> %s
-    # Note: Escape single % as %% so psycopg2 does not interpret literal % as parameter placeholders
-    sql = re.sub(r'%(?!%)', '%%', sql)
+    # Note: Escape single % as %% (excluding existing %s placeholders and %% escapes) so psycopg2 handles literal % properly
+    sql = re.sub(r'%(?![s%])', '%%', sql)
     sql = sql.replace('?', '%s')
+
 
 
     # 4. Translate SQLite INSERT OR IGNORE -> Postgres ON CONFLICT DO NOTHING
