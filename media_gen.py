@@ -333,9 +333,6 @@ def generate_trade_progress_box(symbol, side, entry, tp, sl, current, width=1024
         sl_roe = 0.0
         tp_roe = 0.0
     
-    sl_roe *= lev
-    tp_roe *= lev
-    
     draw.text((get_x(sl), bar_y + 35), f"{sl_roe:.1f}%", font=font_sub, fill=(255, 100, 100, 255), anchor="mm")
     draw.text((get_x(tp), bar_y + 35), f"{tp_roe:+.1f}%", font=font_sub, fill=(0, 255, 150, 255), anchor="mm")
     

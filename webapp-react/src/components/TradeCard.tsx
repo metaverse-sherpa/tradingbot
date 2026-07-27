@@ -35,9 +35,8 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
   const pnlRaw = activeTab === 'active' ? trade.unrealized_pnl : trade.pnl_raw;
   
   // Calculate mock % for target if we don't have the exact risk ratio 
-  const leverage = type === 'crypto' ? 20.0 : 1.0;
-  const tp_pct = trade.entry_price > 0 && trade.tp_price > 0 ? Math.abs((trade.tp_price - trade.entry_price) / trade.entry_price * 100) * leverage : 0;
-  const sl_pct = trade.entry_price > 0 && trade.sl_price > 0 ? Math.abs((trade.sl_price - trade.entry_price) / trade.entry_price * 100) * leverage : 0;
+  const tp_pct = trade.entry_price > 0 && trade.tp_price > 0 ? Math.abs((trade.tp_price - trade.entry_price) / trade.entry_price * 100) : 0;
+  const sl_pct = trade.entry_price > 0 && trade.sl_price > 0 ? Math.abs((trade.sl_price - trade.entry_price) / trade.entry_price * 100) : 0;
   const targetDollar = trade.qty && trade.tp_price ? Math.abs(trade.tp_price - trade.entry_price) * trade.qty : 0;
   
   const markPrice = trade.current_price || trade.mark_price || trade.exit_price || 0;
