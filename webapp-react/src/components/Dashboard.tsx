@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'recharts';
 import { Activity, Clock, Settings, Zap, Target, Loader2, RefreshCcw, Share2, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
+import { formatPrice } from '../utils/formatters';
 import { useDashboardStore, useAuthStore } from '../store/useStore';
 import api from '../lib/api';
 import TradeCard from './TradeCard';
@@ -470,8 +471,8 @@ const Dashboard: React.FC = () => {
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 text-[11px] text-gray-400 font-mono">
                     {isPremium ? (
                       <>
-                        <div>SL: ${(s.sl_price || 0).toFixed(2)} (-{sl_pct.toFixed(0)}%)</div>
-                        <div>TP: ${(s.tp_price || 0).toFixed(2)} (+{tp_pct.toFixed(0)}%)</div>
+                        <div>SL: ${formatPrice(s.sl_price)} (-{sl_pct.toFixed(0)}%)</div>
+                        <div>TP: ${formatPrice(s.tp_price)} (+{tp_pct.toFixed(0)}%)</div>
                       </>
                     ) : (
                       <>

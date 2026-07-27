@@ -1,5 +1,6 @@
 import React from 'react';
 import { Share2, TrendingUp, TrendingDown, ChevronDown } from 'lucide-react';
+import { formatPrice } from '../utils/formatters';
 
 export const formatTimeAgo = (timestamp: number) => {
   if (!timestamp) return 'Recent';
@@ -103,8 +104,8 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
       </div>
 
       <div className="flex justify-between items-center mt-6 text-xs text-gray-400 font-mono">
-        <div>SL: ${(trade.sl_price || 0).toFixed(2)} (-{sl_pct.toFixed(0)}%)</div>
-        <div>TP: ${(trade.tp_price || 0).toFixed(2)} ({tp_pct.toFixed(0)}%)</div>
+        <div>SL: ${formatPrice(trade.sl_price)} (-{sl_pct.toFixed(0)}%)</div>
+        <div>TP: ${formatPrice(trade.tp_price)} ({tp_pct.toFixed(0)}%)</div>
       </div>
 
       {activeTab === 'active' && onClosePosition && (

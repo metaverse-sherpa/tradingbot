@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Activity, TrendingUp, TrendingDown, Clock, Share2, RefreshCw, ChevronDown, Lock, DollarSign, Beaker } from 'lucide-react';
+import { formatPrice } from '../utils/formatters';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore, useDashboardStore } from '../store/useStore';
@@ -330,8 +331,8 @@ const SignalsPage: React.FC = () => {
         <div className="flex justify-between items-center mt-4 text-xs text-gray-400 font-mono">
           {isPremium ? (
             <>
-              <div>SL: ${(signal.sl_price || 0).toFixed(2)} (-{sl_pct.toFixed(0)}%)</div>
-              <div>TP: ${(signal.tp_price || 0).toFixed(2)} (+{tp_pct.toFixed(0)}%)</div>
+              <div>SL: ${formatPrice(signal.sl_price)} (-{sl_pct.toFixed(0)}%)</div>
+              <div>TP: ${formatPrice(signal.tp_price)} (+{tp_pct.toFixed(0)}%)</div>
             </>
           ) : (
             <>
