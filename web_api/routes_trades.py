@@ -1096,12 +1096,12 @@ def get_open_trades():
         has_stock = any(t['type'] == 'stock' for t in open_positions)
         
         if segment == 'crypto' or (not segment and not has_stock):
-            ttl = 900 if has_crypto else 2592000
+            ttl = 60 if has_crypto else 120
         elif segment == 'stock' or (not segment and not has_crypto):
-            ttl = 900 if is_us_market_open() else time_until_us_market_opens()
+            ttl = 60 if is_us_market_open() else min(120, time_until_us_market_opens())
         else:
-            ttl_crypto = 900 if has_crypto else 2592000
-            ttl_stock = 900 if is_us_market_open() else time_until_us_market_opens()
+            ttl_crypto = 60 if has_crypto else 120
+            ttl_stock = 60 if is_us_market_open() else min(120, time_until_us_market_opens())
             ttl = min(ttl_crypto, ttl_stock)
             
         RESPONSE_CACHE[cache_key] = (now + ttl, open_positions)
