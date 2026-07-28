@@ -1196,7 +1196,7 @@ def analyze_portfolio():
             "(e.g., `(Target Price: $X, Target Growth: +Y%, Stop Loss: $Z)`). You MUST include a markdown link to "
             "[AI Recommendations](/recommendations) in your markdown response so the user can easily click to track these setups):\n"
         )
-        buys_md = "\n\n### 💡 Active Recommendations to Re-allocate Into\n\n"
+        buys_md = "\n\n👉 [Click here to view all active recommendations](/recommendations)\n"
         for rec in active_recs:
             entry = float(rec.get('entry_price') or 0)
             target = float(rec.get('target_price') or 0)
@@ -1205,7 +1205,6 @@ def analyze_portfolio():
             growth_str = f"+{growth_pct:.1f}%" if growth_pct > 0 else f"{growth_pct:.1f}%"
 
             prompt_recs_ctx += f"- {rec['symbol']} ({rec['category']}): Target Price: ${target}, Target Growth: {growth_str}, Stop Loss: ${sl}, Entry Price: ${entry}\n"
-            buys_md += f"* **{rec['symbol']}** ({rec['category'].upper()}) | Entry: ${entry} | Target: ${target} (Target Growth: {growth_str}) | Stop Loss: ${sl}\n"
         
         system_instruction += prompt_recs_ctx
 
