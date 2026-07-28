@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock, Trash2, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
-import { useAuthStore } from '../store/useStore';
+import { useAuthStore, useDashboardStore } from '../store/useStore';
 import LoadingDisplay from './LoadingDisplay';
 import { isStockMarketOpen } from '../utils/market';
 
@@ -23,7 +23,7 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
   const currentLabel = options.find(o => o.value === value)?.label || value;
 
   return (
-    <div className="relative w-full sm:w-auto" ref={ref}>
+    <div className="relative inline-block" ref={ref}>
       <button 
         type="button"
         onClick={() => setOpen(!open)}
@@ -53,12 +53,17 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
 
 const RecommendationsPage: React.FC = () => {
   const { user, setUser } = useAuthStore();
+  const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
+  const activeTab: 'stocks' | 'crypto' = categoryTab === 'stock' ? 'stocks' : 'crypto';
+  const setActiveTab = (tab: 'stocks' | 'crypto') => {
+    setCategoryTab(tab === 'stocks' ? 'stock' : 'crypto');
+  };
+
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
 
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'stocks' | 'crypto'>('stocks');
   const [statusTab, setStatusTab] = useState<'active' | 'closed'>('active');
   const [expandedCharts, setExpandedCharts] = useState<Record<string | number, boolean>>({});
 
