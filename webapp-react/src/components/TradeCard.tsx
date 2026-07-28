@@ -52,15 +52,22 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
             {type === 'stock' ? '🦙' : '🪙'}
           </div>
           <div>
-            <h4 className="font-bold text-white text-lg leading-tight">
-              {(() => {
-                return (
-                  <span className="text-white" onClick={(e) => e.stopPropagation()}>
-                    {(trade.symbol || '').split('/')[0]}
-                  </span>
-                );
-              })()}
-            </h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-white text-lg leading-tight">
+                {(trade.symbol || '').split('/')[0]}
+              </h4>
+              {activeTab === 'active' && onClosePosition && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClosePosition(trade);
+                  }}
+                  className="px-2.5 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold rounded-md transition-colors flex items-center gap-1"
+                >
+                  🚨 Market Close
+                </button>
+              )}
+            </div>
             <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
               {isLong ? <TrendingUp size={12} className="text-emerald-400"/> : <TrendingDown size={12} className="text-rose-400"/>}
               {formatTimeAgo(activeTab === 'closed' ? (trade.close_time || trade.close_timestamp || trade.timestamp || trade.open_time) : (trade.open_time || trade.close_time))}
@@ -106,20 +113,6 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
         <div>SL: {trade.sl_price > 0 ? `$${formatPrice(trade.sl_price)} (-${sl_pct.toFixed(0)}%)` : 'Not Set'}</div>
         <div>TP: {trade.tp_price > 0 ? `$${formatPrice(trade.tp_price)} (+${tp_pct.toFixed(0)}%)` : 'Not Set'}</div>
       </div>
-
-      {activeTab === 'active' && onClosePosition && (
-        <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClosePosition(trade);
-            }}
-            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            🚨 Market Close
-          </button>
-        </div>
-      )}
       
       {isExpanded && (
         <div className="mt-6 pt-6 border-t border-white/5 space-y-4 cursor-default" onClick={e => e.stopPropagation()}>
