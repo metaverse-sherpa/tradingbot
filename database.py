@@ -114,6 +114,11 @@ class CoinbaseWrapper(ccxt.coinbase):
             positions = []
 
         if not positions:
+            if not getattr(self, 'markets', None):
+                try:
+                    await self.load_markets()
+                except Exception:
+                    pass
             try:
                 cfm_func = getattr(self, 'v3_private_get_brokerage_cfm_positions', None) or getattr(self, 'v3PrivateGetBrokerageCfmPositions', None)
                 if cfm_func:
@@ -123,13 +128,17 @@ class CoinbaseWrapper(ccxt.coinbase):
                         num_contracts = float(item.get('number_of_contracts') or item.get('contracts') or item.get('amount') or 0.0)
                         if num_contracts != 0:
                             prod_id = item.get('product_id') or item.get('symbol') or ''
+                            # Resolve the raw market ID (e.g. "ADP-20DEC30-CDE") to the canonical CCXT symbol (e.g. "ADA/USD:USD-301220")
+                            canonical_symbol = prod_id.replace('-', '/')
+                            if hasattr(self, 'markets_by_id') and self.markets_by_id and prod_id in self.markets_by_id:
+                                canonical_symbol = self.markets_by_id[prod_id].get('symbol', canonical_symbol)
                             entry = float(item.get('avg_entry_price') or item.get('entry_price') or 0.0)
                             mark = float(item.get('current_price') or item.get('mark_price') or entry)
                             pnl = float(item.get('unrealized_pnl') or item.get('unrealized_pl') or 0.0)
                             side = str(item.get('side') or 'LONG').upper()
                             positions.append({
                                 'id': f"cb-{prod_id}",
-                                'symbol': prod_id.replace('-', '/'),
+                                'symbol': canonical_symbol,
                                 'contracts': num_contracts,
                                 'contractSize': 1.0,
                                 'unrealizedPnl': pnl,
@@ -204,6 +213,11 @@ class CoinbaseWrapperSync(ccxt_sync.coinbase):
             positions = []
 
         if not positions:
+            if not getattr(self, 'markets', None):
+                try:
+                    self.load_markets()
+                except Exception:
+                    pass
             try:
                 cfm_func = getattr(self, 'v3_private_get_brokerage_cfm_positions', None) or getattr(self, 'v3PrivateGetBrokerageCfmPositions', None)
                 if cfm_func:
@@ -213,13 +227,17 @@ class CoinbaseWrapperSync(ccxt_sync.coinbase):
                         num_contracts = float(item.get('number_of_contracts') or item.get('contracts') or item.get('amount') or 0.0)
                         if num_contracts != 0:
                             prod_id = item.get('product_id') or item.get('symbol') or ''
+                            # Resolve the raw market ID (e.g. "ADP-20DEC30-CDE") to the canonical CCXT symbol (e.g. "ADA/USD:USD-301220")
+                            canonical_symbol = prod_id.replace('-', '/')
+                            if hasattr(self, 'markets_by_id') and self.markets_by_id and prod_id in self.markets_by_id:
+                                canonical_symbol = self.markets_by_id[prod_id].get('symbol', canonical_symbol)
                             entry = float(item.get('avg_entry_price') or item.get('entry_price') or 0.0)
                             mark = float(item.get('current_price') or item.get('mark_price') or entry)
                             pnl = float(item.get('unrealized_pnl') or item.get('unrealized_pl') or 0.0)
                             side = str(item.get('side') or 'LONG').upper()
                             positions.append({
                                 'id': f"cb-{prod_id}",
-                                'symbol': prod_id.replace('-', '/'),
+                                'symbol': canonical_symbol,
                                 'contracts': num_contracts,
                                 'contractSize': 1.0,
                                 'unrealizedPnl': pnl,
