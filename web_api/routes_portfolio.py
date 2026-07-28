@@ -1111,8 +1111,9 @@ def analyze_portfolio():
         stop_loss = None
         recommendation = None
         sym = p.get('symbol', '')
+        cat = p.get('category', 'stock').lower()
 
-        # 1. Check AIRecommendations DB for active setup on this symbol
+        # 1. Check AIRecommendations DB for active setup on this symbol WITH MATCHING CATEGORY
         try:
             with db_session() as conn:
                 c = conn.cursor()
@@ -1120,14 +1121,14 @@ def analyze_portfolio():
                 c.execute("""
                     SELECT target_price, stop_loss FROM AIRecommendations 
                     WHERE (symbol = ? OR symbol LIKE ? OR REPLACE(REPLACE(REPLACE(symbol, '/', ''), 'USDT', ''), 'USD', '') = ?) 
-                    AND status = 'active' ORDER BY id DESC LIMIT 1
-                """, (sym, f"%{clean_sym}%", clean_sym))
+                    AND LOWER(category) = ? AND status = 'active' ORDER BY id DESC LIMIT 1
+                """, (sym, f"%{clean_sym}%", clean_sym, cat))
                 rec_row = c.fetchone()
                 if rec_row and rec_row[0]:
                     target_price = float(rec_row[0])
                     stop_loss = float(rec_row[1]) if rec_row[1] else None
                 
-                # 2. Check TheoreticalTrades DB for active signal target price if not found
+                # 2. Check TheoreticalTrades DB for active signal target price if not found (only for crypto or matching category)
                 if not target_price:
                     c.execute("""
                         SELECT tp_price, sl_price FROM TheoreticalTrades 
@@ -1135,14 +1136,14 @@ def analyze_portfolio():
                         AND status = 'open' ORDER BY id DESC LIMIT 1
                     """, (sym, f"%{clean_sym}%", clean_sym))
                     tt_row = c.fetchone()
-                    if tt_row and tt_row[0]:
+                    if tt_row and tt_row[0] and cat == 'crypto':
                         target_price = float(tt_row[0])
                         stop_loss = float(tt_row[1]) if tt_row[1] else None
         except Exception as e:
             print(f"[Analysis] Error fetching DB target price for {sym}: {e}")
 
         # 3. Fallback for stock if yfinance has targetMeanPrice and no DB target price
-        if not target_price and p.get('category') == 'stock':
+        if not target_price and cat == 'stock':
             try:
                 info = yf.Ticker(sym).info
                 target_price = info.get('targetMeanPrice')
@@ -1185,6 +1186,7 @@ def analyze_portfolio():
         "CRITICAL RULE 1 (HOLDINGS OWNERSHIP): The user's ONLY current portfolio positions are the assets explicitly listed in `compiled_positions_str`. Do NOT recommend selling, trimming, or taking profit on ANY asset (like ATAI or others) unless it is explicitly present in `compiled_positions_str`!\n"
         "CRITICAL RULE 2 (TARGET PRICES): For positions the user owns (`compiled_positions_str`), do NOT recommend selling or taking profit if `current_price` is below `target_price` (unless `current_price` is within 1-2% of `target_price`).\n"
         "CRITICAL RULE 3 (RECOMMENDATIONS ARE NOT HOLDINGS): The `ACTIVE RECOMMENDATIONS` list below contains potential external trade setups available to buy. These are NOT owned by the user unless listed in `compiled_positions_str`. NEVER tell the user to 'sell' or 'take profit' on an asset from `ACTIVE RECOMMENDATIONS` if it is not in their portfolio.\n"
+        "CRITICAL RULE 4 (STOCK ETFs VS CRYPTO COINS): If a position's category is `stock` (e.g. BTC ETF, ETH ETF, IBIT, BITO, ETHA, or tickers BTC/ETH categorized as `stock`), treat it strictly as an ETF stock equity position priced per share ($15-$100/share). Do NOT confuse stock/ETF share prices with underlying cryptocurrency coin prices (e.g., $60,000+ per coin), and NEVER tell the user to change its category from 'stock' to 'crypto'!\n"
     )
 
     last_score = None
