@@ -1056,11 +1056,11 @@ def get_open_trades():
                         unrealized_pnl = float(pos.get("unrealizedPnl") or 0)
                         roe = float(pos.get("percentage") or 0)
                         side_str = pos.get("side", "").upper()
+                        leverage = float(pos.get("leverage") or 1.0)
                         
                         if entry_price > 0 and mark_price > 0:
                             is_long = side_str in ['LONG', 'BUY']
                             raw_pct = ((mark_price - entry_price) / entry_price) * 100 if is_long else ((entry_price - mark_price) / entry_price) * 100
-                            leverage = float(pos.get("leverage") or 1.0)
                             roe = raw_pct * leverage
                             
                             if unrealized_pnl == 0:
@@ -1080,7 +1080,8 @@ def get_open_trades():
                             "tp_price": tp_price,
                             "sl_price": sl_price,
                             "open_time": open_time,
-                            "strategy": strategy
+                            "strategy": strategy,
+                            "leverage": leverage
                         })
                 return trades
             finally:

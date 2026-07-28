@@ -494,7 +494,7 @@ const Dashboard: React.FC = () => {
               
               const isExpanded = expandedSignalId === (s.id || idx.toString());
               const markPrice = s.current_price || s.mark_price || s.exit_price || 0;
-              const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(s.symbol || '')}&entry=${s.entry_price || 0}&tp=${s.tp_price || 0}&sl=${s.sl_price || 0}&side=${s.side || ''}&open_ts=${s.open_time || s.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(s.strategy || '')}`;
+              const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(s.symbol || '')}&entry=${s.entry_price || 0}&tp=${s.tp_price || 0}&sl=${s.sl_price || 0}&side=${s.side || ''}&open_ts=${s.open_time || s.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(s.strategy || '')}&leverage=${s.leverage || 1}`;
 
               return (
                 <div 

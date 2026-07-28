@@ -254,8 +254,10 @@ class CoinbaseWrapperSync(ccxt_sync.coinbase):
                                 'side': side,
                                 'info': item
                             })
-            except Exception:
-                pass
+            except Exception as e:
+                import traceback
+                print(f"CoinbaseWrapperSync fetch_positions error: {e}")
+                traceback.print_exc()
         return positions
 
     def create_order(self, symbol, type, side, amount, price=None, params={}):

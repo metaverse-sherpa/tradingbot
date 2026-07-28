@@ -40,7 +40,7 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
   const targetDollar = trade.qty && trade.tp_price ? Math.abs(trade.tp_price - trade.entry_price) * trade.qty : 0;
   
   const markPrice = trade.current_price || trade.mark_price || trade.exit_price || 0;
-  const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(trade.symbol || '')}&entry=${trade.entry_price || 0}&tp=${trade.tp_price || 0}&sl=${trade.sl_price || 0}&side=${trade.side || ''}&open_ts=${trade.open_time || trade.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(trade.strategy || '')}`;
+  const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(trade.symbol || '')}&entry=${trade.entry_price || 0}&tp=${trade.tp_price || 0}&sl=${trade.sl_price || 0}&side=${trade.side || ''}&open_ts=${trade.open_time || trade.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(trade.strategy || '')}&leverage=${trade.leverage || 1}`;
   
   const isClickable = activeTab === 'active';
 

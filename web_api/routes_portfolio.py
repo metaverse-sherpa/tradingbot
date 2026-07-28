@@ -1105,24 +1105,63 @@ def analyze_portfolio():
     if not positions:
         return jsonify({"error": "Cannot analyze an empty portfolio."}), 400
 
-    # Fetch analyst target prices and recommendations concurrently for stock positions
+    # Fetch analyst target prices and recommendations concurrently for stock & crypto positions
     def fetch_info(p):
-        if p.get('category') == 'stock':
+        target_price = None
+        stop_loss = None
+        recommendation = None
+        sym = p.get('symbol', '')
+
+        # 1. Check AIRecommendations DB for active setup on this symbol
+        try:
+            with db_session() as conn:
+                c = conn.cursor()
+                clean_sym = sym.replace('/', '').replace('USDT', '').replace('USD', '').strip()
+                c.execute("""
+                    SELECT target_price, stop_loss FROM AIRecommendations 
+                    WHERE (symbol = ? OR symbol LIKE ? OR REPLACE(REPLACE(REPLACE(symbol, '/', ''), 'USDT', ''), 'USD', '') = ?) 
+                    AND status = 'active' ORDER BY id DESC LIMIT 1
+                """, (sym, f"%{clean_sym}%", clean_sym))
+                rec_row = c.fetchone()
+                if rec_row and rec_row[0]:
+                    target_price = float(rec_row[0])
+                    stop_loss = float(rec_row[1]) if rec_row[1] else None
+                
+                # 2. Check TheoreticalTrades DB for active signal target price if not found
+                if not target_price:
+                    c.execute("""
+                        SELECT tp_price, sl_price FROM TheoreticalTrades 
+                        WHERE (symbol = ? OR symbol LIKE ? OR REPLACE(REPLACE(REPLACE(symbol, '/', ''), 'USDT', ''), 'USD', '') = ?) 
+                        AND status = 'open' ORDER BY id DESC LIMIT 1
+                    """, (sym, f"%{clean_sym}%", clean_sym))
+                    tt_row = c.fetchone()
+                    if tt_row and tt_row[0]:
+                        target_price = float(tt_row[0])
+                        stop_loss = float(tt_row[1]) if tt_row[1] else None
+        except Exception as e:
+            print(f"[Analysis] Error fetching DB target price for {sym}: {e}")
+
+        # 3. Fallback for stock if yfinance has targetMeanPrice and no DB target price
+        if not target_price and p.get('category') == 'stock':
             try:
-                info = yf.Ticker(p['symbol']).info
-                return {
-                    'target_price': info.get('targetMeanPrice'),
-                    'recommendation': info.get('recommendationKey')
-                }
+                info = yf.Ticker(sym).info
+                target_price = info.get('targetMeanPrice')
+                recommendation = info.get('recommendationKey')
             except Exception:
-                return {}
-        return {}
+                pass
+
+        return {
+            'target_price': target_price,
+            'stop_loss': stop_loss,
+            'recommendation': recommendation
+        }
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         results = list(executor.map(fetch_info, positions))
         
     for p, res in zip(positions, results):
         p['target_price'] = res.get('target_price')
+        p['stop_loss'] = res.get('stop_loss')
         p['analyst_recommendation'] = res.get('recommendation')
 
     compiled_positions_str = json.dumps([{
@@ -1132,6 +1171,7 @@ def analyze_portfolio():
         "avg_entry_price": p["avg_entry_price"],
         "current_price": p["current_price"],
         "target_price": p.get("target_price"),
+        "stop_loss": p.get("stop_loss"),
         "analyst_recommendation": p.get("analyst_recommendation"),
         "market_value": p["market_value"],
         "overall_pnl_pct": p["overall_pnl_pct"],
@@ -1141,8 +1181,9 @@ def analyze_portfolio():
 
     system_instruction = (
         f"You are an expert investment advisor tailoring advice for a client with a **{risk_profile}** risk profile and an investment goal of **{investment_goal}**.\n"
-        "Analyze the user's holdings and provide a detailed portfolio health report. Pay close attention to target prices.\n"
-        "CRITICAL RULE: Do NOT recommend selling a stock or crypto asset if its current price is still 5-10% (or more) below its target price, as it still has room for growth.\n"
+        "Analyze the user's holdings and provide a detailed portfolio health report. Pay close attention to target prices (`target_price`).\n"
+        "CRITICAL RULE 1: Do NOT recommend selling, taking profit, or trimming any position if its `current_price` is still below its `target_price` (unless `current_price` has reached or exceeded `target_price`). An asset is only near target price if `current_price` is within 1-2% of `target_price`.\n"
+        "CRITICAL RULE 2: If an asset has a target price higher than the current price (e.g., PAY current $32.71 vs target $40.92), you MUST recommend HOLDING or INCREASING the position until it reaches its target price.\n"
     )
 
     if last_analysis and len(last_analysis) >= 4 and last_analysis[1] is not None:
