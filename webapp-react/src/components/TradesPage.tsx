@@ -153,10 +153,10 @@ const TradesPage: React.FC = () => {
     fetchTrades();
     const interval = setInterval(() => {
       const hasCryptoTrades = openTradesRef.current.some(t => t.type === 'crypto');
-      if (isStockMarketOpen() || hasCryptoTrades) {
+      if (hasCryptoTrades || isStockMarketOpen()) {
         fetchTrades(false);
       }
-    }, 30000);
+    }, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

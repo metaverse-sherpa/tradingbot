@@ -72,19 +72,19 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchData();
     
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 15 minutes (crypto 24/7, stocks only during market hours)
     const interval = setInterval(() => {
       const { cryptoOpen, cryptoSignals } = stateRef.current;
       const hasCryptoActivity = cryptoOpen > 0 || cryptoSignals > 0;
-      if (isStockMarketOpen() || hasCryptoActivity) {
+      if (hasCryptoActivity || isStockMarketOpen()) {
         fetchData(false, true);
       }
-    }, 30000);
+    }, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchOpenTrades = async (bypassCache = false) => {
-    if (bypassCache || openTrades.length === 0) setOpenTradesLoading(true);
+  const fetchOpenTrades = async (bypassCache = false, isBackground = false) => {
+    if (!isBackground && (bypassCache || openTrades.length === 0)) setOpenTradesLoading(true);
     try {
       const openRes = await api.get(`/trades/open${bypassCache ? '?bypass_cache=true' : ''}`);
       const validOpenTrades = (openRes.data || []).filter((t: any) => !t.id?.startsWith('local-'));
@@ -92,7 +92,7 @@ const Dashboard: React.FC = () => {
     } catch (err) {
       console.error(err);
     } finally {
-      setOpenTradesLoading(false);
+      if (!isBackground) setOpenTradesLoading(false);
     }
   };
 
@@ -102,7 +102,7 @@ const Dashboard: React.FC = () => {
       setSignalsLoading(true);
     }
 
-    fetchOpenTrades(bypassCache);
+    fetchOpenTrades(bypassCache, isBackground);
 
     try {
       const res = await api.get(`/user/dashboard-summary${bypassCache ? '?bypass_cache=true' : ''}`);
