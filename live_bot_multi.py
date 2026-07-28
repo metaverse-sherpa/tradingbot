@@ -249,6 +249,20 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         m = re.match(r'^(\d+)', base)
         multiplier = float(m.group(1)) if m else 1.0
         
+        # Robust fallback: if live price is drastically higher than signal entry, deduce the multiplier
+        if multiplier == 1.0 and signal["entry"] > 0:
+            ratio = lp / signal["entry"]
+            if 90 < ratio < 110:
+                multiplier = 100.0
+            elif 900 < ratio < 1100:
+                multiplier = 1000.0
+            elif 9000 < ratio < 11000:
+                multiplier = 10000.0
+            elif 90000 < ratio < 110000:
+                multiplier = 100000.0
+            elif 900000 < ratio < 1100000:
+                multiplier = 1000000.0
+                
         scaled_entry = signal["entry"] * multiplier
         scaled_sl_dist = signal["sl_dist"] * multiplier
         rr = signal.get("rr", 2.0)
