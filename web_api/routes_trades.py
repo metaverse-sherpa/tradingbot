@@ -1067,7 +1067,7 @@ def get_open_trades():
                                 unrealized_pnl = abs(contracts) * pnl_raw
 
                         trades.append({
-                            "id": pos.get("id", f"crypto-{pos.get('symbol')}"),
+                            "id": pos.get("id") or f"crypto-{pos.get('symbol')}",
                             "type": "crypto",
                             "symbol": pos.get("symbol"),
                             "side": side_str,

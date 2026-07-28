@@ -340,18 +340,22 @@ const Dashboard: React.FC = () => {
               <h3 className="font-bold text-white flex items-center gap-2 mb-4">
                  ⚡ Live Active Trades <span className="text-sm text-gray-500 font-normal">({typeTrades.length})</span>
               </h3>
-              {typeTrades.map((trade: any, idx: number) => (
-                <TradeCard 
-                  key={`${type}-active-${trade.id || 'trade'}-${idx}`}
-                  trade={trade}
-                  type={type}
-                  activeTab="active"
-                  hideDollars={hideDollars}
-                  isExpanded={expandedTradeId === trade.id}
-                  onToggleExpand={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
-                  onShare={() => setShareTrade({ trade, type, roe: trade.roe || 0, pnl: trade.unrealized_pnl || 0 })}
-                />
-              ))}
+              {typeTrades.map((trade: any, idx: number) => {
+                const tradeId = trade.id || `${type}-${trade.symbol || idx}`;
+                const isExpanded = Boolean(expandedTradeId) && expandedTradeId === tradeId;
+                return (
+                  <TradeCard 
+                    key={`${type}-active-${tradeId}-${idx}`}
+                    trade={trade}
+                    type={type}
+                    activeTab="active"
+                    hideDollars={hideDollars}
+                    isExpanded={isExpanded}
+                    onToggleExpand={() => setExpandedTradeId(isExpanded ? null : tradeId)}
+                    onShare={() => setShareTrade({ trade, type, roe: trade.roe || 0, pnl: trade.unrealized_pnl || 0 })}
+                  />
+                );
+              })}
             </div>
           );
         })()}

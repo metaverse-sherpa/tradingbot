@@ -191,15 +191,17 @@ const TradesPage: React.FC = () => {
         
         <div className="space-y-4">
           {typeTrades.map((trade: any, idx: number) => {
+            const tradeId = trade.id || `${type}-${trade.symbol || idx}`;
+            const isExpanded = Boolean(expandedTradeId) && expandedTradeId === tradeId;
             return (
               <TradeCard 
-                key={`${type}-${activeTab}-${trade.id || 'trade'}-${idx}`}
+                key={`${type}-${activeTab}-${tradeId}-${idx}`}
                 trade={trade}
                 type={type}
                 activeTab={activeTab}
                 hideDollars={hideDollars}
-                isExpanded={expandedTradeId === trade.id}
-                onToggleExpand={() => activeTab === 'active' && setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
+                isExpanded={isExpanded}
+                onToggleExpand={() => activeTab === 'active' && setExpandedTradeId(isExpanded ? null : tradeId)}
                 onShare={() => setShareTrade({ trade, type, roe: activeTab === 'active' ? trade.roe : trade.pnl_pct || 0, pnl: activeTab === 'active' ? trade.unrealized_pnl : trade.pnl_raw || 0 })}
                 onTogglePrivacy={togglePrivacy}
                 onClosePosition={(t) => setConfirmCloseTrade(t)}
