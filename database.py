@@ -2530,10 +2530,10 @@ def get_chat_id_by_username(username):
     return row[0] if row else None
 
 def get_open_theoretical_trades():
-    """Returns all currently open theoretical trades."""
+    """Returns all currently open theoretical trades (excluding AI Recommendations)."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open'")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy != 'AI Recommendation'")
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
