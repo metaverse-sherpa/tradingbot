@@ -1504,6 +1504,13 @@ def close_trade():
         loop.close()
         
         if success:
+            try:
+                from web_api.cache import RESPONSE_CACHE
+                RESPONSE_CACHE.clear_user_cache(user.get("id"))
+                if chat_id:
+                    RESPONSE_CACHE.clear_user_cache(chat_id)
+            except Exception as ce:
+                print(f"Error clearing cache on close_trade: {ce}")
             return jsonify({"message": msg}), 200
         else:
             return jsonify({"error": msg}), 400

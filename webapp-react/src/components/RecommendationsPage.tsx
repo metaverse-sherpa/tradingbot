@@ -156,6 +156,7 @@ const RecommendationsPage: React.FC = () => {
         symbol: activePos.symbol || rec.symbol
       });
       if (res.data?.message) {
+        setOpenTrades(prev => prev.filter((p: any) => p.symbol !== rec.symbol && p.symbol !== activePos.symbol));
         alert(`✅ Position for ${rec.symbol} closed successfully!`);
       } else {
         alert(res.data?.error || 'Failed to close position.');
@@ -193,6 +194,7 @@ const RecommendationsPage: React.FC = () => {
         allow_liquidation_risk: allowRisk
       });
       if (res.data?.success) {
+        setOpenTrades(prev => [...prev, { symbol: rec.symbol }]);
         alert(res.data?.message || '✅ Live trade executed successfully!');
         if (riskModalData) setRiskModalData(null);
       } else {
