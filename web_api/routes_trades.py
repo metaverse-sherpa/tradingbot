@@ -2142,7 +2142,7 @@ def get_active_signals():
     try:
         with database.db_session() as conn:
             c = conn.cursor()
-            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy != 'AI Recommendation' ORDER BY open_time DESC LIMIT 50")
+            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy NOT LIKE 'AI Recom%' ORDER BY open_time DESC LIMIT 50")
             rows = c.fetchall()
         signals = [dict(r) for r in rows]
         disabled = database.get_disabled_strategies()
@@ -2167,9 +2167,9 @@ def get_active_signals():
 def get_closed_signals():
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy != 'AI Recommendation' AND symbol LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy NOT LIKE 'AI Recom%' AND symbol LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
         crypto_rows = c.fetchall()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy != 'AI Recommendation' AND symbol NOT LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy NOT LIKE 'AI Recom%' AND symbol NOT LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
         stock_rows = c.fetchall()
         
     signals = []

@@ -956,6 +956,23 @@ const RecommendationsPage: React.FC = () => {
                         </div>
                       );
                     } else {
+                      const isStock = rec.category?.toLowerCase() === 'stock';
+                      const hasKeys = isStock ? Boolean(user?.has_alpaca_keys) : Boolean(user?.has_exchange_keys);
+
+                      if (!hasKeys) {
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/settings');
+                            }}
+                            className="mt-4 w-full py-2.5 px-4 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(245,158,11,0.2)] text-xs uppercase tracking-wider"
+                          >
+                            ⚠️ Setup Exchange to Trade
+                          </button>
+                        );
+                      }
+
                       return (
                         <button
                           onClick={(e) => handleOpenLiveTrade(rec, e)}

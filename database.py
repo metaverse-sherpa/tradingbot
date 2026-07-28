@@ -2551,7 +2551,7 @@ def get_open_theoretical_trades():
     """Returns all currently open theoretical trades (excluding AI Recommendations)."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy != 'AI Recommendation'")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy NOT LIKE 'AI Recom%'")
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
@@ -2599,16 +2599,16 @@ def get_theoretical_stats():
     """Computes high-level theoretical performance stats."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades")
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE strategy NOT LIKE 'AI Recom%'")
         total_trades = c.fetchone()[0]
         
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status != 'open' AND pnl_usdt > 0")
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status != 'open' AND pnl_usdt > 0 AND strategy NOT LIKE 'AI Recom%'")
         wins = c.fetchone()[0]
         
-        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status != 'open' AND pnl_usdt <= 0")
+        c.execute("SELECT COUNT(*) FROM TheoreticalTrades WHERE status != 'open' AND pnl_usdt <= 0 AND strategy NOT LIKE 'AI Recom%'")
         losses = c.fetchone()[0]
         
-        c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE status != 'open'")
+        c.execute("SELECT SUM(pnl_usdt) FROM TheoreticalTrades WHERE status != 'open' AND strategy NOT LIKE 'AI Recom%'")
         pnl_sum = c.fetchone()[0] or 0.0
         
         # Calculate win rate
