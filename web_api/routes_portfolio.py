@@ -1191,13 +1191,21 @@ def analyze_portfolio():
     if active_recs:
         prompt_recs_ctx = (
             "\n\nACTIVE RECOMMENDATIONS (If recommending selling poor performers or assets that reached their targets, "
-            "you MUST suggest re-allocating funds into these active recommendations. You MUST include a markdown link to "
+            "you MUST suggest re-allocating funds into these active recommendations. "
+            "When listing buy orders or re-allocations in your step-by-step instructions (`show_me_how`), you MUST include the Target Growth % "
+            "(e.g., `(Target Price: $X, Target Growth: +Y%, Stop Loss: $Z)`). You MUST include a markdown link to "
             "[AI Recommendations](/recommendations) in your markdown response so the user can easily click to track these setups):\n"
         )
         buys_md = "\n\n### 💡 Active Recommendations to Re-allocate Into\n\n"
         for rec in active_recs:
-            prompt_recs_ctx += f"- {rec['symbol']} ({rec['category']}): Target Price: ${rec['target_price']}, Stop Loss: ${rec['stop_loss']}, Entry Price: ${rec['entry_price']}\n"
-            buys_md += f"* **{rec['symbol']}** ({rec['category'].upper()}) | Entry: ${rec['entry_price']} | Target: ${rec['target_price']} | Stop Loss: ${rec['stop_loss']}\n"
+            entry = float(rec.get('entry_price') or 0)
+            target = float(rec.get('target_price') or 0)
+            sl = float(rec.get('stop_loss') or 0)
+            growth_pct = ((target - entry) / entry * 100) if entry > 0 and target > 0 else 0.0
+            growth_str = f"+{growth_pct:.1f}%" if growth_pct > 0 else f"{growth_pct:.1f}%"
+
+            prompt_recs_ctx += f"- {rec['symbol']} ({rec['category']}): Target Price: ${target}, Target Growth: {growth_str}, Stop Loss: ${sl}, Entry Price: ${entry}\n"
+            buys_md += f"* **{rec['symbol']}** ({rec['category'].upper()}) | Entry: ${entry} | Target: ${target} (Target Growth: {growth_str}) | Stop Loss: ${sl}\n"
         
         system_instruction += prompt_recs_ctx
 

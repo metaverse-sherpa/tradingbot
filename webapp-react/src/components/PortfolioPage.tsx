@@ -62,7 +62,7 @@ const PortfolioPage: React.FC = () => {
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
 
   const formatMarkdownLine = (line: string) => {
-    const tokenRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\))/g;
+    const tokenRegex = /(\*\*.*?\*\*|\[.*?\]\(.*?\)|Target Growth: [+\-]?\d+(?:\.\d+)?%)/g;
     const tokens = line.split(tokenRegex);
     return tokens.map((token, idx) => {
       if (token.startsWith('**') && token.endsWith('**')) {
@@ -76,6 +76,9 @@ const PortfolioPage: React.FC = () => {
         } else {
           return <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 font-bold hover:underline">{linkText}</a>;
         }
+      }
+      if (token.startsWith('Target Growth:')) {
+        return <span key={idx} className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">{token}</span>;
       }
       return token;
     });
