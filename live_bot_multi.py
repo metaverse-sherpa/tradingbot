@@ -271,14 +271,16 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
             
         max_possible_leverage = 10 if exchange.id == 'coinbase' else LEVERAGE
         trade_leverage = max_possible_leverage
+        SAFETY_MARGIN = 0.04  # 4% safety margin buffer between SL and Liquidation price
+
         if signal["side"] == "buy":
-            # For Long: sl > lp * (1 - 1/Lev + 0.025)  =>  Lev < 1 / (1.025 - sl/lp)
-            denom = 1.025 - (sl / lp)
+            # For Long: est_liq = lp * (1 - 1/Lev + SAFETY_MARGIN) < sl  =>  Lev < 1 / ((1 + SAFETY_MARGIN) - sl/lp)
+            denom = (1.0 + SAFETY_MARGIN) - (sl / lp)
             if denom > 0:
                 trade_leverage = min(max_possible_leverage, int(1.0 / denom))
         else:
-            # For Short: sl < lp * (1 + 1/Lev - 0.025)  =>  Lev < 1 / (sl/lp - 0.975)
-            denom = (sl / lp) - 0.975
+            # For Short: est_liq = lp * (1 + 1/Lev - SAFETY_MARGIN) > sl  =>  Lev < 1 / (sl/lp - (1 - SAFETY_MARGIN))
+            denom = (sl / lp) - (1.0 - SAFETY_MARGIN)
             if denom > 0:
                 trade_leverage = min(max_possible_leverage, int(1.0 / denom))
         
