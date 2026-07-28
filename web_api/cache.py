@@ -71,7 +71,7 @@ class SqliteSharedCache:
             print(f"Error checking cache contains: {e}")
         return False
 
-    def __getitem__(self, key):
+    def get(self, key, default=(0, None)):
         skey = self._serialize_key(key)
         try:
             with cache_db_session() as conn:
@@ -84,7 +84,10 @@ class SqliteSharedCache:
                     return (expiry, data)
         except Exception as e:
             print(f"Error reading from cache: {e}")
-        raise KeyError(key)
+        return default
+
+    def __getitem__(self, key):
+        return self.get(key, default=(0, None))
 
     def __setitem__(self, key, value):
         # value is a tuple: (expiry_timestamp, data)
