@@ -1060,7 +1060,8 @@ def get_open_trades():
                         if entry_price > 0 and mark_price > 0:
                             is_long = side_str in ['LONG', 'BUY']
                             raw_pct = ((mark_price - entry_price) / entry_price) * 100 if is_long else ((entry_price - mark_price) / entry_price) * 100
-                            roe = raw_pct * 20
+                            leverage = float(pos.get("leverage") or 1.0)
+                            roe = raw_pct * leverage
                             
                             if unrealized_pnl == 0:
                                 pnl_raw = mark_price - entry_price if is_long else entry_price - mark_price
