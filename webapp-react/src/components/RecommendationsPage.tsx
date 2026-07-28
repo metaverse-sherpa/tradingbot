@@ -216,6 +216,7 @@ const RecommendationsPage: React.FC = () => {
     } finally {
       setExecutingSignalId(null);
       fetchRecommendations(true);
+      fetchOpenTrades();
     }
   };
 

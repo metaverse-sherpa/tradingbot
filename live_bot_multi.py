@@ -323,7 +323,7 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         leverage_set_success = True
         if exchange.has.get('setLeverage', False):
             try:
-                params = {}
+                params = {'marginMode': 'isolated', 'mgnMode': 'isolated'}
                 if exchange.id == 'bingx':
                     params['side'] = 'LONG' if signal["side"] == 'buy' else 'SHORT'
                 await exchange.set_leverage(trade_leverage, symbol, params=params)
