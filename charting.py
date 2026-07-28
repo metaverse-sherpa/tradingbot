@@ -209,6 +209,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     
     tf_str = "1D" if is_ai_rec or timeframe == "1D" else timeframe
     # Generate the chart
+    # Generate the chart
     kwargs = dict(
         type='candle',
         style=style,
@@ -220,6 +221,27 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         figscale=0.9,
         returnfig=True
     )
+
+    # Dynamic Y-Limits: Keep candles crisp and detailed while showing target bounds
+    price_min = min(df['low'].min(), entry)
+    price_max = max(df['high'].max(), entry)
+    if current_price > 0:
+        price_min = min(price_min, current_price)
+        price_max = max(price_max, current_price)
+
+    price_range = price_max - price_min
+    if price_range <= 0:
+        price_range = price_max * 0.02
+
+    y_lower = price_min - price_range * 0.20
+    y_upper = price_max + price_range * 0.20
+
+    if tp > 0 and tp <= price_max + price_range * 1.5:
+        y_upper = max(y_upper, tp + price_range * 0.05)
+    if sl > 0 and sl >= price_min - price_range * 1.5:
+        y_lower = min(y_lower, sl - price_range * 0.05)
+
+    kwargs['ylim'] = (y_lower, y_upper)
     
     if not is_ai_rec:
         kwargs['panel_ratios'] = (4, 1)

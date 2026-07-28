@@ -48,6 +48,7 @@ async def theory_trades_resolution_engine(application):
                     entry_price = t['entry_price']
                     tp_price = t['tp_price']
                     sl_price = t['sl_price']
+                    trade_id = t['id']
                     position_size = float(t.get('position_size') or 1.0)
                     
                     df = await mdm.fetch_ohlcv(symbol, "1m", limit=5)
