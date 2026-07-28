@@ -1,9 +1,10 @@
-export const formatPrice = (price: number | undefined | null): string => {
-  if (price === undefined || price === null || price === 0) return "0.00";
-  const absPrice = Math.abs(price);
+export const formatPrice = (price: number | string | undefined | null): string => {
+  if (price === undefined || price === null) return "0.00";
+  const num = typeof price === 'string' ? parseFloat(price) : price;
+  if (isNaN(num) || num === 0) return "0.00";
+  const absPrice = Math.abs(num);
   if (absPrice < 0.01) {
-    // For very small numbers like crypto (SHIB, PEPE), show up to 6 decimal places, removing trailing zeros
-    return parseFloat(price.toFixed(8)).toString();
+    return parseFloat(num.toFixed(8)).toString();
   }
-  return price.toFixed(2);
+  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };

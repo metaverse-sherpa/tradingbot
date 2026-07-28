@@ -5,6 +5,7 @@ import api from '../lib/api';
 import { useAuthStore, useDashboardStore } from '../store/useStore';
 import LoadingDisplay from './LoadingDisplay';
 import { isStockMarketOpen } from '../utils/market';
+import { formatPrice } from '../utils/formatters';
 
 const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: {value: string, label: string}[] }) => {
   const [open, setOpen] = useState(false);
@@ -835,19 +836,19 @@ const RecommendationsPage: React.FC = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#0c0d12]/50 p-3 rounded-2xl border border-white/5 mb-4">
                       <div>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Entry Price</p>
-                        <p className="text-xs font-black text-white mt-0.5">${rec.entry_price.toLocaleString()}</p>
+                        <p className="text-xs font-black text-white mt-0.5">${formatPrice(rec.entry_price)}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Current Price</p>
-                        <p className="text-xs font-black text-white mt-0.5">${rec.current_price.toLocaleString()} <span className="text-[10px] font-semibold text-gray-400">({formatPercent(pnl)})</span></p>
+                        <p className="text-xs font-black text-white mt-0.5">${formatPrice(rec.current_price)} <span className="text-[10px] font-semibold text-gray-400">({formatPercent(pnl)})</span></p>
                       </div>
                       <div>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Target Price</p>
-                        <p className="text-xs font-black text-emerald-400 mt-0.5">${rec.target_price.toLocaleString()}</p>
+                        <p className="text-xs font-black text-emerald-400 mt-0.5">${formatPrice(rec.target_price)}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Stop Loss</p>
-                        <p className="text-xs font-black text-rose-400 mt-0.5">${rec.stop_loss.toLocaleString()} <span className="text-[10px] font-semibold text-rose-500/70">({formatPercent(stopPct)})</span></p>
+                        <p className="text-xs font-black text-rose-400 mt-0.5">${formatPrice(rec.stop_loss)} <span className="text-[10px] font-semibold text-rose-500/70">({formatPercent(stopPct)})</span></p>
                       </div>
                     </div>
 
@@ -1031,10 +1032,10 @@ const RecommendationsPage: React.FC = () => {
                           </a>
                         </td>
                         <td className="px-6 py-4 uppercase text-[10px] text-gray-400 font-bold">{rec.category}</td>
-                        <td className="px-6 py-4 font-semibold">${rec.entry_price.toLocaleString()}</td>
-                        <td className="px-6 py-4 font-semibold">${rec.current_price.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-emerald-500/80 font-semibold">${rec.target_price.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-rose-500/80 font-semibold">${rec.stop_loss.toLocaleString()}</td>
+                        <td className="px-6 py-4 font-semibold">${formatPrice(rec.entry_price)}</td>
+                        <td className="px-6 py-4 font-semibold">${formatPrice(rec.current_price)}</td>
+                        <td className="px-6 py-4 text-emerald-500/80 font-semibold">${formatPrice(rec.target_price)}</td>
+                        <td className="px-6 py-4 text-rose-500/80 font-semibold">${formatPrice(rec.stop_loss)}</td>
                         <td className={`px-6 py-4 font-black ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {formatPercent(pnl)}
                         </td>
