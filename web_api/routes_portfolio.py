@@ -1230,10 +1230,34 @@ def analyze_portfolio():
 
     buys_md = ""
     if active_recs:
+        rec_symbols = [r['symbol'] for r in active_recs]
+        rec_cats = [r['category'] for r in active_recs]
+        rec_prices = get_cached_prices(rec_symbols, rec_cats)
+
+        for rec in active_recs:
+            sym_key = f"{rec['symbol'].upper()}_{rec['category'].lower()}"
+            curr_price, _ = rec_prices.get(sym_key, (None, None))
+            rec['current_price'] = curr_price if curr_price is not None else rec.get('entry_price', 0.0)
+
+            entry = float(rec.get('entry_price') or 0)
+            target = float(rec.get('target_price') or 0)
+            curr = float(rec.get('current_price') or entry)
+
+            if target > entry and entry > 0:
+                progress_pct = max(0.0, (curr - entry) / (target - entry) * 100.0)
+            else:
+                progress_pct = 0.0
+            rec['progress_pct'] = progress_pct
+
+        # Sort recommendations so those closest to entry price (lowest progress towards target) come FIRST
+        active_recs.sort(key=lambda r: r['progress_pct'])
+
         prompt_recs_ctx = (
-            "\n\nACTIVE RECOMMENDATIONS (If recommending selling poor performers or assets that reached their targets, "
-            "you MUST suggest re-allocating funds into these active recommendations. "
-            "When listing buy orders or re-allocations in your step-by-step instructions (`show_me_how`), you MUST include the Target Growth % "
+            "\n\nACTIVE RECOMMENDATIONS (Ranked by proximity to Entry Price - closest to entry price first):\n"
+            "CRITICAL RECOMMENDATION SELECTION RULES:\n"
+            "- You MUST prioritize recommending new positions or re-allocating funds into active recommendations that are CLOSEST to their Entry Price (lowest Progress % towards target).\n"
+            "- Do NOT recommend initiating new positions in recommendations that have ALREADY moved significantly towards their Target Price (e.g., >=30% progress towards target), as the risk/reward is less favorable.\n"
+            "- When listing buy orders or re-allocations in your step-by-step instructions (`show_me_how`), you MUST include the Target Growth % "
             "(e.g., `(Target Price: $X, Target Growth: +Y%, Stop Loss: $Z)`). You MUST include a markdown link to "
             "[AI Recommendations](/recommendations) in your markdown response so the user can easily click to track these setups):\n"
         )
@@ -1241,11 +1265,13 @@ def analyze_portfolio():
         for rec in active_recs:
             entry = float(rec.get('entry_price') or 0)
             target = float(rec.get('target_price') or 0)
+            curr = float(rec.get('current_price') or entry)
             sl = float(rec.get('stop_loss') or 0)
             growth_pct = ((target - entry) / entry * 100) if entry > 0 and target > 0 else 0.0
             growth_str = f"+{growth_pct:.1f}%" if growth_pct > 0 else f"{growth_pct:.1f}%"
+            prog = rec['progress_pct']
 
-            prompt_recs_ctx += f"- {rec['symbol']} ({rec['category']}): Target Price: ${target}, Target Growth: {growth_str}, Stop Loss: ${sl}, Entry Price: ${entry}\n"
+            prompt_recs_ctx += f"- {rec['symbol']} ({rec['category']}): Entry: ${entry}, Current: ${curr:.4f}, Target: ${target}, Target Growth: {growth_str}, Stop Loss: ${sl}, Progress Towards Target: {prog:.1f}%\n"
         
         system_instruction += prompt_recs_ctx
 
