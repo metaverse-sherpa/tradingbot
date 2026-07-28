@@ -1187,16 +1187,22 @@ def analyze_portfolio():
         "CRITICAL RULE 3 (RECOMMENDATIONS ARE NOT HOLDINGS): The `ACTIVE RECOMMENDATIONS` list below contains potential external trade setups available to buy. These are NOT owned by the user unless listed in `compiled_positions_str`. NEVER tell the user to 'sell' or 'take profit' on an asset from `ACTIVE RECOMMENDATIONS` if it is not in their portfolio.\n"
     )
 
+    last_score = None
+    num_completed = 0
+    num_total_plan = 0
+
     if last_analysis and len(last_analysis) >= 4 and last_analysis[1] is not None:
-        last_score = last_analysis[1]
+        last_score = int(last_analysis[1])
         last_plan_str = last_analysis[2]
         
         checked_items_str = "None"
         if last_analysis[3]:
             try:
                 last_plan = json.loads(last_plan_str)
+                num_total_plan = len(last_plan)
                 completed_bools = json.loads(last_analysis[3])
                 checked_items = [item for i, item in enumerate(last_plan) if i < len(completed_bools) and completed_bools[i]]
+                num_completed = len(checked_items)
                 if checked_items:
                     checked_items_str = json.dumps(checked_items)
             except Exception:
@@ -1205,7 +1211,7 @@ def analyze_portfolio():
         system_instruction += (
             f"\nPREVIOUS CONTEXT:\nYou previously analyzed this portfolio and gave it a score of {last_score}/100. "
             f"Your previous action plan was: {last_plan_str}\n"
-            f"The user has explicitly completed the following items from that plan: {checked_items_str}\n"
+            f"The user has explicitly completed {num_completed} of {num_total_plan} items from that plan: {checked_items_str}\n"
             "Evaluate if the user has implemented these recommendations. If they have followed your advice, "
             "you MUST reward them by increasing their score above their previous score. It is very frustrating for a user to follow advice and see their score drop.\n"
         )
@@ -1290,7 +1296,15 @@ def analyze_portfolio():
         clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
         analysis = json.loads(clean_json_str)
 
-        score = int(analysis.get("score", 75))
+        raw_score = int(analysis.get("score", 75))
+        score = raw_score
+        
+        # Enforce guaranteed score reward if user completed action plan items from previous analysis
+        if last_score is not None and num_completed > 0:
+            ratio = num_completed / max(1, num_total_plan)
+            bonus_pts = max(3 * num_completed, int(ratio * 15))
+            score = min(100, max(raw_score, last_score + bonus_pts))
+
         action_plan = analysis.get("action_plan", [])
         detailed_recs = analysis.get("detailed_recommendations", "")
         show_me_how = analysis.get("show_me_how", "")
