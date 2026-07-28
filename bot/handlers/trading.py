@@ -2128,9 +2128,10 @@ async def execute_manual_trade(chat_id: int, trade_id: str, allow_liquidation_ri
                     logger.error(f"Failed to record manual crypto trade in TheoreticalTrades: {db_err}")
 
                 try:
-                    from web_api.routes_trades import RESPONSE_CACHE, RESPONSE_CACHE_LOCK
-                    with RESPONSE_CACHE_LOCK:
-                        RESPONSE_CACHE.clear()
+                    from web_api.cache import RESPONSE_CACHE
+                    RESPONSE_CACHE.clear_user_cache(user.get('id'))
+                    if chat_id:
+                        RESPONSE_CACHE.clear_user_cache(chat_id)
                 except Exception:
                     pass
                 

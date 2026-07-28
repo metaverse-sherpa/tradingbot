@@ -107,9 +107,10 @@ const RecommendationsPage: React.FC = () => {
   const [selectedQueueOption, setSelectedQueueOption] = useState<'auto_execute' | 'email_reminder'>('auto_execute');
   const [submittingQueue, setSubmittingQueue] = useState(false);
 
-  const fetchOpenTrades = useCallback(async () => {
+  const fetchOpenTrades = useCallback(async (bypassCache = false) => {
     try {
-      const res = await api.get('/trades/open');
+      const url = bypassCache ? '/trades/open?bypass_cache=true' : '/trades/open';
+      const res = await api.get(url);
       setOpenTrades(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching open trades:', err);
@@ -173,7 +174,7 @@ const RecommendationsPage: React.FC = () => {
     } finally {
       setClosingTradeId(null);
       fetchRecommendations(true);
-      fetchOpenTrades();
+      fetchOpenTrades(true);
     }
   };
 
@@ -223,7 +224,7 @@ const RecommendationsPage: React.FC = () => {
     } finally {
       setExecutingSignalId(null);
       fetchRecommendations(true);
-      fetchOpenTrades();
+      fetchOpenTrades(true);
     }
   };
 

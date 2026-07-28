@@ -2892,6 +2892,14 @@ def manual_trade():
     asyncio.set_event_loop(loop)
     try:
         success, msg = loop.run_until_complete(execute_manual_trade(chat_id, trade_id, allow_liquidation_risk=allow_liquidation_risk))
+        if success:
+            try:
+                from web_api.cache import RESPONSE_CACHE
+                RESPONSE_CACHE.clear_user_cache(user.get("id"))
+                if chat_id:
+                    RESPONSE_CACHE.clear_user_cache(chat_id)
+            except Exception as ce:
+                print(f"Error clearing cache on manual_trade: {ce}")
         return jsonify({"success": success, "message": msg, "error": None if success else msg}), 200 if success else 400
     except Exception as e:
         import traceback
