@@ -145,36 +145,15 @@ def calculate_symbol_indicators_and_signal(symbol):
     df.set_index('date', inplace=True)
     df.sort_index(inplace=True)
     
-    # Calculate indicators
+    # Calculate indicators matching backtest engine
     df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
+    df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
+    df['sma_5'] = df['close'].rolling(window=5).mean()
     
-    # Calculate SuperTrend (10, 3)
-    hl2 = (df['high'] + df['low']) / 2
+    # ATR(14)
     high_low = df['high'] - df['low']
     high_close = (df['high'] - df['close'].shift()).abs()
     low_close = (df['low'] - df['close'].shift()).abs()
-    tr_st = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-    atr_st = tr_st.rolling(window=10).mean()
-    
-    upper_band = hl2 + (3.0 * atr_st)
-    lower_band = hl2 - (3.0 * atr_st)
-    st = [True] * len(df)
-    c_vals = df['close'].values
-    lb_vals = lower_band.values
-    ub_vals = upper_band.values
-    flow_arr = np.zeros(len(df))
-    fup_arr = np.zeros(len(df))
-    
-    flow_arr[0] = lb_vals[0]
-    fup_arr[0] = ub_vals[0]
-    
-    for i in range(1, len(df)):
-        flow_arr[i] = max(lb_vals[i], flow_arr[i-1]) if c_vals[i-1] > flow_arr[i-1] else lb_vals[i]
-        fup_arr[i] = min(ub_vals[i], fup_arr[i-1]) if c_vals[i-1] < fup_arr[i-1] else ub_vals[i]
-        st[i] = True if c_vals[i] > fup_arr[i] else (False if c_vals[i] < flow_arr[i] else st[i-1])
-    df['supertrend'] = st
-    
-    # ATR(14)
     tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     df['atr'] = tr.rolling(window=14).mean()
     
@@ -191,10 +170,10 @@ def calculate_symbol_indicators_and_signal(symbol):
     # Get yesterday's values (last fully closed bar, index -1)
     yesterday = df.iloc[-1]
     
-    # Trend Filter
-    is_uptrend = yesterday['supertrend'] == True and yesterday['close'] > yesterday['ema_200']
-    # RSI Pullback
-    is_pullback = yesterday['rsi'] < 26
+    # Trend Filter: EMA 50 > EMA 200 and Close > EMA 50
+    is_uptrend = yesterday['close'] > yesterday['ema_50'] and yesterday['ema_50'] > yesterday['ema_200']
+    # RSI Pullback: RSI(4) < 15
+    is_pullback = yesterday['rsi'] < 15
     
     signal = None
     if is_uptrend and is_pullback:
@@ -317,8 +296,8 @@ async def run_theoretical_tally_engine(today_opens):
             
             indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
             if indicator_dict:
-                # Dynamic exit: yesterday's RSI(4) > 75
-                is_dynamic_exit = indicator_dict['rsi'] > 75
+                # Dynamic exit: yesterday's close > 5-day SMA or RSI(4) > 70
+                is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70
                 
                 if is_dynamic_exit:
                     # Close trade at today's open!
@@ -640,13 +619,12 @@ async def run_hourly_portfolio_sync(today_opens=None):
                             df.set_index('date', inplace=True)
                             df.sort_index(inplace=True)
                             processed_df = interpreter.build_indicators(df)
-                            signal = interpreter.check_signal(processed_df, len(processed_df)-1)
-                            if signal == "CLOSE_LONG" or signal == "SHORT":
+                            if interpreter.evaluate_conditions(processed_df, len(processed_df)-1, interpreter.exit_conditions):
                                 exit_reason = f"Dynamic Exit ({strategy_name})"
                 else:
                     indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
-                    if indicator_dict and indicator_dict['rsi'] > 75:
-                        exit_reason = "Dynamic Exit (RSI > 75)"
+                    if indicator_dict and (indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70):
+                        exit_reason = "Dynamic Exit (SMA5 or RSI > 70)"
                 
                 if not exit_reason:
                     if sl_price and y_low <= sl_price:

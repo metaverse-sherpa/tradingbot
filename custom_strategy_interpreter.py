@@ -407,16 +407,12 @@ def run_combined_backtest(data_dict, interpreter: CustomStrategyInterpreter, ris
         pending_signals.sort(key=lambda x: x[0])
         
         # D. EQUAL-SPLIT ALLOCATION LOGIC
-        # 1. Calculate free buying power
-        buying_power = current_equity * leverage
-        allocated_notional = sum(t['qty'] * t['entry_price'] for t in active_trades.values())
-        free_buying_power = max(0.0, buying_power - allocated_notional)
+        # Dynamic leverage adjustment matching live trading engine
+        max_possible_leverage = float(leverage)
+        SAFETY_MARGIN = 0.04
         
-        if free_buying_power <= 0:
-            continue
-            
-        # 2. Divide available capital equally among all valid incoming signals
-        split_power = free_buying_power / len(pending_signals)
+        # Sort alphabetically to keep backtest execution deterministic
+        pending_signals.sort(key=lambda x: x[0])
         
         for sym, sig in pending_signals:
             idx = sym_indices[sym].get(date)
@@ -434,6 +430,24 @@ def run_combined_backtest(data_dict, interpreter: CustomStrategyInterpreter, ris
                     D = entry_price * 0.005
                 sl = entry_price - D if sig == "LONG" else entry_price + D
                 tp = entry_price + (rr_ratio * D) if sig == "LONG" else entry_price - (rr_ratio * D)
+            
+            # Dynamic liquidation leverage check
+            if sig == "LONG":
+                denom = (1.0 + SAFETY_MARGIN) - (sl / entry_price)
+                effective_lev = min(max_possible_leverage, int(1.0 / denom)) if denom > 0 else max_possible_leverage
+            else:
+                denom = (sl / entry_price) - (1.0 - SAFETY_MARGIN)
+                effective_lev = min(max_possible_leverage, int(1.0 / denom)) if denom > 0 else max_possible_leverage
+            effective_lev = max(1.0, float(effective_lev))
+            
+            buying_power = current_equity * effective_lev
+            allocated_notional = sum(t['qty'] * t['entry_price'] for t in active_trades.values())
+            free_buying_power = max(0.0, buying_power - allocated_notional)
+            
+            if free_buying_power <= 0:
+                continue
+                
+            split_power = free_buying_power / len(pending_signals)
             
             # Sizing based on risk percentage allocation
             risk_dollars = current_equity * risk_pct

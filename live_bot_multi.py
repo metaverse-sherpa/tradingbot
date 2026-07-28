@@ -179,7 +179,8 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper", web_
         from custom_strategy_interpreter import CustomStrategyInterpreter
         interpreter = CustomStrategyInterpreter(custom_cfg)
         processed_df = interpreter.build_indicators(df.copy())
-        side = interpreter.check_signal(processed_df, len(processed_df)-1)
+        # Evaluate signal on the last closed candle (index len - 2)
+        side = interpreter.check_signal(processed_df, len(processed_df)-2)
     else:
         strat = strategies.get_strategy(strategy_name)
         side = strat.check_signal(df, symbol_name)
@@ -189,9 +190,17 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper", web_
         
     # Standardize output using strategy-specific configurations
     if is_custom and custom_cfg:
-        rr = custom_cfg.get("risk", {}).get("rr_ratio", 1.5)
-        atr_mult = custom_cfg.get("risk", {}).get("sl_atr_mult", 3.0)
-        cfg = {"atr": atr_mult, "rr": rr}
+        exit_cfg = custom_cfg.get("exit_conditions", {})
+        sl_pct = float(exit_cfg.get("sl_pct", 0)) / 100.0 if exit_cfg.get("sl_pct") else 0
+        tp_pct = float(exit_cfg.get("tp_pct", 0)) / 100.0 if exit_cfg.get("tp_pct") else 0
+        if sl_pct > 0 and tp_pct > 0:
+            rr = tp_pct / sl_pct
+            custom_sl_dist = df.iloc[-2]["close"] * sl_pct
+            cfg = {"atr": custom_sl_dist, "rr": rr, "use_raw_sl_dist": True}
+        else:
+            rr = custom_cfg.get("risk", {}).get("rr_ratio", 1.5)
+            atr_mult = custom_cfg.get("risk", {}).get("sl_atr_mult", 3.0)
+            cfg = {"atr": atr_mult, "rr": rr}
     elif strategy_name == "Valkyrie Elite Scalper":
         cfg = VALKYRIE_SYMBOL_CONFIGS.get(symbol_name)
         if not cfg:
@@ -209,10 +218,11 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper", web_
     if datetime.now(timezone.utc).hour in BAD_HOURS_UTC: 
         return None
         
+    sl_dist = cfg["atr"] if cfg.get("use_raw_sl_dist") else atr.iloc[-2] * cfg["atr"]
     return {
         "side": "buy" if side == "LONG" else "sell", 
         "entry": last["close"], 
-        "sl_dist": atr.iloc[-2] * cfg["atr"], 
+        "sl_dist": sl_dist, 
         "rr": cfg["rr"]
     }
 

@@ -165,8 +165,8 @@ class SherpaVelocityPullback(BaseStrategy):
         ema_50 = close.ewm(span=50, adjust=False).mean()
         ema_200 = close.ewm(span=200, adjust=False).mean()
         
-        # 2. RSI(3) with standard smoothing
-        rsi_period = 3
+        # 2. RSI(4) with standard smoothing
+        rsi_period = 4
         delta = close.diff()
         gain = delta.clip(lower=0)
         loss = -delta.clip(upper=0)
@@ -182,7 +182,7 @@ class SherpaVelocityPullback(BaseStrategy):
         c_rsi = rsi.iloc[-2]
         
         # Long pullbacks in high-velocity uptrend
-        if c_close > c_ema50 and c_ema50 > c_ema200 and c_rsi < 10:
+        if c_close > c_ema50 and c_ema50 > c_ema200 and c_rsi < 15:
             return "LONG"
             
         return None

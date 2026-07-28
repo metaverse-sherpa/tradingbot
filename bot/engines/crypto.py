@@ -91,7 +91,9 @@ async def theory_trades_resolution_engine(application):
                             close_time = int(time.time() * 1000)
                             pnl_raw = exit_price - entry_price if side == 'buy' else entry_price - exit_price
                             pnl_pct = (pnl_raw / entry_price) * 100
-                            pnl_usdt = position_size * pnl_raw
+                            gross_usdt = position_size * pnl_raw
+                            fee_usdt = (position_size * entry_price + position_size * exit_price) * 0.0005
+                            pnl_usdt = gross_usdt - fee_usdt
                             
                             current_bal = database.get_theoretical_balance()
                             new_bal = current_bal + pnl_usdt

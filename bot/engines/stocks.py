@@ -144,7 +144,7 @@ async def alpaca_fractional_monitor_engine(application):
                                         import pandas as pd
                                         from custom_strategy_interpreter import CustomStrategyInterpreter
                                         interpreter = CustomStrategyInterpreter(strategy_config)
-                                        db_conn_2 = sqlite3.connect("data/stock_market_data.db")
+                                        db_conn_2 = sqlite3.connect("data/stock_daily_cache.db")
                                         df = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", db_conn_2, params=(sym,))
                                         db_conn_2.close()
                                         if len(df) >= 60:
@@ -158,10 +158,32 @@ async def alpaca_fractional_monitor_engine(application):
                                                 new_row = pd.DataFrame({'close': [close_price], 'high': [high_price], 'low': [low_price], 'open': [daily_bar.get('o', close_price)], 'volume': [daily_bar.get('v', 0)]}, index=[pd.to_datetime(today_str)])
                                                 df = pd.concat([df, new_row])
                                             processed_df = interpreter.build_indicators(df)
-                                            signal = interpreter.check_signal(processed_df, len(processed_df)-1)
-                                            if signal == "CLOSE_LONG" or signal == "SHORT":
+                                            if interpreter.evaluate_conditions(processed_df, len(processed_df)-1, interpreter.exit_conditions):
                                                 exit_reason = f"Dynamic Exit ({strategy_name})"
                                                 exit_price = close_price
+                                else:
+                                    # Built-in Sherpa Velocity Pullback Dynamic Exit
+                                    import sqlite3
+                                    import pandas as pd
+                                    db_conn_2 = sqlite3.connect("data/stock_daily_cache.db")
+                                    df = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", db_conn_2, params=(sym,))
+                                    db_conn_2.close()
+                                    if len(df) >= 60:
+                                        df['date'] = pd.to_datetime(df['date'])
+                                        df.set_index('date', inplace=True)
+                                        df.sort_index(inplace=True)
+                                        df['sma_5'] = df['close'].rolling(window=5).mean()
+                                        delta = df['close'].diff()
+                                        gain = delta.clip(lower=0)
+                                        loss = -delta.clip(upper=0)
+                                        avg_gain = gain.rolling(window=4).mean()
+                                        avg_loss = loss.rolling(window=4).mean()
+                                        rs = avg_gain / (avg_loss + 1e-10)
+                                        df['rsi'] = 100 - (100 / (1 + rs))
+                                        last_bar = df.iloc[-1]
+                                        if last_bar['close'] > last_bar['sma_5'] or last_bar['rsi'] > 70:
+                                            exit_reason = "Dynamic Exit (SMA5 or RSI > 70)"
+                                            exit_price = close_price
                                 
                             if exit_reason:
                                 logger.info(f"Closing fractional {sym} for {chat_id}. Reason: {exit_reason} at {exit_price}")
