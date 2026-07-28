@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock, Trash2, AlertTriangle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore, useDashboardStore } from '../store/useStore';
 import LoadingDisplay from './LoadingDisplay';
@@ -52,6 +52,7 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
 
 
 const RecommendationsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, setUser } = useAuthStore();
   const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
   const activeTab: 'stocks' | 'crypto' = categoryTab === 'stock' ? 'stocks' : 'crypto';
@@ -184,6 +185,17 @@ const RecommendationsPage: React.FC = () => {
 
   const handleOpenLiveTrade = async (rec: any, e: React.MouseEvent, allowRisk = false) => {
     e.stopPropagation();
+    
+    const isStock = rec.category?.toLowerCase() === 'stock';
+    const hasKeys = isStock ? Boolean(user?.has_alpaca_keys) : Boolean(user?.has_exchange_keys);
+    
+    if (!hasKeys) {
+      if (window.confirm(`To execute live ${isStock ? 'stock' : 'crypto'} trades, you need to link your exchange account first. Would you like to go to Settings to set this up?`)) {
+        navigate('/settings');
+      }
+      return;
+    }
+
     const signalId = rec.id && String(rec.id).startsWith('rec_') ? rec.id : `rec_${rec.id}`;
     if (executingSignalId && !allowRisk) return;
 
