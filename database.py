@@ -131,7 +131,11 @@ class CoinbaseWrapper(ccxt.coinbase):
                             # Resolve the raw market ID (e.g. "ADP-20DEC30-CDE") to the canonical CCXT symbol (e.g. "ADA/USD:USD-301220")
                             canonical_symbol = prod_id.replace('-', '/')
                             if hasattr(self, 'markets_by_id') and self.markets_by_id and prod_id in self.markets_by_id:
-                                canonical_symbol = self.markets_by_id[prod_id].get('symbol', canonical_symbol)
+                                market_obj = self.markets_by_id[prod_id]
+                                if isinstance(market_obj, list) and len(market_obj) > 0:
+                                    market_obj = market_obj[0]
+                                if isinstance(market_obj, dict):
+                                    canonical_symbol = market_obj.get('symbol', canonical_symbol)
                             entry = float(item.get('avg_entry_price') or item.get('entry_price') or 0.0)
                             mark = float(item.get('current_price') or item.get('mark_price') or entry)
                             pnl = float(item.get('unrealized_pnl') or item.get('unrealized_pl') or 0.0)
@@ -230,7 +234,11 @@ class CoinbaseWrapperSync(ccxt_sync.coinbase):
                             # Resolve the raw market ID (e.g. "ADP-20DEC30-CDE") to the canonical CCXT symbol (e.g. "ADA/USD:USD-301220")
                             canonical_symbol = prod_id.replace('-', '/')
                             if hasattr(self, 'markets_by_id') and self.markets_by_id and prod_id in self.markets_by_id:
-                                canonical_symbol = self.markets_by_id[prod_id].get('symbol', canonical_symbol)
+                                market_obj = self.markets_by_id[prod_id]
+                                if isinstance(market_obj, list) and len(market_obj) > 0:
+                                    market_obj = market_obj[0]
+                                if isinstance(market_obj, dict):
+                                    canonical_symbol = market_obj.get('symbol', canonical_symbol)
                             entry = float(item.get('avg_entry_price') or item.get('entry_price') or 0.0)
                             mark = float(item.get('current_price') or item.get('mark_price') or entry)
                             pnl = float(item.get('unrealized_pnl') or item.get('unrealized_pl') or 0.0)
