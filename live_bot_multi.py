@@ -119,16 +119,29 @@ class MarketDataManager:
     async def fetch_ohlcv(self, symbol, timeframe, limit=250):
         if symbol not in self.ohlcv_cache:
             try:
-                ohlcv = await self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+                if not getattr(self.exchange, 'markets', None):
+                    await self.exchange.load_markets()
+                norm_sym = database.normalize_symbol(symbol, self.exchange_id, client=self.exchange)
+                ohlcv = await self.exchange.fetch_ohlcv(norm_sym, timeframe, limit=limit)
                 df = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
+                
+                # Check for contract multiplier (e.g. 1000 for 1000SHIB)
+                import re
+                base_part = norm_sym.split('/')[0] if '/' in norm_sym else norm_sym
+                m = re.match(r'^(\d+)', base_part)
+                multiplier = float(m.group(1)) if m else 1.0
+                
+                req_base = symbol.split('/')[0] if '/' in symbol else symbol
+                req_m = re.match(r'^(\d+)', req_base)
+                req_multiplier = float(req_m.group(1)) if req_m else 1.0
+                
+                if multiplier > 1.0 and req_multiplier == 1.0:
+                    for col in ["open", "high", "low", "close"]:
+                        df[col] = df[col] / multiplier
+
                 self.ohlcv_cache[symbol] = df
             except Exception as e:
                 log.error(f"MarketData fetch failed for {symbol}: {e}")
-                try:
-                    from utils_error import send_telegram_alert
-                    send_telegram_alert("Crypto Trading Engine (Market Data Fetch)", e)
-                except Exception:
-                    pass
                 return None
         return self.ohlcv_cache[symbol]
 
