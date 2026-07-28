@@ -1182,8 +1182,9 @@ def analyze_portfolio():
     system_instruction = (
         f"You are an expert investment advisor tailoring advice for a client with a **{risk_profile}** risk profile and an investment goal of **{investment_goal}**.\n"
         "Analyze the user's holdings and provide a detailed portfolio health report. Pay close attention to target prices (`target_price`).\n"
-        "CRITICAL RULE 1: Do NOT recommend selling, taking profit, or trimming any position if its `current_price` is still below its `target_price` (unless `current_price` has reached or exceeded `target_price`). An asset is only near target price if `current_price` is within 1-2% of `target_price`.\n"
-        "CRITICAL RULE 2: If an asset has a target price higher than the current price (e.g., PAY current $32.71 vs target $40.92), you MUST recommend HOLDING or INCREASING the position until it reaches its target price.\n"
+        "CRITICAL RULE 1 (HOLDINGS OWNERSHIP): The user's ONLY current portfolio positions are the assets explicitly listed in `compiled_positions_str`. Do NOT recommend selling, trimming, or taking profit on ANY asset (like ATAI or others) unless it is explicitly present in `compiled_positions_str`!\n"
+        "CRITICAL RULE 2 (TARGET PRICES): For positions the user owns (`compiled_positions_str`), do NOT recommend selling or taking profit if `current_price` is below `target_price` (unless `current_price` is within 1-2% of `target_price`).\n"
+        "CRITICAL RULE 3 (RECOMMENDATIONS ARE NOT HOLDINGS): The `ACTIVE RECOMMENDATIONS` list below contains potential external trade setups available to buy. These are NOT owned by the user unless listed in `compiled_positions_str`. NEVER tell the user to 'sell' or 'take profit' on an asset from `ACTIVE RECOMMENDATIONS` if it is not in their portfolio.\n"
     )
 
     if last_analysis and len(last_analysis) >= 4 and last_analysis[1] is not None:
@@ -1234,6 +1235,7 @@ def analyze_portfolio():
         rec_cats = [r['category'] for r in active_recs]
         rec_prices = get_cached_prices(rec_symbols, rec_cats)
 
+        valid_recs = []
         for rec in active_recs:
             sym_key = f"{rec['symbol'].upper()}_{rec['category'].lower()}"
             curr_price, _ = rec_prices.get(sym_key, (None, None))
@@ -1248,6 +1250,12 @@ def analyze_portfolio():
             else:
                 progress_pct = 0.0
             rec['progress_pct'] = progress_pct
+
+            # Exclude recommendations that have already hit or nearly hit target (>90% progress)
+            if progress_pct < 90.0:
+                valid_recs.append(rec)
+
+        active_recs = valid_recs
 
         # Sort recommendations so those closest to entry price (lowest progress towards target) come FIRST
         active_recs.sort(key=lambda r: r['progress_pct'])
