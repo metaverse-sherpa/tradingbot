@@ -217,7 +217,7 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper", web_
     }
 
 
-async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual=False):
+async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual=False, allow_liquidation_risk=False, return_details=False):
     """
     Core Order Execution Engine
     """
@@ -257,17 +257,17 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         if signal["side"] == "buy":
             if lp <= sl:
                 log.warning("⚠️ Skipping %s: current price %.8g is already at or below fixed SL %.8g", symbol, lp, sl)
-                return None
+                return {"error": True, "message": f"Current price ({lp}) is already below Stop Loss ({sl})"} if return_details else None
             if lp >= tp:
                 log.warning("⚠️ Skipping %s: current price %.8g is already at or above fixed TP %.8g", symbol, lp, tp)
-                return None
+                return {"error": True, "message": f"Current price ({lp}) is already above Take Profit ({tp})"} if return_details else None
         else:
             if lp >= sl:
                 log.warning("⚠️ Skipping %s: current price %.8g is already at or above fixed SL %.8g", symbol, lp, sl)
-                return None
+                return {"error": True, "message": f"Current price ({lp}) is already above Stop Loss ({sl})"} if return_details else None
             if lp <= tp:
                 log.warning("⚠️ Skipping %s: current price %.8g is already at or below fixed TP %.8g", symbol, lp, tp)
-                return None
+                return {"error": True, "message": f"Current price ({lp}) is already below Take Profit ({tp})"} if return_details else None
             
         max_possible_leverage = 10 if exchange.id == 'coinbase' else LEVERAGE
         trade_leverage = max_possible_leverage
@@ -284,9 +284,10 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         
         # Ensure leverage is at least 1x
         trade_leverage = max(1, trade_leverage)
-        
-        if trade_leverage < (10 if exchange.id == 'coinbase' else LEVERAGE):
-            log.info("ℹ️ Dynamic Leverage adjustment for %s: reduced from %dx to %dx to protect SL (%.8g)", symbol, (10 if exchange.id == 'coinbase' else LEVERAGE), trade_leverage, sl)
+        leverage_reduced = trade_leverage < max_possible_leverage
+
+        if leverage_reduced:
+            log.info("ℹ️ Dynamic Leverage adjustment for %s: reduced from %dx to %dx to protect SL (%.8g)", symbol, max_possible_leverage, trade_leverage, sl)
 
         contract_size = float(market.get('contractSize') or 1)
         if contract_size <= 0: contract_size = 1
@@ -312,9 +313,12 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         except Exception:
             size = round(size, 3)
             
-        if size <= 0: return None
+        if size <= 0: 
+            msg = f"Calculated order position size for {symbol} is 0. Check equity/risk settings."
+            return {"error": True, "message": msg} if return_details else None
 
         # 🛡️ DYNAMIC LEVERAGE SYNC
+        leverage_set_success = True
         if exchange.has.get('setLeverage', False):
             try:
                 params = {}
@@ -322,20 +326,56 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
                     params['side'] = 'LONG' if signal["side"] == 'buy' else 'SHORT'
                 await exchange.set_leverage(trade_leverage, symbol, params=params)
             except Exception as le:
-                log.warning("⚠️ Leverage set failed for %s: %s. Continuing with caution.", symbol, le)
+                log.warning("⚠️ Leverage set failed for %s: %s.", symbol, le)
+                leverage_set_success = False
+
+        # Option B: If leverage reduction failed and leverage reduction was required to protect SL
+        if leverage_reduced and not leverage_set_success and not allow_liquidation_risk:
+            msg = (
+                f"⚠️ Unable to automatically set leverage to {trade_leverage}x on your {exchange.id.capitalize()} account. "
+                f"The default {max_possible_leverage}x leverage risks premature liquidation before your Stop Loss (${sl:.8g}) is hit."
+            )
+            log.warning(msg)
+            if return_details:
+                return {
+                    "error": True,
+                    "code": "LEVERAGE_SET_FAILED",
+                    "require_confirmation": True,
+                    "suggested_leverage": trade_leverage,
+                    "message": msg
+                }
+            return None
 
         # Risk Check: Liquidation vs Stop Loss
-        # Institutional Buffer: Entry * (1 - 1/Lev + 2.5% Safety Margin)
-        liq_buffer = (1 / trade_leverage) - 0.025 
+        effective_leverage = trade_leverage if leverage_set_success else max_possible_leverage
+        liq_buffer = (1 / effective_leverage) - 0.040 
         if signal["side"] == "buy":
             est_liq = lp * (1 - liq_buffer)
-            if sl <= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Long SL (%.8g) is beyond safety Liq (%.8g) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
+            if sl <= est_liq and not allow_liquidation_risk:
+                msg = f"⚠️ Liquidation Risk: Stop Loss (${sl:.8g}) is beyond estimated liquidation price (${est_liq:.8g}) at {effective_leverage}x leverage."
+                log.warning("⚠️ RISK ALERT: %s Long SL (%.8g) is beyond safety Liq (%.8g) at %dx leverage.", symbol, sl, est_liq, effective_leverage)
+                if return_details:
+                    return {
+                        "error": True,
+                        "code": "LIQUIDATION_RISK",
+                        "require_confirmation": True,
+                        "suggested_leverage": trade_leverage,
+                        "message": msg
+                    }
                 return None
         else: # Short
             est_liq = lp * (1 + liq_buffer)
-            if sl >= est_liq:
-                log.warning("⚠️ RISK ALERT: %s Short SL (%.8g) is beyond safety Liq (%.8g) even at %dx leverage. Skipping.", symbol, sl, est_liq, trade_leverage)
+            if sl >= est_liq and not allow_liquidation_risk:
+                msg = f"⚠️ Liquidation Risk: Stop Loss (${sl:.8g}) is beyond estimated liquidation price (${est_liq:.8g}) at {effective_leverage}x leverage."
+                log.warning("⚠️ RISK ALERT: %s Short SL (%.8g) is beyond safety Liq (%.8g) at %dx leverage.", symbol, sl, est_liq, effective_leverage)
+                if return_details:
+                    return {
+                        "error": True,
+                        "code": "LIQUIDATION_RISK",
+                        "require_confirmation": True,
+                        "suggested_leverage": trade_leverage,
+                        "message": msg
+                    }
                 return None
 
         log.info("🔔 SIGNAL on %s: %s | Entry: %.8g | SL: %.8g | TP: %.8g", symbol, signal["side"].upper(), lp, sl, tp)
@@ -374,11 +414,27 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
         except Exception as e:
             raise e
             
-        log.info("✅ Order placed for %s on %s", symbol, exchange.id)
-        return {"symbol": symbol.split("/")[0], "side": "BUY", "size": size, "entry": lp, "tp": tp, "sl": sl}
+        # Option A confirmation text if leverage was reduced
+        if leverage_reduced and leverage_set_success:
+            msg = f"✅ Trade opened for {symbol}! Leverage was automatically reduced from {max_possible_leverage}x to {trade_leverage}x so the trade cannot be liquidated before reaching your Stop Loss (unless leverage is manually changed on your exchange)."
+        else:
+            msg = f"✅ Order placed for {symbol} on {exchange.id} at {effective_leverage}x leverage."
+
+        log.info(msg)
+        return {
+            "symbol": symbol.split("/")[0],
+            "side": "BUY" if signal["side"] == "buy" else "SELL",
+            "size": size,
+            "entry": lp,
+            "tp": tp,
+            "sl": sl,
+            "leverage": effective_leverage,
+            "leverage_reduced": leverage_reduced,
+            "message": msg
+        }
     except Exception as e:
         log.error("❌ Order failed for %s: %s", symbol, e)
-        return None
+        return {"error": True, "message": f"Order failed for {symbol}: {e}"} if return_details else None
 
 
 async def process_user_on_symbol(user, symbol, signal):

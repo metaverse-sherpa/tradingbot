@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock, Trash2 } from 'lucide-react';
+import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock, Trash2, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
@@ -171,10 +171,14 @@ const RecommendationsPage: React.FC = () => {
     }
   };
 
-  const handleOpenLiveTrade = async (rec: any, e: React.MouseEvent) => {
+  const [riskModalData, setRiskModalData] = useState<{ signalId: string; message: string } | null>(null);
+  const [acknowledgedRisk, setAcknowledgedRisk] = useState(false);
+  const [submittingRiskOverride, setSubmittingRiskOverride] = useState(false);
+
+  const handleOpenLiveTrade = async (rec: any, e: React.MouseEvent, allowRisk = false) => {
     e.stopPropagation();
-    const signalId = `rec_${rec.id}`;
-    if (executingSignalId) return;
+    const signalId = rec.id && String(rec.id).startsWith('rec_') ? rec.id : `rec_${rec.id}`;
+    if (executingSignalId && !allowRisk) return;
 
     if (rec.category?.toLowerCase() === 'stock' && !isStockMarketOpen()) {
       setQueueModalSignal({ id: signalId, symbol: rec.symbol });
@@ -184,16 +188,31 @@ const RecommendationsPage: React.FC = () => {
 
     setExecutingSignalId(signalId);
     try {
-      const res = await api.post('/user/manual-trade', { signal_id: signalId });
+      const res = await api.post('/user/manual-trade', { 
+        signal_id: signalId,
+        allow_liquidation_risk: allowRisk
+      });
       if (res.data?.success) {
         alert(res.data?.message || '✅ Live trade executed successfully!');
+        if (riskModalData) setRiskModalData(null);
       } else {
-        alert(res.data?.error || 'Failed to execute trade.');
+        const errMsg = res.data?.error || res.data?.message || 'Failed to execute trade.';
+        if (!allowRisk && (errMsg.includes('Liquidation Risk') || errMsg.includes('Unable to automatically set leverage'))) {
+          setRiskModalData({ signalId, message: errMsg });
+          setAcknowledgedRisk(false);
+        } else {
+          alert(`❌ ${errMsg}`);
+        }
       }
     } catch (err: any) {
       console.error('Manual trade execution error:', err);
       const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to execute live trade.';
-      alert(`❌ ${errMsg}`);
+      if (!allowRisk && (errMsg.includes('Liquidation Risk') || errMsg.includes('Unable to automatically set leverage'))) {
+        setRiskModalData({ signalId, message: errMsg });
+        setAcknowledgedRisk(false);
+      } else {
+        alert(`❌ ${errMsg}`);
+      }
     } finally {
       setExecutingSignalId(null);
       fetchRecommendations(true);
@@ -1104,6 +1123,54 @@ const RecommendationsPage: React.FC = () => {
                 className="flex-1 py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(60,215,255,0.3)] flex items-center justify-center gap-2"
               >
                 {submittingQueue ? 'Saving...' : 'Confirm Choice'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Liquidation Risk Warning Modal */}
+      {riskModalData && (
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#181920] border border-amber-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-400 font-bold text-lg">
+              <AlertTriangle size={24} /> Liquidation Risk Warning
+            </div>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              {riskModalData.message}
+            </p>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="ack_risk"
+                checked={acknowledgedRisk}
+                onChange={(e) => setAcknowledgedRisk(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-amber-500/40 text-amber-500 focus:ring-amber-500 bg-black/40"
+              />
+              <label htmlFor="ack_risk" className="text-xs text-amber-200/90 leading-tight cursor-pointer font-medium">
+                I acknowledge that this trade carries liquidation risk before hitting Stop Loss, and I want to proceed at existing leverage.
+              </label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRiskModalData(null)}
+                className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold rounded-xl text-xs transition-colors"
+              >
+                Cancel Trade
+              </button>
+              <button
+                type="button"
+                disabled={!acknowledgedRisk || submittingRiskOverride}
+                onClick={async (e) => {
+                  setSubmittingRiskOverride(true);
+                  const recObj = recommendations.find(r => `rec_${r.id}` === riskModalData.signalId);
+                  await handleOpenLiveTrade(recObj || { id: riskModalData.signalId.replace('rec_', '') }, e, true);
+                  setSubmittingRiskOverride(false);
+                }}
+                className="flex-1 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 font-bold rounded-xl text-xs transition-all disabled:opacity-40"
+              >
+                {submittingRiskOverride ? 'Processing...' : 'Proceed Anyway'}
               </button>
             </div>
           </div>

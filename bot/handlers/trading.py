@@ -1871,11 +1871,11 @@ async def panic_close_all(chat_id):
         
     return True, "\n".join(results)
 
-async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
+async def execute_manual_trade(chat_id: int, trade_id: str, allow_liquidation_risk: bool = False) -> tuple[bool, str]:
     """
     Executes a theoretical trade on a user's live account using current market prices 
     to dynamically recalculate the correct position size and risk allocation.
-    Returns (success, message)
+    Returns (success, message) or details dict
     """
     import database
     import logging
@@ -2113,8 +2113,8 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
                 "rr": abs(tp_price - current_price) / abs(current_price - sl_price) if abs(current_price - sl_price) > 0 else 2.0
             }
             
-            res = await live_bot_multi.place_order(exchange, norm_sym, signal_data, equity, risk_pct=user_risk, is_manual=True)
-            if res:
+            res = await live_bot_multi.place_order(exchange, norm_sym, signal_data, equity, risk_pct=user_risk, is_manual=True, allow_liquidation_risk=allow_liquidation_risk, return_details=True)
+            if res and not res.get("error"):
                 database.update_position_status(chat_id, True, web_user_id=user.get('id'))
                 try:
                     with database.db_session() as conn:
@@ -2133,7 +2133,8 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
                         RESPONSE_CACHE.clear()
                 except Exception:
                     pass
-                msg = (
+                
+                custom_msg = res.get('message') or (
                     "✅ *MANUAL TRADE EXECUTED (Crypto)* 🪙\n\n"
                     f"Successfully opened `{res.get('size', '')}` units {side.upper()} position on **{sym}**!\n"
                     f"• Target Entry: `{t['entry_price']}`\n"
@@ -2142,9 +2143,10 @@ async def execute_manual_trade(chat_id: int, trade_id: str) -> tuple[bool, str]:
                     f"• Target SL: `{sl_price}`\n\n"
                     f"_The live auto-trader will actively manage this position going forward._"
                 )
-                return True, msg
+                return True, custom_msg
             else:
-                return False, f"❌ Trading engine order placement failed for {sym}. Please check exchange risk limits or margin balance."
+                err_msg = res.get('message') if res else f"❌ Trading engine order placement failed for {sym}. Please check exchange risk limits or margin balance."
+                return False, err_msg
         except Exception as e:
             logger.error(f"Crypto manual exec engine error: {e}")
             return False, f"❌ Failed to execute trade: {e}"

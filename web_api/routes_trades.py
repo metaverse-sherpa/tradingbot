@@ -2877,13 +2877,15 @@ def manual_trade():
     if not chat_id:
         chat_id = user["id"] + 1000000000
         
+    allow_liquidation_risk = bool(data.get("allow_liquidation_risk", False))
+    
     from bot.handlers.trading import execute_manual_trade
     
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        success, msg = loop.run_until_complete(execute_manual_trade(chat_id, trade_id))
-        return jsonify({"success": success, "message": msg}), 200 if success else 400
+        success, msg = loop.run_until_complete(execute_manual_trade(chat_id, trade_id, allow_liquidation_risk=allow_liquidation_risk))
+        return jsonify({"success": success, "message": msg, "error": None if success else msg}), 200 if success else 400
     except Exception as e:
         import traceback
         traceback.print_exc()
