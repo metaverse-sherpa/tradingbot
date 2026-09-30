@@ -2957,18 +2957,49 @@ def share_card():
         if not symbol:
             return jsonify({"error": "Symbol is required"}), 400
             
+        trade_type = request.args.get("trade_type") or request.args.get("asset_type")
+        leverage_param = request.args.get("leverage")
+        leverage = None
+        if leverage_param is not None:
+            try:
+                leverage = float(leverage_param)
+            except ValueError:
+                leverage = None
+
+        # Fallback: if leverage not explicitly provided for crypto, inspect user's open positions cache
+        if leverage is None and trade_type != "stock":
+            try:
+                cache_key = ("open_trades", user.get("id"), "crypto")
+                with RESPONSE_CACHE_LOCK:
+                    if cache_key in RESPONSE_CACHE:
+                        _, cached_trades = RESPONSE_CACHE[cache_key]
+                        clean_search = symbol.split(':')[0].split('/')[0].split('-')[0].upper()
+                        for t in cached_trades:
+                            t_sym = str(t.get("symbol") or "").split(':')[0].split('/')[0].split('-')[0].upper()
+                            if t_sym == clean_search and t.get("leverage") is not None:
+                                leverage = float(t.get("leverage"))
+                                break
+            except Exception:
+                pass
+
         card_path = media_gen.generate_pnl_card(
             symbol, side, roe, entry, mark,
             hide_dollars=hide_dollars,
             pnl_usdt=pnl_usdt,
             user_id=str(ref_id),
-            ref_link=ref_link
+            ref_link=ref_link,
+            leverage=leverage,
+            trade_type=trade_type
         )
     else:
         return jsonify({"error": "Invalid card type"}), 400
 
     if card_path and os.path.exists(card_path):
-        return send_file(card_path, mimetype="image/jpeg", as_attachment=False)
+        resp = make_response(send_file(card_path, mimetype="image/jpeg", as_attachment=False))
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
     else:
         return jsonify({"error": "Failed to generate card image"}), 500
 

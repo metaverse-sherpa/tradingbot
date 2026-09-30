@@ -11,7 +11,7 @@ interface SharePnLModalProps {
   pnl?: number;
 }
 
-const SharePnLModal: React.FC<SharePnLModalProps> = ({ trade, stat, onClose, roe, pnl }) => {
+const SharePnLModal: React.FC<SharePnLModalProps> = ({ trade, stat, type, onClose, roe, pnl }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingText, setLoadingText] = useState('Generating your premium card...');
@@ -61,6 +61,18 @@ const SharePnLModal: React.FC<SharePnLModalProps> = ({ trade, stat, onClose, roe
             responseType: 'blob'
           });
         } else {
+          // Resolve leverage: use trade.leverage if present, or fallback based on type/strategy
+          let resolvedLeverage = trade?.leverage;
+          if (resolvedLeverage === undefined || resolvedLeverage === null) {
+            if (type === 'stock' || trade?.type === 'stock') {
+              resolvedLeverage = 1;
+            } else if (trade?.is_recommendation || trade?.strategy === 'AI Recommendations Autopilot' || trade?.strategy?.toLowerCase().includes('recommendation')) {
+              resolvedLeverage = 1;
+            } else {
+              resolvedLeverage = 20;
+            }
+          }
+
           const queryParams = new URLSearchParams({
             type: 'trade',
             symbol: symbol.split('/')[0],
@@ -69,6 +81,9 @@ const SharePnLModal: React.FC<SharePnLModalProps> = ({ trade, stat, onClose, roe
             entry: entry.toString(),
             mark: mark.toString(),
             pnl_usdt: (pnl || 0).toString(),
+            leverage: resolvedLeverage.toString(),
+            trade_type: (type === 'stock' || trade?.type === 'stock') ? 'stock' : 'crypto',
+            t: Date.now().toString()
           });
           response = await api.get(`/share/card?${queryParams.toString()}`, {
             responseType: 'blob'

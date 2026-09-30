@@ -69,7 +69,7 @@ def add_qr_code(base_img, link, size=180):
         print(f"⚠️ Error generating QR code: {e}")
         return base_img
 
-def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id="", bot_username="metaversesherpa_trading_bot", ref_link=None):
+def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usdt=0, user_id="", bot_username="metaversesherpa_trading_bot", ref_link=None, leverage=None, trade_type=None):
     """
     Generates a professional PnL card using the brand logo as the background.
     """
@@ -102,12 +102,47 @@ def generate_pnl_card(symbol, side, roe, entry, mark, hide_dollars=True, pnl_usd
     margin_x = 50
     margin_y = 50
     
-    # 1. Symbol
-    clean_sym = symbol.split(':')[0]
-    draw_text_shadow((margin_x, margin_y), f"{clean_sym} PERP", font=font_main, fill=color_white)
+    # 1. Clean Symbol & Asset Type
+    clean_sym = symbol.split(':')[0].split('/')[0].split('-')[0].strip()
     
-    # 2. Side
-    draw_text_shadow((margin_x, margin_y + 80), f"{side.upper()} 20X", font=font_sub, fill=color_neon)
+    is_stock_trade = trade_type == 'stock'
+    if trade_type is None:
+        try:
+            from bot.config import is_stock
+            if is_stock(symbol):
+                is_stock_trade = True
+        except Exception:
+            pass
+
+    side_str = side.upper() if side else "LONG"
+    if side_str in ["BUY", "B"]:
+        side_str = "LONG"
+    elif side_str in ["SELL", "S"]:
+        side_str = "SHORT"
+
+    if is_stock_trade:
+        header_text = f"{clean_sym} STOCK"
+        side_text = side_str
+    else:
+        if leverage is not None:
+            try:
+                lev_float = float(leverage)
+            except (ValueError, TypeError):
+                lev_float = 20.0
+            
+            if lev_float <= 1.0:
+                header_text = f"{clean_sym} SPOT"
+                side_text = side_str
+            else:
+                lev_display = int(lev_float) if lev_float.is_integer() else round(lev_float, 1)
+                header_text = f"{clean_sym} PERP"
+                side_text = f"{side_str} {lev_display}X"
+        else:
+            header_text = f"{clean_sym} PERP"
+            side_text = f"{side_str} 20X"
+
+    draw_text_shadow((margin_x, margin_y), header_text, font=font_main, fill=color_white)
+    draw_text_shadow((margin_x, margin_y + 80), side_text, font=font_sub, fill=color_neon)
     
     # 3. ROE (Bottom Left)
     roe_text = f"{roe:+.2f}%"
