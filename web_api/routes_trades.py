@@ -2542,24 +2542,63 @@ def _update_free_stats_cache():
             rec_closed_total = rec_hits + rec_stops
             rec_win_rate = round((rec_hits / rec_closed_total) * 100, 1) if rec_closed_total > 0 else 63.0
 
-            # Calculate realized PnL %
+            # Calculate realized & unrealized PnL % assuming 1% account risk per recommendation
+            # Risk per trade = 1% of account balance (0.01)
+            # Position size (as fraction of capital) = 0.01 / risk_fraction
             rec_realized_sum = 0.0
             for r in rec_rows:
                 entry = float(r.get('entry_price') or 0.0)
-                if entry > 0:
-                    if r['status'] == 'hit_target':
-                        target = float(r.get('target_price') or entry)
-                        rec_realized_sum += ((target - entry) / entry) * 100
-                    elif r['status'] == 'hit_stop_loss':
-                        sl = float(r.get('stop_loss') or entry)
-            # Calculate unrealized PnL % for active recommendations
+                if entry <= 0:
+                    continue
+                target = float(r.get('target_price') or entry)
+                sl_price = float(r.get('stop_loss') or 0.0)
+
+                # Determine initial risk % (stop loss distance from entry)
+                if 0 < sl_price < entry:
+                    risk_pct = (entry - sl_price) / entry
+                elif target > entry:
+                    # Trailing stop or missing SL: derive from min 2:1 R:R target distance
+                    risk_pct = max(0.05, min(0.15, ((target - entry) / entry) / 2.0))
+                else:
+                    risk_pct = 0.10
+
+                # Bound risk percentage between 2% and 25% for sane position sizing
+                risk_pct = max(0.02, min(0.25, risk_pct))
+                
+                # Position allocation as a fraction of account capital to risk exactly 1% (0.01)
+                pos_weight = min(0.25, 0.01 / risk_pct)
+
+                if r['status'] == 'hit_target':
+                    trade_return = (target - entry) / entry
+                    rec_realized_sum += (trade_return * pos_weight) * 100.0
+                elif r['status'] == 'hit_stop_loss':
+                    exit_sl = sl_price if sl_price > 0 else (entry * (1.0 - risk_pct))
+                    trade_return = (exit_sl - entry) / entry
+                    rec_realized_sum += (trade_return * pos_weight) * 100.0
+
+            # Calculate unrealized PnL % for active recommendations assuming 1% account risk per trade
             rec_unrealized_sum = 0.0
             for r in rec_rows:
                 if r['status'] == 'active':
                     entry = float(r.get('entry_price') or 0.0)
+                    if entry <= 0:
+                        continue
+                    target = float(r.get('target_price') or entry)
+                    sl_price = float(r.get('stop_loss') or 0.0)
+
+                    if 0 < sl_price < entry:
+                        risk_pct = (entry - sl_price) / entry
+                    elif target > entry:
+                        risk_pct = max(0.05, min(0.15, ((target - entry) / entry) / 2.0))
+                    else:
+                        risk_pct = 0.10
+
+                    risk_pct = max(0.02, min(0.25, risk_pct))
+                    pos_weight = min(0.25, 0.01 / risk_pct)
+
                     curr = float(r.get('current_price') or entry)
-                    if entry > 0 and curr > 0:
-                        rec_unrealized_sum += ((curr - entry) / entry) * 100
+                    trade_return = (curr - entry) / entry
+                    rec_unrealized_sum += (trade_return * pos_weight) * 100.0
 
             stats_data.insert(0, {
                 "name": "AI Recommendations Autopilot",

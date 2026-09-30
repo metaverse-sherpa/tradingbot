@@ -223,7 +223,7 @@ const SignalsPage: React.FC = () => {
               {formatPercent(stat.realized_pct)}
             </span>
           </li>
-          {stat.unrealized_pct !== undefined && stat.unrealized_pct !== null && !isAiRecs && (
+          {stat.unrealized_pct !== undefined && stat.unrealized_pct !== null && (
             <li className="flex items-center text-gray-300">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-500 mr-2"></span>
               Unrealized PnL:&nbsp;
