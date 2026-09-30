@@ -792,12 +792,15 @@ def get_active_signals_internal(bypass_cache=False):
                     sym = f"{sym}/USDT"
                 c_at = rd.get('created_at') or int(time.time())
                 open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
+                entry = float(rd.get('entry_price') or 0.0)
+                curr = float(rd.get('current_price') or entry)
+                pnl_pct = ((curr - entry) / entry * 100.0) if entry > 0 and curr > 0 else 0.0
                 signals.append({
                     "id": f"rec_{rd['id']}",
                     "symbol": sym,
                     "side": "BUY",
-                    "entry_price": float(rd.get('entry_price') or 0.0),
-                    "current_price": float(rd.get('current_price') or rd.get('entry_price') or 0.0),
+                    "entry_price": entry,
+                    "current_price": curr,
                     "tp_price": float(rd.get('target_price') or 0.0),
                     "sl_price": float(rd.get('stop_loss') or 0.0),
                     "open_time": open_ts,
@@ -805,7 +808,9 @@ def get_active_signals_internal(bypass_cache=False):
                     "strategy": "AI Recommendations Autopilot",
                     "category": "crypto",
                     "is_recommendation": True,
-                    "leverage": 2
+                    "leverage": 1,
+                    "pnl_pct": round(pnl_pct, 2),
+                    "pnl_usdt": round(1000.0 * (pnl_pct / 100.0), 2)
                 })
         except Exception as e:
             print(f"Error reading AIRecommendations in fallback: {e}")
@@ -1959,7 +1964,7 @@ def _update_active_signals_cache():
                         "strategy": "AI Recommendations Autopilot",
                         "category": "crypto",
                         "is_recommendation": True,
-                        "leverage": 2
+                        "leverage": 1
                     })
             except Exception as rec_err:
                 print(f"Error querying active AIRecommendations in signals: {rec_err}")
@@ -2039,25 +2044,30 @@ def _update_active_signals_cache():
                     if not crypto_syms:
                         return
                     try:
-                        async with session.get("https://api.binance.us/api/v3/ticker/price", timeout=2) as resp:
+                        async with session.get("https://api.binance.com/api/v3/ticker/price", timeout=3) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
                                 binance_prices = {item['symbol']: float(item['price']) for item in data}
                                 for sym in crypto_syms:
                                     clean = sym.split(':')[0].replace('/', '')
-                                    if clean in binance_prices:
-                                        prices[sym] = binance_prices[clean]
-                                return
-                        async with session.get("https://api.binance.com/api/v3/ticker/price", timeout=2) as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                binance_prices = {item['symbol']: float(item['price']) for item in data}
-                                for sym in crypto_syms:
-                                    clean = sym.split(':')[0].replace('/', '')
-                                    if clean in binance_prices:
+                                    if clean in binance_prices and sym not in prices:
                                         prices[sym] = binance_prices[clean]
                     except Exception as e:
-                        print(f"Error fetching Binance tickers: {e}")
+                        print(f"Error fetching Binance global tickers: {e}")
+
+                    remaining = [s for s in crypto_syms if s not in prices]
+                    if remaining:
+                        try:
+                            async with session.get("https://api.binance.us/api/v3/ticker/price", timeout=3) as resp:
+                                if resp.status == 200:
+                                    data = await resp.json()
+                                    binance_prices = {item['symbol']: float(item['price']) for item in data}
+                                    for sym in remaining:
+                                        clean = sym.split(':')[0].replace('/', '')
+                                        if clean in binance_prices and sym not in prices:
+                                            prices[sym] = binance_prices[clean]
+                        except Exception as e:
+                            print(f"Error fetching Binance US tickers: {e}")
 
                 async def fetch_blofin():
                     if not crypto_syms:
@@ -2119,7 +2129,25 @@ def _update_active_signals_cache():
                     return 0.0
                 crypto_results = await asyncio.gather(*(get_crypto_price(sym) for sym in remaining_crypto))
                 for i, sym in enumerate(remaining_crypto):
-                    prices[sym] = crypto_results[i]
+                    if crypto_results[i] > 0:
+                        prices[sym] = crypto_results[i]
+
+            still_missing_crypto = [sym for sym in crypto_syms if sym not in prices]
+            if still_missing_crypto:
+                try:
+                    import yfinance as yf
+                    for sym in still_missing_crypto:
+                        base = sym.split('/')[0].split(':')[0].split('-')[0]
+                        yf_sym = f"{base}-USD"
+                        try:
+                            t = yf.Ticker(yf_sym)
+                            p = float(t.fast_info.get("lastPrice", 0.0))
+                            if p > 0:
+                                prices[sym] = p
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
 
             return [prices.get(sig.get("symbol", ""), 0.0) for sig in sigs]
 
@@ -2163,9 +2191,19 @@ def _update_active_signals_cache():
                 sig["pnl_usdt"] = pnl_val
                 sig["current_price"] = current
             elif entry > 0:
-                sig["pnl_pct"] = 0.0
-                sig["pnl_usdt"] = 0.0
-                sig["current_price"] = entry
+                rec_curr = float(sig.get("current_price") or 0.0)
+                if rec_curr > 0:
+                    pnl_raw = rec_curr - entry if is_long else entry - rec_curr
+                    pnl_pct = (pnl_raw / entry) * 100
+                    if not is_stk and not sig.get("is_recommendation") and sig.get("strategy") != "AI Recommendations Autopilot":
+                        pnl_pct *= CRYPTO_LEVERAGE
+                    sig["pnl_pct"] = pnl_pct
+                    sig["pnl_usdt"] = pos_size * (pnl_pct / 100)
+                    sig["current_price"] = rec_curr
+                else:
+                    sig["pnl_pct"] = 0.0
+                    sig["pnl_usdt"] = 0.0
+                    sig["current_price"] = entry
             
         cache_key = "signals_active"
         with RESPONSE_CACHE_LOCK:
@@ -2256,12 +2294,15 @@ def get_active_signals():
                     sym = f"{sym}/USDT"
                 c_at = rd.get('created_at') or int(time.time())
                 open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
+                entry = float(rd.get('entry_price') or 0.0)
+                curr = float(rd.get('current_price') or entry)
+                pnl_pct = ((curr - entry) / entry * 100.0) if entry > 0 and curr > 0 else 0.0
                 signals.append({
                     "id": f"rec_{rd['id']}",
                     "symbol": sym,
                     "side": "BUY",
-                    "entry_price": float(rd.get('entry_price') or 0.0),
-                    "current_price": float(rd.get('current_price') or rd.get('entry_price') or 0.0),
+                    "entry_price": entry,
+                    "current_price": curr,
                     "tp_price": float(rd.get('target_price') or 0.0),
                     "sl_price": float(rd.get('stop_loss') or 0.0),
                     "open_time": open_ts,
@@ -2269,9 +2310,9 @@ def get_active_signals():
                     "strategy": "AI Recommendations Autopilot",
                     "category": "crypto",
                     "is_recommendation": True,
-                    "leverage": 2,
-                    "pnl_pct": 0.0,
-                    "pnl_usdt": 0.0
+                    "leverage": 1,
+                    "pnl_pct": round(pnl_pct, 2),
+                    "pnl_usdt": round(1000.0 * (pnl_pct / 100.0), 2)
                 })
     except Exception:
         signals = []

@@ -486,14 +486,24 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             sortedSignals.map((s: any, idx: number) => {
-              const pnlPct = s.pnl_pct || 0;
-              const isProfit = pnlPct >= 0;
               const isLong = s.side?.toUpperCase() === 'LONG' || s.side?.toUpperCase() === 'BUY';
+              const markPrice = s.current_price || s.mark_price || s.exit_price || 0;
+              const isAiRec = s.is_recommendation || s.strategy === 'AI Recommendations Autopilot' || s.strategy?.toLowerCase().includes('recommendation');
+
+              // Compute unleveraged / spot PnL matching chart progress and /recommendations
+              const computedPnl = (s.entry_price > 0 && markPrice > 0)
+                ? ((isLong ? (markPrice - s.entry_price) : (s.entry_price - markPrice)) / s.entry_price) * 100
+                : 0;
+
+              const pnlPct = isAiRec
+                ? (computedPnl !== 0 ? computedPnl : (s.pnl_pct || 0))
+                : (s.pnl_pct !== undefined && s.pnl_pct !== null && s.pnl_pct !== 0 ? s.pnl_pct : computedPnl);
+
+              const isProfit = pnlPct >= 0;
               let tp_pct = s.entry_price > 0 && s.tp_price > 0 ? Math.abs((s.tp_price - s.entry_price) / s.entry_price * 100) : 0;
               let sl_pct = s.entry_price > 0 && s.sl_price > 0 ? Math.abs((s.sl_price - s.entry_price) / s.entry_price * 100) : 0;
               
               const isExpanded = expandedSignalId === (s.id || idx.toString());
-              const markPrice = s.current_price || s.mark_price || s.exit_price || 0;
               const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(s.symbol || '')}&entry=${s.entry_price || 0}&tp=${s.tp_price || 0}&sl=${s.sl_price || 0}&side=${s.side || ''}&open_ts=${s.open_time || s.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(s.strategy || '')}&leverage=${s.leverage || 1}`;
 
               return (

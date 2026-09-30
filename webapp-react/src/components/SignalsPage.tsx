@@ -267,7 +267,18 @@ const SignalsPage: React.FC = () => {
 
   const renderSignalCard = (signal: any, type: 'crypto' | 'stock', tabState: 'active' | 'closed') => {
     const isLong = signal.side?.toUpperCase() === 'LONG' || signal.side?.toUpperCase() === 'BUY';
-    const pnlPct = signal.pnl_pct || 0;
+    const markPrice = signal.current_price || signal.mark_price || signal.exit_price || 0;
+    const isAiRec = signal.is_recommendation || signal.strategy === 'AI Recommendations Autopilot' || signal.strategy?.toLowerCase().includes('recommendation');
+
+    // Compute unleveraged / spot PnL matching chart progress and /recommendations
+    const computedPnl = (signal.entry_price > 0 && markPrice > 0)
+      ? ((isLong ? (markPrice - signal.entry_price) : (signal.entry_price - markPrice)) / signal.entry_price) * 100
+      : 0;
+
+    const pnlPct = isAiRec
+      ? (computedPnl !== 0 ? computedPnl : (signal.pnl_pct || 0))
+      : (signal.pnl_pct !== undefined && signal.pnl_pct !== null && signal.pnl_pct !== 0 ? signal.pnl_pct : computedPnl);
+
     const isProfit = pnlPct >= 0;
     const pnlColor = isProfit ? 'text-emerald-400' : 'text-rose-400';
     let tp_pct = signal.entry_price > 0 && signal.tp_price > 0 ? Math.abs((signal.tp_price - signal.entry_price) / signal.entry_price * 100) : 0;
@@ -280,7 +291,6 @@ const SignalsPage: React.FC = () => {
     const isExpanded = expandedId === signal.id;
     const isClosed = tabState === 'closed';
 
-    const markPrice = signal.current_price || signal.mark_price || signal.exit_price || 0;
     const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(signal.symbol || '')}&entry=${signal.entry_price || 0}&tp=${signal.tp_price || 0}&sl=${signal.sl_price || 0}&side=${signal.side || ''}&open_ts=${signal.open_time || signal.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(signal.strategy || '')}&leverage=${signal.leverage || 1}`;
 
     const cleanSym = (signal.symbol || '').replace('/', '').toUpperCase();

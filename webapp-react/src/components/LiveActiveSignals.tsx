@@ -32,8 +32,14 @@ const LiveActiveSignals: React.FC = () => {
           </div>
         ) : (
           signals.map((signal, idx) => {
-            const pnl = signal.pnl_pct || signal.unrealized_pnl_pct || 0;
             const isLong = signal.side === 'BUY' || signal.side === 'LONG';
+            const markPrice = signal.current_price || signal.mark_price || 0;
+            const computedPnl = (signal.entry_price > 0 && markPrice > 0)
+              ? ((isLong ? (markPrice - signal.entry_price) : (signal.entry_price - markPrice)) / signal.entry_price) * 100
+              : 0;
+            const pnl = (signal.pnl_pct !== undefined && signal.pnl_pct !== null && signal.pnl_pct !== 0)
+              ? signal.pnl_pct
+              : (signal.unrealized_pnl_pct || computedPnl);
             const pnlColor = pnl >= 0 ? 'text-[#00e676]' : 'text-rose-400';
             const sideColor = isLong ? 'text-[#00e676] bg-[#00e676]/20' : 'text-rose-400 bg-rose-500/20';
             const sideText = isLong ? 'LONG' : 'SHORT';
