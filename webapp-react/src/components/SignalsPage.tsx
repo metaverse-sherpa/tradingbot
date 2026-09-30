@@ -29,12 +29,31 @@ const SignalsPage: React.FC = () => {
   const [shareStat, setShareStat] = useState<{stat: any, type: string} | null>(null);
   const [userOpenTrades, setUserOpenTrades] = useState<any[]>([]);
   const [executingSignalId, setExecutingSignalId] = useState<string | number | null>(null);
+  const [closingTradeId, setClosingTradeId] = useState<string | null>(null);
   const [pendingTrades, setPendingTrades] = useState<Record<string, any>>({});
   const [cancellingSignalId, setCancellingSignalId] = useState<string | number | null>(null);
 
   const [queueModalSignal, setQueueModalSignal] = useState<any | null>(null);
   const [selectedQueueOption, setSelectedQueueOption] = useState<'auto_execute' | 'email_reminder'>('auto_execute');
   const [submittingQueue, setSubmittingQueue] = useState(false);
+
+  const normalizeBaseSymbol = (sym: string): string => {
+    if (!sym) return '';
+    let s = String(sym).toUpperCase().trim();
+    s = s.split(':')[0];
+    if (s.includes('/') || s.includes('-')) {
+      s = s.split('/')[0].split('-')[0];
+    } else {
+      if (s.endsWith('USDT') && s.length > 4) {
+        s = s.slice(0, -4);
+      } else if (s.endsWith('USD') && s.length > 3) {
+        s = s.slice(0, -3);
+      }
+    }
+    const strippedDigits = s.replace(/^\d+/, '');
+    const clean = (strippedDigits || s).replace(/[^A-Z0-9]/g, '');
+    return clean === 'TONCOIN' ? 'TON' : clean;
+  };
 
   const fetchPendingTrades = useCallback(async () => {
     try {
@@ -58,7 +77,7 @@ const SignalsPage: React.FC = () => {
         api.get(`/signals/active${showRefresh ? '?force=true' : ''}`),
         api.get('/signals/closed'),
         api.get(`/stats/free${showRefresh ? '?bypass_cache=true' : ''}`),
-        api.get(`/trades/open`).catch(() => ({ data: [] }))
+        api.get(`/trades/open${showRefresh ? '?bypass_cache=true' : ''}`).catch(() => ({ data: [] }))
       ]);
       setActiveSignals(activeRes.data || []);
       setClosedSignals(closedRes.data || []);
@@ -73,19 +92,63 @@ const SignalsPage: React.FC = () => {
     }
   }, [fetchPendingTrades]);
 
-  const handleOpenLiveTrade = async (signal: any, e: React.MouseEvent) => {
+  const handleCloseLiveTrade = async (signal: any, activePos: any, type: 'crypto' | 'stock', e: React.MouseEvent) => {
+    e.stopPropagation();
+    const cleanName = (signal.symbol || '').split('/')[0];
+    const confirmed = window.confirm(`⚠️ Are you sure you want to market close your open position for ${cleanName}?`);
+    if (!confirmed) return;
+
+    const posId = String(activePos.id || activePos.trade_id || signal.id);
+    setClosingTradeId(posId);
+    try {
+      const res = await api.post('/trades/close', {
+        id: posId,
+        type: activePos.type || type,
+        symbol: activePos.symbol || signal.symbol
+      });
+      if (res.data?.message || res.data?.success) {
+        setUserOpenTrades(prev => prev.filter((p: any) => p.symbol !== signal.symbol && p.symbol !== activePos.symbol));
+        alert(`✅ Position for ${cleanName} closed successfully!`);
+      } else {
+        alert(res.data?.error || 'Failed to close position.');
+      }
+    } catch (err: any) {
+      console.error('Error closing trade:', err);
+      const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to close position.';
+      alert(`❌ ${errMsg}`);
+    } finally {
+      setClosingTradeId(null);
+      fetchSignalsAndStats(true);
+    }
+  };
+
+  const handleOpenLiveTrade = async (signal: any, type: 'crypto' | 'stock', e: React.MouseEvent) => {
     e.stopPropagation();
     if (executingSignalId) return;
 
-    if (!isCryptoSymbol(signal.symbol) && !isStockMarketOpen()) {
-      setQueueModalSignal(signal);
+    const isStock = type === 'stock' || !isCryptoSymbol(signal.symbol);
+    const hasKeys = isStock ? Boolean(user?.has_alpaca_keys) : Boolean(user?.has_exchange_keys);
+    
+    if (!hasKeys) {
+      if (window.confirm(`To execute live ${isStock ? 'stock' : 'crypto'} trades, you need to link your exchange account first. Would you like to go to Settings to set this up?`)) {
+        navigate('/settings');
+      }
+      return;
+    }
+
+    const signalId = (signal.is_recommendation && !String(signal.id).startsWith('rec_'))
+      ? `rec_${signal.id}`
+      : signal.id;
+
+    if (isStock && !isStockMarketOpen()) {
+      setQueueModalSignal({ ...signal, id: signalId });
       setSelectedQueueOption('auto_execute');
       return;
     }
 
     setExecutingSignalId(signal.id);
     try {
-      const res = await api.post('/user/manual-trade', { signal_id: signal.id });
+      const res = await api.post('/user/manual-trade', { signal_id: signalId });
       if (res.data?.success) {
         alert(res.data?.message || '✅ Live trade executed successfully!');
       } else {
@@ -295,8 +358,12 @@ const SignalsPage: React.FC = () => {
     const stratParam = isAiRec ? '' : encodeURIComponent(signal.strategy || '');
     const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(signal.symbol || '')}&entry=${signal.entry_price || 0}&tp=${signal.tp_price || 0}&sl=${signal.sl_price || 0}&side=${signal.side || ''}&open_ts=${signal.open_time || signal.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${stratParam}&timeframe=${timeframe}&leverage=${isAiRec ? 1 : (signal.leverage || 1)}`;
 
-    const cleanSym = (signal.symbol || '').replace('/', '').toUpperCase();
-    const hasActiveTrade = userOpenTrades.some((t: any) => (t.symbol || '').replace('/', '').toUpperCase() === cleanSym);
+    const sigBase = normalizeBaseSymbol(signal.symbol);
+    const activePos = userOpenTrades.find((t: any) => {
+      const posBase = normalizeBaseSymbol(t.symbol);
+      return sigBase && posBase && sigBase === posBase;
+    });
+    const hasActiveTrade = Boolean(activePos);
 
     return (
       <div
@@ -372,36 +439,57 @@ const SignalsPage: React.FC = () => {
           )}
         </div>
 
-        {tabState === 'active' && isPremium && !hasActiveTrade && (
-          pendingTrades[String(signal.id)] ? (
-            <div className="mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <button
-                disabled
-                className="flex-1 py-2.5 px-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium rounded-xl flex items-center justify-center gap-2 cursor-not-allowed text-xs sm:text-sm"
-              >
-                <Clock size={15} className="text-amber-400 animate-pulse flex-shrink-0" />
-                <span className="truncate">
-                  {pendingTrades[String(signal.id)].action_type === 'auto_execute' 
-                    ? '⏳ Pending Auto-Execute at Market Open' 
-                    : '📧 Pending Email Reminder at Market Open'}
-                </span>
-              </button>
-              <button
-                onClick={(e) => handleCancelPendingTrade(signal.id, e)}
-                disabled={cancellingSignalId === signal.id}
-                className="py-2.5 px-4 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-400 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(244,63,94,0.15)] flex-shrink-0 disabled:opacity-50"
-                title="Cancel pending order"
-              >
-                {cancellingSignalId === signal.id ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  'Cancel'
-                )}
-              </button>
-            </div>
+        {tabState === 'active' && isPremium && (
+          hasActiveTrade && activePos ? (
+            <button
+              onClick={(e) => handleCloseLiveTrade(signal, activePos, type, e)}
+              disabled={closingTradeId === String(activePos.id || activePos.trade_id || signal.id)}
+              className="mt-4 w-full py-2.5 px-4 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(244,63,94,0.2)] disabled:opacity-50 text-xs uppercase tracking-wider"
+            >
+              {closingTradeId === String(activePos.id || activePos.trade_id || signal.id) ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" /> Closing Position...
+                </>
+              ) : (
+                <>
+                  🚨 Close at Market Price
+                </>
+              )}
+            </button>
+          ) : (pendingTrades[String(signal.id)] || pendingTrades[String(signal.id).replace('rec_', '')]) ? (
+            (() => {
+              const pendingOrder = pendingTrades[String(signal.id)] || pendingTrades[String(signal.id).replace('rec_', '')];
+              return (
+                <div className="mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    disabled
+                    className="flex-1 py-2.5 px-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium rounded-xl flex items-center justify-center gap-2 cursor-not-allowed text-xs sm:text-sm"
+                  >
+                    <Clock size={15} className="text-amber-400 animate-pulse flex-shrink-0" />
+                    <span className="truncate">
+                      {pendingOrder.action_type === 'auto_execute' 
+                        ? '⏳ Pending Auto-Execute at Market Open' 
+                        : '📧 Pending Email Reminder at Market Open'}
+                    </span>
+                  </button>
+                  <button
+                    onClick={(e) => handleCancelPendingTrade(signal.id, e)}
+                    disabled={cancellingSignalId === signal.id}
+                    className="py-2.5 px-4 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-400 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(244,63,94,0.15)] flex-shrink-0 disabled:opacity-50"
+                    title="Cancel pending order"
+                  >
+                    {cancellingSignalId === signal.id ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      'Cancel'
+                    )}
+                  </button>
+                </div>
+              );
+            })()
           ) : (
             <button
-              onClick={(e) => handleOpenLiveTrade(signal, e)}
+              onClick={(e) => handleOpenLiveTrade(signal, type, e)}
               disabled={executingSignalId === signal.id}
               className="mt-4 w-full py-2.5 px-4 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-400 font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)] disabled:opacity-50"
             >

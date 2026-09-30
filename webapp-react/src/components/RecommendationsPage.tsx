@@ -63,6 +63,24 @@ const RecommendationsPage: React.FC = () => {
 
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
 
+  const normalizeBaseSymbol = (sym: string): string => {
+    if (!sym) return '';
+    let s = String(sym).toUpperCase().trim();
+    s = s.split(':')[0];
+    if (s.includes('/') || s.includes('-')) {
+      s = s.split('/')[0].split('-')[0];
+    } else {
+      if (s.endsWith('USDT') && s.length > 4) {
+        s = s.slice(0, -4);
+      } else if (s.endsWith('USD') && s.length > 3) {
+        s = s.slice(0, -3);
+      }
+    }
+    const strippedDigits = s.replace(/^\d+/, '');
+    const clean = (strippedDigits || s).replace(/[^A-Z0-9]/g, '');
+    return clean === 'TONCOIN' ? 'TON' : clean;
+  };
+
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -887,10 +905,10 @@ const RecommendationsPage: React.FC = () => {
                   {(() => {
                     const recSignalId = `rec_${rec.id}`;
                     const pendingOrder = pendingTrades[recSignalId];
+                    const sigBase = normalizeBaseSymbol(rec.symbol);
                     const activePos = openTrades.find((t: any) => {
-                      const recBase = String(rec.symbol || '').toUpperCase().replace('/USDT', '').replace('-USDT', '').replace('/USD', '').replace('-USD', '').replace('-', '');
-                      const posBase = String(t.symbol || '').toUpperCase().replace('/USDT', '').replace('-USDT', '').replace('/USD', '').replace('-USD', '').replace('-', '').split(':')[0];
-                      return recBase === posBase;
+                      const posBase = normalizeBaseSymbol(t.symbol);
+                      return sigBase && posBase && sigBase === posBase;
                     });
 
                     if (activePos) {
