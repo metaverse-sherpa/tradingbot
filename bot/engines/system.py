@@ -575,7 +575,12 @@ async def daily_recommendations_generator_engine(application):
                         
             logger.info("✅ Daily AI recommendations generated successfully.")
             
-        except asyncio.CancelledError:
+            # 🚀 Trigger AI Recommendations Autopilot execution for crypto users
+            try:
+                from bot.engines.crypto import execute_ai_recommendations_autopilot
+                await execute_ai_recommendations_autopilot(application)
+            except Exception as auto_err:
+                logger.error(f"Error triggering AI Recommendations Autopilot after generation: {auto_err}")
             logger.debug("⏳ Daily Recommendations Generator Engine cancelled.")
             break
         except Exception as e:

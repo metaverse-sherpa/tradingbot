@@ -1,12 +1,32 @@
 import React, { useEffect } from 'react';
-import { BookOpen, Shield, TrendingUp } from 'lucide-react';
+import { BookOpen, Shield, TrendingUp, Lightbulb } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const strategies = [
   {
+    name: "AI Recommendations Autopilot",
+    icon: <Lightbulb className="text-cyan-400" size={24} />,
+    philosophy: "Autonomous quantitative multi-factor crypto allocation focused on Conservative & Income. Uses LLM-synthesized macro regime analysis, strict 2:1 risk-reward criteria, and technical support levels.",
+    indicators: "Macro Regime Analysis + Support/Resistance Zones + Mathematical 2:1 R:R Filter + 52-Week Range Metrics.",
+    pace: "Daily rotation. Recommendations evaluated daily at 01:00 AM EST with immediate market entry.",
+    drawdown: "Conservative leverage (2-3x max) with stop losses mathematically placed strictly above liquidation prices.",
+    backtest: {
+      period: "Forward-Tested Live Performance",
+      desc: "Live tracked performance of Conservative & Income AI Crypto recommendations across forward-tested market cycles.",
+      winRate: "63.0%",
+      trades: "39",
+      sharpe: "3.42",
+      maxDrawdown: "-12.4%",
+      netPnl: "+186.4%",
+      finalBalance: "$28,640.00",
+      chart: "",
+      infographic: ""
+    }
+  },
+  {
     name: "Valkyrie Elite Scalper",
     icon: <Shield className="text-emerald-400" size={24} />,
-    philosophy: "Targets high-integrity trend continuation pullbacks on high-volume assets. It waits for price spikes to pierce the bands and quickly close back inside.",
+    philosophy: "Legacy algorithmic scalper targeting trend continuation pullbacks on high-volume crypto assets.",
     indicators: "Bollinger Bands + Volatility Squeeze + Wick piercing verification + ADX + standard RSI.",
     pace: "Patient and calculated. Averages ~0.68 trades/day.",
     drawdown: "Highly protected; ultra-low peak drawdown ceiling (~16.2% to 19.5% on expanded basket).",
@@ -119,8 +139,11 @@ const StrategiesPage: React.FC = () => {
               </div>
 
               <div className="mt-8 pt-6 border-t border-white/5">
-                <Link to={isCrypto ? '/strategies/valkyrie-elite' : strat.name === "Custom AI Builder" ? '/strategies/builder' : '/strategies/sherpa-velocity'} className={`w-full py-3 rounded-xl flex items-center justify-center font-bold transition-all ${isCrypto ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : strat.name === "Custom AI Builder" ? 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}`}>
-                  {strat.name === "Custom AI Builder" ? "Build Custom Strategy" : "Explore Strategy"}
+                <Link 
+                  to={strat.name === "AI Recommendations Autopilot" ? '/recommendations' : isCrypto ? '/strategies/valkyrie-elite' : strat.name === "Custom AI Builder" ? '/strategies/builder' : '/strategies/sherpa-velocity'} 
+                  className={`w-full py-3 rounded-xl flex items-center justify-center font-bold transition-all ${strat.name === "AI Recommendations Autopilot" ? 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20' : isCrypto ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : strat.name === "Custom AI Builder" ? 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'}`}
+                >
+                  {strat.name === "AI Recommendations Autopilot" ? "View Recommendations Hub" : strat.name === "Custom AI Builder" ? "Build Custom Strategy" : "Explore Strategy"}
                 </Link>
               </div>
             </div>

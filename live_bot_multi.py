@@ -227,7 +227,7 @@ def compute_signal(df, symbol_name, strategy_name="Mean Reversion Scalper", web_
     }
 
 
-async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual=False, allow_liquidation_risk=False, return_details=False):
+async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual=False, allow_liquidation_risk=False, return_details=False, max_leverage_cap=None):
     """
     Core Order Execution Engine
     """
@@ -293,7 +293,11 @@ async def place_order(exchange, symbol, signal, equity, risk_pct=None, is_manual
                 log.warning("⚠️ Skipping %s: current price %.8g is already at or below fixed TP %.8g", symbol, lp, tp)
                 return {"error": True, "message": f"Current price ({lp}) is already below Take Profit ({tp})"} if return_details else None
             
-        max_possible_leverage = 10 if exchange.id == 'coinbase' else LEVERAGE
+        base_max_lev = 10 if exchange.id == 'coinbase' else LEVERAGE
+        if max_leverage_cap is not None:
+            max_possible_leverage = min(base_max_lev, int(max_leverage_cap))
+        else:
+            max_possible_leverage = base_max_lev
         trade_leverage = max_possible_leverage
         SAFETY_MARGIN = 0.04  # 4% safety margin buffer between SL and Liquidation price
 

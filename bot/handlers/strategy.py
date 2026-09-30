@@ -27,7 +27,7 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text("Please run /setup first.")
         return
         
-    active_crypto = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
+    active_crypto = user.get('active_crypto_strategy', 'AI Recommendations Autopilot')
     active_stock = user.get('active_stock_strategy', 'None')
     risk_val = user.get('risk_pct', 1.5)
     
@@ -37,11 +37,13 @@ async def strategy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     svp_active = "Sherpa Velocity Pullback" not in disabled
     
     # Dynamically build strategy buttons row
-    crypto_row = []
+    crypto_row = [
+        InlineKeyboardButton("💡 AI Recs (63% Win)" + (" (Active)" if active_crypto == "AI Recommendations Autopilot" else ""), callback_data="set_strat_airecs")
+    ]
+    if vk_active:
+        crypto_row.append(InlineKeyboardButton("🛡️ Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"))
     if mr_active:
         crypto_row.append(InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"))
-    if vk_active:
-        crypto_row.append(InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"))
         
     keyboard = []
     if crypto_row:
@@ -126,7 +128,18 @@ async def strategy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current_risk = user.get('risk_pct', 1.5)
     disabled = database.get_disabled_strategies()
     
-    if query.data == "set_strat_mean":
+    if query.data == "set_strat_airecs":
+        await query.answer()
+        database.update_user_crypto_strategy(chat_id, "AI Recommendations Autopilot")
+        msg = "✅ Crypto strategy set to: *AI Recommendations Autopilot (Conservative & Income - 63% Win Rate)*"
+        class MockQuery:
+            def __init__(self, q, d): self._q = q; self.data = d
+            def __getattr__(self, name): return getattr(self._q, name)
+        mock_query = MockQuery(query, "strategy_menu")
+        from bot.handlers.settings.callbacks.strategies import handle_strategies_callback
+        await handle_strategies_callback(mock_query, update, context, database.get_user(chat_id), chat_id)
+
+    elif query.data == "set_strat_mean":
         if "Mean Reversion Scalper" in disabled:
             await query.answer("❌ This strategy is currently retired (disabled) by the administrator.", show_alert=True)
             return

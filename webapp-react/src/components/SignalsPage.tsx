@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Activity, TrendingUp, TrendingDown, Clock, Share2, RefreshCw, ChevronDown, Lock, DollarSign, Beaker } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Clock, Share2, RefreshCw, ChevronDown, Lock, DollarSign, Beaker, Lightbulb } from 'lucide-react';
 import { formatPrice } from '../utils/formatters';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
@@ -187,14 +187,24 @@ const SignalsPage: React.FC = () => {
 
   const renderStatCard = (type: 'crypto' | 'stock') => {
     const isCrypto = type === 'crypto';
-    const stat = freeStats.find(s => isCrypto ? !s.name.includes('Sherpa') : s.name.includes('Sherpa'));
+    const stat = freeStats.find(s => isCrypto ? s.name === 'AI Recommendations Autopilot' : s.name.includes('Sherpa')) 
+      || freeStats.find(s => isCrypto ? !s.name.includes('Sherpa') : s.name.includes('Sherpa'));
     if (!stat) return null;
+
+    const isAiRecs = stat.name === 'AI Recommendations Autopilot';
 
     return (
       <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          {stat.name.includes('Sherpa') ? '🦙' : '🛡️'}
-          <h3 className="font-bold text-white">{stat.name}</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {isAiRecs ? '💡' : stat.name.includes('Sherpa') ? '🦙' : '🛡️'}
+            <h3 className="font-bold text-white">{stat.name}</h3>
+          </div>
+          {isAiRecs && (
+            <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
+              63% Win Rate
+            </span>
+          )}
         </div>
         
         <ul className="space-y-3 mb-6 text-sm">
@@ -213,7 +223,7 @@ const SignalsPage: React.FC = () => {
               {formatPercent(stat.realized_pct)}
             </span>
           </li>
-          {stat.unrealized_pct !== undefined && stat.unrealized_pct !== null && (
+          {stat.unrealized_pct !== undefined && stat.unrealized_pct !== null && !isAiRecs && (
             <li className="flex items-center text-gray-300">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-500 mr-2"></span>
               Unrealized PnL:&nbsp;
@@ -224,7 +234,7 @@ const SignalsPage: React.FC = () => {
           )}
           <li className="flex items-center text-gray-300">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-500 mr-2"></span>
-            Active Signals:&nbsp;
+            {isAiRecs ? 'Active Recommendations:' : 'Active Signals:'}&nbsp;
             <span className="font-bold text-cyan-400">
               {stat.active_count}
             </span>
@@ -237,11 +247,19 @@ const SignalsPage: React.FC = () => {
             className="w-full py-2.5 rounded-xl border border-white/10 text-gray-300 font-medium text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
             <Share2 size={16} /> SHARE & EARN
           </button>
-          <button 
-            onClick={() => navigate(`/backtests?run=true&strategy=${encodeURIComponent(stat.name)}`)}
-            className="w-full py-2.5 rounded-xl border border-white/10 text-gray-300 font-medium text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
-            <Beaker size={16} /> BACKTEST
-          </button>
+          {isAiRecs ? (
+            <button 
+              onClick={() => navigate('/recommendations')}
+              className="w-full py-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-medium text-sm hover:bg-cyan-500/20 transition-colors flex items-center justify-center gap-2">
+              <Lightbulb size={16} /> VIEW RECOMMENDATIONS
+            </button>
+          ) : (
+            <button 
+              onClick={() => navigate(`/backtests?run=true&strategy=${encodeURIComponent(stat.name)}`)}
+              className="w-full py-2.5 rounded-xl border border-white/10 text-gray-300 font-medium text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
+              <Beaker size={16} /> BACKTEST
+            </button>
+          )}
         </div>
       </div>
     );

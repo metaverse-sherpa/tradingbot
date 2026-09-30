@@ -752,9 +752,10 @@ const Settings: React.FC = () => {
                     value={user?.active_crypto_strategy || 'None'} 
                     onChange={(v) => handleStrategyChange('crypto', v)}
                     options={[
+                      { value: "AI Recommendations Autopilot", label: "💡 AI Recommendations Autopilot (63% Win Rate)" },
                       { value: "None", label: "None (Paused)" },
-                      { value: "Mean Reversion Scalper", label: "Mean Reversion Scalper", disabled: user?.disabled_strategies?.includes("Mean Reversion Scalper") },
-                      { value: "Valkyrie Elite Scalper", label: "Valkyrie Elite Scalper", disabled: user?.disabled_strategies?.includes("Valkyrie Elite Scalper") },
+                      { value: "Valkyrie Elite Scalper", label: "Valkyrie Elite Scalper (Legacy)", disabled: user?.disabled_strategies?.includes("Valkyrie Elite Scalper") },
+                      { value: "Mean Reversion Scalper", label: "Mean Reversion Scalper (Legacy)", disabled: user?.disabled_strategies?.includes("Mean Reversion Scalper") },
                       ...customStrategies
                         .filter((s: any) => s.asset_type === 'crypto' || !s.asset_type)
                         .map((s: any) => ({

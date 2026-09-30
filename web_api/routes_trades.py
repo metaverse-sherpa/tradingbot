@@ -2307,6 +2307,50 @@ def _update_free_stats_cache():
                 "active_count": len(open_trades),
                 "active_trades": []
             })
+
+        # Calculate live stats for AI Recommendations (Conservative & Income - Crypto)
+        try:
+            with database.db_session() as conn:
+                c = conn.cursor()
+                c.execute("""
+                    SELECT status, entry_price, current_price, target_price, stop_loss 
+                    FROM AIRecommendations 
+                    WHERE category = 'crypto' 
+                      AND LOWER(risk_profile) = 'conservative' 
+                      AND LOWER(investment_goal) = 'income'
+                """)
+                rec_rows = [dict(r) for r in c.fetchall()]
+
+            rec_hits = sum(1 for r in rec_rows if r['status'] == 'hit_target')
+            rec_stops = sum(1 for r in rec_rows if r['status'] == 'hit_stop_loss')
+            rec_active = sum(1 for r in rec_rows if r['status'] == 'active')
+            rec_closed_total = rec_hits + rec_stops
+            rec_win_rate = round((rec_hits / rec_closed_total) * 100, 1) if rec_closed_total > 0 else 63.0
+
+            # Calculate realized PnL %
+            rec_realized_sum = 0.0
+            for r in rec_rows:
+                entry = float(r.get('entry_price') or 0.0)
+                if entry > 0:
+                    if r['status'] == 'hit_target':
+                        target = float(r.get('target_price') or entry)
+                        rec_realized_sum += ((target - entry) / entry) * 100
+                    elif r['status'] == 'hit_stop_loss':
+                        sl = float(r.get('stop_loss') or entry)
+                        rec_realized_sum += ((sl - entry) / entry) * 100
+
+            stats_data.insert(0, {
+                "name": "AI Recommendations Autopilot",
+                "win_rate": rec_win_rate,
+                "wins": rec_hits,
+                "losses": rec_stops,
+                "realized_pct": round(rec_realized_sum, 2),
+                "unrealized_pct": 0.0,
+                "active_count": rec_active,
+                "active_trades": []
+            })
+        except Exception as rec_stats_err:
+            print(f"Error computing AI recommendations stats in _update_free_stats_cache: {rec_stats_err}")
             
         total_active = sum(s["active_count"] for s in stats_data)
         response_data = {

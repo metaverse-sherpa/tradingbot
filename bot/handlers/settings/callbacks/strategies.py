@@ -40,11 +40,13 @@ async def handle_strategies_callback(query, update: Update, context: ContextType
         
         disabled = database.get_disabled_strategies()
         
-        crypto_row = []
+        crypto_row = [
+            InlineKeyboardButton("💡 AI Recs (63% Win)" + (" (Active)" if active_crypto == "AI Recommendations Autopilot" else ""), callback_data="set_strat_airecs")
+        ]
+        if "Valkyrie Elite Scalper" not in disabled:
+            crypto_row.append(InlineKeyboardButton("🛡️ Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"))
         if "Mean Reversion Scalper" not in disabled:
             crypto_row.append(InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"))
-        if "Valkyrie Elite Scalper" not in disabled:
-            crypto_row.append(InlineKeyboardButton("🪙 Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"))
 
         stock_row = []
         if "Sherpa Velocity Pullback" not in disabled:

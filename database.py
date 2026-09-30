@@ -759,16 +759,17 @@ def init_db():
                     SET exchange_id = 'blofin'
                     WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != ''
                 """)
-            # 5. Force-migrate all users away from disabled Mean Reversion Scalper to Valkyrie Elite Scalper
+            # 5. Migrate users to AI Recommendations Autopilot
             c.execute("""
                 UPDATE Users
-                SET active_crypto_strategy = 'Valkyrie Elite Scalper', strategy = 'Valkyrie Elite Scalper'
-                WHERE active_crypto_strategy = 'Mean Reversion Scalper' OR strategy = 'Mean Reversion Scalper'
+                SET active_crypto_strategy = 'AI Recommendations Autopilot', strategy = 'AI Recommendations Autopilot'
+                WHERE active_crypto_strategy IN ('Mean Reversion Scalper', 'Valkyrie Elite Scalper') 
+                   OR strategy IN ('Mean Reversion Scalper', 'Valkyrie Elite Scalper')
             """)
             c.execute("""
                 UPDATE WebUsers
-                SET active_crypto_strategy = 'Valkyrie Elite Scalper'
-                WHERE active_crypto_strategy = 'Mean Reversion Scalper'
+                SET active_crypto_strategy = 'AI Recommendations Autopilot'
+                WHERE active_crypto_strategy IN ('Mean Reversion Scalper', 'Valkyrie Elite Scalper')
             """)
             conn.commit()
         except Exception as migration_err:
