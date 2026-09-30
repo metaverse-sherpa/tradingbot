@@ -246,8 +246,8 @@ const Dashboard: React.FC = () => {
       });
       
       setActiveSignals(signals);
-      setCryptoSignalCount(signals.filter((s: any) => s.symbol && s.symbol.includes('/')).length);
-      setStockSignalCount(signals.filter((s: any) => s.symbol && !s.symbol.includes('/')).length);
+      setCryptoSignalCount(signals.filter((s: any) => s.category === 'crypto' || (s.symbol && s.symbol.includes('/'))).length);
+      setStockSignalCount(signals.filter((s: any) => s.category === 'stock' || (s.symbol && !s.symbol.includes('/'))).length);
       
     } catch (e) {
       console.error('Error fetching dashboard data', e);
@@ -442,9 +442,9 @@ const Dashboard: React.FC = () => {
   const renderFreeColumn = (type: 'crypto' | 'stock') => {
     const isCrypto = type === 'crypto';
     const accentColor = isCrypto ? 'text-cyan-400' : 'text-amber-400';
-    const typeSignals = activeSignals.filter((s: any) => isCrypto ? s.symbol && s.symbol.includes('/') : s.symbol && !s.symbol.includes('/'));
+    const typeSignals = activeSignals.filter((s: any) => isCrypto ? (s.category === 'crypto' || (s.symbol && s.symbol.includes('/'))) : (s.category === 'stock' || (s.symbol && !s.symbol.includes('/'))));
     const sortedSignals = [...typeSignals].sort((a, b) => (b.pnl_pct || 0) - (a.pnl_pct || 0));
-    const typeStrategies = freeStats.filter((s: any) => isCrypto ? !s.name.toLowerCase().includes('pullback') : s.name.toLowerCase().includes('pullback'));
+    const typeStrategies = freeStats.filter((s: any) => isCrypto ? s.name === 'AI Recommendations Autopilot' : s.name.toLowerCase().includes('pullback'));
 
     return (
       <div className="space-y-4">

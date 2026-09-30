@@ -713,16 +713,28 @@ def get_free_stats_internal(bypass_cache=False):
             
     # Fallback placeholder if cache is empty
     disabled = database.get_disabled_strategies()
-    strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
+    strategy_names = [s for s in ["Sherpa Velocity Pullback"] if s not in disabled]
     return {
         "total_open": 0,
-        "strategies": [{"name": s, "win_rate": 0.0, "wins": 0, "losses": 0, "realized_pct": 0.0, "unrealized_pct": 0.0, "active_count": 0, "active_trades": []} for s in strategy_names]
+        "strategies": [
+            {
+                "name": "AI Recommendations Autopilot",
+                "win_rate": 63.0,
+                "wins": 0,
+                "losses": 0,
+                "realized_pct": 0.0,
+                "unrealized_pct": 0.0,
+                "active_count": 0,
+                "active_trades": []
+            }
+        ] + [{"name": s, "win_rate": 0.0, "wins": 0, "losses": 0, "realized_pct": 0.0, "unrealized_pct": 0.0, "active_count": 0, "active_trades": []} for s in strategy_names]
     }
 
 def get_active_signals_internal(bypass_cache=False):
     global SIGNALS_ACTIVE_UPDATING
     cache_key = "signals_active"
     now = time.time()
+    legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper"}
     
     # Quick lock check: If we have cached active signals, return them
     if not bypass_cache:
@@ -731,7 +743,7 @@ def get_active_signals_internal(bypass_cache=False):
                 expiry, cached_data = RESPONSE_CACHE[cache_key]
                 if now < expiry:
                     disabled = database.get_disabled_strategies()
-                    filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+                    filtered_data = [s for s in cached_data if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
                     return filtered_data
                 
     # Cache is empty, expired, or force refresh requested. Trigger background update if not running.
@@ -746,7 +758,7 @@ def get_active_signals_internal(bypass_cache=False):
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             disabled = database.get_disabled_strategies()
-            filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+            filtered_data = [s for s in cached_data if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
             return filtered_data
             
     # Fallback query if no cache exists
@@ -754,17 +766,49 @@ def get_active_signals_internal(bypass_cache=False):
         c = conn.cursor()
         c.execute("SELECT id, symbol, strategy, side, entry_price, tp_price, sl_price, open_time, status FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC")
         rows = c.fetchall()
-    signals = []
-    for r in rows:
-        signals.append({
-            "id": r[0], "symbol": r[1], "strategy": r[2], "side": r[3],
-            "entry_price": r[4], "tp_price": r[5], "sl_price": r[6],
-            "open_time": r[7], "status": r[8]
-        })
-    if not signals:
-        signals = [
-            {"id": 1, "symbol": "BTC/USDT", "strategy": "Mean Reversion Scalper", "side": "LONG", "entry_price": 63400.0, "tp_price": 64800.0, "sl_price": 62500.0, "open_time": int(time.time()) - 600, "status": "open"}
-        ]
+        signals = []
+        for r in rows:
+            if r[2] not in legacy_strats:
+                signals.append({
+                    "id": r[0], "symbol": r[1], "strategy": r[2], "side": r[3],
+                    "entry_price": r[4], "tp_price": r[5], "sl_price": r[6],
+                    "open_time": r[7], "status": r[8]
+                })
+
+        try:
+            c.execute("""
+                SELECT id, symbol, entry_price, current_price, target_price, stop_loss, created_at, status
+                FROM AIRecommendations 
+                WHERE status = 'active' 
+                  AND category = 'crypto' 
+                  AND LOWER(risk_profile) = 'conservative' 
+                  AND LOWER(investment_goal) = 'income'
+                ORDER BY created_at DESC
+            """)
+            for r in c.fetchall():
+                rd = dict(r)
+                sym = rd['symbol']
+                if '/' not in sym and 'USDT' not in sym:
+                    sym = f"{sym}/USDT"
+                c_at = rd.get('created_at') or int(time.time())
+                open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
+                signals.append({
+                    "id": f"rec_{rd['id']}",
+                    "symbol": sym,
+                    "side": "BUY",
+                    "entry_price": float(rd.get('entry_price') or 0.0),
+                    "current_price": float(rd.get('current_price') or rd.get('entry_price') or 0.0),
+                    "tp_price": float(rd.get('target_price') or 0.0),
+                    "sl_price": float(rd.get('stop_loss') or 0.0),
+                    "open_time": open_ts,
+                    "status": "open",
+                    "strategy": "AI Recommendations Autopilot",
+                    "category": "crypto",
+                    "is_recommendation": True,
+                    "leverage": 2
+                })
+        except Exception as e:
+            print(f"Error reading AIRecommendations in fallback: {e}")
     return signals
 
 def get_balance_history_internal(user_id):
@@ -1880,10 +1924,49 @@ def _update_active_signals_cache():
             c = conn.cursor()
             c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy != 'AI Recommendation' ORDER BY open_time DESC LIMIT 50")
             rows = c.fetchall()
-        signals = [dict(r) for r in rows]
+            signals = [dict(r) for r in rows]
+
+            # Fetch active Crypto AI Recommendations (Conservative & Income)
+            try:
+                c.execute("""
+                    SELECT id, symbol, name, category, risk_profile, investment_goal, 
+                           entry_price, current_price, target_price, stop_loss, created_at, status
+                    FROM AIRecommendations 
+                    WHERE status = 'active' 
+                      AND category = 'crypto' 
+                      AND LOWER(risk_profile) = 'conservative' 
+                      AND LOWER(investment_goal) = 'income'
+                    ORDER BY created_at DESC
+                """)
+                rec_rows = c.fetchall()
+                for r in rec_rows:
+                    rd = dict(r)
+                    sym = rd['symbol']
+                    if '/' not in sym and 'USDT' not in sym:
+                        sym = f"{sym}/USDT"
+                    c_at = rd.get('created_at') or int(time.time())
+                    open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
+                    signals.append({
+                        "id": f"rec_{rd['id']}",
+                        "symbol": sym,
+                        "side": "BUY",
+                        "entry_price": float(rd.get('entry_price') or 0.0),
+                        "current_price": float(rd.get('current_price') or rd.get('entry_price') or 0.0),
+                        "tp_price": float(rd.get('target_price') or 0.0),
+                        "sl_price": float(rd.get('stop_loss') or 0.0),
+                        "open_time": open_ts,
+                        "status": "open",
+                        "strategy": "AI Recommendations Autopilot",
+                        "category": "crypto",
+                        "is_recommendation": True,
+                        "leverage": 2
+                    })
+            except Exception as rec_err:
+                print(f"Error querying active AIRecommendations in signals: {rec_err}")
         
         disabled = database.get_disabled_strategies()
-        signals = [s for s in signals if s.get("strategy") not in disabled]
+        legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper"}
+        signals = [s for s in signals if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
         
         CRYPTO_LEVERAGE = 20
         
@@ -2063,11 +2146,15 @@ def _update_active_signals_cache():
             is_stk = not ("/" in sym)
             current = current_prices[idx]
 
+            # If live price fetch returned 0, try current_price from signal if available
+            if current <= 0 and sig.get("current_price"):
+                current = float(sig.get("current_price"))
+
             if current > 0 and entry > 0:
                 pnl_raw = current - entry if is_long else entry - current
                 pnl_pct = (pnl_raw / entry) * 100
                 
-                if not is_stk:
+                if not is_stk and not sig.get("is_recommendation") and sig.get("strategy") != "AI Recommendations Autopilot":
                     pnl_pct *= CRYPTO_LEVERAGE
                     
                 pnl_val = pos_size * (pnl_pct / 100)
@@ -2075,11 +2162,10 @@ def _update_active_signals_cache():
                 sig["pnl_pct"] = pnl_pct
                 sig["pnl_usdt"] = pnl_val
                 sig["current_price"] = current
-        
-        if not signals:
-            signals = [
-                {"id": 1, "symbol": "BTC/USDT", "strategy": "Mean Reversion Scalper", "side": "LONG", "entry_price": 63400.0, "tp_price": 64800.0, "sl_price": 62500.0, "open_time": int(time.time()) - 600, "status": "open"}
-            ]
+            elif entry > 0:
+                sig["pnl_pct"] = 0.0
+                sig["pnl_usdt"] = 0.0
+                sig["current_price"] = entry
             
         cache_key = "signals_active"
         with RESPONSE_CACHE_LOCK:
@@ -2104,6 +2190,7 @@ def get_active_signals():
     global SIGNALS_ACTIVE_UPDATING
     cache_key = "signals_active"
     now = time.time()
+    legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper"}
     
     force_refresh = request.args.get('force') == 'true'
     
@@ -2114,7 +2201,7 @@ def get_active_signals():
                 expiry, cached_data = RESPONSE_CACHE[cache_key]
                 if now < expiry:
                     disabled = database.get_disabled_strategies()
-                    filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+                    filtered_data = [s for s in cached_data if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
                     return jsonify(filtered_data), 200
                 
     # Cache is empty, expired, or force refresh requested. Trigger background update if not running.
@@ -2137,7 +2224,7 @@ def get_active_signals():
         if cache_key in RESPONSE_CACHE:
             expiry, cached_data = RESPONSE_CACHE[cache_key]
             disabled = database.get_disabled_strategies()
-            filtered_data = [s for s in cached_data if s.get("strategy") not in disabled]
+            filtered_data = [s for s in cached_data if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
             return jsonify(filtered_data), 200
             
     # Cache is completely empty. Fetch from DB (OUTSIDE of RESPONSE_CACHE_LOCK to prevent bottlenecks)
@@ -2146,12 +2233,46 @@ def get_active_signals():
             c = conn.cursor()
             c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy NOT LIKE 'AI Recom%' ORDER BY open_time DESC LIMIT 50")
             rows = c.fetchall()
-        signals = [dict(r) for r in rows]
-        disabled = database.get_disabled_strategies()
-        signals = [s for s in signals if s.get("strategy") not in disabled]
-        for s in signals:
-            s["pnl_pct"] = None
-            s["pnl_usdt"] = None
+            signals = [dict(r) for r in rows]
+            disabled = database.get_disabled_strategies()
+            signals = [s for s in signals if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
+            for s in signals:
+                s["pnl_pct"] = None
+                s["pnl_usdt"] = None
+
+            c.execute("""
+                SELECT id, symbol, entry_price, current_price, target_price, stop_loss, created_at, status
+                FROM AIRecommendations 
+                WHERE status = 'active' 
+                  AND category = 'crypto' 
+                  AND LOWER(risk_profile) = 'conservative' 
+                  AND LOWER(investment_goal) = 'income'
+                ORDER BY created_at DESC
+            """)
+            for r in c.fetchall():
+                rd = dict(r)
+                sym = rd['symbol']
+                if '/' not in sym and 'USDT' not in sym:
+                    sym = f"{sym}/USDT"
+                c_at = rd.get('created_at') or int(time.time())
+                open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
+                signals.append({
+                    "id": f"rec_{rd['id']}",
+                    "symbol": sym,
+                    "side": "BUY",
+                    "entry_price": float(rd.get('entry_price') or 0.0),
+                    "current_price": float(rd.get('current_price') or rd.get('entry_price') or 0.0),
+                    "tp_price": float(rd.get('target_price') or 0.0),
+                    "sl_price": float(rd.get('stop_loss') or 0.0),
+                    "open_time": open_ts,
+                    "status": "open",
+                    "strategy": "AI Recommendations Autopilot",
+                    "category": "crypto",
+                    "is_recommendation": True,
+                    "leverage": 2,
+                    "pnl_pct": 0.0,
+                    "pnl_usdt": 0.0
+                })
     except Exception:
         signals = []
         
@@ -2167,37 +2288,90 @@ def get_active_signals():
 
 @trades_bp.route('/api/signals/closed', methods=['GET'])
 def get_closed_signals():
+    legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper"}
     with database.db_session() as conn:
         c = conn.cursor()
         c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy NOT LIKE 'AI Recom%' AND symbol LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
         crypto_rows = c.fetchall()
         c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy NOT LIKE 'AI Recom%' AND symbol NOT LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
         stock_rows = c.fetchall()
+
+        try:
+            c.execute("""
+                SELECT id, symbol, entry_price, target_price, stop_loss, created_at, closed_at, status
+                FROM AIRecommendations 
+                WHERE status IN ('hit_target', 'hit_stop_loss')
+                  AND category = 'crypto' 
+                  AND LOWER(risk_profile) = 'conservative' 
+                  AND LOWER(investment_goal) = 'income'
+                ORDER BY closed_at DESC LIMIT 50
+            """)
+            rec_closed = c.fetchall()
+        except Exception:
+            rec_closed = []
         
     signals = []
     for r in crypto_rows:
         d = dict(r)
-        if d.get("pnl_pct") is not None:
-            d["pnl_pct"] *= 20
-        signals.append(d)
+        if d.get("strategy") not in legacy_strats:
+            if d.get("pnl_pct") is not None:
+                d["pnl_pct"] *= 20
+            signals.append(d)
     for r in stock_rows:
-        signals.append(dict(r))
+        d = dict(r)
+        if d.get("strategy") not in legacy_strats:
+            signals.append(d)
+
+    for r in rec_closed:
+        rd = dict(r)
+        entry = float(rd.get('entry_price') or 0.0)
+        target = float(rd.get('target_price') or 0.0)
+        sl = float(rd.get('stop_loss') or 0.0)
+        status = rd.get('status')
+        pnl_pct = 0.0
+        exit_price = entry
+        if entry > 0:
+            if status == 'hit_target':
+                pnl_pct = ((target - entry) / entry) * 100
+                exit_price = target
+            elif status == 'hit_stop_loss':
+                pnl_pct = ((sl - entry) / entry) * 100
+                exit_price = sl
+        sym = rd['symbol']
+        if '/' not in sym and 'USDT' not in sym:
+            sym = f"{sym}/USDT"
+        c_at = rd.get('created_at') or int(time.time())
+        open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
+        cl_at = rd.get('closed_at') or c_at
+        close_ts = int(cl_at / 1000) if cl_at > 10000000000 else int(cl_at)
+        signals.append({
+            "id": f"rec_{rd['id']}",
+            "symbol": sym,
+            "side": "BUY",
+            "entry_price": entry,
+            "exit_price": exit_price,
+            "tp_price": target,
+            "sl_price": sl,
+            "open_time": open_ts,
+            "close_time": close_ts,
+            "status": "closed",
+            "strategy": "AI Recommendations Autopilot",
+            "category": "crypto",
+            "is_recommendation": True,
+            "pnl_pct": round(pnl_pct, 2)
+        })
+
     signals.sort(key=lambda x: x.get('close_time', 0), reverse=True)
     
     disabled = database.get_disabled_strategies()
-    signals = [s for s in signals if s.get("strategy") not in disabled]
-    
-    if not signals:
-        signals = [
-            {"id": 2, "symbol": "ETH/USDT", "strategy": "Valkyrie Elite Scalper", "side": "SHORT", "entry_price": 3450.0, "tp_price": 3310.0, "sl_price": 3520.0, "open_time": int(time.time()) - 24000, "close_time": int(time.time()) - 12000, "status": "closed", "pnl_pct": 4.05}
-        ]
+    signals = [s for s in signals if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
     return jsonify(signals), 200
 
 def _update_free_stats_cache():
     global STATS_FREE_UPDATING
     try:
         disabled = database.get_disabled_strategies()
-        strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
+        strategy_names = [s for s in ["Sherpa Velocity Pullback"] if s not in disabled]
         open_sim_trades = database.get_open_theoretical_trades()
         
         strategy_open_trades = {s: [] for s in strategy_names}
@@ -2337,7 +2511,14 @@ def _update_free_stats_cache():
                         rec_realized_sum += ((target - entry) / entry) * 100
                     elif r['status'] == 'hit_stop_loss':
                         sl = float(r.get('stop_loss') or entry)
-                        rec_realized_sum += ((sl - entry) / entry) * 100
+            # Calculate unrealized PnL % for active recommendations
+            rec_unrealized_sum = 0.0
+            for r in rec_rows:
+                if r['status'] == 'active':
+                    entry = float(r.get('entry_price') or 0.0)
+                    curr = float(r.get('current_price') or entry)
+                    if entry > 0 and curr > 0:
+                        rec_unrealized_sum += ((curr - entry) / entry) * 100
 
             stats_data.insert(0, {
                 "name": "AI Recommendations Autopilot",
@@ -2345,7 +2526,7 @@ def _update_free_stats_cache():
                 "wins": rec_hits,
                 "losses": rec_stops,
                 "realized_pct": round(rec_realized_sum, 2),
-                "unrealized_pct": 0.0,
+                "unrealized_pct": round(rec_unrealized_sum, 2),
                 "active_count": rec_active,
                 "active_trades": []
             })

@@ -172,7 +172,7 @@ const SignalsPage: React.FC = () => {
   const getSortedSignals = (type: 'crypto' | 'stock', tabState: 'active' | 'closed') => {
     const isCrypto = type === 'crypto';
     const sourceSignals = tabState === 'active' ? activeSignals : closedSignals;
-    const filtered = sourceSignals.filter(s => isCryptoSymbol(s.symbol) === isCrypto);
+    const filtered = sourceSignals.filter(s => s.category ? s.category === type : (isCryptoSymbol(s.symbol) === isCrypto));
     
     const sortBy = tabState === 'active' ? activeSortBy : closedSortBy;
     return filtered.sort((a, b) => {
@@ -273,7 +273,7 @@ const SignalsPage: React.FC = () => {
     let tp_pct = signal.entry_price > 0 && signal.tp_price > 0 ? Math.abs((signal.tp_price - signal.entry_price) / signal.entry_price * 100) : 0;
     let sl_pct = signal.entry_price > 0 && signal.sl_price > 0 ? Math.abs((signal.sl_price - signal.entry_price) / signal.entry_price * 100) : 0;
     
-    if (type === 'crypto') {
+    if (type === 'crypto' && signal.strategy !== 'AI Recommendations Autopilot' && !signal.is_recommendation) {
       tp_pct *= 20;
       sl_pct *= 20;
     }

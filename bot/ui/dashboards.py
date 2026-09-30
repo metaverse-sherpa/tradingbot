@@ -82,17 +82,42 @@ async def build_forward_test_stats_block():
     open_sim_trades = database.get_open_theoretical_trades()
     disabled = database.get_disabled_strategies()
     
-    mr_stats = database.get_theoretical_stats_by_strategy("Mean Reversion Scalper")
-    vk_stats = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+    ai_stats = database.get_theoretical_stats_by_strategy("AI Recommendations Autopilot")
     svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
     
     # Group open trades by strategy
-    strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
+    strategy_names = [s for s in ["AI Recommendations Autopilot", "Sherpa Velocity Pullback"] if s not in disabled]
     strategy_open_trades = {s: [] for s in strategy_names}
     for t in open_sim_trades:
         strat = t.get('strategy', '')
         if strat in strategy_open_trades:
             strategy_open_trades[strat].append(t)
+    
+    # Also attach active AI Recommendations to AI Recommendations Autopilot
+    try:
+        with database.db_session() as conn:
+            c = conn.cursor()
+            c.execute("""
+                SELECT symbol, entry_price, current_price, target_price, stop_loss, created_at 
+                FROM AIRecommendations 
+                WHERE status = 'active' 
+                  AND category = 'crypto' 
+                  AND LOWER(risk_profile) = 'conservative' 
+                  AND LOWER(investment_goal) = 'income'
+            """)
+            for r in c.fetchall():
+                rd = dict(r)
+                sym = rd['symbol']
+                if '/' not in sym and 'USDT' not in sym:
+                    sym = f"{sym}/USDT"
+                strategy_open_trades["AI Recommendations Autopilot"].append({
+                    "symbol": sym,
+                    "entry_price": float(rd.get('entry_price') or 0.0),
+                    "position_size": 1000.0,
+                    "side": "buy"
+                })
+    except Exception as e:
+        logger.error(f"Error fetching active AI recs for dashboard: {e}")
     
     # Fetch live prices for open trades to compute unrealized PnL
     strategy_unrealized = {s: 0.0 for s in strategy_names}
@@ -174,13 +199,11 @@ async def build_forward_test_stats_block():
     # Each strategy starts with its own $1,000 allocation
     starting_capital = 1000.0
     all_stats = {
-        "Mean Reversion Scalper": mr_stats,
-        "Valkyrie Elite Scalper": vk_stats,
+        "AI Recommendations Autopilot": ai_stats,
         "Sherpa Velocity Pullback": svp_stats
     }
     strategy_icons = {
-        "Mean Reversion Scalper": "📈",
-        "Valkyrie Elite Scalper": "🛡️",
+        "AI Recommendations Autopilot": "💡",
         "Sherpa Velocity Pullback": "🦙"
     }
     
@@ -212,11 +235,10 @@ async def build_forward_test_stats_block():
             block += "• Active Signals: `0`\n"
         return block
     
-    mr_block = _build_strategy_block("Mean Reversion Scalper") if "Mean Reversion Scalper" in strategy_names else ""
-    vk_block = _build_strategy_block("Valkyrie Elite Scalper") if "Valkyrie Elite Scalper" in strategy_names else ""
+    ai_block = _build_strategy_block("AI Recommendations Autopilot") if "AI Recommendations Autopilot" in strategy_names else ""
     svp_block = _build_strategy_block("Sherpa Velocity Pullback") if "Sherpa Velocity Pullback" in strategy_names else ""
     
-    blocks = [b for b in [mr_block, vk_block, svp_block] if b]
+    blocks = [b for b in [ai_block, svp_block] if b]
     
     text = (
         "🧪 *Free Forward Testing*\n"

@@ -803,7 +803,7 @@ async def daily_combined_email_engine(application):
             from web_api.email_service import send_alert_email, get_combined_daily_summary_html, get_combined_daily_summary_telegram
             
             stock_hypothetical_data = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
-            crypto_hypothetical_data = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+            crypto_hypothetical_data = database.get_theoretical_stats_by_strategy("AI Recommendations Autopilot")
             
             stock_prices_float_cache = {k: v["daily"] for k, v in live_prices_stock.items()}
             crypto_prices_float_cache = {k: v["daily"] for k, v in live_prices_crypto.items()}
@@ -940,7 +940,7 @@ async def weekly_combined_email_engine(application):
             
             weekly_users = get_users_for_weekly_processing()
             stock_hypothetical_data = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
-            crypto_hypothetical_data = database.get_theoretical_stats_by_strategy("Valkyrie Elite Scalper")
+            crypto_hypothetical_data = database.get_theoretical_stats_by_strategy("AI Recommendations Autopilot")
             
             stock_prices_cache = {}
             crypto_prices_cache = {}
