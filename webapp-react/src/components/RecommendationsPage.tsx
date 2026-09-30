@@ -54,7 +54,7 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
 
 const RecommendationsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, setUser } = useAuthStore();
+  const { user } = useAuthStore();
   const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
   const activeTab: 'stocks' | 'crypto' = categoryTab === 'stock' ? 'stocks' : 'crypto';
   const setActiveTab = (tab: 'stocks' | 'crypto') => {
@@ -323,8 +323,8 @@ const RecommendationsPage: React.FC = () => {
 
     try {
       const res = await api.post('/portfolio/good-buys', {
-        risk_profile: riskProfile,
-        investment_goal: investmentGoal,
+        risk_profile: currentRiskProfile,
+        investment_goal: currentInvestmentGoal,
         force_regenerate: true
       });
       await fetchRecommendations(true);
@@ -335,7 +335,7 @@ const RecommendationsPage: React.FC = () => {
 
       setGenNotification({
         type: 'success',
-        text: `✅ AI Recommendations updated successfully! Generated ${totalFound} fresh buy ideas for ${riskProfile} / ${investmentGoal}.`
+        text: `✅ AI Recommendations updated successfully! Generated ${totalFound} fresh buy ideas for ${currentRiskProfile} / ${currentInvestmentGoal}.`
       });
     } catch (err: any) {
       console.error("Failed to generate good buys", err);
@@ -400,20 +400,34 @@ const RecommendationsPage: React.FC = () => {
     return <LoadingDisplay />;
   }
 
-  // Count active recs per category (independent of active tab) for tab badges
-  const profileFilteredRecs = recommendations.filter(
-    (r) =>
-      r.risk_profile.toLowerCase() === riskProfile.toLowerCase() &&
-      r.investment_goal.toLowerCase() === investmentGoal.toLowerCase()
-  );
-  const activeCryptoCount = profileFilteredRecs.filter((r) => r.category.toLowerCase() === 'crypto' && r.status === 'active').length;
-  const activeStockCount = profileFilteredRecs.filter((r) => r.category.toLowerCase() === 'stock' && r.status === 'active').length;
+  // Automatically set target risk profile & goal based on activeTab:
+  // Crypto: Conservative & Income (63% win rate)
+  // Stocks: Moderate & Speculation (54% win rate)
+  const currentRiskProfile = activeTab === 'crypto' ? 'Conservative' : 'Moderate';
+  const currentInvestmentGoal = activeTab === 'crypto' ? 'Income' : 'Speculation';
 
-  // Filter recommendations based on selected drop downs and active tab
+  // Count active recs per category for tab badges (Crypto: Conservative & Income, Stocks: Moderate & Speculation)
+  const activeCryptoCount = recommendations.filter(
+    (r) =>
+      r.category.toLowerCase() === 'crypto' &&
+      r.risk_profile.toLowerCase() === 'conservative' &&
+      r.investment_goal.toLowerCase() === 'income' &&
+      r.status === 'active'
+  ).length;
+
+  const activeStockCount = recommendations.filter(
+    (r) =>
+      r.category.toLowerCase() === 'stock' &&
+      r.risk_profile.toLowerCase() === 'moderate' &&
+      r.investment_goal.toLowerCase() === 'speculation' &&
+      r.status === 'active'
+  ).length;
+
+  // Filter recommendations based on activeTab target strategy
   const filteredRecs = recommendations.filter(
     (r) =>
-      r.risk_profile.toLowerCase() === riskProfile.toLowerCase() &&
-      r.investment_goal.toLowerCase() === investmentGoal.toLowerCase() &&
+      r.risk_profile.toLowerCase() === currentRiskProfile.toLowerCase() &&
+      r.investment_goal.toLowerCase() === currentInvestmentGoal.toLowerCase() &&
       r.category.toLowerCase() === (activeTab === 'stocks' ? 'stock' : 'crypto')
   );
 
@@ -551,48 +565,19 @@ const RecommendationsPage: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 relative z-20 w-full lg:w-auto mt-6 lg:mt-0">
-          {/* Risk Dropdown */}
-          <div className="flex flex-row items-center justify-between sm:justify-start gap-4 bg-white/5 sm:bg-transparent px-4 py-2 sm:p-0 rounded-xl">
+          {/* Strategy Indicator Badge / Readonly Dropdowns */}
+          <div className="flex flex-row items-center justify-between sm:justify-start gap-3 bg-white/5 sm:bg-transparent px-4 py-2 sm:p-0 rounded-xl">
             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider whitespace-nowrap">Risk Profile</span>
-            <SmallCustomSelect
-              value={riskProfile}
-              onChange={async (v) => {
-                setRiskProfile(v);
-                try {
-                  await api.post('/settings/preferences', { risk_profile: v });
-                  if (user) setUser({ ...user, risk_profile: v } as any);
-                } catch (e) {
-                  console.error("Failed to update risk profile:", e);
-                }
-              }}
-              options={[
-                { value: "Conservative", label: "Conservative" },
-                { value: "Moderate", label: "Moderate" },
-                { value: "Aggressive", label: "Aggressive" }
-              ]}
-            />
+            <span className="px-3 py-1.5 bg-[#1e2230] border border-cyan-500/30 text-cyan-400 text-xs font-semibold rounded-xl tracking-wide">
+              {currentRiskProfile}
+            </span>
           </div>
 
-          {/* Goal Dropdown */}
-          <div className="flex flex-row items-center justify-between sm:justify-start gap-4 bg-white/5 sm:bg-transparent px-4 py-2 sm:p-0 rounded-xl">
+          <div className="flex flex-row items-center justify-between sm:justify-start gap-3 bg-white/5 sm:bg-transparent px-4 py-2 sm:p-0 rounded-xl">
             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider whitespace-nowrap">Goal</span>
-            <SmallCustomSelect
-              value={investmentGoal}
-              onChange={async (v) => {
-                setInvestmentGoal(v);
-                try {
-                  await api.post('/settings/preferences', { investment_goal: v });
-                  if (user) setUser({ ...user, investment_goal: v } as any);
-                } catch (e) {
-                  console.error("Failed to update investment goal:", e);
-                }
-              }}
-              options={[
-                { value: "Income", label: "Income" },
-                { value: "Growth", label: "Growth" },
-                { value: "Speculation", label: "Speculation" }
-              ]}
-            />
+            <span className="px-3 py-1.5 bg-[#1e2230] border border-cyan-500/30 text-cyan-400 text-xs font-semibold rounded-xl tracking-wide">
+              {currentInvestmentGoal}
+            </span>
           </div>
 
           {/* Sort By Dropdown */}

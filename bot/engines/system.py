@@ -530,8 +530,13 @@ async def daily_recommendations_generator_engine(application):
     """
     logger.debug("⏳ Starting Daily Recommendations Generator Engine...")
     
-    risk_profiles = ["Conservative", "Moderate", "Aggressive"]
-    investment_goals = ["Income", "Growth", "Speculation"]
+    # Only pre-generate AI recommendations for the winning combinations:
+    # Crypto focus: Conservative & Income
+    # Stocks focus: Moderate & Speculation
+    target_combinations = [
+        ("Conservative", "Income"),
+        ("Moderate", "Speculation"),
+    ]
     
     while True:
         try:
@@ -546,28 +551,27 @@ async def daily_recommendations_generator_engine(application):
             logger.debug(f"Daily Recommendations Generator Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             await asyncio.sleep(wait_time)
             
-            logger.debug("🤖 Generating daily AI recommendations for all combinations...")
+            logger.debug("🤖 Generating daily AI recommendations for target combinations...")
             
             from server import app
             from web_api.routes_portfolio import generate_and_cache_recommendations
             
             with app.app_context():
-                for risk in risk_profiles:
-                    for goal in investment_goals:
-                        try:
-                            logger.debug(f"Generating recommendations for {risk} & {goal}...")
-                            result = generate_and_cache_recommendations(
-                                user_id=None, 
-                                risk_profile=risk, 
-                                investment_goal=goal, 
-                                force_regenerate=True, 
-                                is_admin=True
-                            )
-                            logger.debug(f"Result for {risk} & {goal}: Status {result.get('status_code')}")
-                        except Exception as e:
-                            logger.error(f"Error generating recommendations for {risk} & {goal}: {e}")
-                        
-                        await asyncio.sleep(10) # 10 second delay between combinations
+                for risk, goal in target_combinations:
+                    try:
+                        logger.debug(f"Generating recommendations for {risk} & {goal}...")
+                        result = generate_and_cache_recommendations(
+                            user_id=None, 
+                            risk_profile=risk, 
+                            investment_goal=goal, 
+                            force_regenerate=True, 
+                            is_admin=True
+                        )
+                        logger.debug(f"Result for {risk} & {goal}: Status {result.get('status_code')}")
+                    except Exception as e:
+                        logger.error(f"Error generating recommendations for {risk} & {goal}: {e}")
+                    
+                    await asyncio.sleep(10) # 10 second delay between combinations
                         
             logger.info("✅ Daily AI recommendations generated successfully.")
             

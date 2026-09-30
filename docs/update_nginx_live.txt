@@ -27,7 +27,10 @@ server {
     
     # Firebase Auth custom domain proxy
     location /__/auth/ {
-        proxy_pass https://tradingbot-bf028.firebaseapp.com;
+        resolver 8.8.8.8 1.1.1.1 valid=300s;
+        resolver_timeout 5s;
+        set $firebase_backend "https://tradingbot-bf028.firebaseapp.com";
+        proxy_pass $firebase_backend;
         proxy_set_header Host tradingbot-bf028.firebaseapp.com;
         proxy_ssl_server_name on;
         proxy_intercept_errors off;
