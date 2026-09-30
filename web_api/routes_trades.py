@@ -2951,9 +2951,18 @@ def get_trade_chart():
         return "Invalid numeric parameters", 400
         
     side = request.args.get("side", "LONG").upper()
+    if side in ["BUY", "LONG", "L"]:
+        side = "LONG"
+    elif side in ["SELL", "SHORT", "S"]:
+        side = "SHORT"
+
     trade_type = request.args.get("type", "crypto")
-    timeframe = request.args.get("timeframe", "15M" if trade_type == "crypto" else "1D").upper()
     strategy = request.args.get("strategy", "")
+    is_ai_rec = "ai" in strategy.lower() or "recommendation" in strategy.lower()
+    timeframe = request.args.get("timeframe", "1D" if (is_ai_rec or trade_type == "stock") else "15M").upper()
+    if is_ai_rec:
+        strategy = ""  # Clean matching title and shared cache with recommendations page
+
     leverage_param = request.args.get("leverage", None)  # None = auto (20x crypto, 1x stock)
     leverage = float(leverage_param) if leverage_param is not None else None
 
@@ -3065,6 +3074,27 @@ def get_trade_chart():
                     loop.close()
             except Exception as e:
                 print(f"Error fetching OHLCV: {e}", flush=True)
+
+        if (df_chart is None or df_chart.empty) and timeframe == "1D" and trade_type == "crypto":
+            try:
+                import yfinance as yf
+                base_sym = symbol.split("/")[0].split("-")[0].split(":")[0]
+                tkr = yf.Ticker(f"{base_sym}-USD")
+                yf_df = tkr.history(period="3mo")
+                if not yf_df.empty:
+                    yf_df.reset_index(inplace=True)
+                    yf_df.columns = [c.lower() for c in yf_df.columns]
+                    if 'date' in yf_df.columns:
+                        yf_df.rename(columns={'date': 'timestamp'}, inplace=True)
+                    if 'datetime' in yf_df.columns:
+                        yf_df.rename(columns={'datetime': 'timestamp'}, inplace=True)
+                    yf_df['timestamp'] = pd.to_datetime(yf_df['timestamp'])
+                    if yf_df['timestamp'].dt.tz is not None:
+                        yf_df['timestamp'] = yf_df['timestamp'].dt.tz_convert('UTC').dt.tz_localize(None)
+                    yf_df['timestamp'] = yf_df['timestamp'].astype('datetime64[ms]').astype('int64')
+                    df_chart = yf_df
+            except Exception as e:
+                print(f"yfinance crypto fallback failed for chart: {e}", flush=True)
 
         if df_chart is None or df_chart.empty:
             dates = pd.date_range(end=pd.Timestamp.now(), periods=30, freq='D' if trade_type == "stock" else '15min')

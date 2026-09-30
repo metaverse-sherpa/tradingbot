@@ -55,36 +55,35 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     strategy_lower = strategy.lower()
     is_ai_rec = "ai" in strategy_lower or "recommendation" in strategy_lower
 
-    if not is_ai_rec:
-        # Calculate RSI based on strategy
-        delta = df['close'].diff()
-        gain = delta.clip(lower=0)
-        loss = -delta.clip(upper=0)
-        
-        if "sherpa" in strategy_lower or timeframe == "1D":
-            # RSI(3) with simple rolling average (matching SherpaVelocityPullback in strategies.py)
-            rsi_period = 3
-            avg_gain = gain.rolling(window=rsi_period).mean()
-            avg_loss = loss.rolling(window=rsi_period).mean()
-            rs = avg_gain / (avg_loss + 1e-10)
-            df['rsi'] = 100 - (100 / (1 + rs))
-            rsi_label = "RSI (3)"
-        else:
-            # RSI(14) with EWM (matching ValkyrieEliteScalper in strategies.py)
-            rsi_period = 14
-            avg_gain = gain.ewm(span=rsi_period, adjust=False).mean()
-            avg_loss = loss.ewm(span=rsi_period, adjust=False).mean()
-            rs = avg_gain / (avg_loss.replace(0, np.nan))
-            df['rsi'] = 100 - (100 / (1 + rs))
-            rsi_label = "RSI (14)"
+    # Calculate RSI based on strategy
+    delta = df['close'].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    
+    if "sherpa" in strategy_lower or timeframe == "1D" or is_ai_rec:
+        # RSI(3) with simple rolling average (matching SherpaVelocityPullback in strategies.py and 1D setups)
+        rsi_period = 3
+        avg_gain = gain.rolling(window=rsi_period).mean()
+        avg_loss = loss.rolling(window=rsi_period).mean()
+        rs = avg_gain / (avg_loss + 1e-10)
+        df['rsi'] = 100 - (100 / (1 + rs))
+        rsi_label = "RSI (3)"
+    else:
+        # RSI(14) with EWM (matching ValkyrieEliteScalper in strategies.py)
+        rsi_period = 14
+        avg_gain = gain.ewm(span=rsi_period, adjust=False).mean()
+        avg_loss = loss.ewm(span=rsi_period, adjust=False).mean()
+        rs = avg_gain / (avg_loss.replace(0, np.nan))
+        df['rsi'] = 100 - (100 / (1 + rs))
+        rsi_label = "RSI (14)"
 
-        # Calculate EMAs and BBs
-        df["ema_50"] = df["close"].ewm(span=50, adjust=False).mean()
-        df["ema_200"] = df["close"].ewm(span=200, adjust=False).mean()
-        df["bb_mid"] = df["close"].rolling(window=20).mean()
-        std = df["close"].rolling(window=20).std()
-        df["bb_up"] = df["bb_mid"] + (2 * std)
-        df["bb_low"] = df["bb_mid"] - (2 * std)
+    # Calculate EMAs and BBs
+    df["ema_50"] = df["close"].ewm(span=50, adjust=False).mean()
+    df["ema_200"] = df["close"].ewm(span=200, adjust=False).mean()
+    df["bb_mid"] = df["close"].rolling(window=20).mean()
+    std = df["close"].rolling(window=20).std()
+    df["bb_up"] = df["bb_mid"] + (2 * std)
+    df["bb_low"] = df["bb_mid"] - (2 * std)
 
     # NOW slice the dataframe for plotting
     df = df.tail(30).copy()
@@ -92,7 +91,7 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
     # Setup Vibrant Neon Addplots
     ap = []
     
-    if not is_ai_rec and 'rsi' in df.columns:
+    if 'rsi' in df.columns:
         # Add RSI panel (explicitly set ylim=(0, 100) and secondary_y=False to ensure correct scale)
         ap.append(mpf.make_addplot(df['rsi'], panel=1, color='#FF9800', ylabel=rsi_label, ylim=(0, 100), secondary_y=False, width=1.0))
         # RSI overbought/oversold lines
@@ -130,22 +129,21 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
 
     fb_bb = None
     
-    if not is_ai_rec:
-        if "sherpa velocity" in strategy_lower or timeframe == "1D":
-            # Add EMA 50 (Vibrant Neon Cyan)
-            ap.append(mpf.make_addplot(df["ema_50"], color='#00E5FF', alpha=0.8, width=1.2))
-            # Add EMA 200 (Vibrant Neon Purple/Magenta)
-            ap.append(mpf.make_addplot(df["ema_200"], color='#D500F9', alpha=0.8, width=1.2))
-        elif "valkyrie" in strategy_lower or timeframe != "1D":
-            # Bollinger Bands - Upper/Lower (Vibrant Cyan, thicker)
-            ap.append(mpf.make_addplot(df["bb_up"], color='#00E5FF', alpha=0.5, width=1.2))
-            ap.append(mpf.make_addplot(df["bb_low"], color='#00E5FF', alpha=0.5, width=1.2))
-            # Bollinger Mid (Subtle Dashed Cyan)
-            ap.append(mpf.make_addplot(df["bb_mid"], color='#00E5FF', alpha=0.3, width=0.8, linestyle='--'))
-            # Add EMA 200 (Vibrant Neon Purple/Magenta) for Valkyrie since it filters based on it
-            ap.append(mpf.make_addplot(df["ema_200"], color='#D500F9', alpha=0.8, width=1.2))
-            
-            fb_bb = dict(y1=df["bb_up"].values, y2=df["bb_low"].values, color='#00E5FF', alpha=0.05)
+    if "sherpa velocity" in strategy_lower or timeframe == "1D" or is_ai_rec:
+        # Add EMA 50 (Vibrant Neon Cyan)
+        ap.append(mpf.make_addplot(df["ema_50"], color='#00E5FF', alpha=0.8, width=1.2))
+        # Add EMA 200 (Vibrant Neon Purple/Magenta)
+        ap.append(mpf.make_addplot(df["ema_200"], color='#D500F9', alpha=0.8, width=1.2))
+    elif "valkyrie" in strategy_lower or timeframe != "1D":
+        # Bollinger Bands - Upper/Lower (Vibrant Cyan, thicker)
+        ap.append(mpf.make_addplot(df["bb_up"], color='#00E5FF', alpha=0.5, width=1.2))
+        ap.append(mpf.make_addplot(df["bb_low"], color='#00E5FF', alpha=0.5, width=1.2))
+        # Bollinger Mid (Subtle Dashed Cyan)
+        ap.append(mpf.make_addplot(df["bb_mid"], color='#00E5FF', alpha=0.3, width=0.8, linestyle='--'))
+        # Add EMA 200 (Vibrant Neon Purple/Magenta) for Valkyrie since it filters based on it
+        ap.append(mpf.make_addplot(df["ema_200"], color='#D500F9', alpha=0.8, width=1.2))
+        
+        fb_bb = dict(y1=df["bb_up"].values, y2=df["bb_low"].values, color='#00E5FF', alpha=0.05)
 
     # 2. Define the R:R lines logic (Only start from open_ts)
     start_time = pd.to_datetime(open_ts, unit='ms')
@@ -208,17 +206,22 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         fill_areas.append(fb_bb)
     
     tf_str = "1D" if is_ai_rec or timeframe == "1D" else timeframe
-    # Generate the chart
+    clean_side = "LONG" if str(side).upper() in ["BUY", "LONG", "L"] else ("SHORT" if str(side).upper() in ["SELL", "SHORT", "S"] else str(side).upper())
+    title_suffix = ""
+    if strategy and not is_ai_rec and strategy != "AI Recommendations Autopilot":
+        title_suffix = f" | {strategy}"
+
     # Generate the chart
     kwargs = dict(
         type='candle',
         style=style,
-        title=f"\n{symbol} ({side}) - {tf_str} Setup" + (f" | {strategy}" if strategy else ""),
+        title=f"\n{symbol} ({clean_side}) - {tf_str} Setup{title_suffix}",
         ylabel=f'Price ({currency})',
         addplot=ap,
         volume=False,
         figratio=(16,10),
         figscale=0.9,
+        panel_ratios=(4, 1),
         returnfig=True
     )
 
@@ -242,9 +245,6 @@ def generate_trade_chart(symbol, df, entry, tp, sl, side, open_ts=0, timeframe="
         y_lower = min(y_lower, sl - price_range * 0.05)
 
     kwargs['ylim'] = (y_lower, y_upper)
-    
-    if not is_ai_rec:
-        kwargs['panel_ratios'] = (4, 1)
     
     if fill_areas:
         valid_areas = [fb for fb in fill_areas if fb is not None]

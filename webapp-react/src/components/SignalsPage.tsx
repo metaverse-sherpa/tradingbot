@@ -291,7 +291,9 @@ const SignalsPage: React.FC = () => {
     const isExpanded = expandedId === signal.id;
     const isClosed = tabState === 'closed';
 
-    const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(signal.symbol || '')}&entry=${signal.entry_price || 0}&tp=${signal.tp_price || 0}&sl=${signal.sl_price || 0}&side=${signal.side || ''}&open_ts=${signal.open_time || signal.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(signal.strategy || '')}&leverage=${signal.leverage || 1}`;
+    const timeframe = (type === 'crypto' || isAiRec || type === 'stock') ? '1D' : '15M';
+    const stratParam = isAiRec ? '' : encodeURIComponent(signal.strategy || '');
+    const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(signal.symbol || '')}&entry=${signal.entry_price || 0}&tp=${signal.tp_price || 0}&sl=${signal.sl_price || 0}&side=${signal.side || ''}&open_ts=${signal.open_time || signal.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${stratParam}&timeframe=${timeframe}&leverage=${isAiRec ? 1 : (signal.leverage || 1)}`;
 
     const cleanSym = (signal.symbol || '').replace('/', '').toUpperCase();
     const hasActiveTrade = userOpenTrades.some((t: any) => (t.symbol || '').replace('/', '').toUpperCase() === cleanSym);

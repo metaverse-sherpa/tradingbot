@@ -504,7 +504,9 @@ const Dashboard: React.FC = () => {
               let sl_pct = s.entry_price > 0 && s.sl_price > 0 ? Math.abs((s.sl_price - s.entry_price) / s.entry_price * 100) : 0;
               
               const isExpanded = expandedSignalId === (s.id || idx.toString());
-              const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(s.symbol || '')}&entry=${s.entry_price || 0}&tp=${s.tp_price || 0}&sl=${s.sl_price || 0}&side=${s.side || ''}&open_ts=${s.open_time || s.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(s.strategy || '')}&leverage=${s.leverage || 1}`;
+              const timeframe = (type === 'crypto' || isAiRec || type === 'stock') ? '1D' : '15M';
+              const stratParam = isAiRec ? '' : encodeURIComponent(s.strategy || '');
+              const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(s.symbol || '')}&entry=${s.entry_price || 0}&tp=${s.tp_price || 0}&sl=${s.sl_price || 0}&side=${s.side || ''}&open_ts=${s.open_time || s.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${stratParam}&timeframe=${timeframe}&leverage=${isAiRec ? 1 : (s.leverage || 1)}`;
 
               return (
                 <div 
