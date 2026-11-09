@@ -90,14 +90,7 @@ async def alpaca_ws_client():
 
 async def websocket_engine(application):
     """
-    Main background task to manage all exchange WebSocket connections.
+    Main background task to manage Alpaca Equities WebSocket connection.
     """
-    logger.info("Starting Exchange WebSockets Engine...")
-    
-    # Run all exchange clients concurrently
-    await asyncio.gather(
-        blofin_ws_client(),
-        coinbase_ws_client(),
-        alpaca_ws_client(),
-        return_exceptions=True
-    )
+    logger.info("Starting Alpaca Equities WebSockets Engine...")
+    await alpaca_ws_client()

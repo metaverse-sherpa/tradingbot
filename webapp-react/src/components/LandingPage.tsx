@@ -75,7 +75,7 @@ const LandingPage: React.FC = () => {
           Your Money. Working Harder. <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">24/7.</span>
         </h1>
         <p className="text-base md:text-xl text-gray-400 leading-relaxed">
-          The MetaverseSherpa Bot finds high-probability trade setups across crypto and stocks — then executes them automatically while you sleep, travel, or live your life.
+          The MetaverseSherpa Bot finds high-probability pullback setups across megacap US equities — then executes them automatically with disciplined institutional risk management.
         </p>
       </div>
 
@@ -127,7 +127,7 @@ const LandingPage: React.FC = () => {
             <SparklesIcon size={32} className="text-purple-400 mb-3 md:mb-4" />
             <h2 className="text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide">AI-Powered Portfolio Audits</h2>
             <p className="text-sm md:text-lg text-gray-300 leading-relaxed max-w-2xl">
-              Import your existing stock and crypto holdings and let our advanced AI instantly audit your portfolio. 
+              Import your existing US equities holdings and let our advanced AI instantly audit your portfolio. 
               Get a comprehensive health score, real-time sentiment analysis from the latest news, and a personalized 
               step-by-step action plan to optimize your investments.
             </p>

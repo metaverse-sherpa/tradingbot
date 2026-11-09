@@ -213,9 +213,8 @@ def get_main_inline_menu(chat_id=None):
         if user:
             has_active = user.get('has_open_positions', False)
             is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-            crypto_connected = bool(user.get('exchange_id') and user.get('api_key') and user.get('api_secret'))
             alpaca_connected = bool(user.get('alpaca_api_key') and user.get('alpaca_api_secret'))
-            has_exchange = crypto_connected or alpaca_connected
+            has_exchange = alpaca_connected
             
     return InlineKeyboardMarkup(get_nav_buttons(has_active, is_admin, has_exchange))
 
@@ -224,12 +223,8 @@ def get_admin_keyboard(master_wallet):
     disabled = database.get_disabled_strategies()
     
     share_row = []
-    if "Mean Reversion Scalper" not in disabled:
-        share_row.append(InlineKeyboardButton("📈 Share MR Stats", callback_data="shf_mr"))
-    if "Valkyrie Elite Scalper" not in disabled:
-        share_row.append(InlineKeyboardButton("🛡️ Share VK Stats", callback_data="shf_vk"))
     if "Sherpa Velocity Pullback" not in disabled:
-        share_row.append(InlineKeyboardButton("🦙 Share SVP Stats", callback_data="shf_svp"))
+        share_row.append(InlineKeyboardButton("🦙 Share Equities Stats", callback_data="shf_svp"))
         
     return [
         [InlineKeyboardButton("🌍 Global Broadcast", callback_data="admin_broadcast_prompt")],
@@ -241,13 +236,12 @@ def get_admin_keyboard(master_wallet):
         [InlineKeyboardButton("💎 Direct Gift/Extend", callback_data="admin_direct_gift_prompt")],
         [InlineKeyboardButton("🚫 Revoke Premium Access", callback_data="admin_revoke_prompt")],
         [InlineKeyboardButton("💰 Set Master Wallet", callback_data="prompt_admin_wallet")],
-        [InlineKeyboardButton("🔗 Get Blofin Tutorial Link", callback_data="admin_get_link")],
         [InlineKeyboardButton("📧 Toggle Email Premium-Only", callback_data="toggle_emails_premium")],
         [InlineKeyboardButton("🕵️ Toggle Undercover", callback_data="toggle_undercover")],
         [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="close_admin")]
     ]
 
-def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='crypto'):
+def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='stock'):
     """Generates the navigation menu markup with a 'Change Strategy' button above the nav buttons."""
     has_active = False
     is_admin = False
@@ -259,30 +253,23 @@ def get_backtest_inline_menu(chat_id=None, show_risk_button=True, asset_type='cr
             has_active = user.get('has_open_positions', False)
             is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
             is_premium = database.is_premium(user)
-            crypto_connected = bool(user.get('exchange_id') and user.get('api_key') and user.get('api_secret'))
             alpaca_connected = bool(user.get('alpaca_api_key') and user.get('alpaca_api_secret'))
-            has_exchange = crypto_connected or alpaca_connected
+            has_exchange = alpaca_connected
     
     kb = []
     if show_risk_button:
-        if asset_type == 'stock':
-            risk_label = f"⚖️ Set Stock Risk % {'🔒' if not is_premium else ''}"
-            callback = "set_stock_risk"
-        else:
-            risk_label = f"⚖️ Set Crypto Risk % {'🔒' if not is_premium else ''}"
-            callback = "set_crypto_risk"
+        risk_label = f"⚖️ Set Stock Risk % {'🔒' if not is_premium else ''}"
+        callback = "set_stock_risk"
         kb.append([InlineKeyboardButton(risk_label, callback_data=callback)])
         
-    kb.append([InlineKeyboardButton("⚖️ Change Strategy", callback_data="strategy_menu")])
+    kb.append([InlineKeyboardButton("📈 Strategy Info", callback_data="strategy_menu")])
     kb.extend(get_nav_buttons(has_active, is_admin, has_exchange))
     return InlineKeyboardMarkup(kb)
 
 def get_settings_ui(user):
     privacy_status = "🔒 HIDDEN" if user['hide_dollars'] else "👁️ SHOWN"
     bot_status = "🟢 ACTIVE" if user['is_active'] else "🔴 PAUSED"
-    risk_val = user.get('risk_pct', 1.5)
     stock_risk_val = user.get('stock_risk_pct', 2.0)
-    syms = user.get('enabled_symbols', [])
     wallet_val = user.get('source_wallet')
     wallet_line = f"Source Wallet: `{wallet_val[:6]}...{wallet_val[-4:]}`\n" if wallet_val else "Source Wallet: Not Set (Use button below)\n"
     
@@ -305,19 +292,22 @@ def get_settings_ui(user):
     elif eq_type == 'pct':
         capital_display = f"{eq_val:.1f}% of Balance"
     elif eq_type == 'amount':
-        capital_display = f"${eq_val:,.2f} USDT"
+        capital_display = f"${eq_val:,.2f} USD"
     else:
         capital_display = "Full Account Balance (100%)"
+
+    alpaca_connected = bool(user.get('alpaca_api_key') and user.get('alpaca_api_secret'))
+    broker_mode = "Live" if "live" in (user.get('alpaca_endpoint') or "").lower() else "Paper"
+    broker_status = f"Alpaca ({broker_mode})" if alpaca_connected else "Not Connected"
 
     msg = (
         f"⚙️ *Metaverse Sherpa Settings*\n\n"
         f"Status: *{bot_status}*\n"
         f"Tier: *{tier_display}*\n"
         f"{expiry_msg}"
-        f"🪙 Crypto Strategy: *{user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')}*\n"
-        f"🦙 Stock Strategy: *{user.get('active_stock_strategy', 'None')}*\n"
-        f"🪙 Crypto Risk: *{risk_val:.2f}%*\n"
-        f"🦙 Stock Risk: *{stock_risk_val:.2f}%*\n"
+        f"📈 Strategy: *{user.get('active_stock_strategy', 'Sherpa Velocity Pullback')}*\n"
+        f"⚖️ Stock Risk: *{stock_risk_val:.2f}%*\n"
+        f"🦙 Broker: *{broker_status}*\n"
         f"Capital Allocation: *{capital_display}*\n"
         f"Dollar PnL: *{privacy_status}*\n"
         f"{wallet_line}"
@@ -325,17 +315,15 @@ def get_settings_ui(user):
     
     keyboard = [
         [
-            InlineKeyboardButton(f"🪙 Crypto Risk % {'⚙️' if not is_premium else ''}", callback_data="set_crypto_risk"),
-            InlineKeyboardButton(f"🦙 Stock Risk % {'⚙️' if not is_premium else ''}", callback_data="set_stock_risk")
+            InlineKeyboardButton(f"⚖️ Stock Risk % {'⚙️' if not is_premium else ''}", callback_data="set_stock_risk"),
+            InlineKeyboardButton("🦙 Link Alpaca", callback_data="set_alpaca_prompt")
         ],
-        [InlineKeyboardButton(f"🛰 Symbols {'⚙️' if not is_premium else ''}", callback_data="manage_symbols")],
         [InlineKeyboardButton("💰 Capital Allocation", callback_data="capital_menu")],
         [InlineKeyboardButton("Privacy On 🔒" if user['hide_dollars'] else "Privacy Off 👁️", callback_data="toggle_privacy")],
         [
-            InlineKeyboardButton("Change Strategy", callback_data="strategy_menu"),
-            InlineKeyboardButton("🔬 Backtest", callback_data="run_backtest")
+            InlineKeyboardButton("Strategy Info", callback_data="strategy_menu"),
+            InlineKeyboardButton("🔬 Backtest Equities", callback_data="run_backtest")
         ],
-        [InlineKeyboardButton("🔌 Switch Exchange", callback_data="switch_exchange_prompt")],
     ]
     
     if is_admin:
@@ -350,10 +338,7 @@ def get_settings_ui(user):
     keyboard.append([InlineKeyboardButton("👛 Set/Change Wallet", callback_data="prompt_set_wallet")])
     
     # 🏔️ Extend settings UI with main navigation footer menu
-    crypto_connected = bool(user.get('exchange_id') and user.get('api_key') and user.get('api_secret'))
-    alpaca_connected = bool(user.get('alpaca_api_key') and user.get('alpaca_api_secret'))
-    has_exchange = crypto_connected or alpaca_connected
-    
+    has_exchange = alpaca_connected
     has_active = user.get('has_open_positions', False)
     keyboard.extend(get_nav_buttons(has_active, is_admin, has_exchange))
     

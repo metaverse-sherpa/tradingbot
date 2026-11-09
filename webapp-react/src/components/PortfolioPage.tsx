@@ -17,31 +17,30 @@ import { useAuthStore } from '../store/useStore';
 const COLORS = ['#3cd7ff', '#00C853', '#8A2BE2', '#FF8C00', '#FF1493', '#00CED1', '#ADFF2F', '#A9A9A9'];
 
 const analysisMessages = [
-  "Consulting the crypto oracles...",
-  "Dusting off the blockchain...",
-  "Negotiating with rogue trading bots...",
-  "Polishing your diamond hands...",
-  "Calibrating the moon trajectory...",
-  "Feeding the AI hamsters...",
-  "Decoding Elon's latest tweet...",
-  "Searching for lost Bitcoin in couch cushions...",
+  "Analyzing portfolio momentum...",
+  "Querying SEC filings and earnings forecasts...",
+  "Negotiating with quantitative models...",
+  "Running macroeconomic factor analysis...",
+  "Calibrating market trajectory...",
+  "Feeding the AI neural networks...",
+  "Decoding institutional order flow...",
+  "Scanning market breadth and volatility...",
   "Asking the Metaverse Sherpa for directions...",
-  "Translating bear market roars...",
-  "Applying paper hands repellent...",
-  "Calculating the optimal time to HODL...",
-  "Waiting for the blockchain to untangle...",
+  "Translating technical pullbacks...",
+  "Calculating Sharpe & Sortino ratios...",
+  "Computing risk-adjusted returns...",
+  "Evaluating portfolio diversification...",
   "Bribing the algorithmic overlords...",
-  "Analyzing your risk of getting rekt...",
-  "Loading the hopium dispensers...",
-  "Summoning the ghost of Satoshi...",
+  "Analyzing downside protection...",
+  "Loading quantitative data...",
+  "Checking moving average crossovers...",
   "Checking if the trend is still your friend...",
-  "Consulting the magic 8-ball of finance...",
-  "Converting fiat tears into crypto gains...",
-  "Mining digital gold with a virtual pickaxe...",
+  "Consulting the quantitative models...",
+  "Converting market volatility into portfolio alpha...",
   "Pumping the algorithmic iron...",
-  "Checking the alignment of the financial stars...",
-  "Trekking through the digital Himalayas...",
-  "Finalizing your ticket to the moon..."
+  "Checking the alignment of financial indicators...",
+  "Trekking through market cycles...",
+  "Finalizing your institutional audit..."
 ];
 
 const PortfolioPage: React.FC = () => {
@@ -568,7 +567,7 @@ const PortfolioPage: React.FC = () => {
             <span className="bg-cyan-500/15 p-2 md:p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400">
               <Wallet size={18} />
             </span>
-            Stock & Crypto Portfolio
+            US Equities Portfolio
           </h2>
           <p className="text-gray-400 text-[11px] md:text-sm mt-1">Track static holdings, perform real-time AI audits and analysis.</p>
         </div>
@@ -1233,32 +1232,13 @@ const PortfolioPage: React.FC = () => {
             </h3>
 
             <form onSubmit={handleSavePosition} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1.5">Category</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormCategory('stock')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${formCategory === 'stock' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' : 'bg-transparent text-gray-400 border-white/5 hover:border-white/10'}`}
-                    >
-                      Stock
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormCategory('crypto')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${formCategory === 'crypto' ? 'bg-purple-500/15 text-purple-400 border-purple-500/30' : 'bg-transparent text-gray-400 border-white/5 hover:border-white/10'}`}
-                    >
-                      Crypto
-                    </button>
-                  </div>
-                </div>
+              <div className="space-y-4">
                 <div>
                   <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1.5">Symbol</label>
                   <input
                     type="text"
                     required
-                    placeholder="AAPL, BTC, etc."
+                    placeholder="AAPL, MSFT, NVDA, etc."
                     value={formSymbol}
                     onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
                     className="w-full bg-[#131620] border border-[#2e303a] rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:outline-none focus:border-cyan-500 uppercase"

@@ -20,21 +20,17 @@ from bot.ui.keyboards import (
 )
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """🌍 Select Your Exchange"""
+    """🦙 Link Your Alpaca Account"""
     keyboard = [
-        [InlineKeyboardButton("🏔️ Blofin", callback_data="setex_blofin")],
-        [InlineKeyboardButton("🔶 Binance", callback_data="setex_binance")],
-        [InlineKeyboardButton("💠 MEXC", callback_data="setex_mexc")],
-        [InlineKeyboardButton("🔷 Bitget", callback_data="setex_bitget")],
-        [InlineKeyboardButton("🟦 BingX", callback_data="setex_bingx")],
-        [InlineKeyboardButton("🪙 Coinbase Advanced", callback_data="setex_coinbase")],
-        [InlineKeyboardButton("🦙 Alpaca Stocks", callback_data="setex_alpaca")],
-        [InlineKeyboardButton("📖 Download Blofin Guide (PDF)", callback_data="send_blofin_guide")]
+        [InlineKeyboardButton("📝 Alpaca Paper Trading (Simulated)", callback_data="set_alpaca_mode_paper")],
+        [InlineKeyboardButton("💵 Alpaca Live Trading (Real Capital)", callback_data="set_alpaca_mode_live")],
+        [InlineKeyboardButton("⚙️ View Settings", callback_data="back_to_settings")]
     ]
     
     await update.effective_message.reply_text(
-        "🌍 *Select Your Exchange*\n\n"
-        "Which exchange would you like to link to the Metaverse Sherpa?",
+        "🦙 *Link Your Alpaca Brokerage Account*\n\n"
+        "Metaverse Sherpa trades US equities exclusively through Alpaca Markets.\n\n"
+        "Please select your trading environment:",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )

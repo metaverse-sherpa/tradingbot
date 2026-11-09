@@ -234,97 +234,39 @@ def delete_alpaca():
 @settings_bp.route('/api/settings/test-connection', methods=['GET'])
 @require_auth
 def test_connection():
-    """Test the user's saved exchange credentials and return detailed status."""
+    """Test the user's saved Alpaca stock credentials and return detailed status."""
     user = g.user
-    segment = request.args.get('segment', 'crypto')  # 'crypto' or 'stock'
-
-    if segment == 'crypto':
-        import database
-        from web_api.routes_trades import _set_coinbase_sandbox_if_needed
-
-        api_key = user.get('api_key')
-        api_secret = _clean_pem(user.get('api_secret') or '')
-        api_password = user.get('api_password') or ''
-        exchange_id = user.get('exchange_id', 'blofin')
-
-        # Fall back to linked Telegram user's keys if web user has none
-        if not api_key or not api_secret:
-            tg_chat_id = user.get('telegram_chat_id')
-            if tg_chat_id:
-                try:
-                    tg_user = database.get_user(int(tg_chat_id))
-                    if tg_user:
-                        api_key = tg_user.get('api_key') or tg_user.get('blofin_api_key')
-                        api_secret = _clean_pem(tg_user.get('api_secret') or tg_user.get('blofin_api_secret') or '')
-                        api_password = tg_user.get('api_password') or tg_user.get('blofin_api_password') or ''
-                        exchange_id = tg_user.get('exchange_id', exchange_id)
-                except Exception as e:
-                    pass
-
-        if not api_key or not api_secret:
-            return jsonify({'success': False, 'error': 'No crypto API keys saved'}), 200
-
-        # Detect old Coinbase Pro keys (UUID key ~36 chars, base64 secret, no PEM header)
-        # and redirect to the correct CCXT class
-        effective_exchange_id = exchange_id
-        if exchange_id == 'coinbase' and len(api_key) < 60 and '-----BEGIN' not in api_secret:
-            effective_exchange_id = 'coinbaseexchange'
-
-        diag = {
-            'exchange': exchange_id,
-            'effective_exchange': effective_exchange_id,
-            'api_key_len': len(api_key) if api_key else 0,
-            'api_secret_len': len(api_secret) if api_secret else 0,
-            'secret_has_pem_header': '-----BEGIN' in (api_secret or ''),
-            'secret_has_newlines': '\n' in (api_secret or ''),
-            'secret_first_40': (api_secret or '')[:40] + '...',
-            'coinbase_sandbox': user.get('coinbase_sandbox'),
-        }
-
-        try:
-            import ccxt
-            config = {
-                'apiKey': api_key,
-                'secret': api_secret,
-                **({'password': api_password} if api_password else {}),
-                'enableRateLimit': False,
-                'timeout': 8000,
-            }
-            client = getattr(ccxt, effective_exchange_id)(config)
-            _set_coinbase_sandbox_if_needed(client, exchange_id, None, user)
-            bal = client.fetch_balance()
+    import database
+    alpaca_key = user.get('alpaca_api_key')
+    alpaca_secret = user.get('alpaca_api_secret')
+    
+    if not alpaca_key or not alpaca_secret:
+        tg_chat_id = user.get('telegram_chat_id')
+        if tg_chat_id:
             try:
-                client.close()
+                tg_user = database.get_user(int(tg_chat_id))
+                if tg_user:
+                    alpaca_key = tg_user.get('alpaca_api_key')
+                    alpaca_secret = tg_user.get('alpaca_api_secret')
             except Exception:
                 pass
-            note = None
-            if effective_exchange_id != exchange_id:
-                note = f'Your credentials look like old Coinbase Pro keys. In the exchange dropdown, try selecting "Coinbase Exchange" instead of "Coinbase Advanced".'
-            return jsonify({'success': True, 'exchange': effective_exchange_id, 'diag': diag, 'note': note}), 200
-        except Exception as e:
-            err = str(e)
-            hint = None
-            if exchange_id == 'coinbase' and '401' in err:
-                if '-----BEGIN' not in (api_secret or ''):
-                    hint = 'Your API secret does not look like a CDP private key (missing PEM header). Coinbase Advanced requires new CDP API keys from https://portal.cdp.coinbase.com/. Old Coinbase Pro keys are not supported.'
-                else:
-                    hint = 'JWT auth failed. Ensure your CDP key has "View" permissions and your private key was copied in full including the -----BEGIN/END lines.'
-            return jsonify({'success': False, 'exchange': effective_exchange_id, 'error': err[:500], 'diag': diag, 'hint': hint}), 200
 
+    if not alpaca_key or not alpaca_secret:
+        return jsonify({'success': False, 'error': 'No Alpaca API keys saved'}), 200
 
-    elif segment == 'stock':
-        import database
-        alpaca_key = user.get('alpaca_api_key')
-        alpaca_secret = user.get('alpaca_api_secret')
-        if not alpaca_key or not alpaca_secret:
-            return jsonify({'success': False, 'error': 'No Alpaca API keys saved'}), 200
-        try:
-            res = database.make_alpaca_request(user, 'GET', '/v2/account')
-            return jsonify({'success': True, 'portfolio_value': res.get('portfolio_value')}), 200
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)[:300]}), 200
-
-    return jsonify({'error': 'Invalid segment'}), 400
+    try:
+        res = database.make_alpaca_request(user, 'GET', '/v2/account')
+        return jsonify({
+            'success': True,
+            'exchange': 'alpaca',
+            'status': res.get('status'),
+            'currency': res.get('currency', 'USD'),
+            'cash': res.get('cash'),
+            'buying_power': res.get('buying_power'),
+            'portfolio_value': res.get('portfolio_value')
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)[:300]}), 200
 
 @settings_bp.route("/api/settings/developer-api-key/generate", methods=["POST"])
 @require_auth

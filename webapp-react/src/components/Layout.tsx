@@ -83,14 +83,6 @@ const BriefcaseIcon = ({ size = 20, className = '' }) => (
   </svg>
 );
 
-const LightbulbIcon = ({ size = 20, className = '' }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5" />
-    <path d="M9 18h6" />
-    <path d="M10 22h4" />
-  </svg>
-);
-
 const CreditCardIcon = ({ size = 20, className = '' }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
@@ -106,9 +98,8 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
-  const hasLinkedCrypto = Boolean(user?.has_exchange_keys);
   const hasLinkedStock = Boolean(user?.has_alpaca_keys);
-  const showAdvancedTabs = isPremium && (hasLinkedCrypto || hasLinkedStock);
+  const showAdvancedTabs = isPremium && hasLinkedStock;
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   
@@ -195,11 +186,6 @@ const Layout: React.FC = () => {
                       <Link to={isPremium ? "/portfolio" : "/premium"} onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <BriefcaseIcon size={16} className="text-cyan-400" /> My Portfolio
                       </Link>
-                      {isPremium && (
-                        <Link to="/recommendations" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
-                        <LightbulbIcon size={16} className="text-cyan-400" /> Recommendations
-                        </Link>
-                      )}
                       {isPremium && user?.ai_strategy_builder_enabled !== false && (
                         <Link to="/strategies/builder" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <TrendingUpIcon size={16} className="text-purple-400" /> Strategy Builder
@@ -245,7 +231,7 @@ const Layout: React.FC = () => {
           <footer className="mt-auto pt-24 pb-8 px-4 text-center">
             <div className="max-w-4xl mx-auto text-[10px] sm:text-xs text-gray-400 leading-relaxed space-y-4">
               <p>
-                <strong>Disclaimer:</strong> Trading stocks, options, cryptocurrencies, and other financial instruments involves a high degree of risk and may not be suitable for all investors. Past performance of any trading system or methodology is not necessarily indicative of future results.
+                <strong>Disclaimer:</strong> Trading stocks, equities, options, and other financial instruments involves a high degree of risk and may not be suitable for all investors. Past performance of any trading system or methodology is not necessarily indicative of future results.
               </p>
               <p>
                 Metaversesherpa provides algorithmic trading tools and portfolio analytics for informational and educational purposes only. We are not registered financial advisors. By using this platform, you acknowledge that you are solely responsible for your own investment decisions and any resulting financial losses.
@@ -312,12 +298,6 @@ const Layout: React.FC = () => {
               <Link to="/strategies" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/strategies' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
                 <BookOpenIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Strategies</span>
-              </Link>
-            )}
-            {isPremium && (
-              <Link to="/recommendations" className={`${showAdvancedTabs ? 'hidden md:flex' : 'flex'} flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/recommendations' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
-                <LightbulbIcon size={20} className="md:w-4 md:h-4" />
-                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Recommendations</span>
               </Link>
             )}
             {user?.is_admin && (

@@ -127,67 +127,13 @@ def _refresh_market_data_cache():
         except Exception as e:
             print(f"[MarketCache] Stock fetch error: {e}")
 
-        # --- CRYPTO ---
-        try:
-            crypto_yf_symbols = [f"{sym}-USD" for sym in CRYPTO_WATCHLIST]
-            crypto_df = yf.download(
-                crypto_yf_symbols,
-                period="1mo",
-                interval="1d",
-                group_by="ticker",
-                auto_adjust=True,
-                threads=True,
-                progress=False
-            )
-            for sym in CRYPTO_WATCHLIST:
-                yf_sym = f"{sym}-USD"
-                try:
-                    if len(CRYPTO_WATCHLIST) == 1:
-                        df = crypto_df
-                    else:
-                        df = crypto_df[yf_sym]
-
-                    closes = df["Close"].dropna()
-                    if len(closes) < 2:
-                        continue
-
-                    current_price = float(closes.iloc[-1])
-                    price_7d_ago = float(closes.iloc[-6]) if len(closes) >= 6 else float(closes.iloc[0])
-                    price_30d_ago = float(closes.iloc[0])
-
-                    ret_7d = ((current_price - price_7d_ago) / price_7d_ago) * 100
-                    ret_30d = ((current_price - price_30d_ago) / price_30d_ago) * 100
-                    avg_vol = int(df["Volume"].dropna().mean()) if "Volume" in df.columns else 0
-
-                    ticker_obj = yf.Ticker(yf_sym)
-                    fi = ticker_obj.fast_info
-                    high_52w = float(fi.get("year_high", current_price))
-                    low_52w = float(fi.get("year_low", current_price))
-                    market_cap = int(fi.get("market_cap", 0))
-
-                    new_crypto[sym] = {
-                        "price": round(current_price, 6) if current_price < 1 else round(current_price, 2),
-                        "7d_return": round(ret_7d, 2),
-                        "30d_return": round(ret_30d, 2),
-                        "avg_volume": avg_vol,
-                        "52w_high": round(high_52w, 2),
-                        "52w_low": round(low_52w, 2),
-                        "market_cap": market_cap,
-                        "pct_from_52w_high": round(((current_price - high_52w) / high_52w) * 100, 2)
-                    }
-                except Exception:
-                    continue
-        except Exception as e:
-            print(f"[MarketCache] Crypto fetch error: {e}")
-
         with _MARKET_DATA_LOCK:
             if new_stocks:
                 _MARKET_DATA_CACHE["stocks"] = new_stocks
-            if new_crypto:
-                _MARKET_DATA_CACHE["crypto"] = new_crypto
+            _MARKET_DATA_CACHE["crypto"] = {}
             _MARKET_DATA_CACHE["last_refresh"] = now
 
-        print(f"[MarketCache] Refreshed: {len(new_stocks)} stocks, {len(new_crypto)} crypto")
+        print(f"[MarketCache] Refreshed: {len(new_stocks)} stocks")
     except Exception as e:
         print(f"[MarketCache] Fatal refresh error: {e}")
 

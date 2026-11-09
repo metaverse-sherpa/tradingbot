@@ -19,59 +19,33 @@ async def handle_strategies_callback(query, update: Update, context: ContextType
 
     if query.data == "strategy_menu":
         await query.answer()
-        risk_val = user.get('risk_pct', 1.5)
         stock_risk_val = user.get('stock_risk_pct', 2.0)
-        active_crypto = user.get('active_crypto_strategy', 'Valkyrie Elite Scalper')
-        active_stock = user.get('active_stock_strategy', 'None')
+        active_stock = user.get('active_stock_strategy', 'Sherpa Velocity Pullback')
         
         strategy_overview = (
-            "🎯 *Simultaneous Strategy Manager*\n\n"
-            "Our engine supports running **one active crypto strategy** and **one active stock strategy** concurrently!\n\n"
-            "🪙 *Crypto Strategy Engine* (Blofin/Bitget)\n"
-            f"• Current: *{active_crypto}*\n"
-            "• Execution: 24/7 background scalper.\n\n"
+            "🎯 *Equities Strategy Manager*\n\n"
+            "Metaverse Sherpa exclusively executes the **Sherpa Velocity Pullback** strategy on US equities!\n\n"
             "🦙 *Stock Strategy Engine* (Alpaca)\n"
-            f"• Current: *{active_stock}*\n"
-            "• Execution: Daily swing-trades at 9:31 AM EST.\n\n"
-            f"⚖️ *Current Crypto Risk*: `{risk_val:.2f}% per trade`\n"
-            f"⚖️ *Current Stock Risk*: `{stock_risk_val:.2f}% per trade`\n\n"
-            "Use the controls below to independently activate or pause each engine:"
+            f"• Current Status: *{'🟢 Active' if active_stock != 'None' else '⏸️ Paused'}*\n"
+            "• Execution: Daily swing-trades evaluated at 9:31 AM EST.\n"
+            "• Universe: 37 Curated Megacap US Equities.\n"
+            f"• Current Risk: `{stock_risk_val:.2f}% per trade`\n\n"
+            "Use the controls below to manage your stock strategy:"
         )
         
-        disabled = database.get_disabled_strategies()
-        
-        crypto_row = [
-            InlineKeyboardButton("💡 AI Recs (63% Win)" + (" (Active)" if active_crypto == "AI Recommendations Autopilot" else ""), callback_data="set_strat_airecs")
-        ]
-        if "Valkyrie Elite Scalper" not in disabled:
-            crypto_row.append(InlineKeyboardButton("🛡️ Valkyrie" + (" (Active)" if active_crypto == "Valkyrie Elite Scalper" else ""), callback_data="set_strat_valk"))
-        if "Mean Reversion Scalper" not in disabled:
-            crypto_row.append(InlineKeyboardButton("🪙 Mean Rev" + (" (Active)" if active_crypto == "Mean Reversion Scalper" else ""), callback_data="set_strat_mean"))
-
         stock_row = []
-        if "Sherpa Velocity Pullback" not in disabled:
-            stock_row.append(InlineKeyboardButton("🦙 Alpaca Stock" + (" (Active)" if active_stock == "Sherpa Velocity Pullback" else ""), callback_data="set_strat_svp"))
-        
         if active_stock == "None":
-            stock_row.append(InlineKeyboardButton("▶️ Resume Stock Strategy", callback_data="set_strat_stock_pause"))
+            stock_row.append(InlineKeyboardButton("▶️ Resume Strategy", callback_data="set_strat_stock_pause"))
         else:
-            stock_row.append(InlineKeyboardButton("⏸️ Pause Stock Strategy", callback_data="set_strat_stock_pause"))
+            stock_row.append(InlineKeyboardButton("⏸️ Pause Strategy", callback_data="set_strat_stock_pause"))
 
         keyboard = [
-            [InlineKeyboardButton("🏔️ Preview My Performance", callback_data="run_backtest")],
-            [InlineKeyboardButton("🪙 Set Crypto Risk %", callback_data="set_crypto_risk"),
-             InlineKeyboardButton("🦙 Set Stock Risk %", callback_data="set_stock_risk")],
+            [InlineKeyboardButton("🔬 Backtest Equities Strategy", callback_data="run_backtest_stock")],
+            [InlineKeyboardButton("⚖️ Set Stock Risk %", callback_data="set_stock_risk")],
+            stock_row,
+            [InlineKeyboardButton("📖 Strategy Guide & Metrics", callback_data="view_strategy_guide")],
+            [InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")]
         ]
-        if crypto_row:
-            keyboard.append(crypto_row)
-            
-        if active_crypto == "None":
-            keyboard.append([InlineKeyboardButton("▶️ Resume Crypto Strategy", callback_data="set_strat_crypto_pause")])
-        else:
-            keyboard.append([InlineKeyboardButton("⏸️ Pause Crypto Strategy", callback_data="set_strat_crypto_pause")])
-        keyboard.append(stock_row)
-        keyboard.append([InlineKeyboardButton("📖 Strategy Guide & Differences", callback_data="view_strategy_guide")])
-        keyboard.append([InlineKeyboardButton("🔙 Back to Settings", callback_data="back_to_settings")])
         keyboard.extend(get_nav_buttons(user.get('has_open_positions', False)))
         
         if query.message.photo:

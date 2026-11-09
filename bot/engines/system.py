@@ -731,74 +731,9 @@ async def daily_combined_email_engine(application):
                 s['target_tp_pct'] = tp
                 s['daily_pnl_pct'] = daily_change if is_long else -daily_change
 
-            # --- PROCESS CRYPTO SIGNALS ---
-            for s in crypto_signals:
-                if s['status'] != 'open' and (s.get('close_time') or 0) >= since_ms:
-                    s['pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
-            
-            crypto_opened = [s for s in crypto_signals if s['status'] == 'open']
-            crypto_closed = [s for s in crypto_signals if (s.get('close_time') or 0) >= since_ms and s['status'] != 'open']
-            crypto_open_symbols = list(set([s['symbol'] for s in crypto_opened]))
+            crypto_opened = []
+            crypto_closed = []
             live_prices_crypto = {}
-            if crypto_open_symbols:
-                try:
-                    r = requests.get("https://api.binance.us/api/v3/ticker/24hr", timeout=2)
-                    if r.status_code != 200:
-                        r = requests.get("https://api.binance.com/api/v3/ticker/24hr", timeout=2)
-                    if r.status_code == 200:
-                        binance_prices = {item['symbol']: {"price": float(item['lastPrice']), "daily": float(item['priceChangePercent'])} for item in r.json()}
-                        for sym in crypto_open_symbols:
-                            clean = sym.split(':')[0].replace('/', '')
-                            if clean in binance_prices:
-                                live_prices_crypto[sym] = binance_prices[clean]
-                    
-                    remaining_crypto = [sym for sym in crypto_open_symbols if sym not in live_prices_crypto]
-                    if remaining_crypto:
-                        resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
-                        if resp.status_code == 200:
-                            data = resp.json().get('data', [])
-                            price_map = {}
-                            for item in data:
-                                curr = float(item.get('last', 0))
-                                open24 = float(item.get('open24h', curr))
-                                change = ((curr - open24) / open24) * 100 if open24 > 0 else 0.0
-                                price_map[item['instId']] = {"price": curr, "daily": change}
-                            for sym in remaining_crypto:
-                                clean_sym = sym.split(':')[0].replace('/', '-')
-                                if clean_sym in price_map:
-                                    live_prices_crypto[sym] = price_map[clean_sym]
-                except Exception as pe:
-                    logger.error(f"Error fetching crypto prices for daily digest: {pe}")
-
-            for s in crypto_opened:
-                if s['status'] != 'open':
-                    s['current_pnl_pct'] = s.get('pnl_pct', 0.0) * CRYPTO_LEVERAGE
-                    s['target_tp_pct'] = 0.0
-                    s['daily_pnl_pct'] = 0.0
-                    continue
-                sym = s['symbol']
-                entry_price = s['entry_price']
-                tp_price = s.get('tp_price') or 0.0
-                price_info = live_prices_crypto.get(sym, {"price": entry_price, "daily": 0.0})
-                curr_price = price_info["price"]
-                daily_change = price_info["daily"]
-                is_long = s['side'].upper() in ['BUY', 'LONG']
-                if entry_price > 0:
-                    if is_long:
-                        pnl = ((curr_price - entry_price) / entry_price) * 100
-                        tp = ((tp_price - entry_price) / entry_price) * 100 if tp_price > 0 else 0.0
-                    else:
-                        pnl = ((entry_price - curr_price) / entry_price) * 100
-                        tp = ((entry_price - tp_price) / entry_price) * 100 if tp_price > 0 else 0.0
-                else:
-                    pnl = 0.0
-                    tp = 0.0
-                
-                pnl *= CRYPTO_LEVERAGE
-                tp *= CRYPTO_LEVERAGE
-                s['current_pnl_pct'] = pnl
-                s['target_tp_pct'] = tp
-                s['daily_pnl_pct'] = (daily_change * CRYPTO_LEVERAGE) if is_long else (-daily_change * CRYPTO_LEVERAGE)
 
             from web_api.email_service import send_alert_email, get_combined_daily_summary_html, get_combined_daily_summary_telegram
             
@@ -944,22 +879,6 @@ async def weekly_combined_email_engine(application):
             
             stock_prices_cache = {}
             crypto_prices_cache = {}
-            try:
-                r = requests.get("https://api.binance.us/api/v3/ticker/24hr", timeout=2)
-                if r.status_code != 200:
-                    r = requests.get("https://api.binance.com/api/v3/ticker/24hr", timeout=2)
-                if r.status_code == 200:
-                    crypto_prices_cache.update({item['symbol']: float(item['priceChangePercent']) for item in r.json()})
-                    
-                resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
-                if resp.status_code == 200:
-                    for item in resp.json().get('data', []):
-                        curr = float(item.get('last', 0))
-                        open24 = float(item.get('open24h', curr))
-                        change = ((curr - open24) / open24) * 100 if open24 > 0 else 0.0
-                        crypto_prices_cache[item['instId']] = change
-            except Exception as e:
-                logger.error(f"Error pre-fetching crypto prices: {e}")
                 
             try:
                 with database.db_session() as conn:

@@ -452,174 +452,72 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_forward_test_stats(update, context, chat_id, user)
         return
     
-    status_msg = await update.effective_message.reply_text("📊 Calculating your performance stats...")
+    status_msg = await update.effective_message.reply_text("📊 Calculating your stock performance stats...")
 
-    crypto_msg = ""
     stock_msg = ""
     errors = []
-    has_crypto = False
 
-    # 1. Fetch Crypto Stats if API Key exists
-    if user.get('api_key') and user.get('api_key') != "":
-        has_crypto = True
-        realized_daily_pnl = 0.0
-        total_unrealized_pnl = 0.0
-        open_positions_count = 0
-        try:
-            ex_id = user.get('exchange_id', 'blofin')
-            if ex_id == 'alpaca':
-                ex_id = 'blofin'
-            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-            ex_class = getattr(ccxt, ex_id)
-            default_type = 'swap'
-            async with ex_class({
-                "apiKey": user['api_key'],
-                "secret": user['api_secret'],
-                **({"password": user['api_password']} if user['api_password'] else {}),
-                "options": {"defaultType": default_type},
-            }) as user_ex:
-                
-                now_ms = int(time.time() * 1000)
-                twenty_four_hours_ago = now_ms - (24 * 60 * 60 * 1000)
-                
-                # Fetch Realized PnL fetching for last 24h
-                async def fetch_sym_pnl(sym):
-                    nonlocal realized_daily_pnl
-                    try:
-                        params = {'instType': 'SWAP'} if user_ex.id == 'blofin' else {}
-                        trades = await user_ex.fetch_my_trades(sym, since=twenty_four_hours_ago, params=params)
-                        for t in trades:
-                            info = t.get("info", {})
-                            gross_pnl = float(info.get("fillPnl") or 0)
-                            if gross_pnl != 0:
-                                fee = float(info.get("fee") or t.get("fee", {}).get("cost", 0))
-                                net_pnl = gross_pnl - (fee * 2)
-                                realized_daily_pnl += net_pnl
-                    except: pass
+    if not user.get('alpaca_api_key'):
+        await status_msg.delete()
+        is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
+        kb = [
+            [InlineKeyboardButton("🦙 Link Alpaca Account", callback_data="set_alpaca_prompt")],
+            *get_nav_buttons(False, is_admin=is_admin)
+        ]
+        await update.effective_message.reply_text(
+            "📊 *Equities Portfolio Performance*\n\n"
+            "❌ No Alpaca account linked.\n"
+            "Metaverse Sherpa trades US equities exclusively through Alpaca (Paper or Live).\n\n"
+            "Tap below to link your account:",
+            reply_markup=InlineKeyboardMarkup(kb),
+            parse_mode="Markdown"
+        )
+        return
 
-                await asyncio.gather(*(fetch_sym_pnl(sym) for sym in live_bot_multi.SYMBOLS))
-                
-                # Get Total Unrealized PnL from positions
-                total_margin = 0.0
-                try:
-                    positions = await user_ex.fetch_positions()
-                except Exception as pos_err:
-                    if ex_id != 'coinbase':
-                        logger.error(f"Error fetching positions for stats {ex_id}: {pos_err}")
-                    positions = []
-                
-                for p in positions:
-                    contracts = float(p.get("contracts", 0) or 0)
-                    if contracts != 0:
-                        open_positions_count += 1
-                        total_unrealized_pnl += float(p.get("unrealizedPnl", 0) or p.get("info", {}).get("unrealizedPnl", 0) or 0)
-                        total_margin += float(p.get("initialMargin", 0) or p.get("margin", 0) or p.get("info", {}).get("margin", 0) or 0)
-                        
-                # Fetch True Live Equity
-                try:
-                    bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
-                    balance = await user_ex.fetch_balance(params=bal_params)
-                    if ex_id == 'coinbase':
-                        usd_bal = balance.get('USD', {})
-                        usdc_bal = balance.get('USDC', {})
-                        if not isinstance(usd_bal, dict): usd_bal = {}
-                        if not isinstance(usdc_bal, dict): usdc_bal = {}
-                        free_usd = float(usd_bal.get('free') or usd_bal.get('total') or balance.get('free', {}).get('USD') or balance.get('total', {}).get('USD') or 0.0)
-                        free_usdc = float(usdc_bal.get('free') or usdc_bal.get('total') or balance.get('free', {}).get('USDC') or balance.get('total', {}).get('USDC') or 0.0)
-                        free = free_usd + free_usdc
-                    else:
-                        asset = 'USDT'
-                        asset_bal = balance.get(asset, {})
-                        if not isinstance(asset_bal, dict): asset_bal = {}
-                        free = float(asset_bal.get("free") or asset_bal.get("total") or balance.get("free", {}).get(asset) or balance.get("total", {}).get(asset) or 0.0)
-                        
-                    live_equity = free + total_unrealized_pnl + total_margin
-                except Exception as e:
-                    logger.error(f"Error fetching live equity for stats {ex_id}: {e}")
-                    live_equity = float(user.get('equity') or 200.0)
-                
-            wins = int(user.get('wins') or 0)
-            losses = int(user.get('losses') or 0)
-            cum_pnl_realized = float(user.get('cum_pnl') or 0.0)
-            equity = live_equity
-            
-            overall_pnl_usdt = cum_pnl_realized + total_unrealized_pnl
-            daily_pnl_usdt = realized_daily_pnl + total_unrealized_pnl
-            
-            total_closed = wins + losses
-            wr = (wins / total_closed * 100) if total_closed > 0 else 0
-            overall_pnl_pct = (overall_pnl_usdt / equity) * 100 if equity > 0 else 0
-            daily_pnl_pct = (daily_pnl_usdt / equity) * 100 if equity > 0 else 0
-            upnl_pct = (total_unrealized_pnl / equity) * 100 if equity > 0 else 0
-            
-            hide = user.get('hide_dollars', False)
-            pnl_suffix = f" (${overall_pnl_usdt:+.2f})" if not hide else ""
-            daily_suffix = f" (${daily_pnl_usdt:+.2f})" if not hide else ""
-            
-            flame = " 🔥" if wr > 50 else ""
-            
-            equity_str_crypto = f"{equity:,.2f}" if not hide else "||HIDDEN||"
-            crypto_msg = (
-                f"🪙 *Crypto Wallet ({ex_id.upper()})*\n"
-                f"• Portfolio Value: *${equity_str_crypto}* USD\n"
-                f"• Overall PnL: *{overall_pnl_pct:+.2f}%{pnl_suffix}*\n"
-                f"• Daily PnL: *{daily_pnl_pct:+.2f}%{daily_suffix}*\n"
-                f"• Win Rate: *{wr:.1f}%{flame} ({wins} wins | {losses} losses)*\n"
-                f"• Open Positions: *{open_positions_count} ({upnl_pct:+.2f}% unrealized)*\n"
-                f"• Closed Trades: *{total_closed}*\n"
-            )
-        except Exception as ce:
-            logger.error(f"Crypto stats check failed for user {user.get('telegram_chat_id')} on exchange {ex_id} ({futures_type} futures): {ce}")
-            errors.append(f"Crypto: {ce}")
+    # Fetch Stock Stats from Alpaca
+    try:
+        account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
+        positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
+        orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
+        
+        stock_equity = float(account.get("equity", 0) or account.get("portfolio_value", 0))
+        last_equity = float(account.get("last_equity", 0) or stock_equity)
+        
+        stock_daily_pnl = stock_equity - last_equity
+        stock_daily_pnl_pct = (stock_daily_pnl / last_equity * 100) if last_equity > 0 else 0.0
+        
+        stock_unrealized = sum(float(p.get("unrealized_pl", 0) or p.get("unrealized_intraday_pl", 0) or 0) for p in positions)
+        stock_open_count = len(positions)
+        stock_closed_count = len(orders)
+        
+        # Estimate overall growth based on starting stock equity
+        start_equity = user.get('alpaca_start_equity')
+        if not start_equity or start_equity == 0:
+            start_equity = stock_equity if stock_equity > 0 else 10000.0
+            if stock_equity > 0:
+                database.update_user_preference(chat_id, "alpaca_start_equity", start_equity)
+        overall_stock_pnl = stock_equity - start_equity
+        overall_stock_pnl_pct = (overall_stock_pnl / start_equity * 100)
+        
+        hide = user.get('hide_dollars', False)
+        equity_str = f"{stock_equity:,.2f}" if not hide else "||HIDDEN||"
+        daily_pnl_str = f"{stock_daily_pnl_pct:+.2f}%" + (f" (${stock_daily_pnl:+.2f})" if not hide else "")
+        overall_pnl_str = f"{overall_stock_pnl_pct:+.2f}%" + (f" (${overall_stock_pnl:+.2f})" if not hide else "")
+        unrealized_str = f"{stock_unrealized:+.2f}" if not hide else "||HIDDEN||"
+        
+        broker_mode = "Live" if "live" in (user.get('alpaca_endpoint') or "").lower() else "Paper"
+        stock_msg = (
+            f"🦙 *Stock Account (Alpaca {broker_mode})*\n"
+            f"• Portfolio Value: *${equity_str}* USD\n"
+            f"• Overall PnL: *{overall_pnl_str}* _(from ${start_equity:,.0f} base)_\n"
+            f"• Daily PnL: *{daily_pnl_str}*\n"
+            f"• Open Positions: *{stock_open_count} ({unrealized_str} unrealized)*\n"
+            f"• Executed Orders: *{stock_closed_count}*\n"
+        )
+    except Exception as se:
+        errors.append(f"Alpaca: {se}")
 
-    # 2. Fetch Stock Stats if Alpaca API Key exists
-    if user.get('alpaca_api_key') and user.get('alpaca_api_key') != "":
-        try:
-            account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
-            positions = await database.make_alpaca_request_async(user, "GET", "/v2/positions")
-            orders = await database.make_alpaca_request_async(user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
-            
-            stock_equity = float(account.get("equity", 0) or account.get("portfolio_value", 0))
-            last_equity = float(account.get("last_equity", 0) or stock_equity)
-            
-            stock_daily_pnl = stock_equity - last_equity
-            stock_daily_pnl_pct = (stock_daily_pnl / last_equity * 100) if last_equity > 0 else 0.0
-            
-            stock_unrealized = sum(float(p.get("unrealized_pl", 0) or p.get("unrealized_intraday_pl", 0) or 0) for p in positions)
-            stock_open_count = len(positions)
-            stock_closed_count = len(orders)
-            
-            # Estimate overall growth based on starting stock equity
-            start_equity = user.get('alpaca_start_equity')
-            if not start_equity or start_equity == 0:
-                start_equity = stock_equity if stock_equity > 0 else 10000.0
-                if stock_equity > 0:
-                    database.update_user_preference(chat_id, "alpaca_start_equity", start_equity)
-            overall_stock_pnl = stock_equity - start_equity
-            overall_stock_pnl_pct = (overall_stock_pnl / start_equity * 100)
-            
-            hide = user.get('hide_dollars', False)
-            equity_str = f"{stock_equity:,.2f}" if not hide else "||HIDDEN||"
-            daily_pnl_str = f"{stock_daily_pnl_pct:+.2f}%" + (f" (${stock_daily_pnl:+.2f})" if not hide else "")
-            overall_pnl_str = f"{overall_stock_pnl_pct:+.2f}%" + (f" (${overall_stock_pnl:+.2f})" if not hide else "")
-            unrealized_str = f"{stock_unrealized:+.2f}" if not hide else "||HIDDEN||"
-            
-            stock_msg = (
-                f"🦙 *Stock Account (Alpaca)*\n"
-                f"• Portfolio Value: *${equity_str}* USD\n"
-                f"• Overall PnL: *{overall_pnl_str}* _(from ${start_equity:,.0f} base)_\n"
-                f"• Daily PnL: *{daily_pnl_str}*\n"
-                f"• Win Rate: *N/A (Broker Tracked)*\n"
-                f"• Open Positions: *{stock_open_count} ({unrealized_str} unrealized)*\n"
-                f"• Closed Trades: *{stock_closed_count}*\n"
-            )
-        except Exception as se:
-            errors.append(f"Stocks: {se}")
-
-    # Build final message
-    msg_parts = ["📊 *Your Live Portfolio Performance* 📊\n"]
-    if crypto_msg:
-        msg_parts.append(crypto_msg)
+    msg_parts = ["📊 *Your Equities Portfolio Performance* 📊\n"]
     if stock_msg:
         msg_parts.append(stock_msg)
         
@@ -629,18 +527,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg_parts.append(f"_• {str(err)}_")
 
     msg = "\n".join(msg_parts)
-    
-    # Configure navigation buttons
     is_admin = (chat_id == SUPER_ADMIN_ID or user.get('is_admin')) and not user.get('undercover_mode')
-    
-    if has_crypto and 'overall_pnl_pct' in locals():
-        cb_data = f"shs_{overall_pnl_pct:.2f}_{daily_pnl_pct:.2f}_{wr:.1f}_{total_closed}"
-        keyboard = [
-            [InlineKeyboardButton("📸 Share & Earn", callback_data=cb_data)],
-            *get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
-        ]
-    else:
-        keyboard = get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
+    keyboard = get_nav_buttons(user.get('has_open_positions', False), is_admin=is_admin)
 
     await status_msg.delete()
     await update.effective_message.reply_text(
@@ -1195,134 +1083,12 @@ async def open_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
         finally:
             await status_msg.delete()
 
-    # 2. Fetch Crypto Trades
-    if has_crypto:
-        status_msg = await update.effective_message.reply_text("🔍 Checking your active crypto trades...")
-        try:
-            ex_id = active_exchange
-            if ex_id == 'alpaca':
-                ex_id = 'blofin'
-            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-            ex_class = getattr(ccxt, ex_id)
-            default_type = 'swap'
-            async with ex_class({
-                "apiKey": user['api_key'],
-                "secret": user['api_secret'],
-                **({"password": user['api_password']} if user['api_password'] else {}),
-                "options": {"defaultType": default_type},
-            }) as user_ex:
-                await user_ex.load_markets()
-                
-                try:
-                    positions = await user_ex.fetch_positions()
-                except Exception as pos_err:
-                    if ex_id != 'coinbase':
-                        logger.error(f"Error fetching positions for {ex_id}: {pos_err}")
-                    positions = []
-                    
-                active_crypto = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
-                
-                if active_crypto:
-                    crypto_trades_count = len(active_crypto)
-                    await update.effective_message.reply_text(
-                        f"🪙 *Active Crypto Trades Found: {crypto_trades_count}*\nGenerating charts...",
-                        parse_mode="Markdown"
-                    )
- 
-                    async def process_active_position(p):
-                        try:
-                            sym = p['symbol']
-                            side = p['side'].upper()
-                            entry = float(p['entryPrice'] or 0)
-                            upnl = float(p['unrealizedPnl'] or 0)
-                            
-                            market = user_ex.market(sym)
-                            contract_size = float(market.get('contractSize', 1))
-                            initial_margin = (entry * float(p['contracts']) * contract_size) / live_bot_multi.LEVERAGE
-                            roe = (upnl / initial_margin * 100) if initial_margin > 0 else 0
-                            
-                            t_trade = database.get_active_theoretical_trade_by_symbol(sym)
-                            sl_price = t_trade['sl_price'] if (t_trade and t_trade.get('sl_price') is not None) else 0.0
-                            tp_price = t_trade['tp_price'] if (t_trade and t_trade.get('tp_price') is not None) else 0.0
-                            
-                            upnl_v2 = escape_md_v2(f"{upnl:+.2f}")
-                            roe_v2 = escape_md_v2(f"{roe:+.2f}")
-                            sym_v2 = escape_md_v2(sym.split(":")[0])
-                            
-                            sl_val = escape_md_v2(f"{sl_price:.4f}")
-                            tp_val = escape_md_v2(f"{tp_price:.4f}")
-                            
-                            target_roe_str = "N/A"
-                            target_pnl_usdt = 0.0
-                            if tp_price > 0:
-                                contracts = float(p.get("contracts", 0) or 0)
-                                target_pnl_usdt = (tp_price - entry) * contracts * contract_size if side == "LONG" else (entry - tp_price) * contracts * contract_size
-                                target_roe = (target_pnl_usdt / initial_margin * 100) if initial_margin > 0 else 0.0
-                                target_roe_str = f"{target_roe:+.1f}%"
-                            
-                            target_pnl_v2 = escape_md_v2(f"{target_pnl_usdt:+.2f}")
-                            target_roe_v2 = escape_md_v2(target_roe_str)
-                            
-                            clean_sym = sym.split(":")[0]
-                            sym_link = get_symbol_link(clean_sym, text=f"*{sym_v2}*")
-                            caption = (
-                                f"{'🟢' if side == 'LONG' else '🔴'} {sym_link} *\\({side}\\)*\n"
-                                f"PnL: ||{upnl_v2}|| USDT \\({roe_v2}%\\) of ||{target_pnl_v2}|| \\({target_roe_v2}\\) Target\n"
-                                f"SL: `{sl_val}` \\| TP: `{tp_val}`"
-                            )
-                            
-                            try:
-                                ohlcv = await user_ex.fetch_ohlcv(sym, "15m", limit=60)
-                                import pandas as pd
-                                df_chart = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
-                                
-                                chart_path = await asyncio.to_thread(
-                                    charting.generate_trade_chart,
-                                    sym,
-                                    df_chart,
-                                    entry,
-                                    tp_price,
-                                    sl_price,
-                                    side,
-                                    open_ts=0,
-                                    timeframe="15M",
-                                    currency="USDT",
-                                    strategy=user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
-                                )
-                                
-                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
-                                with open(chart_path, 'rb') as photo:
-                                    await context.bot.send_photo(
-                                        chat_id=chat_id,
-                                        photo=photo,
-                                        caption=caption,
-                                        parse_mode="MarkdownV2",
-                                        reply_markup=InlineKeyboardMarkup(kb)
-                                    )
-                                try: os.remove(chart_path)
-                                except: pass
-                            except Exception as ce:
-                                logger.error(f"Failed to generate position chart for {sym}: {ce}")
-                                kb = [[InlineKeyboardButton(f"❌ Market Close {sym}", callback_data=f"confirm_close_{sym}")]]
-                                await context.bot.send_message(chat_id=chat_id, text=caption, parse_mode="MarkdownV2", reply_markup=InlineKeyboardMarkup(kb))
-                        except Exception as e:
-                            logger.error(f"Error processing position: {e}")
- 
-                    await asyncio.gather(*(process_active_position(p) for p in active_crypto))
-                    
-                    found_any = True
-        except Exception as e:
-            logger.error(f"Error checking Crypto positions for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
-            await update.effective_message.reply_text(f"❌ Error checking Crypto positions: {e}")
-        finally:
-            await status_msg.delete()
-
     if not found_any:
-        if not has_stocks and not has_crypto:
-            await update.effective_message.reply_text("❌ No exchange credentials connected. Please set them up in Settings first.")
+        if not has_stocks:
+            await update.effective_message.reply_text("❌ No Alpaca account linked. Please link your Alpaca account in /settings first.")
         else:
             await update.effective_message.reply_text(
-                "🏔️ *Sherpa is scanning the mountains and valleys for the next high-probability trade.*\n\nYou have no active trades at the moment.", 
+                "🏔️ *Sherpa is scanning the market for the next high-probability stock setup.*\n\nYou have no active stock positions at the moment.", 
                 parse_mode="Markdown", 
                 reply_markup=get_main_inline_menu(chat_id)
             )
@@ -1345,119 +1111,41 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target = update.effective_message
         
     user_data = database.get_user(chat_id)
+    user_data = database.get_user(chat_id)
     if not user_data:
         await target.reply_text("❌ No user profile found. Please run /setup first.")
         return
 
-    crypto_details = None
-    stock_details = None
-    errors = []
-
-    # 1. Fetch Crypto Balance (Blofin/Bitget) if configured
-    if user_data.get('api_key') and user_data.get('api_key') != "":
-        try:
-            ex_id = user_data.get('exchange_id', 'blofin')
-            if ex_id == 'alpaca':
-                ex_id = 'blofin'
-            futures_type = user_data.get('bingx_futures_type', 'standard') or 'standard'
-            ex_class = getattr(ccxt, ex_id)
-            default_type = 'swap'
-            async with ex_class({
-                "apiKey": user_data['api_key'],
-                "secret": user_data['api_secret'],
-                **({"password": user_data['api_password']} if user_data['api_password'] else {}),
-                "options": {"defaultType": default_type},
-            }) as user_ex:
-                bal_params = database.get_exchange_balance_params(ex_id, futures_type=futures_type)
-                balance = await user_ex.fetch_balance(params=bal_params)
-                if ex_id == 'coinbase':
-                    usd_bal = balance.get('USD', {})
-                    usdc_bal = balance.get('USDC', {})
-                    if not isinstance(usd_bal, dict): usd_bal = {}
-                    if not isinstance(usdc_bal, dict): usdc_bal = {}
-                    free_usd = float(usd_bal.get('free') or usd_bal.get('total') or balance.get('free', {}).get('USD') or balance.get('total', {}).get('USD') or 0.0)
-                    free_usdc = float(usdc_bal.get('free') or usdc_bal.get('total') or balance.get('free', {}).get('USDC') or balance.get('total', {}).get('USDC') or 0.0)
-                    free = free_usd + free_usdc
-                    currency = "USD/USDC"
-                else:
-                    asset = 'USDT'
-                    asset_bal = balance.get(asset, {})
-                    if not isinstance(asset_bal, dict):
-                        asset_bal = {}
-                    free = float(asset_bal.get("free") or asset_bal.get("total") or balance.get("free", {}).get(asset) or balance.get("total", {}).get(asset) or 0.0)
-                    currency = "USDT"
-                
-                # True Equity Calculation
-                total_value = free
-                try:
-                    positions = await user_ex.fetch_positions()
-                    for p in positions:
-                        margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
-                        upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
-                        total_value += (margin + upnl)
-                except:
-                    pass
-                
-                crypto_details = {
-                    "exchange": ex_id.upper(),
-                    "free": free,
-                    "total": total_value,
-                    "currency": currency
-                }
-        except Exception as e:
-            logger.error(f"Crypto balance check failed for user {chat_id} on exchange {ex_id} ({futures_type} futures): {e}")
-            errors.append(f"Crypto ({user_data.get('exchange_id', 'blofin').upper()}): {e}")
-
-    # 2. Fetch Alpaca/Stock Balance if configured
-    if user_data.get('alpaca_api_key') and user_data.get('alpaca_api_key') != "":
-        try:
-            account = await database.make_alpaca_request_async(user_data, "GET", "/v2/account")
-            free = float(account.get("cash", 0))
-            total_value = float(account.get("equity", 0) or account.get("portfolio_value", 0))
-            stock_details = {
-                "free": free,
-                "total": total_value
-            }
-        except Exception as e:
-            errors.append(f"Stocks (Alpaca): {e}")
-
-    # 3. Handle cases where no keys are set
-    if crypto_details is None and stock_details is None:
-        if errors:
-            await target.reply_text("❌ Error fetching balances:\n" + "\n".join(errors))
-        else:
-            await target.reply_text("❌ No API credentials connected. Please set up Blofin/Bitget or Alpaca credentials in Settings first.")
+    if not user_data.get('alpaca_api_key'):
+        await target.reply_text(
+            "❌ No Alpaca account linked.\n"
+            "Please link your Alpaca account in /settings to check your stock cash and buying power.",
+            reply_markup=get_main_inline_menu(chat_id)
+        )
         return
 
-    # 4. Format a gorgeous unified markdown message
-    msg_parts = ["💰 *Your Unified Portfolio Balance* 💰\n"]
-    
-    if crypto_details:
-        free_str = escape_md_v2(f"{crypto_details['free']:,.2f}")
-        total_str = escape_md_v2(f"{crypto_details['total']:,.2f}")
-        currency_str = escape_md_v2(crypto_details['currency'])
-        msg_parts.append(
-            f"🪙 *Crypto Account \\({crypto_details['exchange']}\\)*\n"
-            f"• Available Cash: ||*${free_str}*|| {currency_str}\n"
-            f"• Total Value: ||*${total_str}*|| {currency_str}\n"
-        )
+    try:
+        account = await database.make_alpaca_request_async(user_data, "GET", "/v2/account")
+        cash = float(account.get("cash", 0))
+        buying_power = float(account.get("buying_power", 0) or account.get("cash", 0))
+        total_value = float(account.get("equity", 0) or account.get("portfolio_value", 0))
         
-    if stock_details:
-        free_str = escape_md_v2(f"{stock_details['free']:,.2f}")
-        total_str = escape_md_v2(f"{stock_details['total']:,.2f}")
-        msg_parts.append(
-            f"🦙 *Stock Account \\(Alpaca\\)*\n"
-            f"• Buying Power: ||*${free_str}*|| USD\n"
+        cash_str = escape_md_v2(f"{cash:,.2f}")
+        bp_str = escape_md_v2(f"{buying_power:,.2f}")
+        total_str = escape_md_v2(f"{total_value:,.2f}")
+        broker_mode = escape_md_v2("Live" if "live" in (user_data.get('alpaca_endpoint') or "").lower() else "Paper")
+        
+        msg = (
+            f"💰 *Your Alpaca Portfolio Balance* 💰\n\n"
+            f"🦙 *Stock Account \\(Alpaca {broker_mode}\\)*\n"
+            f"• Cash Balance: ||*${cash_str}*|| USD\n"
+            f"• Buying Power: ||*${bp_str}*|| USD\n"
             f"• Portfolio Value: ||*${total_str}*|| USD\n"
         )
-
-    if errors:
-        msg_parts.append("\n⚠️ *Some queries failed*:")
-        for err in errors:
-            msg_parts.append(f"_• {escape_md_v2(str(err))}_")
-
-    msg = "\n".join(msg_parts)
-    await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
+        await target.reply_text(msg, parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
+    except Exception as e:
+        logger.error(f"Error fetching Alpaca balance: {e}")
+        await target.reply_text(f"❌ Failed to fetch balance from Alpaca: {escape_md_v2(str(e))}", parse_mode="MarkdownV2", reply_markup=get_main_inline_menu(chat_id))
 
 async def share_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1816,57 +1504,6 @@ async def panic_close_all(chat_id):
         except Exception as e:
             results.append(f"❌ Failed to close stock positions on Alpaca: {e}")
             
-    # 2. Close crypto if configured
-    if has_crypto:
-        try:
-            async with database.get_exchange_client(user) as user_ex:
-                positions = await user_ex.fetch_positions()
-                active = [p for p in positions if float(p.get("contracts", 0) or 0) != 0]
-                
-                if not active:
-                    if not has_stocks:
-                        return True, "No active trades to close."
-                else:
-                    for p in active:
-                        try:
-                            sym = p['symbol']
-                            side = str(p.get('side') or '').upper()
-                            contracts = float(p.get('contracts') or 0)
-                            
-                            is_long = side in ["LONG", "BUY", "LONG_POSITION"]
-                            order_side = "sell" if is_long else "buy"
-                            
-                            # Determine position parameters dynamically for the order
-                            params = {}
-                            if user_ex.id != "bingx":
-                                params["reduceOnly"] = True
-                            
-                            # Extract marginMode
-                            margin_mode = p.get('marginMode')
-                            if not margin_mode and 'info' in p:
-                                margin_mode = p['info'].get('marginMode')
-                            if margin_mode:
-                                params["marginMode"] = margin_mode.lower()
-                            else:
-                                params["marginMode"] = "isolated"
-                                
-                            # Extract positionSide
-                            raw_pos_side = None
-                            if 'info' in p:
-                                raw_pos_side = p['info'].get('positionSide') or p['info'].get('posSide')
-                            if raw_pos_side:
-                                params["positionSide"] = raw_pos_side.upper() if user_ex.id == "bingx" else raw_pos_side.lower()
-                            else:
-                                params["positionSide"] = ("LONG" if is_long else "SHORT") if user_ex.id == "bingx" else ("long" if is_long else "short")
-                                
-                            await user_ex.create_market_order(sym, order_side, contracts, params=params)
-                            results.append(f"✅ Closed crypto {sym}")
-                        except Exception as e:
-                            results.append(f"❌ Failed crypto {p['symbol']}: {e}")
-        except Exception as e:
-            results.append(f"❌ Failed to close crypto positions: {e}")
-            
-    if not results:
         return True, "No active trades found to close."
         
     return True, "\n".join(results)

@@ -8,7 +8,6 @@ const Settings = React.lazy(() => import('./components/Settings'));
 const SignalsPage = React.lazy(() => import('./components/SignalsPage'));
 const TradesPage = React.lazy(() => import('./components/TradesPage'));
 const StrategiesPage = React.lazy(() => import('./components/StrategiesPage'));
-const ValkyrieElitePage = React.lazy(() => import('./components/ValkyrieElitePage'));
 const SherpaVelocityPage = React.lazy(() => import('./components/SherpaVelocityPage'));
 const BacktestsPage = React.lazy(() => import('./components/BacktestsPage'));
 const PremiumPage = React.lazy(() => import('./components/PremiumPage'));
@@ -25,7 +24,6 @@ import { useAuthStore } from './store/useStore';
 
 // Type inference sometimes needs static import, but we'll dynamic import the component
 const PortfolioPage = React.lazy(() => import('./components/PortfolioPage'));
-const RecommendationsPage = React.lazy(() => import('./components/RecommendationsPage'));
 
 const PageLoader = () => (
   <div className="flex-1 flex items-center justify-center min-h-[50vh]">
@@ -146,7 +144,9 @@ const App: React.FC = () => {
             <Route path="login" element={<LoginPage />} />
             <Route path="strategies" element={<StrategiesPage />} />
             <Route path="strategies/builder" element={<ProtectedRoute><StrategyBuilderPage /></ProtectedRoute>} />
-            <Route path="strategies/valkyrie-elite" element={<ValkyrieElitePage />} />
+            <Route path="strategies/valkyrie-elite" element={<Navigate to="/strategies/sherpa-velocity" replace />} />
+            <Route path="valkyrie-elite" element={<Navigate to="/strategies/sherpa-velocity" replace />} />
+            <Route path="sherpa-velocity" element={<Navigate to="/strategies/sherpa-velocity" replace />} />
             <Route path="strategies/sherpa-velocity" element={<SherpaVelocityPage />} />
             <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
@@ -158,7 +158,7 @@ const App: React.FC = () => {
             <Route path="my-payments" element={<ProtectedRoute><MyPaymentsPage /></ProtectedRoute>} />
             <Route path="referrals" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
             <Route path="portfolio" element={<PremiumRoute><PortfolioPage /></PremiumRoute>} />
-            <Route path="recommendations" element={<PremiumRoute><RecommendationsPage /></PremiumRoute>} />
+            <Route path="recommendations" element={<Navigate to="/signals" replace />} />
             
             <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
             <Route path="logs" element={<AdminRoute><LogsPage /></AdminRoute>} />

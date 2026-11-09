@@ -638,7 +638,6 @@ def get_combined_daily_summary_html(is_premium=False,
         return section_content
 
     content += render_section("Stock Markets", "📈", "#3cd7ff", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data, stock_opened, stock_closed)
-    content += render_section("Crypto Markets", "₿", "#D500F9", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data, crypto_opened, crypto_closed)
     
     recommendations_section = ""
     if is_premium and recent_recommendations:
@@ -822,7 +821,6 @@ def get_combined_daily_summary_telegram(is_premium=False,
         return section_lines
 
     lines.extend(render_section("Stock Markets", "📈", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data, stock_opened, stock_closed))
-    lines.extend(render_section("Crypto Markets", "₿", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data, crypto_opened, crypto_closed))
 
     if is_premium and recent_recommendations:
         lines.append("\n💡 <b>Fresh Investment Ideas</b>")
@@ -1023,7 +1021,6 @@ def get_combined_weekly_summary_html(is_premium=False,
         return section_content
 
     content += render_section("Stock Markets", "📈", "#3cd7ff", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data)
-    content += render_section("Crypto Markets", "₿", "#D500F9", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data)
     
     recommendations_section = ""
     if is_premium and recent_recommendations:
@@ -1176,7 +1173,6 @@ def get_combined_weekly_summary_telegram(is_premium=False,
         return section_lines
 
     lines.extend(render_section("Stock Markets", "📈", has_stock_exchange, stock_portfolio_data, stock_open_trades, stock_hypothetical_data))
-    lines.extend(render_section("Crypto Markets", "₿", has_crypto_exchange, crypto_portfolio_data, crypto_open_trades, crypto_hypothetical_data))
 
     if is_premium and recent_recommendations:
         lines.append("\n💡 <b>Fresh Investment Ideas</b>")

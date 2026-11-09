@@ -34,24 +34,7 @@ async def handle_risk_callback(query, update: Update, context: ContextTypes.DEFA
             await query.answer("❌ Error updating risk settings.", show_alert=True)
         return True
 
-    if query.data == "set_crypto_risk":
-        await query.answer()
-        clear_input_states(context)
-        context.user_data['setting_crypto_risk'] = True
-        keyboard = [
-            [InlineKeyboardButton("🔙 Cancel", callback_data="back_to_settings")],
-            *get_nav_buttons(user.get('has_open_positions', False), is_admin=(chat_id == SUPER_ADMIN_ID and not user.get('undercover_mode')))
-        ]
-        await safe_edit_text(
-            update, context,
-            "🪙 *Set Crypto Risk Percentage*\n\n"
-            "Please type your preferred risk-per-trade for crypto as a number (e.g., `1.5` or `2.0`).\n\n"
-            "_Current: " + f"{user.get('risk_pct', 2.0):.2f}%_",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-        return True
-
-    if query.data == "set_stock_risk":
+    if query.data in ["set_crypto_risk", "set_stock_risk"]:
         await query.answer()
         clear_input_states(context)
         context.user_data['setting_stock_risk'] = True
@@ -61,8 +44,8 @@ async def handle_risk_callback(query, update: Update, context: ContextTypes.DEFA
         ]
         await safe_edit_text(
             update, context,
-            "🦙 *Set Stock Risk Percentage*\n\n"
-            "Please type your preferred risk-per-trade for stocks as a number (e.g., `2.0` or `1.5`).\n\n"
+            "⚖️ *Set Stock Risk Percentage*\n\n"
+            "Please type your preferred risk-per-trade for equities as a number (e.g., `2.0` or `1.5`).\n\n"
             "_Current: " + f"{user.get('stock_risk_pct', 2.0):.2f}%_",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )

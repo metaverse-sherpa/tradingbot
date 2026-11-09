@@ -29,16 +29,12 @@ import database
 from bot.handlers import register_handlers
 from bot.engines import (
     sync_engine,
-    signal_engine,
     alpaca_equities_engine,
     alpaca_fractional_monitor_engine,
     alpaca_hourly_sync_engine,
     premium_expiration_engine,
     daily_combined_email_engine,
-    weekly_combined_email_engine,
-    daily_recommendations_generator_engine,
-    recommendations_resolution_engine,
-    theory_trades_resolution_engine
+    weekly_combined_email_engine
 )
 from bot.engines.websockets import websocket_engine
 from bot.handlers.system import error_handler
@@ -111,23 +107,18 @@ async def post_init(application):
     # Spawn the background loop engines under python-telegram-bot's loop context.
     # By storing these tasks in `bot_data`, we can gracefully cancel them in the `post_stop` hook.
     task1 = asyncio.create_task(sync_engine(application))
-    task2 = asyncio.create_task(signal_engine(application))
     task3 = asyncio.create_task(alpaca_equities_engine(application))
     task4 = asyncio.create_task(alpaca_fractional_monitor_engine(application))
     task4_1 = asyncio.create_task(alpaca_hourly_sync_engine(application))
     task5 = asyncio.create_task(premium_expiration_engine(application))
     task6_1 = asyncio.create_task(daily_combined_email_engine(application))
     task6_2 = asyncio.create_task(weekly_combined_email_engine(application))
-    task6_3 = asyncio.create_task(daily_recommendations_generator_engine(application))
-    task6_4 = asyncio.create_task(recommendations_resolution_engine(application))
-    task7 = asyncio.create_task(theory_trades_resolution_engine(application))
     task8 = asyncio.create_task(websocket_engine(application))
     
     # Store references to prevent garbage collection
     application.bot_data["bg_tasks"] = [
-        task1, task2, task3, task4, task4_1, task5,
-        task6_1, task6_2, task6_3, task6_4,
-        task7, task8
+        task1, task3, task4, task4_1, task5,
+        task6_1, task6_2, task8
     ]
 
 

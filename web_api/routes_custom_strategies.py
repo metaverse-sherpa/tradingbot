@@ -11,7 +11,7 @@ from web_api.routes_portfolio import call_gemini
 custom_strategies_bp = Blueprint('custom_strategies', __name__)
 
 # --- Worker Thread Queue ---
-def load_historical_data(asset_type="crypto", timeframe="1h", symbol=None):
+def load_historical_data(asset_type="stock", timeframe="1h", symbol=None):
     """Fetch real OHLCV market data for backtesting.
     Crypto uses Binance via CCXT.
     Stocks use Alpaca Data API.
@@ -137,7 +137,7 @@ def async_backtest_runner(task_id, strategy_config, user_id):
         c.execute("UPDATE BacktestTasks SET status = 'running' WHERE id = ?", (task_id,))
         
     try:
-        asset_type = strategy_config.get("asset_type", "crypto")
+        asset_type = strategy_config.get("asset_type", "stock")
         timeframe = strategy_config.get("timeframe", "1h")
         symbol = strategy_config.get("symbol")
         data_dict = load_historical_data(asset_type=asset_type, timeframe=timeframe, symbol=symbol)
@@ -329,14 +329,14 @@ def chat():
                 "reply": reply_text if reply_text else "Strategy generation completed.",
                 "requires_backtest": False,
                 "strategy_config": {},
-                "asset_type": "crypto"
+                "asset_type": "stock"
             }), 200
 
         return jsonify({
             "reply": response_data.get("reply", "Here is your strategy config."),
             "requires_backtest": bool(response_data.get("requires_backtest", False)),
             "strategy_config": response_data.get("strategy_config", {}) if isinstance(response_data.get("strategy_config"), dict) else {},
-            "asset_type": response_data.get("asset_type", "crypto")
+            "asset_type": response_data.get("asset_type", "stock")
         }), 200
     except Exception as e:
         print(f"Chat error: {e}")
@@ -344,7 +344,7 @@ def chat():
             "reply": "I generated the strategy update, but experienced a temporary parsing issue. Please try sending your prompt again.",
             "requires_backtest": False,
             "strategy_config": {},
-            "asset_type": "crypto"
+            "asset_type": "stock"
         }), 200
     except Exception as e:
         import traceback

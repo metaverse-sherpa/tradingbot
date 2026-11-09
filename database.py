@@ -751,25 +751,21 @@ def init_db():
             c.execute("SELECT 1 FROM Users WHERE active_stock_strategy IS NULL LIMIT 1")
             if c.fetchone():
                 c.execute("UPDATE Users SET active_stock_strategy = 'None' WHERE active_stock_strategy IS NULL")
-            # 4. Repair exchange_id for users who had it set to 'alpaca' but have crypto keys
-            c.execute("SELECT 1 FROM Users WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != '' LIMIT 1")
-            if c.fetchone():
-                c.execute("""
-                    UPDATE Users
-                    SET exchange_id = 'blofin'
-                    WHERE exchange_id = 'alpaca' AND blofin_api_key IS NOT NULL AND blofin_api_key != ''
-                """)
-            # 5. Migrate users to AI Recommendations Autopilot
+            # 4. Stocks-Only Migration: Purge all crypto credentials and set default stock strategy
             c.execute("""
-                UPDATE Users
-                SET active_crypto_strategy = 'AI Recommendations Autopilot', strategy = 'AI Recommendations Autopilot'
-                WHERE active_crypto_strategy IN ('Mean Reversion Scalper', 'Valkyrie Elite Scalper') 
-                   OR strategy IN ('Mean Reversion Scalper', 'Valkyrie Elite Scalper')
+                UPDATE Users 
+                SET blofin_api_key = NULL, blofin_api_secret = NULL, blofin_api_password = NULL,
+                    exchange_id = 'alpaca', active_crypto_strategy = 'None',
+                    strategy = 'Sherpa Velocity Pullback',
+                    active_stock_strategy = COALESCE(NULLIF(active_stock_strategy, 'None'), 'Sherpa Velocity Pullback')
+                WHERE blofin_api_key IS NOT NULL OR active_crypto_strategy != 'None' OR exchange_id != 'alpaca'
             """)
             c.execute("""
-                UPDATE WebUsers
-                SET active_crypto_strategy = 'AI Recommendations Autopilot'
-                WHERE active_crypto_strategy IN ('Mean Reversion Scalper', 'Valkyrie Elite Scalper')
+                UPDATE WebUsers 
+                SET api_key = NULL, api_secret = NULL, api_password = NULL,
+                    exchange_id = 'alpaca', active_crypto_strategy = 'None',
+                    active_stock_strategy = COALESCE(NULLIF(active_stock_strategy, 'None'), 'Sherpa Velocity Pullback')
+                WHERE api_key IS NOT NULL OR active_crypto_strategy != 'None' OR exchange_id != 'alpaca'
             """)
             conn.commit()
         except Exception as migration_err:
@@ -1240,7 +1236,7 @@ def get_user(chat_id):
         row = conn.execute(stmt).fetchone()
     if row:
         row_dict = dict(row._mapping)
-        def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
+        def_syms = "AAPL,MSFT,GOOGL,AMZN,NVDA,AVGO,TSM,NFLX,AMD,QCOM,ORCL,CRM,META,ANET,NOW,ASML,MU,LRCX,PANW,GS,MS,CSCO,AXP,WMT,COST,CMG,TJX,MELI,GE,CAT,ETN,URI,PH,LLY,JNJ,VRTX,ISRG"
         return {
             "api_key": decrypt(row_dict.get('blofin_api_key')),
             "api_secret": decrypt(row_dict.get('blofin_api_secret')),
@@ -1252,11 +1248,11 @@ def get_user(chat_id):
             "opened": row_dict.get('total_trades_opened') or 0,
             "cum_pnl": row_dict.get('cumulative_pnl') or 0.0,
             "last_ts": row_dict.get('last_fetch_timestamp') or 0,
-            "strategy": row_dict.get('strategy') or 'Valkyrie Elite Scalper',
+            "strategy": row_dict.get('active_stock_strategy') or row_dict.get('strategy') or 'Sherpa Velocity Pullback',
             "hide_dollars": bool(row_dict.get('hide_dollars')),
             "risk_pct": row_dict.get('risk_pct') if row_dict.get('risk_pct') is not None else 2.0,
             "enabled_symbols": (row_dict.get('enabled_symbols') if row_dict.get('enabled_symbols') else def_syms).split(","),
-            "exchange_id": row_dict.get('exchange_id') or 'blofin',
+            "exchange_id": row_dict.get('exchange_id') or 'alpaca',
             "referred_by": row_dict.get('referred_by'),
             "premium_expiry": row_dict.get('premium_expiry') or 0,
             "referral_count": row_dict.get('referral_count') or 0,
@@ -1275,8 +1271,8 @@ def get_user(chat_id):
             "alpaca_api_secret": decrypt(row_dict.get('alpaca_api_secret')) if row_dict.get('alpaca_api_secret') else None,
             "alpaca_endpoint": row_dict.get('alpaca_endpoint'),
             "alpaca_start_equity": row_dict.get('alpaca_start_equity'),
-            "active_crypto_strategy": row_dict.get('active_crypto_strategy') or 'Valkyrie Elite Scalper',
-            "active_stock_strategy": row_dict.get('active_stock_strategy') or 'None',
+            "active_crypto_strategy": row_dict.get('active_crypto_strategy') or 'None',
+            "active_stock_strategy": row_dict.get('active_stock_strategy') or 'Sherpa Velocity Pullback',
             "stock_risk_pct": row_dict.get('stock_risk_pct') if row_dict.get('stock_risk_pct') is not None else 2.0,
             "premium_referrals": row_dict.get('premium_referrals') or 0,
             "premium_expired_notified": bool(row_dict.get('premium_expired_notified')),
@@ -1307,7 +1303,7 @@ def consume_referral_credits(chat_id, amount):
 def get_user_from_web_row(row):
     if not row:
         return None
-    def_syms = "BTC,ETH,SOL,DOGE,ADA,LINK,DOT,ZEC,PEPE,BNB,NEAR,SUI,NOT,TAO,ONDO,ENA,FET,WIF"
+    def_syms = "AAPL,MSFT,GOOGL,AMZN,NVDA,AVGO,TSM,NFLX,AMD,QCOM,ORCL,CRM,META,ANET,NOW,ASML,MU,LRCX,PANW,GS,MS,CSCO,AXP,WMT,COST,CMG,TJX,MELI,GE,CAT,ETN,URI,PH,LLY,JNJ,VRTX,ISRG"
     
     # Decrypt keys
     api_key = None
@@ -1348,11 +1344,11 @@ def get_user_from_web_row(row):
         "opened": 0,
         "cum_pnl": row.get('cumulative_pnl') or 0.0,
         "last_ts": 0,
-        "strategy": row.get('active_crypto_strategy') or 'Valkyrie Elite Scalper',
+        "strategy": row.get('active_stock_strategy') or row.get('strategy') or 'Sherpa Velocity Pullback',
         "hide_dollars": bool(row.get('hide_dollars')),
         "risk_pct": row.get('risk_pct') if row.get('risk_pct') is not None else 2.0,
         "enabled_symbols": (row.get('enabled_symbols') if row.get('enabled_symbols') else def_syms).split(","),
-        "exchange_id": row.get('exchange_id') or 'blofin',
+        "exchange_id": row.get('exchange_id') or 'alpaca',
         "referred_by": row.get('referred_by'),
         "premium_expiry": row.get('premium_expiry') or 0,
         "referral_count": row.get('referral_count') or 0,
@@ -1373,8 +1369,8 @@ def get_user_from_web_row(row):
         "alpaca_api_secret": alpaca_api_secret,
         "alpaca_endpoint": row.get('alpaca_endpoint'),
         "alpaca_start_equity": row.get('alpaca_start_equity'),
-        "active_crypto_strategy": row.get('active_crypto_strategy') or 'Valkyrie Elite Scalper',
-        "active_stock_strategy": row.get('active_stock_strategy') or 'None',
+        "active_crypto_strategy": row.get('active_crypto_strategy') or 'None',
+        "active_stock_strategy": row.get('active_stock_strategy') or 'Sherpa Velocity Pullback',
         "stock_risk_pct": row.get('stock_risk_pct') if row.get('stock_risk_pct') is not None else 2.0,
         "premium_referrals": row.get('premium_referrals') or 0,
         "premium_expired_notified": False,

@@ -58,11 +58,9 @@ const Settings: React.FC = () => {
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
   const { showToast } = useToast();
 
-  // Exchange state
-  const [exchangePlatform, setExchangePlatform] = useState('blofin');
+  // Brokerage state
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
-  const [apiPassword, setApiPassword] = useState('');
   const [alpacaEndpoint, setAlpacaEndpoint] = useState('https://paper-api.alpaca.markets');
   const [isSavingExchange, setIsSavingExchange] = useState(false);
   const [isTestingExchange, setIsTestingExchange] = useState(false);
@@ -127,76 +125,50 @@ const Settings: React.FC = () => {
     setInvestmentGoal(user?.investment_goal || 'Growth');
   }, [user]);
 
-  // Handle Exchange Save
-  const handleSaveApiKeys = async (e: React.FormEvent, type: 'crypto' | 'stock') => {
+  // Handle Alpaca Save
+  const handleSaveApiKeys = async (e: React.FormEvent, _type: 'crypto' | 'stock' = 'stock') => {
     e.preventDefault();
+    if (!alpacaEndpoint) {
+      showToast("Please explicitly select Paper Trading or Live Trading", 'error');
+      return;
+    }
     setIsSavingExchange(true);
     
     try {
-      if (type === 'crypto') {
-        await api.post('/settings/exchange', {
-          exchange_id: exchangePlatform,
-          api_key: apiKey,
-          api_secret: apiSecret,
-          api_password: apiPassword,
-          bingx_futures_type: 'perpetual',
-          coinbase_sandbox: false
-        });
-      } else {
-        await api.post('/settings/alpaca', {
-          api_key: apiKey,
-          api_secret: apiSecret,
-          endpoint: alpacaEndpoint
-        });
-      }
+      await api.post('/settings/alpaca', {
+        api_key: apiKey,
+        api_secret: apiSecret,
+        endpoint: alpacaEndpoint
+      });
 
-      showToast("Saving keys and testing connection...");
+      showToast("Saving keys and testing Alpaca connection...");
       
-      // Auto-test
-      const testRes = await api.get(`/settings/test-connection?segment=${type}`);
+      const testRes = await api.get('/settings/test-connection?segment=stock');
       if (testRes.data.success) {
-        showToast(`✅ ${type === 'crypto' ? testRes.data.exchange : 'Alpaca'} connection successful!`, 'success');
-        if (testRes.data.note) {
-          setTimeout(() => showToast(`ℹ️ ${testRes.data.note}`, 'info'), 1500);
-        }
+        showToast('✅ Alpaca connection successful!', 'success');
         
-        // Refresh user object to show connected state
         const profileRes = await api.get('/user/profile');
         setUser({ ...user, ...profileRes.data.data });
         
-        if ((window as any).dataLayer) {
-          (window as any).dataLayer.push({
-            event: 'api_key_saved',
-            exchange_type: type
-          });
-        }
-
-        
-        // Reset form
         setApiKey('');
         setApiSecret('');
-        setApiPassword('');
       } else {
         showToast(`❌ Connection failed: ${testRes.data.error || 'Unknown error'}`, 'error');
-        if (testRes.data.hint) {
-          setTimeout(() => showToast(`💡 ${testRes.data.hint}`, 'info'), 1500);
-        }
-        // Rollback on failure
-        await api.delete(type === 'crypto' ? '/settings/exchange' : '/settings/alpaca');
+        await api.delete('/settings/alpaca');
       }
     } catch (err: any) {
-      showToast(err.response?.data?.error || "Failed to save keys", 'error');
+      showToast(err.response?.data?.error || "Failed to save Alpaca keys", 'error');
     } finally {
       setIsSavingExchange(false);
     }
   };
 
-  const handleDeleteExchange = async (type: 'crypto' | 'stock') => {
-    if (!window.confirm(`Are you sure you want to delete your ${type} API keys?`)) return;
+  const handleDeleteExchange = async (_type: 'crypto' | 'stock' = 'stock') => {
+    if (!window.confirm("Are you sure you want to delete your Alpaca API keys?")) return;
     
     try {
-      await api.delete(type === 'crypto' ? '/settings/exchange' : '/settings/alpaca');
-      showToast(`${type} API keys deleted`, 'success');
+      await api.delete('/settings/alpaca');
+      showToast("Alpaca API keys deleted", 'success');
       
       const profileRes = await api.get('/user/profile');
       setUser({ ...user, ...profileRes.data.data });
@@ -205,12 +177,12 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleTestConnection = async (type: 'crypto' | 'stock') => {
+  const handleTestConnection = async (_type: 'crypto' | 'stock' = 'stock') => {
     setIsTestingExchange(true);
     try {
-      const testRes = await api.get(`/settings/test-connection?segment=${type}`);
+      const testRes = await api.get('/settings/test-connection?segment=stock');
       if (testRes.data.success) {
-        showToast(`✅ ${type === 'crypto' ? testRes.data.exchange : 'Alpaca'} connection successful!`, 'success');
+        showToast('✅ Alpaca connection successful!', 'success');
       } else {
         showToast(`❌ Connection failed: ${testRes.data.error || 'Unknown error'}`, 'error');
       }
@@ -449,58 +421,27 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {/* Connected Exchanges */}
+          {/* Connected Brokerage */}
           {isPremium && (
             <div className="bg-[#1b1f2c]/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg animate-fade-in">
               <details className="group" open>
                 <summary className="text-lg font-bold text-white flex justify-between items-center cursor-pointer list-none [&::-webkit-details-marker]:hidden select-none">
                   <div className="flex items-center gap-2">
-                    🔌 Connected Exchanges
+                    🔌 Connected Brokerage (US Equities)
                   </div>
                   <ChevronDown className="text-gray-400 group-open:rotate-180 transition-transform duration-300" />
                 </summary>
                 <div className="space-y-4 mt-4">
-                  {user?.has_exchange_keys ? (
-                    <form className="bg-[#1f2028] p-4 rounded-xl border border-white/5 space-y-3" onSubmit={e => e.preventDefault()}>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-sm text-white flex items-center gap-1.5">
-                          🪙 Crypto: <span className="capitalize text-cyan-400 font-mono">{user.exchange_id || 'Blofin'}{user.exchange_id === 'bingx' ? ' (Perpetual Futures)' : ''}</span>
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleTestConnection('crypto')} disabled={isTestingExchange} className="text-xs text-cyan-400 font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                            <RefreshCw size={14} className={isTestingExchange ? "animate-spin" : ""} /> Test
-                          </button>
-                          <button onClick={() => handleDeleteExchange('crypto')} className="text-xs text-red-400 font-bold hover:underline flex items-center gap-1 cursor-pointer">
-                            <Trash2 size={14} /> Delete
-                          </button>
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between items-center gap-2">
-                          <span className="text-gray-400">API Key:</span>
-                          <input type="password" value="••••••••••••" readOnly className="bg-transparent text-right text-white font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" />
-                        </div>
-                        <div className="flex justify-between items-center gap-2">
-                          <span className="text-gray-400">API Secret:</span>
-                          <input type="password" value="••••••••••••" readOnly className="bg-transparent text-right text-white font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" />
-                        </div>
-                        {['blofin', 'bitget'].includes(user.exchange_id || '') && (
-                          <div className="flex justify-between items-center gap-2">
-                            <span className="text-gray-400">Passphrase:</span>
-                            <input type="password" value="••••••••••••" readOnly className="bg-transparent text-right text-white font-mono border-none outline-none focus:ring-0 p-0 text-xs w-36" />
-                          </div>
-                        )}
-                      </div>
-                    </form>
-                  ) : null}
-
                   {user?.has_alpaca_keys ? (
                     <form className="bg-[#1f2028] p-4 rounded-xl border border-white/5 space-y-3" onSubmit={e => e.preventDefault()}>
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-sm text-white flex items-center gap-1.5">
-                          🦙 Stocks: <span className="text-cyan-400 font-mono">Alpaca</span>
+                          🦙 Broker: <span className="text-cyan-400 font-mono">Alpaca</span> ({user.alpaca_endpoint?.includes('paper') ? 'Paper Trading' : 'Live Trading'})
                         </span>
                         <div className="flex items-center gap-2">
+                          <button onClick={() => handleTestConnection('stock')} disabled={isTestingExchange} className="text-xs text-cyan-400 font-bold hover:underline flex items-center gap-1 cursor-pointer">
+                            <RefreshCw size={14} className={isTestingExchange ? "animate-spin" : ""} /> Test
+                          </button>
                           <button onClick={() => handleDeleteExchange('stock')} className="text-xs text-red-400 font-bold hover:underline flex items-center gap-1 cursor-pointer">
                             <Trash2 size={14} /> Delete
                           </button>
@@ -521,98 +462,47 @@ const Settings: React.FC = () => {
                         </div>
                       </div>
                     </form>
-                  ) : null}
-
-                  {!user?.has_exchange_keys && !user?.has_alpaca_keys && (
+                  ) : (
                     <div className="bg-[#1f2028] p-4 rounded-xl border border-white/5 text-xs text-gray-400 leading-relaxed">
-                      No exchanges connected. Connect your Crypto Exchange or Alpaca Stocks API credentials below to unlock autonomous copy-trading.
+                      No brokerage connected. Connect your Alpaca Paper or Live API credentials below to unlock autonomous copy-trading for US Equities.
                     </div>
                   )}
 
-                  {(!user?.has_exchange_keys || !user?.has_alpaca_keys) && (
-                    <form onSubmit={(e) => handleSaveApiKeys(e, exchangePlatform === 'alpaca' ? 'stock' : 'crypto')} className="pt-4 border-t border-white/10 space-y-4 animate-fade-in">
+                  {!user?.has_alpaca_keys && (
+                    <form onSubmit={(e) => handleSaveApiKeys(e, 'stock')} className="pt-4 border-t border-white/10 space-y-4 animate-fade-in">
                       <h4 className="text-md font-bold text-white">
-                        🔌 Connect {(!user?.has_exchange_keys && !user?.has_alpaca_keys) ? 'Exchange' : (user?.has_exchange_keys ? 'Stocks Platform' : 'Crypto Exchange')}
+                        🔌 Link Alpaca Brokerage
                       </h4>
-                      <div className="space-y-2">
-                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Select Platform</label>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Trading Mode (Required)</label>
                         <CustomSelect 
-                          value={exchangePlatform} 
-                          onChange={(v) => setExchangePlatform(v)}
+                          value={alpacaEndpoint} 
+                          onChange={(v) => setAlpacaEndpoint(v)}
                           options={[
-                            ...(!user?.has_exchange_keys ? [
-                              { value: 'blofin', label: 'Blofin' },
-                              { value: 'binance', label: 'Binance' },
-                              { value: 'mexc', label: 'MEXC' },
-                              { value: 'bitget', label: 'Bitget' },
-                              { value: 'bingx', label: 'BingX' },
-                              { value: 'coinbase', label: 'Coinbase Advanced' }
-                            ] : []),
-                            ...(!user?.has_alpaca_keys ? [
-                              { value: 'alpaca', label: 'Alpaca Stocks' }
-                            ] : [])
+                            { value: 'https://paper-api.alpaca.markets', label: 'Paper Trading (Simulation / Recommended)' },
+                            { value: 'https://api.alpaca.markets', label: 'Live Trading (Real Capital)' }
                           ]}
                         />
                       </div>
 
-                      <div className="space-y-3">
-                        {exchangePlatform === 'alpaca' ? (
-                          <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Environment</label>
-                            <CustomSelect 
-                              value={alpacaEndpoint} 
-                              onChange={(v) => setAlpacaEndpoint(v)}
-                              options={[
-                                { value: 'https://paper-api.alpaca.markets', label: 'Paper Trading (Recommended)' },
-                                { value: 'https://api.alpaca.markets', label: 'Live Trading' }
-                              ]}
-                            />
-                          </div>
-                        ) : null}
-
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">API Key</label>
-                          <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="API Key" autoComplete="off" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">API Secret</label>
-                          {exchangePlatform === 'coinbase' ? (
-                            <textarea value={apiSecret} onChange={e => setApiSecret(e.target.value)} rows={4} autoComplete="off" className="w-full bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-cyan-500 font-mono text-[10px]" />
-                          ) : (
-                            <input type="password" value={apiSecret} onChange={e => setApiSecret(e.target.value)} placeholder="API Secret" autoComplete="new-password" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
-                          )}
-                        </div>
-
-                        {['blofin', 'bitget'].includes(exchangePlatform) && (
-                          <div className="space-y-1">
-                            <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Passphrase</label>
-                            <input type="password" value={apiPassword} onChange={e => setApiPassword(e.target.value)} placeholder="Passphrase" autoComplete="new-password" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
-                          </div>
-                        )}
-
-                        {exchangePlatform === 'bingx' && (
-                          <div className="p-3 bg-cyan-900/20 border border-cyan-500/30 rounded-lg text-xs text-gray-300 space-y-1">
-                            <span className="font-bold text-cyan-400 flex items-center gap-1">
-                                BingX Requirement
-                            </span>
-                            <p>Metaverse Sherpa connects to BingX using <strong>Perpetual Futures</strong>. Please make sure your API key has <strong>Read</strong> and <strong>Perpetual Futures Trading</strong> permissions enabled, and your funds are in your Perpetual Futures account.</p>
-                          </div>
-                        )}
-
-                        {exchangePlatform === 'coinbase' && (
-                          <div className="p-3 bg-cyan-900/20 border border-cyan-500/30 rounded-lg text-xs text-gray-300 space-y-1">
-                            <span className="font-bold text-cyan-400 flex items-center gap-1">
-                                Coinbase Advanced Key Format
-                            </span>
-                            <p>Your API Key must be the <strong>full resource name</strong> provided by Coinbase, formatted like: <code>organizations/{'{org_id}'}/apiKeys/{'{key_id}'}</code>. If you downloaded the JSON file, copy the full <code>name</code> property for the API Key.</p>
-                          </div>
-                        )}
-
-                        <button type="submit" disabled={isSavingExchange || !apiKey || !apiSecret} className="w-full h-11 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 mt-2">
-                          {isSavingExchange ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} Save Keys
-                        </button>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Alpaca API Key ID</label>
+                        <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="PK..." autoComplete="off" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
                       </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Alpaca Secret Key</label>
+                        <input type="password" value={apiSecret} onChange={e => setApiSecret(e.target.value)} placeholder="Secret Key" autoComplete="new-password" className="w-full h-11 bg-[#1f2028] text-white text-sm border border-white/10 rounded-lg px-4 focus:outline-none focus:border-cyan-500" />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isSavingExchange || !apiKey || !apiSecret || !alpacaEndpoint}
+                        className="w-full h-11 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+                      >
+                        {isSavingExchange ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} Link Alpaca Brokerage
+                      </button>
                     </form>
                   )}
                 </div>
@@ -744,55 +634,16 @@ const Settings: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Crypto Strategy */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">Crypto Strategy</label>
-                <div className="flex gap-2">
-                  <CustomSelect 
-                    value={user?.active_crypto_strategy || 'None'} 
-                    onChange={(v) => handleStrategyChange('crypto', v)}
-                    options={[
-                      { value: "AI Recommendations Autopilot", label: "💡 AI Recommendations Autopilot (63% Win Rate)" },
-                      { value: "None", label: "None (Paused)" },
-                      { value: "Valkyrie Elite Scalper", label: "Valkyrie Elite Scalper (Legacy)", disabled: user?.disabled_strategies?.includes("Valkyrie Elite Scalper") },
-                      { value: "Mean Reversion Scalper", label: "Mean Reversion Scalper (Legacy)", disabled: user?.disabled_strategies?.includes("Mean Reversion Scalper") },
-                      ...customStrategies
-                        .filter((s: any) => s.asset_type === 'crypto' || !s.asset_type)
-                        .map((s: any) => ({
-                          value: s.name,
-                          label: `✨ ${s.name} (Custom AI)`
-                        }))
-                    ]}
-                  />
-                  {customStrategies.some(s => s.name === user?.active_crypto_strategy) && (
-                    <button 
-                      onClick={() => handleDeleteCustomStrategy(user?.active_crypto_strategy || '', 'crypto')}
-                      className="px-4 bg-[#1f2028] border border-red-500/30 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center justify-center"
-                      title="Delete Custom Strategy"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => navigate(`/backtests?strategy=${encodeURIComponent(user?.active_crypto_strategy || 'Valkyrie Elite Scalper')}&risk=${riskPct}&run=true`)}
-                    className="px-4 bg-[#1f2028] border border-[#2e303a] rounded-xl text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center justify-center"
-                    title="Run Backtest"
-                  >
-                    <PlayCircle size={20} />
-                  </button>
-                </div>
-              </div>
-
               {/* Stock Strategy */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">Stock Strategy</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest">Active Stock Strategy</label>
                 <div className="flex gap-2">
                   <CustomSelect 
-                    value={user?.active_stock_strategy || 'None'} 
+                    value={user?.active_stock_strategy || 'Sherpa Velocity Pullback'} 
                     onChange={(v) => handleStrategyChange('stock', v)}
                     options={[
+                      { value: "Sherpa Velocity Pullback", label: "Sherpa Velocity Pullback (68.4% Win Rate, 2.14 Sharpe)" },
                       { value: "None", label: "None (Paused)" },
-                      { value: "Sherpa Velocity Pullback", label: "Sherpa Velocity Pullback", disabled: user?.disabled_strategies?.includes("Sherpa Velocity Pullback") },
                       ...customStrategies
                         .filter((s: any) => s.asset_type === 'stock')
                         .map((s: any) => ({
@@ -824,14 +675,6 @@ const Settings: React.FC = () => {
 
               {/* Risk Sliders */}
               <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between text-xs font-bold mb-2">
-                    <span className="text-gray-400 uppercase tracking-widest">Crypto Risk Per Trade</span>
-                    <span className="text-emerald-400">{riskPct}% of balance</span>
-                  </div>
-                  <input type="range" min="0.5" max="5.0" step="0.5" value={riskPct} onChange={e => setRiskPct(parseFloat(e.target.value))} className="w-full accent-emerald-500" />
-                </div>
-                
                 <div>
                   <div className="flex justify-between text-xs font-bold mb-2">
                     <span className="text-gray-400 uppercase tracking-widest">Stock Risk Per Trade</span>

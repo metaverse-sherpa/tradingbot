@@ -71,59 +71,23 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
 
 async def build_forward_test_stats_block():
     """
-    Shared helper that computes simulated forward testing analytics with
-    independent $1,000 allocations per strategy, live unrealized PnL for
-    open trades, and per-trade breakdowns.
+    Shared helper that computes simulated forward testing analytics for
+    Sherpa Velocity Pullback on US equities with independent $1,000 allocation,
+    live unrealized PnL for open trades, and per-trade breakdowns.
     
     Returns a formatted Markdown text block ready to embed in any message.
     """
-    import live_bot_multi
-    
     open_sim_trades = database.get_open_theoretical_trades()
     disabled = database.get_disabled_strategies()
     
-    ai_stats = database.get_theoretical_stats_by_strategy("AI Recommendations Autopilot")
     svp_stats = database.get_theoretical_stats_by_strategy("Sherpa Velocity Pullback")
     
-    # Group open trades by strategy
-    strategy_names = [s for s in ["AI Recommendations Autopilot", "Sherpa Velocity Pullback"] if s not in disabled]
-    strategy_open_trades = {s: [] for s in strategy_names}
-    for t in open_sim_trades:
-        strat = t.get('strategy', '')
-        if strat in strategy_open_trades:
-            strategy_open_trades[strat].append(t)
+    # Group open trades for Sherpa Velocity Pullback
+    strategy_name = "Sherpa Velocity Pullback"
+    strategy_open_trades = [t for t in open_sim_trades if t.get('strategy') == strategy_name]
     
-    # Also attach active AI Recommendations to AI Recommendations Autopilot
-    try:
-        with database.db_session() as conn:
-            c = conn.cursor()
-            c.execute("""
-                SELECT symbol, entry_price, current_price, target_price, stop_loss, created_at 
-                FROM AIRecommendations 
-                WHERE status = 'active' 
-                  AND category = 'crypto' 
-                  AND LOWER(risk_profile) = 'conservative' 
-                  AND LOWER(investment_goal) = 'income'
-            """)
-            for r in c.fetchall():
-                rd = dict(r)
-                sym = rd['symbol']
-                if '/' not in sym and 'USDT' not in sym:
-                    sym = f"{sym}/USDT"
-                strategy_open_trades["AI Recommendations Autopilot"].append({
-                    "symbol": sym,
-                    "entry_price": float(rd.get('entry_price') or 0.0),
-                    "position_size": 1000.0,
-                    "side": "buy"
-                })
-    except Exception as e:
-        logger.error(f"Error fetching active AI recs for dashboard: {e}")
-    
-    # Fetch live prices for open trades to compute unrealized PnL
-    strategy_unrealized = {s: 0.0 for s in strategy_names}
-    strategy_trade_lines = {s: [] for s in strategy_names}
-    
-    stock_symbols = [t['symbol'] for t in open_sim_trades if is_stock(t['symbol'])]
+    # Fetch live stock prices for open trades to compute unrealized PnL
+    stock_symbols = [t['symbol'] for t in strategy_open_trades if is_stock(t['symbol'])]
     stock_prices = {}
     if stock_symbols:
         try:
@@ -148,102 +112,60 @@ async def build_forward_test_stats_block():
         except Exception as e:
             logger.error(f"Error fetching Alpaca snapshots for stats: {e}")
 
-    mdm = live_bot_multi.MarketDataManager()
-    try:
-        for strat_name in strategy_names:
-            for t in strategy_open_trades[strat_name]:
-                sym = t['symbol']
-                side = t['side']
-                entry = t['entry_price']
-                pos_size = t['position_size']
-                
-                if is_stock(sym):
-                    current = stock_prices.get(sym, entry)
-                else:
-                    df = await mdm.fetch_ohlcv(sym, "15m")
-                    current = float(df['close'].iloc[-1]) if df is not None and not df.empty else entry
-                
-                side_lower = str(side).lower()
-                is_long = side_lower in ['buy', 'long', 'l']
-                pnl_raw = current - entry if is_long else entry - current
-                pnl_pct = (pnl_raw / entry) * 100
-                
-                currency = get_currency(sym)
-                if is_stock(sym):
-                    pnl_val = pos_size * (pnl_pct / 100)
-                else:
-                    pnl_pct *= CRYPTO_LEVERAGE
-                    pnl_val = pos_size * pnl_raw
-                
-                tp_price = t.get('tp_price', 0)
-                target_pct_str = ""
-                if tp_price and tp_price > 0:
-                    target_pnl_raw = tp_price - entry if is_long else entry - tp_price
-                    target_pct = (target_pnl_raw / entry) * 100
-                    if not is_stock(sym):
-                        target_pct *= CRYPTO_LEVERAGE
-                    target_pct_str = f" of {target_pct:+.2f}% (target)"
+    strategy_unrealized = 0.0
+    strategy_trade_lines = []
+    
+    for t in strategy_open_trades:
+        sym = t['symbol']
+        side = t['side']
+        entry = t['entry_price']
+        pos_size = t['position_size']
+        current = stock_prices.get(sym, entry)
+        
+        side_lower = str(side).lower()
+        is_long = side_lower in ['buy', 'long', 'l']
+        pnl_raw = current - entry if is_long else entry - current
+        pnl_pct = (pnl_raw / entry) * 100
+        pnl_val = pos_size * (pnl_pct / 100)
+        
+        tp_price = t.get('tp_price', 0)
+        target_pct_str = ""
+        if tp_price and tp_price > 0:
+            target_pnl_raw = tp_price - entry if is_long else entry - tp_price
+            target_pct = (target_pnl_raw / entry) * 100
+            target_pct_str = f" of {target_pct:+.2f}% (target)"
 
-                strategy_unrealized[strat_name] += pnl_val
-                
-                direction = "⬆️" if is_long else "⬇️"
-                sym_link = get_symbol_link(sym)
-                strategy_trade_lines[strat_name].append(
-                    f"  {direction} {sym_link}: `{pnl_pct:+.2f}%`{target_pct_str}"
-                )
-    except Exception as e:
-        logger.error(f"Error fetching live prices for free signal stats: {e}")
-    finally:
-        await mdm.close()
-    
-    # Each strategy starts with its own $1,000 allocation
-    starting_capital = 1000.0
-    all_stats = {
-        "AI Recommendations Autopilot": ai_stats,
-        "Sherpa Velocity Pullback": svp_stats
-    }
-    strategy_icons = {
-        "AI Recommendations Autopilot": "💡",
-        "Sherpa Velocity Pullback": "🦙"
-    }
-    
-    # Build per-strategy sections
-    def _build_strategy_block(name):
-        stats = all_stats[name]
-        icon = strategy_icons[name]
-        open_trades = strategy_open_trades[name]
-        trade_lines = strategy_trade_lines[name]
-        unrealized = strategy_unrealized[name]
-        open_count = len(open_trades)
-        
-        realized_pct = (stats['cumulative_pnl'] / starting_capital) * 100
-        
-        block = (
-            f"{icon} *{name}*\n"
-            f"• Win Rate: `{stats['win_rate']:.2f}%` ({stats['wins']} W | {stats['losses']} L)\n"
-            f"• Realized PnL: `{realized_pct:+.2f}%`\n"
+        strategy_unrealized += pnl_val
+        direction = "⬆️" if is_long else "⬇️"
+        sym_link = get_symbol_link(sym)
+        strategy_trade_lines.append(
+            f"  {direction} {sym_link}: `{pnl_pct:+.2f}%`{target_pct_str}"
         )
-        if open_count > 0:
-            unrealized_pct = (unrealized / starting_capital) * 100
-            block += f"• Active Signals: `{open_count}`"
-            if unrealized_pct != 0:
-                block += f" (Unrealized: `{unrealized_pct:+.2f}%`)"
-            block += "\n"
-            for line in trade_lines:
-                block += f"{line}\n"
-        else:
-            block += "• Active Signals: `0`\n"
-        return block
     
-    ai_block = _build_strategy_block("AI Recommendations Autopilot") if "AI Recommendations Autopilot" in strategy_names else ""
-    svp_block = _build_strategy_block("Sherpa Velocity Pullback") if "Sherpa Velocity Pullback" in strategy_names else ""
+    starting_capital = 1000.0
+    realized_pct = (svp_stats['cumulative_pnl'] / starting_capital) * 100
+    open_count = len(strategy_open_trades)
     
-    blocks = [b for b in [ai_block, svp_block] if b]
+    block = (
+        f"🦙 *Sherpa Velocity Pullback (US Equities)*\n"
+        f"• Win Rate: `{svp_stats['win_rate']:.2f}%` ({svp_stats['wins']} W | {svp_stats['losses']} L)\n"
+        f"• Realized PnL: `{realized_pct:+.2f}%`\n"
+    )
+    if open_count > 0:
+        unrealized_pct = (strategy_unrealized / starting_capital) * 100
+        block += f"• Active Signals: `{open_count}`"
+        if unrealized_pct != 0:
+            block += f" (Unrealized: `{unrealized_pct:+.2f}%`)"
+        block += "\n"
+        for line in strategy_trade_lines:
+            block += f"{line}\n"
+    else:
+        block += "• Active Signals: `0`\n"
     
     text = (
-        "🧪 *Free Forward Testing*\n"
-        f"• Open Free Signals: `{len([t for t in open_sim_trades if t.get('strategy') in strategy_names])}`\n\n"
-        + "\n\n".join(blocks)
+        "🧪 *Equities Forward Testing*\n"
+        f"• Open Stock Signals: `{open_count}`\n\n"
+        + block
     )
     
     return text

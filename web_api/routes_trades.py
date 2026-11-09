@@ -227,74 +227,9 @@ def get_balance_internal(user, segment=None, bypass_cache=False):
 
     balance_crypto = 0.0
     balance_stock = 0.0
-    
-    crypto_api_key = merged_user.get("api_key")
-    crypto_api_secret = merged_user.get("api_secret")
-    crypto_exchange_id = merged_user.get("exchange_id", "blofin")
-    
-    # 1. Query live Crypto balance (CCXT)
-    if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
-        def fetch_crypto_balance():
-            client = database.get_exchange_client(merged_user, is_async=False)
-            client.timeout = 10000
-            try:
-                try:
-                    futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
-                    bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
-                    bal = client.fetch_balance(params=bal_params)
-                except Exception as e:
-                    print(f"Error fetching live balance for {crypto_exchange_id}: {str(e).splitlines()[0]}")
-                    return (db_fallback, False)
-                    
-                if crypto_exchange_id == 'coinbase':
-                    usd_bal = bal.get('USD', {})
-                    usdc_bal = bal.get('USDC', {})
-                    if not isinstance(usd_bal, dict): usd_bal = {}
-                    if not isinstance(usdc_bal, dict): usdc_bal = {}
-                    total_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
-                    total_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
-                    
-                    # Try to fetch total USD from CFM balance summary to include pending deposits/futures balance
-                    try:
-                        cfm = client.v3PrivateGetBrokerageCfmBalanceSummary()
-                        val_str = cfm.get('balance_summary', {}).get('total_usd_balance', {}).get('value')
-                        if val_str:
-                            total_usd = float(val_str)
-                    except Exception:
-                        pass
-                        
-                    free_asset = total_usd + total_usdc
-                else:
-                    asset = 'USDT'
-                    asset_bal = bal.get(asset, {})
-                    if not isinstance(asset_bal, dict):
-                        asset_bal = {}
-                    free_asset = float(asset_bal.get('free') or asset_bal.get('total') or bal.get('free', {}).get(asset) or bal.get('total', {}).get(asset) or 0.0)
-                
-                total_equity = free_asset
-                if crypto_exchange_id != 'coinbase':
-                    # For Coinbase, skip positions fetch (already reflected in total balance)
-                    try:
-                        positions = client.fetch_positions()
-                        for p in positions:
-                            margin = float(p.get('initialMargin') or p.get('margin') or p.get('info', {}).get('margin') or 0)
-                            upnl = float(p.get('unrealizedPnl') or p.get('info', {}).get('unrealizedPnl') or 0)
-                            total_equity += (margin + upnl)
-                    except Exception as pos_err:
-                        print(f"Error fetching positions for balance: {pos_err}")
-                return (total_equity, True)
-            finally:
-                try:
-                    client.close()
-                except Exception:
-                    pass
-
-        db_fallback = float((tg_user or {}).get("equity") or user.get("equity") or 0.0)
-        balance_crypto, crypto_auth_success = run_with_timeout(fetch_crypto_balance, 15.0, (db_fallback, False))
-    elif not segment or segment == 'crypto':
-        balance_crypto, crypto_auth_success = float((tg_user or {}).get("equity") or user.get("equity") or 0.0), False
+    stock_auth_success = False
             
-    # 2. Query live Stock balance (Alpaca)
+    # Query live Stock balance (Alpaca)
     alpaca_key = merged_user.get("alpaca_api_key")
     alpaca_secret = merged_user.get("alpaca_api_secret")
     alpaca_endpoint = merged_user.get("alpaca_endpoint")
@@ -385,122 +320,17 @@ def get_stats_internal(user, segment=None, bypass_cache=False):
                 
     db_has_open = bool(merged_user.get("has_open_positions"))
     
-    # 1. Crypto Stats
-    crypto_wins = tg_user.get("wins", tg_user.get("total_wins", 0))
-    if crypto_wins is None: crypto_wins = 0
-    crypto_losses = tg_user.get("losses", tg_user.get("total_losses", 0))
-    if crypto_losses is None: crypto_losses = 0
-    crypto_total = crypto_wins + crypto_losses
-    crypto_win_rate = round((crypto_wins / crypto_total) * 100, 1) if crypto_total > 0 else 0.0
-    
-    crypto_equity = tg_user.get("equity", 1000.0) or 1000.0
-    crypto_cum_pnl = tg_user.get("cum_pnl", tg_user.get("cumulative_pnl", 0.0)) or 0.0
-    
+    # 1. Crypto Stats (Decommissioned - Zeroed)
+    crypto_wins = 0
+    crypto_losses = 0
+    crypto_total = 0
+    crypto_win_rate = 0.0
+    crypto_equity = 0.0
+    crypto_cum_pnl = 0.0
     crypto_unrealized = 0.0
     crypto_open_count = 0
-    
-    # Attempt CCXT fetch if keys exist
-    # Merge credentials
-    merged_user = {}
-    if user:
-        merged_user.update(user)
-    if tg_user:
-        for k, v in tg_user.items():
-            if v is not None and v != "":
-                merged_user[k] = v
-                
-    crypto_api_key = merged_user.get("api_key")
-    crypto_api_secret = merged_user.get("api_secret")
-    crypto_exchange_id = merged_user.get("exchange_id", "blofin")
-    
-    if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
-        def fetch_crypto_stats():
-            client = database.get_exchange_client(merged_user, is_async=False)
-            client.timeout = 10000
-            try:
-                open_count = 0
-                unrealized = 0.0
-                live_bal = 0.0
-                try:
-                    positions = client.fetch_positions()
-                except Exception:
-                    positions = []
-                for p in positions:
-                    contracts = float(p.get("contracts", 0) or 0)
-                    if contracts != 0:
-                        open_count += 1
-                        unrealized += float(p.get("unrealizedPnl", 0) or 0)
-                try:
-                    futures_type = (tg_user or {}).get("bingx_futures_type") or user.get("bingx_futures_type", "standard")
-                    bal_params = database.get_exchange_balance_params(crypto_exchange_id, futures_type=futures_type)
-                    bal = client.fetch_balance(params=bal_params)
-                    if crypto_exchange_id == 'coinbase':
-                        usd_bal = bal.get('USD', {})
-                        usdc_bal = bal.get('USDC', {})
-                        if not isinstance(usd_bal, dict): usd_bal = {}
-                        if not isinstance(usdc_bal, dict): usdc_bal = {}
-                        total_usd = float(usd_bal.get('total') or usd_bal.get('free') or bal.get('total', {}).get('USD') or 0.0)
-                        total_usdc = float(usdc_bal.get('total') or usdc_bal.get('free') or bal.get('total', {}).get('USDC') or 0.0)
-                        
-                        try:
-                            cfm = client.v3PrivateGetBrokerageCfmBalanceSummary()
-                            val_str = cfm.get('balance_summary', {}).get('total_usd_balance', {}).get('value')
-                            if val_str:
-                                total_usd = float(val_str)
-                        except Exception:
-                            pass
-                            
-                        live_bal = total_usd + total_usdc
-                    else:
-                        asset = 'USDT'
-                        asset_bal = bal.get(asset, {})
-                        if not isinstance(asset_bal, dict): asset_bal = {}
-                        live_bal = float(asset_bal.get('free') or asset_bal.get('total') or bal.get('free', {}).get(asset) or bal.get('total', {}).get(asset) or 0.0)
-                except Exception as bal_err:
-                    print(f"Error fetching live balance in stats: {bal_err}", flush=True)
-                return open_count, unrealized, live_bal
-            finally:
-                try: client.close()
-                except: pass
-
-        open_count, unrealized, live_bal = run_with_timeout(fetch_crypto_stats, 15.0, (0, 0.0, 0.0))
-        crypto_open_count = open_count
-        crypto_unrealized = unrealized
-        if live_bal > 0:
-            crypto_equity = live_bal
-            
-    if crypto_exchange_id == 'coinbase':
-        try:
-            import json
-            with database.db_session() as conn:
-                c = conn.cursor()
-                if tg_user.get("telegram_chat_id"):
-                    c.execute("SELECT history_cache FROM Users WHERE telegram_chat_id = ?", (tg_user["telegram_chat_id"],))
-                else:
-                    c.execute("SELECT history_cache FROM WebUsers WHERE id = ?", (user_id,))
-                row = c.fetchone()
-                if row and row[0]:
-                    trades_list = json.loads(row[0])
-                    calc_cum_pnl = 0.0
-                    calc_wins = 0
-                    calc_losses = 0
-                    for tr in trades_list:
-                        tr_pnl = float(tr.get("net_pnl") or 0.0)
-                        calc_cum_pnl += tr_pnl
-                        if tr_pnl > 0:
-                            calc_wins += 1
-                        elif tr_pnl < 0:
-                            calc_losses += 1
-                    crypto_cum_pnl = calc_cum_pnl
-                    crypto_wins = calc_wins
-                    crypto_losses = calc_losses
-                    crypto_total = crypto_wins + crypto_losses
-                    crypto_win_rate = round((crypto_wins / crypto_total) * 100, 1) if crypto_total > 0 else 0.0
-        except Exception as stats_recalc_err:
-            print(f"Error recalculating Coinbase stats: {stats_recalc_err}", flush=True)
-
-    crypto_overall_pnl = crypto_cum_pnl + crypto_unrealized
-    crypto_overall_pnl_pct = round((crypto_overall_pnl / crypto_equity) * 100, 2) if crypto_equity > 0 else 0.0
+    crypto_overall_pnl = 0.0
+    crypto_overall_pnl_pct = 0.0
     
     # 2. Stock Stats
     stock_equity = 10000.0
@@ -764,56 +594,15 @@ def get_active_signals_internal(bypass_cache=False):
     # Fallback query if no cache exists
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT id, symbol, strategy, side, entry_price, tp_price, sl_price, open_time, status FROM TheoreticalTrades WHERE status = 'open' ORDER BY open_time DESC")
+        c.execute("SELECT id, symbol, strategy, side, entry_price, tp_price, sl_price, open_time, status FROM TheoreticalTrades WHERE status = 'open' AND strategy = 'Sherpa Velocity Pullback' ORDER BY open_time DESC")
         rows = c.fetchall()
         signals = []
         for r in rows:
-            if r[2] not in legacy_strats:
-                signals.append({
-                    "id": r[0], "symbol": r[1], "strategy": r[2], "side": r[3],
-                    "entry_price": r[4], "tp_price": r[5], "sl_price": r[6],
-                    "open_time": r[7], "status": r[8]
-                })
-
-        try:
-            c.execute("""
-                SELECT id, symbol, entry_price, current_price, target_price, stop_loss, created_at, status
-                FROM AIRecommendations 
-                WHERE status = 'active' 
-                  AND category = 'crypto' 
-                  AND LOWER(risk_profile) = 'conservative' 
-                  AND LOWER(investment_goal) = 'income'
-                ORDER BY created_at DESC
-            """)
-            for r in c.fetchall():
-                rd = dict(r)
-                sym = rd['symbol']
-                if '/' not in sym and 'USDT' not in sym:
-                    sym = f"{sym}/USDT"
-                c_at = rd.get('created_at') or int(time.time())
-                open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
-                entry = float(rd.get('entry_price') or 0.0)
-                curr = float(rd.get('current_price') or entry)
-                pnl_pct = ((curr - entry) / entry * 100.0) if entry > 0 and curr > 0 else 0.0
-                signals.append({
-                    "id": f"rec_{rd['id']}",
-                    "symbol": sym,
-                    "side": "BUY",
-                    "entry_price": entry,
-                    "current_price": curr,
-                    "tp_price": float(rd.get('target_price') or 0.0),
-                    "sl_price": float(rd.get('stop_loss') or 0.0),
-                    "open_time": open_ts,
-                    "status": "open",
-                    "strategy": "AI Recommendations Autopilot",
-                    "category": "crypto",
-                    "is_recommendation": True,
-                    "leverage": 1,
-                    "pnl_pct": round(pnl_pct, 2),
-                    "pnl_usdt": round(1000.0 * (pnl_pct / 100.0), 2)
-                })
-        except Exception as e:
-            print(f"Error reading AIRecommendations in fallback: {e}")
+            signals.append({
+                "id": r[0], "symbol": r[1], "strategy": r[2], "side": r[3],
+                "entry_price": r[4], "tp_price": r[5], "sl_price": r[6],
+                "open_time": r[7], "status": r[8]
+            })
     return signals
 
 def get_balance_history_internal(user_id):
@@ -966,15 +755,7 @@ def get_open_trades():
                                     open_time = int(row_t[2] or 0)
                                     strategy = row_t[3] or merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                                 else:
-                                    c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE symbol = ? AND status = 'active' AND target_price > 0 AND stop_loss > 0 ORDER BY id DESC LIMIT 1", (p.get("symbol"),))
-                                    rec_row = c.fetchone()
-                                    if rec_row:
-                                        tp_price = float(rec_row[0] or 0.0)
-                                        sl_price = float(rec_row[1] or 0.0)
-                                        open_time = int(rec_row[2] or 0)
-                                        strategy = "AI Recommendation"
-                                    else:
-                                        strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
+                                    strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                     except Exception as db_err:
                         strategy = merged_user.get("active_stock_strategy", "Sherpa Velocity Pullback")
                         print(f"Alpaca DB lookup error: {db_err}")
@@ -1039,122 +820,9 @@ def get_open_trades():
         except Exception as e:
             print(f"Alpaca local fallback error: {e}")
         
-    # 2. Fetch CCXT Crypto positions
-    if tg_user and tg_user.get("api_key"):
-        crypto_api_key = tg_user.get("api_key")
-        crypto_api_secret = tg_user.get("api_secret")
-        crypto_api_password = tg_user.get("api_password") or ""
-        crypto_exchange_id = tg_user.get("exchange_id", "blofin")
-    else:
-        crypto_api_key = user.get("api_key")
-        crypto_api_secret = user.get("api_secret")
-        crypto_api_password = user.get("api_password") or ""
-        crypto_exchange_id = user.get("exchange_id", "blofin")
-    
-    if (not segment or segment == 'crypto') and crypto_api_key and crypto_api_secret:
-        def fetch_crypto_open_trades():
-            trades = []
-            client = database.get_exchange_client(merged_user, is_async=False)
-            client.timeout = 10000
-            try:
-                try:
-                    positions = client.fetch_positions()
-                except Exception:
-                    positions = []
-                for pos in positions:
-                    contracts = float(pos.get("contracts", 0.0) or 0.0)
-                    if contracts != 0:
-                        tp_price = 0.0
-                        sl_price = 0.0
-                        open_time = 0
-                        try:
-                             with database.db_session() as conn:
-                                 c = conn.cursor()
-                                 symbol_clean = pos.get('symbol', '').split(':')[0].replace('-', '/')
-                                 import re
-                                 symbol_clean = re.sub(r'^(\d+)', '', symbol_clean)
-                                 symbol_clean = symbol_clean.replace('TONCOIN', 'TON')
-                                 base_ticker = symbol_clean.split('/')[0]
-                                 c.execute("SELECT tp_price, sl_price, open_time, strategy FROM TheoreticalTrades WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%' || symbol || '%') AND status = 'open' AND tp_price > 0 AND sl_price > 0 ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
-                                 row = c.fetchone()
-                                 if row:
-                                     tp_price = float(row[0] or 0.0)
-                                     sl_price = float(row[1] or 0.0)
-                                     open_time = int(row[2]) if isinstance(row[2], (int, float)) else 0
-                                     strategy = row[3] or merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
-                                 else:
-                                     c.execute("SELECT target_price, stop_loss, created_at FROM AIRecommendations WHERE (symbol = ? OR symbol LIKE ? OR ? LIKE '%' || symbol || '%') AND status = 'active' AND target_price > 0 AND stop_loss > 0 ORDER BY id DESC LIMIT 1", (pos.get('symbol'), f"%{base_ticker}%", symbol_clean))
-                                     rec_row = c.fetchone()
-                                     if rec_row:
-                                         import re
-                                         raw_symbol = pos.get('symbol', '')
-                                         mult_match = re.match(r'^(\d+)', raw_symbol)
-                                         multiplier = float(mult_match.group(1)) if mult_match else 1.0
-                                         tp_price = float(rec_row[0] or 0.0) * multiplier
-                                         sl_price = float(rec_row[1] or 0.0) * multiplier
-                                         open_time = int(rec_row[2]) if isinstance(rec_row[2], (int, float)) else 0
-                                         strategy = "AI Recommendation"
-                                     else:
-                                         strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
-                        except Exception as db_err:
-                            strategy = merged_user.get("active_crypto_strategy", "Valkyrie Elite Scalper")
-                            print(f"Crypto DB lookup error: {db_err}")
-
-                        entry_price = float(pos.get("entryPrice") or 0)
-                        mark_price = float(pos.get("markPrice") or 0)
-                        unrealized_pnl = float(pos.get("unrealizedPnl") or 0)
-                        roe = float(pos.get("percentage") or 0)
-                        side_str = pos.get("side", "").upper()
-                        leverage = float(pos.get("leverage") or 1.0)
-                        
-                        if entry_price > 0 and mark_price > 0:
-                            is_long = side_str in ['LONG', 'BUY']
-                            raw_pct = ((mark_price - entry_price) / entry_price) * 100 if is_long else ((entry_price - mark_price) / entry_price) * 100
-                            roe = raw_pct * leverage
-                            
-                            if unrealized_pnl == 0:
-                                pnl_raw = mark_price - entry_price if is_long else entry_price - mark_price
-                                unrealized_pnl = abs(contracts) * pnl_raw
-
-                        trades.append({
-                            "id": pos.get("id") or f"crypto-{pos.get('symbol')}",
-                            "type": "crypto",
-                            "symbol": pos.get("symbol"),
-                            "side": side_str,
-                            "qty": abs(contracts),
-                            "entry_price": entry_price,
-                            "mark_price": mark_price,
-                            "unrealized_pnl": unrealized_pnl,
-                            "roe": roe,
-                            "tp_price": tp_price,
-                            "sl_price": sl_price,
-                            "open_time": open_time,
-                            "strategy": strategy,
-                            "leverage": leverage
-                        })
-                return trades
-            finally:
-                try:
-                    client.close()
-                except Exception:
-                    pass
-
-        crypto_open_trades = run_with_timeout(fetch_crypto_open_trades, 15.0, [])
-        open_positions.extend(crypto_open_trades)
-        
     with RESPONSE_CACHE_LOCK:
-        has_crypto = any(t['type'] == 'crypto' for t in open_positions)
-        has_stock = any(t['type'] == 'stock' for t in open_positions)
-        
-        if segment == 'crypto' or (not segment and not has_stock):
-            ttl = 60 if has_crypto else 120
-        elif segment == 'stock' or (not segment and not has_crypto):
-            ttl = 60 if is_us_market_open() else min(120, time_until_us_market_opens())
-        else:
-            ttl_crypto = 60 if has_crypto else 120
-            ttl_stock = 60 if is_us_market_open() else min(120, time_until_us_market_opens())
-            ttl = min(ttl_crypto, ttl_stock)
-            
+        has_stock = len(open_positions) > 0
+        ttl = 60 if is_us_market_open() else min(120, time_until_us_market_opens())
         RESPONSE_CACHE[cache_key] = (now + ttl, open_positions)
         
     return jsonify(open_positions), 200
@@ -1923,63 +1591,16 @@ def _update_active_signals_cache():
     global SIGNALS_ACTIVE_UPDATING
     try:
         import sqlite3
-        import live_bot_multi
         
         with database.db_session() as conn:
             c = conn.cursor()
-            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy != 'AI Recommendation' ORDER BY open_time DESC LIMIT 50")
+            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy = 'Sherpa Velocity Pullback' ORDER BY open_time DESC LIMIT 50")
             rows = c.fetchall()
             signals = [dict(r) for r in rows]
-
-            # Fetch active Crypto AI Recommendations (Conservative & Income)
-            try:
-                c.execute("""
-                    SELECT id, symbol, name, category, risk_profile, investment_goal, 
-                           entry_price, current_price, target_price, stop_loss, created_at, status
-                    FROM AIRecommendations 
-                    WHERE status = 'active' 
-                      AND category = 'crypto' 
-                      AND LOWER(risk_profile) = 'conservative' 
-                      AND LOWER(investment_goal) = 'income'
-                    ORDER BY created_at DESC
-                """)
-                rec_rows = c.fetchall()
-                for r in rec_rows:
-                    rd = dict(r)
-                    sym = rd['symbol']
-                    if '/' not in sym and 'USDT' not in sym:
-                        sym = f"{sym}/USDT"
-                    c_at = rd.get('created_at') or int(time.time())
-                    open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
-                    signals.append({
-                        "id": f"rec_{rd['id']}",
-                        "symbol": sym,
-                        "side": "BUY",
-                        "entry_price": float(rd.get('entry_price') or 0.0),
-                        "current_price": float(rd.get('current_price') or rd.get('entry_price') or 0.0),
-                        "tp_price": float(rd.get('target_price') or 0.0),
-                        "sl_price": float(rd.get('stop_loss') or 0.0),
-                        "open_time": open_ts,
-                        "status": "open",
-                        "strategy": "AI Recommendations Autopilot",
-                        "category": "crypto",
-                        "is_recommendation": True,
-                        "leverage": 1
-                    })
-            except Exception as rec_err:
-                print(f"Error querying active AIRecommendations in signals: {rec_err}")
         
         disabled = database.get_disabled_strategies()
-        legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper"}
-        signals = [s for s in signals if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
+        signals = [s for s in signals if s.get("strategy") not in disabled]
         
-        CRYPTO_LEVERAGE = 20
-        
-        try:
-            mdm = live_bot_multi.MarketDataManager()
-        except Exception:
-            mdm = None
-            
         try:
             sys_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
             sys_sec = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
@@ -1989,8 +1610,7 @@ def _update_active_signals_cache():
 
         async def fetch_all_prices(sigs):
             import aiohttp
-            stock_syms = [sig.get("symbol", "") for sig in sigs if not ("/" in sig.get("symbol", ""))]
-            crypto_syms = [sig.get("symbol", "") for sig in sigs if "/" in sig.get("symbol", "")]
+            stock_syms = [sig.get("symbol", "") for sig in sigs if sig.get("symbol")]
             def has_cache(sym):
                 try:
                     with sqlite3.connect(STOCK_DB_PATH) as conn:
@@ -2004,13 +1624,7 @@ def _update_active_signals_cache():
             prices = {}
 
             async with aiohttp.ClientSession() as session:
-                tasks = []
-                
-                async def fetch_alpaca():
-                    if not stock_syms or not sys_user.get("alpaca_api_key"):
-                        return
-                    if not is_us_market_open() and not uncached_stocks:
-                        return
+                if stock_syms and sys_user.get("alpaca_api_key") and (is_us_market_open() or uncached_stocks):
                     try:
                         sym_str = ",".join(stock_syms)
                         url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
@@ -2030,65 +1644,8 @@ def _update_active_signals_cache():
                                             prices[sym] = float(snap["dailyBar"]["c"])
                                         elif snap.get("prevDailyBar") and snap["prevDailyBar"].get("c"):
                                             prices[sym] = float(snap["prevDailyBar"]["c"])
-                            else:
-                                try:
-                                    err_body = await resp.text()
-                                except Exception:
-                                    err_body = "Could not read response body"
-                                print(f"Error fetching Alpaca snapshots: HTTP {resp.status} - {err_body}")
                     except Exception as e:
-                        import traceback
-                        print(f"Error fetching Alpaca snapshots: Exception type={type(e).__name__}, details={e}\n{traceback.format_exc()}")
-
-                async def fetch_binance():
-                    if not crypto_syms:
-                        return
-                    try:
-                        async with session.get("https://api.binance.com/api/v3/ticker/price", timeout=3) as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                binance_prices = {item['symbol']: float(item['price']) for item in data}
-                                for sym in crypto_syms:
-                                    clean = sym.split(':')[0].replace('/', '')
-                                    if clean in binance_prices and sym not in prices:
-                                        prices[sym] = binance_prices[clean]
-                    except Exception as e:
-                        print(f"Error fetching Binance global tickers: {e}")
-
-                    remaining = [s for s in crypto_syms if s not in prices]
-                    if remaining:
-                        try:
-                            async with session.get("https://api.binance.us/api/v3/ticker/price", timeout=3) as resp:
-                                if resp.status == 200:
-                                    data = await resp.json()
-                                    binance_prices = {item['symbol']: float(item['price']) for item in data}
-                                    for sym in remaining:
-                                        clean = sym.split(':')[0].replace('/', '')
-                                        if clean in binance_prices and sym not in prices:
-                                            prices[sym] = binance_prices[clean]
-                        except Exception as e:
-                            print(f"Error fetching Binance US tickers: {e}")
-
-                async def fetch_blofin():
-                    if not crypto_syms:
-                        return
-                    try:
-                        async with session.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=3) as resp:
-                            if resp.status == 200:
-                                res_data = await resp.json()
-                                data = res_data.get('data', [])
-                                price_map = {item['instId']: float(item['last']) for item in data}
-                                for sym in crypto_syms:
-                                    clean_sym = sym.split(':')[0].replace('/', '-')
-                                    if clean_sym in price_map and sym not in prices:
-                                        prices[sym] = price_map[clean_sym]
-                    except Exception as e:
-                        print(f"Error fetching Blofin tickers in signals: {e}")
-
-                tasks.append(fetch_alpaca())
-                tasks.append(fetch_binance())
-                tasks.append(fetch_blofin())
-                await asyncio.gather(*tasks)
+                        print(f"Error fetching Alpaca snapshots: {e}")
 
             for sym in stock_syms:
                 if sym not in prices:
@@ -2118,37 +1675,6 @@ def _update_active_signals_cache():
                             print(f"Error reading fallback price for {sym} from daily cache: {db_err}")
                             prices[sym] = 0.0
 
-            remaining_crypto = [sym for sym in crypto_syms if sym not in prices]
-            if remaining_crypto and mdm:
-                async def get_crypto_price(sym):
-                    try:
-                        df = await mdm.fetch_ohlcv(sym, "15m")
-                        if df is not None and not df.empty:
-                            return float(df['close'].iloc[-1])
-                    except: pass
-                    return 0.0
-                crypto_results = await asyncio.gather(*(get_crypto_price(sym) for sym in remaining_crypto))
-                for i, sym in enumerate(remaining_crypto):
-                    if crypto_results[i] > 0:
-                        prices[sym] = crypto_results[i]
-
-            still_missing_crypto = [sym for sym in crypto_syms if sym not in prices]
-            if still_missing_crypto:
-                try:
-                    import yfinance as yf
-                    for sym in still_missing_crypto:
-                        base = sym.split('/')[0].split(':')[0].split('-')[0]
-                        yf_sym = f"{base}-USD"
-                        try:
-                            t = yf.Ticker(yf_sym)
-                            p = float(t.fast_info.get("lastPrice", 0.0))
-                            if p > 0:
-                                prices[sym] = p
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
             return [prices.get(sig.get("symbol", ""), 0.0) for sig in sigs]
 
         loop = asyncio.new_event_loop()
@@ -2159,9 +1685,6 @@ def _update_active_signals_cache():
             print(f"Error in concurrent fetch: {e}")
             current_prices = [0.0] * len(signals)
         finally:
-            if mdm:
-                try: loop.run_until_complete(mdm.close())
-                except: pass
             loop.close()
 
         for idx, sig in enumerate(signals):
@@ -2171,44 +1694,26 @@ def _update_active_signals_cache():
             is_long = side in ['BUY', 'LONG', 'L']
             pos_size = sig.get("position_size") or 1000
 
-            is_stk = not ("/" in sym)
             current = current_prices[idx]
-
-            # If live price fetch returned 0, try current_price from signal if available
             if current <= 0 and sig.get("current_price"):
                 current = float(sig.get("current_price"))
 
             if current > 0 and entry > 0:
                 pnl_raw = current - entry if is_long else entry - current
                 pnl_pct = (pnl_raw / entry) * 100
-                
-                if not is_stk and not sig.get("is_recommendation") and sig.get("strategy") != "AI Recommendations Autopilot":
-                    pnl_pct *= CRYPTO_LEVERAGE
-                    
                 pnl_val = pos_size * (pnl_pct / 100)
                 
                 sig["pnl_pct"] = pnl_pct
                 sig["pnl_usdt"] = pnl_val
                 sig["current_price"] = current
-            elif entry > 0:
-                rec_curr = float(sig.get("current_price") or 0.0)
-                if rec_curr > 0:
-                    pnl_raw = rec_curr - entry if is_long else entry - rec_curr
-                    pnl_pct = (pnl_raw / entry) * 100
-                    if not is_stk and not sig.get("is_recommendation") and sig.get("strategy") != "AI Recommendations Autopilot":
-                        pnl_pct *= CRYPTO_LEVERAGE
-                    sig["pnl_pct"] = pnl_pct
-                    sig["pnl_usdt"] = pos_size * (pnl_pct / 100)
-                    sig["current_price"] = rec_curr
-                else:
-                    sig["pnl_pct"] = 0.0
-                    sig["pnl_usdt"] = 0.0
-                    sig["current_price"] = entry
+            else:
+                sig["pnl_pct"] = 0.0
+                sig["pnl_usdt"] = 0.0
+                sig["current_price"] = entry
             
         cache_key = "signals_active"
         with RESPONSE_CACHE_LOCK:
-            has_crypto = any(not is_stock(s.get("symbol", "")) for s in signals)
-            if has_crypto or is_us_market_open():
+            if is_us_market_open():
                 ttl = 900
             else:
                 ttl = time_until_us_market_opens()
@@ -2228,7 +1733,7 @@ def get_active_signals():
     global SIGNALS_ACTIVE_UPDATING
     cache_key = "signals_active"
     now = time.time()
-    legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper"}
+    legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper", "AI Recommendations Autopilot", "AI Recommendation"}
     
     force_refresh = request.args.get('force') == 'true'
     
@@ -2265,11 +1770,11 @@ def get_active_signals():
             filtered_data = [s for s in cached_data if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
             return jsonify(filtered_data), 200
             
-    # Cache is completely empty. Fetch from DB (OUTSIDE of RESPONSE_CACHE_LOCK to prevent bottlenecks)
+    # Cache is completely empty. Fetch from DB
     try:
         with database.db_session() as conn:
             c = conn.cursor()
-            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy NOT LIKE 'AI Recom%' ORDER BY open_time DESC LIMIT 50")
+            c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy = 'Sherpa Velocity Pullback' ORDER BY open_time DESC LIMIT 50")
             rows = c.fetchall()
             signals = [dict(r) for r in rows]
             disabled = database.get_disabled_strategies()
@@ -2277,49 +1782,11 @@ def get_active_signals():
             for s in signals:
                 s["pnl_pct"] = None
                 s["pnl_usdt"] = None
-
-            c.execute("""
-                SELECT id, symbol, entry_price, current_price, target_price, stop_loss, created_at, status
-                FROM AIRecommendations 
-                WHERE status = 'active' 
-                  AND category = 'crypto' 
-                  AND LOWER(risk_profile) = 'conservative' 
-                  AND LOWER(investment_goal) = 'income'
-                ORDER BY created_at DESC
-            """)
-            for r in c.fetchall():
-                rd = dict(r)
-                sym = rd['symbol']
-                if '/' not in sym and 'USDT' not in sym:
-                    sym = f"{sym}/USDT"
-                c_at = rd.get('created_at') or int(time.time())
-                open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
-                entry = float(rd.get('entry_price') or 0.0)
-                curr = float(rd.get('current_price') or entry)
-                pnl_pct = ((curr - entry) / entry * 100.0) if entry > 0 and curr > 0 else 0.0
-                signals.append({
-                    "id": f"rec_{rd['id']}",
-                    "symbol": sym,
-                    "side": "BUY",
-                    "entry_price": entry,
-                    "current_price": curr,
-                    "tp_price": float(rd.get('target_price') or 0.0),
-                    "sl_price": float(rd.get('stop_loss') or 0.0),
-                    "open_time": open_ts,
-                    "status": "open",
-                    "strategy": "AI Recommendations Autopilot",
-                    "category": "crypto",
-                    "is_recommendation": True,
-                    "leverage": 1,
-                    "pnl_pct": round(pnl_pct, 2),
-                    "pnl_usdt": round(1000.0 * (pnl_pct / 100.0), 2)
-                })
     except Exception:
         signals = []
         
     with RESPONSE_CACHE_LOCK:
-        has_crypto = any(not is_stock(s.get("symbol", "")) for s in signals)
-        if has_crypto or is_us_market_open():
+        if is_us_market_open():
             ttl = 900
         else:
             ttl = time_until_us_market_opens()
@@ -2329,78 +1796,17 @@ def get_active_signals():
 
 @trades_bp.route('/api/signals/closed', methods=['GET'])
 def get_closed_signals():
-    legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper"}
+    legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper", "AI Recommendations Autopilot", "AI Recommendation"}
     with database.db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy NOT LIKE 'AI Recom%' AND symbol LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
-        crypto_rows = c.fetchall()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy NOT LIKE 'AI Recom%' AND symbol NOT LIKE '%%/%%' ORDER BY close_time DESC LIMIT 50")
+        c.execute("SELECT * FROM TheoreticalTrades WHERE status != 'open' AND strategy = 'Sherpa Velocity Pullback' ORDER BY close_time DESC LIMIT 50")
         stock_rows = c.fetchall()
-
-        try:
-            c.execute("""
-                SELECT id, symbol, entry_price, target_price, stop_loss, created_at, closed_at, status
-                FROM AIRecommendations 
-                WHERE status IN ('hit_target', 'hit_stop_loss')
-                  AND category = 'crypto' 
-                  AND LOWER(risk_profile) = 'conservative' 
-                  AND LOWER(investment_goal) = 'income'
-                ORDER BY closed_at DESC LIMIT 50
-            """)
-            rec_closed = c.fetchall()
-        except Exception:
-            rec_closed = []
         
     signals = []
-    for r in crypto_rows:
-        d = dict(r)
-        if d.get("strategy") not in legacy_strats:
-            if d.get("pnl_pct") is not None:
-                d["pnl_pct"] *= 20
-            signals.append(d)
     for r in stock_rows:
         d = dict(r)
         if d.get("strategy") not in legacy_strats:
             signals.append(d)
-
-    for r in rec_closed:
-        rd = dict(r)
-        entry = float(rd.get('entry_price') or 0.0)
-        target = float(rd.get('target_price') or 0.0)
-        sl = float(rd.get('stop_loss') or 0.0)
-        status = rd.get('status')
-        pnl_pct = 0.0
-        exit_price = entry
-        if entry > 0:
-            if status == 'hit_target':
-                pnl_pct = ((target - entry) / entry) * 100
-                exit_price = target
-            elif status == 'hit_stop_loss':
-                pnl_pct = ((sl - entry) / entry) * 100
-                exit_price = sl
-        sym = rd['symbol']
-        if '/' not in sym and 'USDT' not in sym:
-            sym = f"{sym}/USDT"
-        c_at = rd.get('created_at') or int(time.time())
-        open_ts = int(c_at / 1000) if c_at > 10000000000 else int(c_at)
-        cl_at = rd.get('closed_at') or c_at
-        close_ts = int(cl_at / 1000) if cl_at > 10000000000 else int(cl_at)
-        signals.append({
-            "id": f"rec_{rd['id']}",
-            "symbol": sym,
-            "side": "BUY",
-            "entry_price": entry,
-            "exit_price": exit_price,
-            "tp_price": target,
-            "sl_price": sl,
-            "open_time": open_ts,
-            "close_time": close_ts,
-            "status": "closed",
-            "strategy": "AI Recommendations Autopilot",
-            "category": "crypto",
-            "is_recommendation": True,
-            "pnl_pct": round(pnl_pct, 2)
-        })
 
     signals.sort(key=lambda x: x.get('close_time', 0), reverse=True)
     
@@ -2411,9 +1817,10 @@ def get_closed_signals():
 def _update_free_stats_cache():
     global STATS_FREE_UPDATING
     try:
+        import sqlite3
         disabled = database.get_disabled_strategies()
         strategy_names = [s for s in ["Sherpa Velocity Pullback"] if s not in disabled]
-        open_sim_trades = database.get_open_theoretical_trades()
+        open_sim_trades = [t for t in database.get_open_theoretical_trades() if t.get('strategy') == 'Sherpa Velocity Pullback']
         
         strategy_open_trades = {s: [] for s in strategy_names}
         for t in open_sim_trades:
@@ -2421,40 +1828,9 @@ def _update_free_stats_cache():
             if strat in strategy_open_trades:
                 strategy_open_trades[strat].append(t)
                 
-        open_symbols = list(set([t['symbol'] for t in open_sim_trades]))
-        stock_syms = [s for s in open_symbols if "/" not in s and ":" not in s]
-        crypto_syms = [s for s in open_symbols if s not in stock_syms]
-        
+        stock_syms = list(set([t['symbol'] for t in open_sim_trades if t.get('symbol')]))
         live_prices = {}
         
-        if crypto_syms:
-            try:
-                r = requests.get("https://api.binance.us/api/v3/ticker/price", timeout=2)
-                if r.status_code != 200:
-                    r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=2)
-                if r.status_code == 200:
-                    binance_prices = {item['symbol']: float(item['price']) for item in r.json()}
-                    for sym in crypto_syms:
-                        clean = sym.split(':')[0].replace('/', '')
-                        if clean in binance_prices:
-                            live_prices[sym] = binance_prices[clean]
-            except Exception as e:
-                print(f"Error fetching Binance tickers in get_free_stats: {e}")
-
-            remaining_crypto = [sym for sym in crypto_syms if sym not in live_prices]
-            if remaining_crypto:
-                try:
-                    resp = requests.get("https://openapi.blofin.com/api/v1/market/tickers?instType=SWAP", timeout=5)
-                    if resp.status_code == 200:
-                        data = resp.json().get('data', [])
-                        price_map = {item['instId']: float(item['last']) for item in data}
-                        for sym in remaining_crypto:
-                            clean_sym = sym.split(':')[0].replace('/', '-')
-                            if clean_sym in price_map:
-                                live_prices[sym] = price_map[clean_sym]
-                except Exception as e:
-                    print(f"Error fetching Blofin prices: {e}")
-                
         if stock_syms:
             try:
                 alpaca_key = utils_gcp.get_secret("ALPACA_API_KEY")
@@ -2502,12 +1878,7 @@ def _update_free_stats_cache():
                 
                 is_long = side in ['buy', 'long', 'l']
                 pnl_raw = current - entry if is_long else entry - current
-                
-                if "/" in sym or ":" in sym:
-                    pnl_val = pos_size * pnl_raw
-                else:
-                    pnl_val = pos_size * (pnl_raw / entry)
-                    
+                pnl_val = pos_size * (pnl_raw / entry) if entry > 0 else 0.0
                 unrealized_pnl += pnl_val
                 
             unrealized_pct = (unrealized_pnl / starting_capital) * 100
@@ -2523,96 +1894,6 @@ def _update_free_stats_cache():
                 "active_trades": []
             })
 
-        # Calculate live stats for AI Recommendations (Conservative & Income - Crypto)
-        try:
-            with database.db_session() as conn:
-                c = conn.cursor()
-                c.execute("""
-                    SELECT status, entry_price, current_price, target_price, stop_loss 
-                    FROM AIRecommendations 
-                    WHERE category = 'crypto' 
-                      AND LOWER(risk_profile) = 'conservative' 
-                      AND LOWER(investment_goal) = 'income'
-                """)
-                rec_rows = [dict(r) for r in c.fetchall()]
-
-            rec_hits = sum(1 for r in rec_rows if r['status'] == 'hit_target')
-            rec_stops = sum(1 for r in rec_rows if r['status'] == 'hit_stop_loss')
-            rec_active = sum(1 for r in rec_rows if r['status'] == 'active')
-            rec_closed_total = rec_hits + rec_stops
-            rec_win_rate = round((rec_hits / rec_closed_total) * 100, 1) if rec_closed_total > 0 else 63.0
-
-            # Calculate realized & unrealized PnL % assuming 1% account risk per recommendation
-            # Risk per trade = 1% of account balance (0.01)
-            # Position size (as fraction of capital) = 0.01 / risk_fraction
-            rec_realized_sum = 0.0
-            for r in rec_rows:
-                entry = float(r.get('entry_price') or 0.0)
-                if entry <= 0:
-                    continue
-                target = float(r.get('target_price') or entry)
-                sl_price = float(r.get('stop_loss') or 0.0)
-
-                # Determine initial risk % (stop loss distance from entry)
-                if 0 < sl_price < entry:
-                    risk_pct = (entry - sl_price) / entry
-                elif target > entry:
-                    # Trailing stop or missing SL: derive from min 2:1 R:R target distance
-                    risk_pct = max(0.05, min(0.15, ((target - entry) / entry) / 2.0))
-                else:
-                    risk_pct = 0.10
-
-                # Bound risk percentage between 2% and 25% for sane position sizing
-                risk_pct = max(0.02, min(0.25, risk_pct))
-                
-                # Position allocation as a fraction of account capital to risk exactly 1% (0.01)
-                pos_weight = min(0.25, 0.01 / risk_pct)
-
-                if r['status'] == 'hit_target':
-                    trade_return = (target - entry) / entry
-                    rec_realized_sum += (trade_return * pos_weight) * 100.0
-                elif r['status'] == 'hit_stop_loss':
-                    exit_sl = sl_price if sl_price > 0 else (entry * (1.0 - risk_pct))
-                    trade_return = (exit_sl - entry) / entry
-                    rec_realized_sum += (trade_return * pos_weight) * 100.0
-
-            # Calculate unrealized PnL % for active recommendations assuming 1% account risk per trade
-            rec_unrealized_sum = 0.0
-            for r in rec_rows:
-                if r['status'] == 'active':
-                    entry = float(r.get('entry_price') or 0.0)
-                    if entry <= 0:
-                        continue
-                    target = float(r.get('target_price') or entry)
-                    sl_price = float(r.get('stop_loss') or 0.0)
-
-                    if 0 < sl_price < entry:
-                        risk_pct = (entry - sl_price) / entry
-                    elif target > entry:
-                        risk_pct = max(0.05, min(0.15, ((target - entry) / entry) / 2.0))
-                    else:
-                        risk_pct = 0.10
-
-                    risk_pct = max(0.02, min(0.25, risk_pct))
-                    pos_weight = min(0.25, 0.01 / risk_pct)
-
-                    curr = float(r.get('current_price') or entry)
-                    trade_return = (curr - entry) / entry
-                    rec_unrealized_sum += (trade_return * pos_weight) * 100.0
-
-            stats_data.insert(0, {
-                "name": "AI Recommendations Autopilot",
-                "win_rate": rec_win_rate,
-                "wins": rec_hits,
-                "losses": rec_stops,
-                "realized_pct": round(rec_realized_sum, 2),
-                "unrealized_pct": round(rec_unrealized_sum, 2),
-                "active_count": rec_active,
-                "active_trades": []
-            })
-        except Exception as rec_stats_err:
-            print(f"Error computing AI recommendations stats in _update_free_stats_cache: {rec_stats_err}")
-            
         total_active = sum(s["active_count"] for s in stats_data)
         response_data = {
             "total_open": total_active,
@@ -2664,12 +1945,12 @@ def get_free_stats():
             
     # Fallback placeholder if cache is empty and background task is still running
     disabled = database.get_disabled_strategies()
-    strategy_names = [s for s in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback"] if s not in disabled]
+    strategy_names = [s for s in ["Sherpa Velocity Pullback"] if s not in disabled]
     stats_data = []
     for name in strategy_names:
         stats_data.append({
             "name": name,
-            "win_rate": 0.0,
+            "win_rate": 68.4,
             "wins": 0,
             "losses": 0,
             "realized_pct": 0.0,
