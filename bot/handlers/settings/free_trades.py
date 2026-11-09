@@ -10,7 +10,6 @@ from bot.config import (
     SUPER_ADMIN_ID,
     logger,
     is_stock,
-    CRYPTO_LEVERAGE,
     get_symbol_link,
     get_currency,
     format_price
@@ -22,7 +21,6 @@ from bot.ui.keyboards import (
 )
 from bot.ui.dashboards import build_forward_test_stats_block
 import charting
-import live_bot_multi
 
 async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, sort_mode='date'):
     chat_id = update.effective_chat.id
@@ -32,7 +30,7 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
         return
 
     disabled = database.get_disabled_strategies()
-    open_sim_trades = [t for t in database.get_open_theoretical_trades() if t.get('strategy') not in disabled]
+    open_sim_trades = [t for t in database.get_open_theoretical_trades() if t.get('strategy') not in disabled and is_stock(t.get('symbol'))]
     
     if not open_sim_trades:
         msg = (
@@ -69,44 +67,10 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                     active_live_symbols.add(p['symbol'])
         except Exception as e:
             logger.error(f"Failed to fetch Alpaca positions for free stats check: {e}")
-            
-    # Fetch active Crypto symbols
-    has_crypto = bool(user.get('api_key'))
-    if has_crypto:
-        ex_id = user.get('exchange_id', 'blofin')
-        if ex_id != 'alpaca':
-            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-            exchange = None
-            try:
-                import ccxt.async_support as ccxt
-                ex_class = getattr(ccxt, ex_id)
-                default_type = 'swap'
-                exchange = ex_class({
-                    "apiKey": user['api_key'],
-                    "secret": user['api_secret'],
-                    **({"password": user['api_password']} if user['api_password'] else {}),
-                    "options": {"defaultType": default_type},
-                    "enableRateLimit": True,
-                })
-                await exchange.load_markets()
-                
-                if ex_id != 'coinbase':
-                    pos = await exchange.fetch_positions()
-                    for p in pos:
-                        if float(p.get('contracts', 0) or 0) != 0:
-                            raw_sym = p.get('symbol', '')
-                            clean_sym = raw_sym.split(':')[0].replace('/', '')
-                            active_live_symbols.add(clean_sym)
-            except Exception as e:
-                logger.error(f"Failed to fetch Crypto positions for free stats check on exchange {ex_id} ({futures_type} futures) for user {chat_id}: {e}")
-            finally:
-                if exchange:
-                    await exchange.close()
 
     from live_bot_multi_alpaca import check_is_market_open
     is_mkt_open = check_is_market_open()
 
-    mdm = live_bot_multi.MarketDataManager()
     trade_data_list = []
     try:
         for t in open_sim_trades:
@@ -119,33 +83,30 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             pos_size = t['position_size']
             strat = t['strategy']
             
-            if is_stock(sym):
-                df_chart = None
+            df_chart = None
+            try:
+                from bot.handlers.trading import fetch_alpaca_daily_bars_async
+                df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=120)
+                if df_chart is not None and not df_chart.empty:
+                    if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
+                        df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
+            except Exception as live_err:
+                logger.error(f"Failed to fetch live free signal data for {sym}: {live_err}")
+            
+            if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                 try:
-                    from bot.handlers.trading import fetch_alpaca_daily_bars_async
-                    df_chart = await fetch_alpaca_daily_bars_async(user, sym, limit=120)
-                    if df_chart is not None and not df_chart.empty:
-                        if hasattr(df_chart['timestamp'].dt, 'tz') and df_chart['timestamp'].dt.tz is not None:
-                            df_chart['timestamp'] = df_chart['timestamp'].dt.tz_localize(None)
-                except Exception as live_err:
-                    logger.error(f"Failed to fetch live free signal data for {sym}: {live_err}")
-                
-                if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
-                    try:
-                        import pandas as pd
-                        conn = sqlite3.connect("data/stock_daily_cache.db")
-                        df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
-                        conn.close()
-                        if not df_chart.empty:
-                            df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
-                            df_chart = df_chart.copy()
-                        else:
-                            df_chart = None
-                    except Exception as stock_db_err:
-                        logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
+                    import pandas as pd
+                    conn = sqlite3.connect("data/stock_daily_cache.db")
+                    df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
+                    conn.close()
+                    if not df_chart.empty:
+                        df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
+                        df_chart = df_chart.copy()
+                    else:
                         df_chart = None
-            else:
-                df_chart = await mdm.fetch_ohlcv(sym, "15m")
+                except Exception as stock_db_err:
+                    logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
+                    df_chart = None
                 
             if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                 continue
@@ -159,14 +120,8 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
             target_pnl_raw = tp - entry if is_long else entry - tp
             target_pnl_pct = (target_pnl_raw / entry) * 100
             
-            if not is_stock(sym):
-                pnl_pct *= CRYPTO_LEVERAGE
-                target_pnl_pct *= CRYPTO_LEVERAGE
-                pnl_val = pos_size * pnl_raw
-                target_pnl_val = pos_size * target_pnl_raw
-            else:
-                pnl_val = pos_size * (pnl_pct / 100)
-                target_pnl_val = pos_size * (target_pnl_pct / 100)
+            pnl_val = pos_size * (pnl_pct / 100)
+            target_pnl_val = pos_size * (target_pnl_pct / 100)
             
             side_str = "LONG" if is_long else "SHORT"
             
@@ -240,9 +195,8 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
                     logger.error(f"Free chart generation failed for {sym}: {chart_err}")
             
             # Calculate percentages
-            lev = 1.0 if is_stock(sym) else CRYPTO_LEVERAGE
-            sl_pct_val = (((sl - entry) / entry) * 100 if side_str == 'LONG' else ((entry - sl) / entry) * 100) * lev if sl > 0 else 0
-            tp_pct_val = (((tp - entry) / entry) * 100 if side_str == 'LONG' else ((entry - tp) / entry) * 100) * lev if tp > 0 else 0
+            sl_pct_val = ((sl - entry) / entry) * 100 if side_str == 'LONG' else ((entry - sl) / entry) * 100 if sl > 0 else 0
+            tp_pct_val = ((tp - entry) / entry) * 100 if side_str == 'LONG' else ((entry - tp) / entry) * 100 if tp > 0 else 0
             
             upnl_str = f"{'+' if pnl_val >= 0 else '-'}${abs(pnl_val):.2f}"
             target_pnl_str = f"{'+' if target_pnl_val >= 0 else '-'}${abs(target_pnl_val):.2f}"
@@ -330,7 +284,7 @@ async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Fetch last 50 theoretical trades to ensure we can get 10 closed ones
     disabled = database.get_disabled_strategies()
-    trades = [t for t in database.get_recent_theoretical_trades(50) if t.get('strategy') not in disabled]
+    trades = [t for t in database.get_recent_theoretical_trades(50) if t.get('strategy') not in disabled and is_stock(t.get('symbol'))]
     closed_trades = [t for t in trades if t.get('status') != 'open'][:10]
 
     if not closed_trades:
@@ -349,28 +303,17 @@ async def list_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE):
             open_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t['open_time'] / 1000))
         
         direction = "LONG 📈" if t['side'] in ['buy', 'long', 'LONG'] else "SHORT 📉"
-        strat_name = t['strategy']
-        if "Mean Reversion" in strat_name:
-            strat_icon = "📈"
-            strat_short = "Mean Rev"
-        elif "Valkyrie" in strat_name:
-            strat_icon = "🛡️"
-            strat_short = "Valkyrie"
-        else:
-            strat_icon = "🏔️"
-            strat_short = "Pullback"
+        strat_icon = "📈"
+        strat_short = "Pullback"
         
-        curr = get_currency(t['symbol'])
-        
-        display_pnl_pct = t['pnl_pct']
-        if not is_stock(t['symbol']):
-            display_pnl_pct *= CRYPTO_LEVERAGE
+        display_pnl_pct = t.get('pnl_pct', 0.0) or 0.0
+        pnl_val = t.get('pnl_usdt', 0.0) or 0.0
             
         status_icon = "✅ Take Profit" if t['status'] == 'tp' else ("❌ Stop Loss" if t['status'] == 'sl' else f"⚠️ {t['status'].upper()}")
         status_line = f"Resolved: *{status_icon}*"
-        pnl_line = f"\n  PnL: *{display_pnl_pct:+.2f}% ({t['pnl_usdt']:+.2f} {curr})*"
+        pnl_line = f"\n  PnL: *{display_pnl_pct:+.2f}% (${pnl_val:+.2f} USD)*"
         exit_price = t['tp_price'] if t['status'] == 'tp' else t['sl_price']
-        price_line = f"• Entry: `{format_price(t['entry_price'], t['symbol'])}` | Exit: `{format_price(exit_price, t['symbol'])}`"
+        price_line = f"• Entry: `${format_price(t['entry_price'], t['symbol'])}` | Exit: `${format_price(exit_price, t['symbol'])}`"
         
         msg_parts.append(
             f"• {get_symbol_link(t['symbol'])} ({direction}) | {strat_icon} _{strat_short}_\n"

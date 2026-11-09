@@ -84,55 +84,17 @@ async def sync_engine(application):
                         chat_id = user.get('telegram_chat_id')
                         web_user_id = user.get('web_user_id')
                         
-                        # 1. Sync Crypto
-                        if user.get('api_key'):
-                            ex_id = user.get('exchange_id', 'blofin')
-                            if ex_id == 'alpaca': ex_id = 'blofin'
-                            futures_type = user.get('bingx_futures_type', 'standard') or 'standard'
-                            try:
-                                async with database.get_exchange_client(user) as user_ex:
-                                    async with SHARED_MARKETS_LOCK:
-                                        cache_time = SHARED_MARKETS_TIME.get(user_ex.id, 0)
-                                        if user_ex.id in SHARED_MARKETS and (time.time() - cache_time) < 900:
-                                            user_ex.markets = SHARED_MARKETS[user_ex.id]
-                                        else:
-                                            await user_ex.load_markets()
-                                            SHARED_MARKETS[user_ex.id] = user_ex.markets
-                                            SHARED_MARKETS_TIME[user_ex.id] = time.time()
-                                    
-                                    bal_params = database.get_exchange_balance_params(user_ex.id, futures_type=futures_type)
-                                    balance = await user_ex.fetch_balance(params=bal_params)
-                                    if user_ex.id == 'coinbase':
-                                        usd_bal = balance.get('USD', {})
-                                        usdc_bal = balance.get('USDC', {})
-                                        if not isinstance(usd_bal, dict): usd_bal = {}
-                                        if not isinstance(usdc_bal, dict): usdc_bal = {}
-                                        total_usd = float(usd_bal.get("total") or usd_bal.get("free") or balance.get("free", {}).get("USD") or balance.get("total", {}).get("USD") or 0.0)
-                                        
-                                        # Try to fetch total USD from CFM balance summary to include pending deposits/futures balance
-                                        try:
-                                            cfm = await user_ex.v3PrivateGetBrokerageCfmBalanceSummary()
-                                            val_str = cfm.get('balance_summary', {}).get('total_usd_balance', {}).get('value')
-                                            if val_str:
-                                                total_usd = float(val_str)
-                                        except Exception:
-                                            pass
-                                            
-                                        total_usdc = float(usdc_bal.get("total") or usdc_bal.get("free") or balance.get("free", {}).get("USDC") or balance.get("total", {}).get("USDC") or 0.0)
-                                        equity = total_usd + total_usdc
-                                    else:
-                                        asset = 'USDT'
-                                        equity = float(balance.get(asset, {}).get("total", 0) or balance.get(asset, {}).get("free", 0) or 0.0)
-                                    await database.update_user_stats_from_engine(chat_id, equity, user_ex, application, web_user_id=web_user_id)
-                            except Exception as e:
-                                e_str = str(e)
-                                logger.error(f"Sync error for user {chat_id or f'web_{web_user_id}'} on exchange {ex_id} ({futures_type} futures): {e}")
-                                await handle_auth_failure(user, e_str, application)
-                                
-                        # 2. Sync Stocks
+                        # Sync Stocks via Alpaca
                         if user.get('alpaca_api_key'):
-                            # Stocks stats update logic can be minimal as Alpaca provides portfolio value directly
-                            pass
+                            try:
+                                account = await database.make_alpaca_request_async(user, "GET", "/v2/account")
+                                if account and "equity" in account:
+                                    equity = float(account["equity"])
+                                    await database.update_user_stats_from_engine(chat_id, equity, None, application, web_user_id=web_user_id)
+                            except Exception as alpaca_err:
+                                logger.error(f"Alpaca equity sync error for user {chat_id or f'web_{web_user_id}'}: {alpaca_err}")
+                    except Exception as e:
+                        logger.error(f"User sync exception: {e}")
                     except Exception as e:
                         logger.error(f"General sync error for user {user.get('telegram_chat_id') or 'web_' + str(user.get('web_user_id', '?'))}: {e}")
 

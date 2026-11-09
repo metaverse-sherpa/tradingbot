@@ -2555,10 +2555,15 @@ def get_chat_id_by_username(username):
     return row[0] if row else None
 
 def get_open_theoretical_trades():
-    """Returns all currently open theoretical trades (excluding AI Recommendations)."""
+    """Returns all currently open theoretical stock trades (excluding AI Recommendations and crypto)."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades WHERE status = 'open' AND strategy NOT LIKE 'AI Recom%'")
+        c.execute("""SELECT * FROM TheoreticalTrades 
+                     WHERE status = 'open' 
+                       AND strategy NOT LIKE 'AI Recom%'
+                       AND strategy NOT IN ('Valkyrie Elite Scalper', 'Mean Reversion Scalper')
+                       AND symbol NOT LIKE '%/%'
+                       AND symbol NOT LIKE '%:%'""")
         rows = c.fetchall()
     return [dict(r) for r in rows]
 
@@ -2702,10 +2707,15 @@ def get_theoretical_stats_by_strategy(strategy_name):
     }
 
 def get_recent_theoretical_trades(limit=10):
-    """Returns the most recent theoretical trades (open and closed)."""
+    """Returns the most recent theoretical stock trades (open and closed)."""
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM TheoreticalTrades ORDER BY id DESC LIMIT ?", (limit,))
+        c.execute("""SELECT * FROM TheoreticalTrades 
+                     WHERE strategy NOT LIKE 'AI Recom%'
+                       AND strategy NOT IN ('Valkyrie Elite Scalper', 'Mean Reversion Scalper')
+                       AND symbol NOT LIKE '%/%'
+                       AND symbol NOT LIKE '%:%'
+                     ORDER BY id DESC LIMIT ?""", (limit,))
         rows = c.fetchall()
     return [dict(r) for r in rows]
 

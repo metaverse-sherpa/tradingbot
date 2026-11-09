@@ -361,8 +361,8 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
         if chat_id != SUPER_ADMIN_ID and not (user and user.get('is_admin')): return True
         
         await query.answer("Fetching free signals...")
-        open_sim_trades = database.get_open_theoretical_trades()
-        trades = database.get_recent_theoretical_trades(10)
+        open_sim_trades = [t for t in database.get_open_theoretical_trades() if is_stock(t.get('symbol'))]
+        trades = [t for t in database.get_recent_theoretical_trades(10) if is_stock(t.get('symbol'))]
         
         photo_ids = []
         
@@ -373,7 +373,6 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
                 parse_mode="Markdown"
             )
             
-            mdm = live_bot_multi.MarketDataManager()
             try:
                 for t in open_sim_trades:
                     sym = t['symbol']
@@ -385,22 +384,20 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
                     pos_size = t['position_size']
                     strat = t['strategy']
                     
-                    if is_stock(sym):
-                        try:
-                            import pandas as pd
-                            conn = sqlite3.connect("data/stock_daily_cache.db")
-                            df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
-                            conn.close()
-                            if not df_chart.empty:
-                                df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
-                                df_chart = df_chart.copy()
-                            else:
-                                df_chart = None
-                        except Exception as stock_db_err:
-                            logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
+                    df_chart = None
+                    try:
+                        import pandas as pd
+                        conn = sqlite3.connect("data/stock_daily_cache.db")
+                        df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(sym,))
+                        conn.close()
+                        if not df_chart.empty:
+                            df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
+                            df_chart = df_chart.copy()
+                        else:
                             df_chart = None
-                    else:
-                        df_chart = await mdm.fetch_ohlcv(sym, "15m")
+                    except Exception as stock_db_err:
+                        logger.error(f"Failed to fetch stock daily cache for {sym}: {stock_db_err}")
+                        df_chart = None
                         
                     if df_chart is None or (hasattr(df_chart, 'empty') and df_chart.empty):
                         continue
@@ -466,8 +463,8 @@ async def handle_admin_callback(query, update, context, user, chat_id) -> bool:
                             parse_mode="Markdown",
                             reply_markup=InlineKeyboardMarkup(kb)
                         )
-            finally:
-                await mdm.close()
+            except Exception as e:
+                logger.error(f"Error displaying admin free signals: {e}")
                 
             if photo_ids:
                 context.user_data['admin_free_photo_ids'] = photo_ids
