@@ -69,13 +69,11 @@ async def render_history_dashboard(update, context, last_10, chat_id, user):
     )
 
 
-async def build_forward_test_stats_block():
+async def build_forward_test_stats_block(user=None):
     """
     Shared helper that computes simulated forward testing analytics for
     Sherpa Velocity Pullback on US equities with independent $1,000 allocation,
     live unrealized PnL for open trades, and per-trade breakdowns.
-    
-    Returns a formatted Markdown text block ready to embed in any message.
     """
     open_sim_trades = database.get_open_theoretical_trades()
     disabled = database.get_disabled_strategies()
@@ -142,14 +140,16 @@ async def build_forward_test_stats_block():
             f"  {direction} {sym_link}: `{pnl_pct:+.2f}%`{target_pct_str}"
         )
     
+    user_risk = float(user.get('stock_risk_pct', 2.0)) if user else 2.0
+    scale = (user_risk / 2.0) if user_risk and user_risk > 0 else 1.0
     starting_capital = 1000.0
-    realized_pct = (svp_stats['cumulative_pnl'] / starting_capital) * 100
+    realized_pct = ((svp_stats['cumulative_pnl'] / starting_capital) * 100) * scale
     open_count = len(strategy_open_trades)
     
     block = (
         f"🦙 *Sherpa Velocity Pullback (US Equities)*\n"
         f"• Win Rate: `{svp_stats['win_rate']:.2f}%` ({svp_stats['wins']} W | {svp_stats['losses']} L)\n"
-        f"• Realized PnL: `{realized_pct:+.2f}%`\n"
+        f"• Realized PnL: `{realized_pct:+.2f}%` ({user_risk:.1f}% Risk)\n"
     )
     if open_count > 0:
         unrealized_pct = (strategy_unrealized / starting_capital) * 100

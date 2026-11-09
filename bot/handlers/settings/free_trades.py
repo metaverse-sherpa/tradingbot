@@ -389,5 +389,5 @@ async def show_free_trade_stats(update: Update, context: ContextTypes.DEFAULT_TY
         await update.effective_message.reply_text("You are not set up yet. Tap /setup to begin.")
         return
 
-    msg = await build_forward_test_stats_block()
+    msg = await build_forward_test_stats_block(user=user)
     await safe_edit_text(update, context, msg, reply_markup=get_main_inline_menu(chat_id), parse_mode="Markdown")

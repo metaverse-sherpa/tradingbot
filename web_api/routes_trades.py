@@ -513,7 +513,25 @@ def get_stats():
     data = get_stats_internal(user, segment, bypass_cache)
     return jsonify(data), 200
 
-def get_free_stats_internal(bypass_cache=False):
+def format_stats_for_risk(raw_data, target_risk=2.0):
+    if not raw_data or "strategies" not in raw_data:
+        return raw_data
+    scale = (target_risk / 2.0) if target_risk and target_risk > 0 else 1.0
+    scaled_strategies = []
+    for s in raw_data.get("strategies", []):
+        sc = dict(s)
+        base_realized = float(s.get("realized_pct") or 0.0)
+        base_unrealized = float(s.get("unrealized_pct") or 0.0)
+        sc["realized_pct"] = round(base_realized * scale, 2)
+        sc["unrealized_pct"] = round(base_unrealized * scale, 2)
+        sc["risk_pct"] = target_risk
+        scaled_strategies.append(sc)
+    return {
+        "total_open": raw_data.get("total_open", 0),
+        "strategies": scaled_strategies
+    }
+
+def get_free_stats_internal(bypass_cache=False, user_risk=2.0):
     global STATS_FREE_UPDATING
     cache_key = "stats_free"
     now = time.time()
@@ -534,7 +552,7 @@ def get_free_stats_internal(bypass_cache=False):
                 if not STATS_FREE_UPDATING:
                     STATS_FREE_UPDATING = True
                     threading.Thread(target=_update_free_stats_cache).start()
-        return cached_data
+        return format_stats_for_risk(cached_data, user_risk)
         
     with STATS_FREE_UPDATING_LOCK:
         if not STATS_FREE_UPDATING:
@@ -544,7 +562,7 @@ def get_free_stats_internal(bypass_cache=False):
     # Fallback placeholder if cache is empty
     disabled = database.get_disabled_strategies()
     strategy_names = [s for s in ["Sherpa Velocity Pullback"] if s not in disabled]
-    return {
+    fallback = {
         "total_open": 0,
         "strategies": [
             {
@@ -555,10 +573,12 @@ def get_free_stats_internal(bypass_cache=False):
                 "realized_pct": 0.0,
                 "unrealized_pct": 0.0,
                 "active_count": 0,
-                "active_trades": []
+                "active_trades": [],
+                "risk_pct": 2.0
             }
-        ] + [{"name": s, "win_rate": 0.0, "wins": 0, "losses": 0, "realized_pct": 0.0, "unrealized_pct": 0.0, "active_count": 0, "active_trades": []} for s in strategy_names]
+        ] + [{"name": s, "win_rate": 0.0, "wins": 0, "losses": 0, "realized_pct": 0.0, "unrealized_pct": 0.0, "active_count": 0, "active_trades": [], "risk_pct": 2.0} for s in strategy_names]
     }
+    return format_stats_for_risk(fallback, user_risk)
 
 def get_active_signals_internal(bypass_cache=False):
     global SIGNALS_ACTIVE_UPDATING
@@ -643,7 +663,8 @@ def get_dashboard_summary():
     stock_stats = get_stats_internal(user, segment='stock', bypass_cache=bypass_cache)
     
     balance_history = get_balance_history_internal(user["id"])
-    free_stats = get_free_stats_internal(bypass_cache=bypass_cache)
+    user_risk = float(user.get("stock_risk_pct") or 2.0)
+    free_stats = get_free_stats_internal(bypass_cache=bypass_cache, user_risk=user_risk)
     active_signals = get_active_signals_internal(bypass_cache=bypass_cache)
     
     return jsonify({
@@ -1915,53 +1936,40 @@ def _update_free_stats_cache():
 
 @trades_bp.route('/api/stats/free', methods=['GET'])
 def get_free_stats():
-    global STATS_FREE_UPDATING
-    cache_key = "stats_free"
-    now = time.time()
     bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
-    
-    cached_data = None
-    has_cache = False
-    is_expired = True
-    
-    with RESPONSE_CACHE_LOCK:
-        if cache_key in RESPONSE_CACHE:
-            expiry, cached_data = RESPONSE_CACHE[cache_key]
-            has_cache = True
-            is_expired = bypass_cache or (now >= expiry)
-            
-    if has_cache:
-        if is_expired:
-            with STATS_FREE_UPDATING_LOCK:
-                if not STATS_FREE_UPDATING:
-                    STATS_FREE_UPDATING = True
-                    threading.Thread(target=_update_free_stats_cache).start()
-        return jsonify(cached_data), 200
-        
-    with STATS_FREE_UPDATING_LOCK:
-        if not STATS_FREE_UPDATING:
-            STATS_FREE_UPDATING = True
-            threading.Thread(target=_update_free_stats_cache).start()
-            
-    # Fallback placeholder if cache is empty and background task is still running
-    disabled = database.get_disabled_strategies()
-    strategy_names = [s for s in ["Sherpa Velocity Pullback"] if s not in disabled]
-    stats_data = []
-    for name in strategy_names:
-        stats_data.append({
-            "name": name,
-            "win_rate": 68.4,
-            "wins": 0,
-            "losses": 0,
-            "realized_pct": 0.0,
-            "unrealized_pct": 0.0,
-            "active_count": 0,
-            "active_trades": []
-        })
-    return jsonify({
-        "total_open": 0,
-        "strategies": stats_data
-    }), 200
+    risk_param = request.args.get("risk")
+    user_risk = None
+    if risk_param:
+        try:
+            val = float(risk_param)
+            if val > 0:
+                user_risk = val
+        except (ValueError, TypeError):
+            pass
+
+    if user_risk is None:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                from firebase_admin import auth as firebase_auth
+                from web_api.db_web import get_web_user_by_email
+                decoded_token = firebase_auth.verify_id_token(token)
+                email = decoded_token.get("email")
+                if email:
+                    u = get_web_user_by_email(email)
+                    if u and u.get("stock_risk_pct") is not None:
+                        val = float(u["stock_risk_pct"])
+                        if val > 0:
+                            user_risk = val
+            except Exception:
+                pass
+
+    if user_risk is None:
+        user_risk = 2.0
+
+    stats = get_free_stats_internal(bypass_cache=bypass_cache, user_risk=user_risk)
+    return jsonify(stats), 200
 
 @trades_bp.route('/api/share/card', methods=['GET'])
 @require_auth

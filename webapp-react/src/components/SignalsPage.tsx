@@ -58,10 +58,11 @@ const SignalsPage: React.FC = () => {
   const fetchSignalsAndStats = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     try {
+      const riskVal = user?.stock_risk_pct ?? 2.0;
       const [activeRes, closedRes, statsRes, openTradesRes] = await Promise.all([
         api.get(`/signals/active${showRefresh ? '?force=true' : ''}`),
         api.get('/signals/closed'),
-        api.get(`/stats/free${showRefresh ? '?bypass_cache=true' : ''}`),
+        api.get(`/stats/free?risk=${riskVal}${showRefresh ? '&bypass_cache=true' : ''}`),
         api.get(`/trades/open${showRefresh ? '?bypass_cache=true' : ''}`).catch(() => ({ data: [] }))
       ]);
       const filterStocks = (list: any[]) => (list || []).filter((s: any) => s.category === 'stock' || !s.symbol?.includes('/'));
@@ -76,7 +77,7 @@ const SignalsPage: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [fetchPendingTrades]);
+  }, [fetchPendingTrades, user?.stock_risk_pct]);
 
   const handleCloseLiveTrade = async (signal: any, activePos: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -253,6 +254,9 @@ const SignalsPage: React.FC = () => {
             Realized PnL:&nbsp;
             <span className={`font-bold ${(stat.realized_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {(stat.realized_pct || 0) >= 0 ? '+' : ''}{(stat.realized_pct || 0).toFixed(2)}%
+            </span>
+            <span className="text-gray-500 text-xs ml-1.5">
+              ({(stat.risk_pct || user?.stock_risk_pct || 2.0).toFixed(1)}% Risk)
             </span>
           </li>
           <li className="flex items-center text-gray-300">
