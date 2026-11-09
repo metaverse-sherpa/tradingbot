@@ -134,7 +134,7 @@ const Dashboard: React.FC = () => {
     if (!isBackground && (bypassCache || openTrades.length === 0)) setOpenTradesLoading(true);
     try {
       const openRes = await api.get(`/trades/open${bypassCache ? '?bypass_cache=true' : ''}`);
-      const validOpenTrades = (openRes.data || []).filter((t: any) => !t.id?.startsWith('local-'));
+      const validOpenTrades = (Array.isArray(openRes.data) ? openRes.data : []).filter((t: any) => !String(t?.id ?? '').startsWith('local-'));
       setOpenTrades(validOpenTrades);
     } catch (err) {
       console.error(err);

@@ -68,7 +68,7 @@ const SignalsPage: React.FC = () => {
       setActiveSignals(filterStocks(activeRes.data));
       setClosedSignals(filterStocks(closedRes.data));
       setFreeStats(statsRes.data?.strategies || []);
-      setUserOpenTrades((openTradesRes.data || []).filter((t: any) => !t.id?.startsWith('local-')));
+      setUserOpenTrades((Array.isArray(openTradesRes.data) ? openTradesRes.data : []).filter((t: any) => !String(t?.id ?? '').startsWith('local-')));
       fetchPendingTrades();
     } catch (err) {
       console.error("Error fetching signals/stats:", err);

@@ -120,7 +120,7 @@ const TradesPage: React.FC = () => {
         api.get(`/trades/history${qs}`)
       ]);
       
-      const filterStocks = (list: any[]) => (list || []).filter((t: any) => !t.id?.startsWith('local-') && (t.type === 'stock' || !t.symbol?.includes('/')));
+      const filterStocks = (list: any[]) => (Array.isArray(list) ? list : []).filter((t: any) => !String(t?.id ?? '').startsWith('local-') && (t.type === 'stock' || !t.symbol?.includes('/')));
       const validOpenTrades = filterStocks(openRes.data);
       setOpenTrades(validOpenTrades);
       setHistory(filterStocks(histRes.data));
