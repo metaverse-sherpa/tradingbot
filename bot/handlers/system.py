@@ -146,15 +146,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{expired_alert}"
         f"{linked_status}"
         "🏔️ *Metaverse Sherpa Trading Bot*\n\n"
-        "The elite automated trading solution for professionals. We support automated trading of **Crypto** (Blofin, Binance, MEXC) and **Stocks** (Alpaca).\n\n"
+        "The elite automated trading solution for professionals, focusing exclusively on **US Equities** via Alpaca Markets.\n\n"
         "🛡️ *Security & Control*\n"
-        "API credentials are **fully encrypted** and isolated. Trades include automatic Stop Loss & Take Profit.\n\n"
+        "API credentials are **fully encrypted** and isolated. Trades include automated risk management with Stop Loss & Take Profit.\n\n"
         "📊 *Access Tiers*\n"
-        "• **Standard (Free)**: Receive real-time signals.\n"
+        "• **Standard (Free)**: Receive real-time stock signals.\n"
         "• **/premium**: Full autopilot mode. Sherpa executes and manages trades in real-time. **$20/mo**.\n\n"
-        "📖 Tap /strategyguide to view strategies.\n\n"
+        "📖 Tap /strategyguide to view our flagship Sherpa Velocity Pullback strategy.\n\n"
         f"🔗 **Web Sync**: [Tap to Sync](https://bot.metaversesherpa.io/?tg_sync={chat_id}) with Web App, or manually copy your ID: `{chat_id}`.\n\n"
-        "🏆 Tap /setup to link your account."
+        "🏆 Tap /setup to link your Alpaca account."
     )
     
     from bot.ui.keyboards import send_cached_photo
