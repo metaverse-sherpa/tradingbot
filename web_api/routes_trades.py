@@ -652,26 +652,25 @@ def get_balance_history_internal(user_id):
 def get_dashboard_summary():
     user = g.user
     bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
-    
-    crypto_balance = get_balance_internal(user, segment='crypto', bypass_cache=bypass_cache)
-    stock_balance = get_balance_internal(user, segment='stock', bypass_cache=bypass_cache)
-    
-    crypto_stats = get_stats_internal(user, segment='crypto', bypass_cache=bypass_cache)
-    stock_stats = get_stats_internal(user, segment='stock', bypass_cache=bypass_cache)
-    
-    balance_history = get_balance_history_internal(user["id"])
     user_risk = float(user.get("stock_risk_pct") or 2.0)
-    free_stats = get_free_stats_internal(bypass_cache=bypass_cache, user_risk=user_risk)
-    active_signals = get_active_signals_internal(bypass_cache=bypass_cache)
-    
+
+    # Execute all 7 independent I/O calls concurrently via THREAD_POOL
+    f_crypto_bal = THREAD_POOL.submit(get_balance_internal, user, 'crypto', bypass_cache)
+    f_stock_bal = THREAD_POOL.submit(get_balance_internal, user, 'stock', bypass_cache)
+    f_crypto_stats = THREAD_POOL.submit(get_stats_internal, user, 'crypto', bypass_cache)
+    f_stock_stats = THREAD_POOL.submit(get_stats_internal, user, 'stock', bypass_cache)
+    f_bal_hist = THREAD_POOL.submit(get_balance_history_internal, user["id"])
+    f_free_stats = THREAD_POOL.submit(get_free_stats_internal, bypass_cache, user_risk)
+    f_active_sigs = THREAD_POOL.submit(get_active_signals_internal, bypass_cache)
+
     return jsonify({
-        "crypto_balance": crypto_balance,
-        "stock_balance": stock_balance,
-        "crypto_stats": crypto_stats,
-        "stock_stats": stock_stats,
-        "balance_history": balance_history,
-        "free_stats": free_stats,
-        "active_signals": active_signals
+        "crypto_balance": f_crypto_bal.result(),
+        "stock_balance": f_stock_bal.result(),
+        "crypto_stats": f_crypto_stats.result(),
+        "stock_stats": f_stock_stats.result(),
+        "balance_history": f_bal_hist.result(),
+        "free_stats": f_free_stats.result(),
+        "active_signals": f_active_sigs.result()
     }), 200
 
 @trades_bp.route('/api/trades/open', methods=['GET'])
@@ -1814,6 +1813,12 @@ def get_active_signals():
 
 @trades_bp.route('/api/signals/closed', methods=['GET'])
 def get_closed_signals():
+    cache_key = ("signals_closed", "global")
+    now = time.time()
+    expiry, cached_data = RESPONSE_CACHE.get(cache_key, (0, None))
+    if cached_data is not None and now < expiry:
+        return jsonify(cached_data), 200
+
     legacy_strats = {"Mean Reversion Scalper", "Valkyrie Elite Scalper", "AI Recommendations Autopilot", "AI Recommendation"}
     with database.db_session() as conn:
         c = conn.cursor()
@@ -1830,6 +1835,7 @@ def get_closed_signals():
     
     disabled = database.get_disabled_strategies()
     signals = [s for s in signals if s.get("strategy") not in disabled and s.get("strategy") not in legacy_strats]
+    RESPONSE_CACHE[cache_key] = (now + 60, signals)
     return jsonify(signals), 200
 
 def _update_free_stats_cache():

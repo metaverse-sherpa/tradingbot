@@ -84,10 +84,9 @@ const Dashboard: React.FC = () => {
     }
 
     setLoading(true);
-    let successCount = 0;
-    for (const trade of tradesToClose) {
-      try {
-        const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
+    const results = await Promise.allSettled(
+      tradesToClose.map(async (trade) => {
         const res = await fetch('/api/trades/close', {
           method: 'POST',
           headers: { 
@@ -96,11 +95,12 @@ const Dashboard: React.FC = () => {
           },
           body: JSON.stringify({ id: trade.id || trade.trade_id, type: 'stock', symbol: trade.symbol })
         });
-        if (res.ok) successCount++;
-      } catch (e) {
-        console.error("Failed to close trade", trade.symbol, e);
-      }
-    }
+        return res.ok;
+      })
+    );
+    const successCount = results.filter(
+      (r) => r.status === 'fulfilled' && r.value
+    ).length;
     
     await fetchOpenTrades(true);
     setLoading(false);

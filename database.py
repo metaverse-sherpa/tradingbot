@@ -2372,20 +2372,41 @@ def get_premium_days_left(user):
 
 # --- Administrative Controls ---
 
+import threading as _config_threading
+_CONFIG_CACHE = {}  # {key: (expiry_ts, value)}
+_CONFIG_CACHE_LOCK = _config_threading.Lock()
+_CONFIG_CACHE_TTL = 30.0
+_CONFIG_MISSING = object()
+
 def get_config(key, default=None):
-    """Retrieves a global configuration value."""
+    """Retrieves a global configuration value with a short in-memory TTL cache."""
+    now = time.time()
+    with _CONFIG_CACHE_LOCK:
+        cached = _CONFIG_CACHE.get(key)
+        if cached is not None:
+            exp_ts, val = cached
+            if now < exp_ts:
+                return default if val is _CONFIG_MISSING else val
+            _CONFIG_CACHE.pop(key, None)
+
     with db_session() as conn:
         c = conn.cursor()
         c.execute("SELECT value FROM Config WHERE key = ?", (key,))
         row = c.fetchone()
-    return row[0] if row else default
+
+    val = row[0] if row else _CONFIG_MISSING
+    with _CONFIG_CACHE_LOCK:
+        _CONFIG_CACHE[key] = (now + _CONFIG_CACHE_TTL, val)
+    return default if val is _CONFIG_MISSING else val
 
 def update_config(key, value):
-    """Updates a global configuration value."""
+    """Updates a global configuration value and invalidates its cache entry."""
     with db_session() as conn:
         c = conn.cursor()
         c.execute("INSERT OR REPLACE INTO Config (key, value) VALUES (?, ?)", (key, value))
         conn.commit()
+    with _CONFIG_CACHE_LOCK:
+        _CONFIG_CACHE[key] = (time.time() + _CONFIG_CACHE_TTL, value)
 
 def get_platform_stats():
     """Returns high-level platform analytics for the admin."""
@@ -2853,6 +2874,20 @@ def close_alpaca_trade(trade_id, close_time=None, close_price=None, pnl_raw=None
         elif web_user_id:
             c.execute("UPDATE WebUsers SET history_cache = NULL WHERE id = ?", (web_user_id,))
 
+_ALPACA_HTTP_SESSION = None
+
+def _get_alpaca_session():
+    global _ALPACA_HTTP_SESSION
+    if _ALPACA_HTTP_SESSION is None:
+        import requests
+        from requests.adapters import HTTPAdapter
+        sess = requests.Session()
+        adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20)
+        sess.mount("https://", adapter)
+        sess.mount("http://", adapter)
+        _ALPACA_HTTP_SESSION = sess
+    return _ALPACA_HTTP_SESSION
+
 def make_alpaca_request(user, method, path, params=None, json_data=None):
     import requests
     endpoint = user.get("alpaca_endpoint") or "https://api.alpaca.markets"
@@ -2869,7 +2904,8 @@ def make_alpaca_request(user, method, path, params=None, json_data=None):
         "Content-Type": "application/json"
     }
     
-    response = requests.request(method, url, headers=headers, params=params, json=json_data, timeout=10)
+    session = _get_alpaca_session()
+    response = session.request(method, url, headers=headers, params=params, json=json_data, timeout=10)
     try:
         response.raise_for_status()
     except requests.exceptions.HTTPError as http_err:

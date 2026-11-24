@@ -54,13 +54,24 @@ CORS(
     allow_headers=["Content-Type", "Authorization"]
 )
 
-_PUBLIC_CACHEABLE_API_PREFIXES = ('/api/config', '/api/faq', '/api/docs')
+_PUBLIC_CACHEABLE_API_PREFIXES = (
+    ('/api/config', 300),
+    ('/api/faq', 300),
+    ('/api/docs', 300),
+    ('/api/signals/closed', 60),
+)
 
 @app.after_request
 def add_header(response):
     if request.path.startswith('/api/'):
-        if request.method == 'GET' and response.status_code == 200 and any(request.path.startswith(p) for p in _PUBLIC_CACHEABLE_API_PREFIXES):
-            response.headers['Cache-Control'] = 'public, max-age=300'
+        cache_max_age = None
+        if request.method == 'GET' and response.status_code == 200:
+            for prefix, max_age in _PUBLIC_CACHEABLE_API_PREFIXES:
+                if request.path.startswith(prefix):
+                    cache_max_age = max_age
+                    break
+        if cache_max_age is not None:
+            response.headers['Cache-Control'] = f'public, max-age={cache_max_age}'
         else:
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
             response.headers['Pragma'] = 'no-cache'

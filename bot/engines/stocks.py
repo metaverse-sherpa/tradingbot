@@ -86,21 +86,21 @@ async def alpaca_fractional_monitor_engine(application):
                     trades_by_user[cid] = []
                 trades_by_user[cid].append(t)
                 
-            for chat_id, user_trades in trades_by_user.items():
-                user = database.get_user(chat_id)
-                if not user or not user.get('alpaca_api_key'):
-                    continue
+            async with aiohttp.ClientSession() as session:
+                for chat_id, user_trades in trades_by_user.items():
+                    user = database.get_user(chat_id)
+                    if not user or not user.get('alpaca_api_key'):
+                        continue
+                        
+                    symbols = [t['symbol'] for t in user_trades]
+                    sym_str = ",".join(symbols)
                     
-                symbols = [t['symbol'] for t in user_trades]
-                sym_str = ",".join(symbols)
-                
-                url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
-                headers = {
-                    "APCA-API-KEY-ID": user.get('alpaca_api_key'),
-                    "APCA-API-SECRET-KEY": user.get('alpaca_api_secret')
-                }
-                
-                async with aiohttp.ClientSession() as session:
+                    url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
+                    headers = {
+                        "APCA-API-KEY-ID": user.get('alpaca_api_key'),
+                        "APCA-API-SECRET-KEY": user.get('alpaca_api_secret')
+                    }
+                    
                     async with session.get(url, headers=headers) as resp:
                         if resp.status != 200:
                             logger.error(f"Alpaca data fetch failed for user {chat_id}: {resp.status}")
