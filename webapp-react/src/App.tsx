@@ -20,7 +20,7 @@ const LoginPage = React.lazy(() => import('./components/LoginPage'));
 const MyPaymentsPage = React.lazy(() => import('./components/MyPaymentsPage'));
 const StrategyBuilderPage = React.lazy(() => import('./components/StrategyBuilderPage'));
 import api from './lib/api';
-import { useAuthStore } from './store/useStore';
+import { useAuthStore, hasCachedAuthSession } from './store/useStore';
 
 // Type inference sometimes needs static import, but we'll dynamic import the component
 const PortfolioPage = React.lazy(() => import('./components/PortfolioPage'));
@@ -150,7 +150,7 @@ const AuthInitializer: React.FC = () => {
       };
     };
 
-    if (location.pathname !== '/') {
+    if (location.pathname !== '/' || hasCachedAuthSession()) {
       startAuth();
     } else if (!initializedRef.current && !timerRef.current) {
       timerRef.current = setTimeout(() => {

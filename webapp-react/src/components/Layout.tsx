@@ -96,9 +96,11 @@ import { useAuthStore } from '../store/useStore';
 const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
-  const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
-  const hasLinkedStock = Boolean(user?.has_alpaca_keys);
+  const { user, cachedUser, isAuthenticated, isLoading, setUser } = useAuthStore();
+  const displayUser = user || (isLoading ? cachedUser : null);
+  const showAuthenticatedUI = isAuthenticated || (isLoading && !!cachedUser);
+  const isPremium = Boolean(displayUser?.is_premium) || ((displayUser?.premium_expiry || 0) > Date.now() / 1000);
+  const hasLinkedStock = Boolean(displayUser?.has_alpaca_keys);
   const showAdvancedTabs = isPremium && hasLinkedStock;
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -132,6 +134,7 @@ const Layout: React.FC = () => {
       await api.post('/auth/logout');
       const { logoutUser } = await import('../lib/firebase');
       await logoutUser();
+      setUser(null);
       setProfileOpen(false);
       navigate('/login');
     } catch (e) {
@@ -149,7 +152,7 @@ const Layout: React.FC = () => {
         <nav className="border-b border-white/5 bg-[#131620]/80 backdrop-blur-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-white font-bold tracking-widest text-lg flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <Link to={showAuthenticatedUI ? "/dashboard" : "/"} className="text-white font-bold tracking-widest text-lg flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <img src="/favicon.svg" alt="Metaverse Sherpa" className="w-8 h-8" />
                 Metaverse Sherpa
               </Link>
@@ -158,18 +161,18 @@ const Layout: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              {isAuthenticated ? (
+              {showAuthenticatedUI ? (
                 <div className="relative" ref={profileRef}>
                   <div className="flex items-center gap-4 cursor-pointer">
                     <Link to="/help" className="text-gray-400 hover:text-white transition-colors">
                       <HelpCircleIcon size={20} />
                     </Link>
                     <div onClick={() => setProfileOpen(!profileOpen)} className="flex items-center justify-center relative">
-                      {(user as any)?.avatar_url ? (
-                        <img src={(user as any).avatar_url} alt="Profile" className="w-8 h-8 rounded-full border border-white/20 object-cover" />
+                      {displayUser?.avatar_url ? (
+                        <img src={displayUser.avatar_url} alt="Profile" className="w-8 h-8 rounded-full border border-white/20 object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-xs font-bold uppercase overflow-hidden border border-white/20">
-                          {user?.full_name ? user.full_name.charAt(0) : user?.email?.charAt(0) || 'U'}
+                          {displayUser?.full_name ? displayUser.full_name.charAt(0) : displayUser?.email?.charAt(0) || 'U'}
                         </div>
                       )}
                       {isPremium && (
@@ -186,7 +189,7 @@ const Layout: React.FC = () => {
                       <Link to={isPremium ? "/portfolio" : "/premium"} onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <BriefcaseIcon size={16} className="text-cyan-400" /> My Portfolio
                       </Link>
-                      {isPremium && user?.ai_strategy_builder_enabled !== false && (
+                      {isPremium && displayUser?.ai_strategy_builder_enabled !== false && (
                         <Link to="/strategies/builder" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <TrendingUpIcon size={16} className="text-purple-400" /> Strategy Builder
                         </Link>
@@ -194,12 +197,12 @@ const Layout: React.FC = () => {
                       <Link to="/referrals" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                         <UsersIcon size={16} className="text-emerald-400" /> Refer & Earn
                       </Link>
-                      {(user?.payments_count || 0) > 0 && (
+                      {(displayUser?.payments_count || 0) > 0 && (
                         <Link to="/my-payments" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                           <CreditCardIcon size={16} className="text-blue-400" /> My Payments
                         </Link>
                       )}
-                      {user?.is_admin && (
+                      {displayUser?.is_admin && (
                         <Link to="/admin" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors">
                           <ShieldAlertIcon size={16} className="text-purple-400" /> Admin
                         </Link>
@@ -224,7 +227,7 @@ const Layout: React.FC = () => {
         </nav>
 
         {/* Main Content */}
-        <main className={`flex-1 w-full max-w-7xl mx-auto flex flex-col ${isAuthenticated ? 'p-4 pb-32 md:p-8 md:pb-32' : 'pb-12'}`}>
+        <main className={`flex-1 w-full max-w-7xl mx-auto flex flex-col ${showAuthenticatedUI ? 'p-4 pb-32 md:p-8 md:pb-32' : 'pb-12'}`}>
           <Outlet />
           
           {/* Financial Disclaimer Footer */}
@@ -263,7 +266,7 @@ const Layout: React.FC = () => {
         )}
 
         {/* Unified Bottom Navbar */}
-        {isAuthenticated && (
+        {showAuthenticatedUI && (
           <div className="fixed bottom-0 left-0 right-0 md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:right-auto bg-[#131620]/95 md:bg-[#1f2028]/95 backdrop-blur-xl border-t md:border border-white/10 z-50 px-2 py-2 flex items-center justify-center gap-1 md:gap-2 pb-safe md:rounded-2xl shadow-2xl overflow-x-auto no-scrollbar max-w-full">
             <Link to="/dashboard" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/dashboard' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
               <LayoutDashboardIcon size={20} className="md:w-4 md:h-4" />
@@ -300,7 +303,7 @@ const Layout: React.FC = () => {
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Strategies</span>
               </Link>
             )}
-            {user?.is_admin && (
+            {displayUser?.is_admin && (
               <Link to="/admin" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/admin' ? 'text-purple-400 md:bg-purple-400/20' : 'text-gray-500 hover:text-purple-400 md:text-gray-400 md:hover:bg-white/5'}`}>
                 <ShieldAlertIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Admin</span>

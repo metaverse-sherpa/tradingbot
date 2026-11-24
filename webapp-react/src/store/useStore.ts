@@ -34,8 +34,62 @@ export interface User {
   investment_goal?: string;
 }
 
+const AUTH_CACHE_KEY = 'ms_auth_ui_cache';
+
+export type CachedAuthUser = Pick<
+  User,
+  | 'email'
+  | 'full_name'
+  | 'avatar_url'
+  | 'is_premium'
+  | 'premium_expiry'
+  | 'is_admin'
+  | 'has_alpaca_keys'
+  | 'ai_strategy_builder_enabled'
+  | 'payments_count'
+>;
+
+function readCachedAuthUser(): CachedAuthUser | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed.email === 'string' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedAuthUser(user: User | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!user) {
+      localStorage.removeItem(AUTH_CACHE_KEY);
+      return;
+    }
+    const snapshot: CachedAuthUser = {
+      email: user.email,
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
+      is_premium: user.is_premium,
+      premium_expiry: user.premium_expiry,
+      is_admin: user.is_admin,
+      has_alpaca_keys: user.has_alpaca_keys,
+      ai_strategy_builder_enabled: user.ai_strategy_builder_enabled,
+      payments_count: user.payments_count,
+    };
+    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Ignore storage quota/private-mode errors
+  }
+}
+
+export const hasCachedAuthSession = (): boolean => Boolean(readCachedAuthUser());
+
 interface AuthState {
   user: User | null;
+  cachedUser: CachedAuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isSyncing: boolean;
@@ -47,11 +101,15 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  cachedUser: readCachedAuthUser(),
   isAuthenticated: false,
   isLoading: true,
   isSyncing: false,
   authError: null,
-  setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false, isSyncing: false }),
+  setUser: (user) => {
+    writeCachedAuthUser(user);
+    set({ user, cachedUser: null, isAuthenticated: !!user, isLoading: false, isSyncing: false });
+  },
   setSyncing: (isSyncing) => set({ isSyncing }),
   setAuthError: (authError) => set({ authError }),
 }))
