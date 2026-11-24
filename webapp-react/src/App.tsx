@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -79,23 +79,44 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App: React.FC = () => {
-  const { setUser } = useAuthStore();
-  
+const AuthInitializer: React.FC = () => {
+  const { setUser, setSyncing, setAuthError } = useAuthStore();
+  const location = useLocation();
+  const initializedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    let unsubscribe: (() => void) | null = null;
     let isMounted = true;
 
-    const initAuth = async () => {
+    const startAuth = async () => {
+      if (initializedRef.current) return;
+      initializedRef.current = true;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      let interval: ReturnType<typeof setInterval> | null = null;
+      let unsubscribe: (() => void) | null = null;
+
       try {
         const { getAuthInstance } = await import('./lib/firebase');
         const { onIdTokenChanged } = await import('firebase/auth');
-        
+
         const auth = getAuthInstance();
         unsubscribe = onIdTokenChanged(auth, async (user) => {
+          if (interval) {
+            clearInterval(interval);
+            interval = null;
+          }
+
           if (user) {
-            const syncUser = async () => {
+            const syncUser = async (isInitialSync = false) => {
+              if (isInitialSync && !useAuthStore.getState().isAuthenticated && isMounted) {
+                setSyncing(true);
+                setAuthError(null);
+              }
               try {
                 // Sync with backend
                 const res = await api.post('/auth/sync', {});
@@ -103,39 +124,55 @@ const App: React.FC = () => {
                 if (isMounted) setUser(finalUser);
               } catch (e) {
                 console.error("Auth sync failed", e);
-                if (isMounted) setUser(null);
+                if (isMounted) {
+                  if (isInitialSync) {
+                    setAuthError("Could not load your account. Please try signing in again.");
+                  }
+                  setUser(null);
+                }
               }
             };
-            syncUser();
-            interval = setInterval(syncUser, 15 * 60 * 1000);
+            syncUser(true);
+            interval = setInterval(() => syncUser(false), 15 * 60 * 1000);
           } else {
             if (isMounted) setUser(null);
-            if (interval) clearInterval(interval);
           }
         });
       } catch (err) {
         console.error("Failed to load auth", err);
+        if (isMounted) setUser(null);
       }
+
+      cleanupRef.current = () => {
+        isMounted = false;
+        if (unsubscribe) unsubscribe();
+        if (interval) clearInterval(interval);
+      };
     };
 
-    const isLandingPage = window.location.pathname === '/';
-    if (isLandingPage) {
-      setTimeout(() => {
-        if (isMounted) initAuth();
+    if (location.pathname !== '/') {
+      startAuth();
+    } else if (!initializedRef.current && !timerRef.current) {
+      timerRef.current = setTimeout(() => {
+        startAuth();
       }, 3000);
-    } else {
-      initAuth();
     }
+  }, [location.pathname, setUser, setSyncing, setAuthError]);
 
+  useEffect(() => {
     return () => {
-      isMounted = false;
-      if (unsubscribe) unsubscribe();
-      if (interval) clearInterval(interval);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (cleanupRef.current) cleanupRef.current();
     };
-  }, [setUser]);
+  }, []);
 
+  return null;
+};
+
+const App: React.FC = () => {
   return (
     <BrowserRouter>
+      <AuthInitializer />
       <ErrorBoundary>
         <React.Suspense fallback={<PageLoader />}>
         <Routes>

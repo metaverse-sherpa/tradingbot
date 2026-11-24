@@ -38,14 +38,22 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isSyncing: boolean;
+  authError: string | null;
   setUser: (user: User | null) => void;
+  setSyncing: (isSyncing: boolean) => void;
+  setAuthError: (authError: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
+  isSyncing: false,
+  authError: null,
+  setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false, isSyncing: false }),
+  setSyncing: (isSyncing) => set({ isSyncing }),
+  setAuthError: (authError) => set({ authError }),
 }))
 
 interface PositionState {

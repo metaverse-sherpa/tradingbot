@@ -23,6 +23,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authStage, setAuthStage] = useState<null | 'google-popup' | 'signing-in' | 'creating' | 'syncing'>(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   React.useEffect(() => {
@@ -32,51 +33,80 @@ const LoginPage: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-
-
   // If already authenticated (e.g. from a previous session or immediately after login via global state), redirect
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isSyncing, authError, setAuthError } = useAuthStore();
+  const effectiveStage = authStage || (isSyncing ? 'syncing' : null);
+
   React.useEffect(() => {
     if (isAuthenticated) {
       navigate(intendedDestination, { replace: true });
     }
   }, [isAuthenticated, navigate, intendedDestination]);
 
+  React.useEffect(() => {
+    if (authError) {
+      setAuthStage(null);
+      setIsLoading(false);
+      showToast(authError, "error");
+      setAuthError(null);
+    }
+  }, [authError, showToast, setAuthError]);
+
+  const preloadDashboard = () => {
+    import('./Dashboard').catch(() => {});
+  };
+
   const handleGoogleLogin = async () => {
+    if (effectiveStage) return;
+    setAuthStage('google-popup');
+    preloadDashboard();
     try {
       await signInWithGoogle();
+      setAuthStage('syncing');
       // Navigation is handled by the useEffect watching isAuthenticated
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed", error);
-      showToast("Google Login failed", "error");
+      setAuthStage(null);
+      const code = error?.code;
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        showToast("Google Login failed", "error");
+      }
     }
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (effectiveStage) return;
     setIsLoading(true);
+    setAuthStage('signing-in');
+    preloadDashboard();
     try {
       await signInWithEmailAndPassword(getAuthInstance(), email, password);
+      setAuthStage('syncing');
       // Navigation is handled by the useEffect watching isAuthenticated
     } catch (error: any) {
       console.error("Login failed", error);
-      showToast(error.message, "error");
-    } finally {
+      setAuthStage(null);
       setIsLoading(false);
+      showToast(error.message, "error");
     }
   };
 
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (effectiveStage) return;
     setIsLoading(true);
+    setAuthStage('creating');
+    preloadDashboard();
     try {
       await createUserWithEmailAndPassword(getAuthInstance(), email, password);
+      setAuthStage('syncing');
       // Navigation is handled by the useEffect watching isAuthenticated
     } catch (error: any) {
       console.error("Registration failed", error);
-      showToast(error.message, "error");
-    } finally {
+      setAuthStage(null);
       setIsLoading(false);
+      showToast(error.message, "error");
     }
   };
 
@@ -99,11 +129,64 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const overlayCopy = effectiveStage === 'google-popup'
+    ? {
+        title: 'Signing in with Google...',
+        subtitle: 'Complete sign-in in the Google window to continue.',
+      }
+    : effectiveStage === 'signing-in'
+    ? {
+        title: 'Signing you in...',
+        subtitle: 'Verifying your credentials.',
+      }
+    : effectiveStage === 'creating'
+    ? {
+        title: 'Creating your account...',
+        subtitle: 'Setting up your Metaverse Sherpa profile.',
+      }
+    : {
+        title: 'Logging you in & loading your dashboard...',
+        subtitle: 'Syncing your account, strategies, and live signals.',
+      };
+
   return (
-    <div className="flex-1 w-full lg:max-w-[1100px] mx-auto flex flex-col gap-8 lg:gap-16 px-4 py-8 lg:py-16 min-h-[calc(100vh-80px)]">
-      
+    <div className="relative flex-1 w-full lg:max-w-[1100px] mx-auto flex flex-col gap-8 lg:gap-16 px-4 py-8 lg:py-16 min-h-[calc(100vh-80px)]">
+      {effectiveStage && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="fixed inset-0 z-50 bg-[#070b14]/75 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-200"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-[#111622]/90 border border-[#3cd7ff]/30 shadow-[0_0_50px_rgba(60,215,255,0.2)] p-8 flex flex-col items-center text-center gap-5">
+            <div className="relative flex items-center justify-center w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-2 border-[#3cd7ff]/20"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-t-[#3cd7ff] border-r-[#00e676] border-b-transparent border-l-transparent animate-spin"></div>
+              <div className="w-3 h-3 rounded-full bg-[#3cd7ff] animate-pulse shadow-[0_0_12px_rgba(60,215,255,0.8)]"></div>
+            </div>
+            <div className="space-y-1.5">
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {overlayCopy.title}
+              </h2>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                {overlayCopy.subtitle}
+              </p>
+            </div>
+            {effectiveStage === 'google-popup' && (
+              <button
+                type="button"
+                onClick={() => setAuthStage(null)}
+                className="text-xs font-medium text-gray-400 hover:text-white transition-colors underline underline-offset-4 pt-1"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Top Row: Login & System Architecture */}
-      <div className="flex flex-col lg:flex-row items-center lg:items-stretch lg:justify-center gap-8 lg:gap-16 w-full">
+      <div className={`flex flex-col lg:flex-row items-center lg:items-stretch lg:justify-center gap-8 lg:gap-16 w-full transition-all duration-200 ${effectiveStage ? 'blur-sm pointer-events-none select-none' : ''}`}>
         {/* Left Column: Login / Auth */}
         <div className="w-full lg:max-w-[420px] flex flex-col gap-6 lg:h-auto justify-between flex-1">
         {/* Header Card (Algorithmic Intelligence) */}
@@ -135,10 +218,11 @@ const LoginPage: React.FC = () => {
           
           <button 
             onClick={handleGoogleLogin}
-            className="w-full h-[46px] bg-white hover:bg-gray-50 text-gray-700 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-3 border border-gray-200"
+            disabled={!!effectiveStage}
+            className="w-full h-[46px] bg-white hover:bg-gray-50 text-gray-700 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-3 border border-gray-200 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-            <span>Continue with Google</span>
+            <span>{effectiveStage === 'google-popup' ? 'Signing in with Google...' : 'Continue with Google'}</span>
           </button>
 
           <div className="flex items-center gap-4 py-1">
