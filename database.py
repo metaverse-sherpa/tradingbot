@@ -1189,6 +1189,32 @@ def init_db():
             )''')
             conn.commit()
 
+        # Performance indexes for high-frequency queries (idempotent)
+        perf_indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_webusers_email ON WebUsers(email)",
+            "CREATE INDEX IF NOT EXISTS idx_webusers_dev_api_key ON WebUsers(developer_api_key)",
+            "CREATE INDEX IF NOT EXISTS idx_webusers_tg_id ON WebUsers(telegram_chat_id)",
+            "CREATE INDEX IF NOT EXISTS idx_theoretical_status_sym_strat ON TheoreticalTrades(status, symbol, strategy)",
+            "CREATE INDEX IF NOT EXISTS idx_theoretical_close_time ON TheoreticalTrades(close_time)",
+            "CREATE INDEX IF NOT EXISTS idx_alpaca_active_user_status ON AlpacaActiveTrades(telegram_chat_id, status)",
+            "CREATE INDEX IF NOT EXISTS idx_processed_payments_user ON ProcessedPayments(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_portfolio_positions_user ON PortfolioPositions(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_portfolio_bal_hist_user ON PortfolioBalanceHistory(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_portfolio_analysis_user ON PortfolioAnalysisHistory(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_ai_recommendations_user ON AIRecommendations(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_users_referred_by ON Users(referred_by)",
+            "CREATE INDEX IF NOT EXISTS idx_pending_orders_user_status ON PendingMarketOrders(user_id, status)",
+        ]
+        for idx_sql in perf_indexes:
+            try:
+                c.execute(idx_sql)
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+        conn.commit()
+
 
 def reset_crypto_stats(chat_id):
     with db_session() as conn:

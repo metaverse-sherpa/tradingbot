@@ -14,9 +14,10 @@ server {
     # 1. Enable Gzip Compression for static text/code files
     gzip on;
     gzip_vary on;
+    gzip_comp_level 5;
     gzip_min_length 1024;
     gzip_proxied any;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
 
     # 2. Cache Vite hashed static assets permanently (max-age of 1 year)
     location /assets/ {
@@ -75,7 +76,7 @@ server {
         proxy_send_timeout 60s;
     }
 
-    listen 443 ssl; # managed by Certbot
+    listen 443 ssl http2; # managed by Certbot
     ssl_certificate /etc/letsencrypt/live/bot.metaversesherpa.io/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/bot.metaversesherpa.io/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot

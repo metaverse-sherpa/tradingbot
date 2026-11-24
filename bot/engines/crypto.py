@@ -42,6 +42,17 @@ async def theory_trades_resolution_engine(application):
                 
             mdm = live_bot_multi.MarketDataManager()
             try:
+                # Deduplicate symbols and fetch 1m candles in parallel
+                unique_symbols = list({t['symbol'] for t in crypto_trades})
+                fetched_dfs = await asyncio.gather(
+                    *(mdm.fetch_ohlcv(sym, "1m", limit=5) for sym in unique_symbols),
+                    return_exceptions=True
+                )
+                symbol_dfs = {
+                    sym: (df if not isinstance(df, Exception) else None)
+                    for sym, df in zip(unique_symbols, fetched_dfs)
+                }
+
                 for t in crypto_trades:
                     symbol = t['symbol']
                     side = t['side']
@@ -51,7 +62,7 @@ async def theory_trades_resolution_engine(application):
                     trade_id = t['id']
                     position_size = float(t.get('position_size') or 1.0)
                     
-                    df = await mdm.fetch_ohlcv(symbol, "1m", limit=5)
+                    df = symbol_dfs.get(symbol)
                     if df is not None and len(df) > 0:
                         # Check last 2 candles of 1m timeframe
                         candles_to_check = df.iloc[-2:] if len(df) >= 2 else df.iloc[-1:]
@@ -210,6 +221,8 @@ async def signal_engine(application):
                 open_theory_trades = database.get_open_theoretical_trades()
                 open_theory_keys = {(t['symbol'], t['strategy']) for t in open_theory_trades}
                 
+                # Cache computed signals per (symbol, strategy_name) for this 15m tick
+                computed_signals_cache = {}
                 for strategy_name in strategies_to_test:
                     signals = {}
                     for symbol in live_bot_multi.SYMBOLS:
@@ -220,6 +233,7 @@ async def signal_engine(application):
                         df = await mdm.fetch_ohlcv(symbol, "15m")
                         if df is not None:
                             sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strategy_name)
+                            computed_signals_cache[(symbol, strategy_name)] = sig
                             if sig:
                                 signals[symbol] = sig
                                 
@@ -299,6 +313,7 @@ async def signal_engine(application):
                             signal_ts
                         )
                         
+                        cached_photo_file_id = None
                         for target_id in all_targets:
                             try:
                                 is_adm = (target_id == SUPER_ADMIN_ID)
@@ -307,15 +322,25 @@ async def signal_engine(application):
                                     is_adm = (target_id == SUPER_ADMIN_ID or u.get('is_admin')) and not u.get('undercover_mode')
                                 kb = get_nav_buttons(is_admin=is_adm)
                                 
-                                if chart_file and os.path.exists(chart_file):
+                                if cached_photo_file_id:
+                                    await application.bot.send_photo(
+                                         chat_id=target_id,
+                                         photo=cached_photo_file_id,
+                                         caption=entry_text,
+                                         reply_markup=InlineKeyboardMarkup(kb),
+                                         caption_entities=entry_entities,
+                                    )
+                                elif chart_file and os.path.exists(chart_file):
                                     with open(chart_file, 'rb') as photo:
-                                        await application.bot.send_photo(
+                                        sent_msg = await application.bot.send_photo(
                                              chat_id=target_id,
                                              photo=photo,
                                              caption=entry_text,
                                              reply_markup=InlineKeyboardMarkup(kb),
                                              caption_entities=entry_entities,
                                         )
+                                        if sent_msg and getattr(sent_msg, 'photo', None):
+                                            cached_photo_file_id = sent_msg.photo[-1].file_id
                                 else:
                                     await application.bot.send_message(
                                          chat_id=target_id,
@@ -344,10 +369,14 @@ async def signal_engine(application):
                     for strat_name, users in strategy_groups.items():
                         user_signals = {}
                         for symbol in live_bot_multi.SYMBOLS:
-                            df = await mdm.fetch_ohlcv(symbol, "15m")
-                            if df is not None:
-                                sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strat_name)
-                                if sig: user_signals[symbol] = sig
+                            cache_key = (symbol, strat_name)
+                            if cache_key in computed_signals_cache:
+                                sig = computed_signals_cache[cache_key]
+                            else:
+                                df = await mdm.fetch_ohlcv(symbol, "15m")
+                                sig = live_bot_multi.compute_signal(df, symbol.split("/")[0], strategy_name=strat_name) if df is not None else None
+                                computed_signals_cache[cache_key] = sig
+                            if sig: user_signals[symbol] = sig
                         
                         if not user_signals:
                             logger.debug(f"No signals generated for strategy '{strat_name}'. Skipping user trade check.")

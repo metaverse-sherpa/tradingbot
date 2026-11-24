@@ -43,7 +43,7 @@ def get_web_user_by_email(email):
         if email_clean in _USER_BY_EMAIL_CACHE:
             expiry, cached_user = _USER_BY_EMAIL_CACHE[email_clean]
             if now < expiry:
-                return cached_user
+                return cached_user.copy()
 
     with db_session() as conn:
         c = conn.cursor()
@@ -53,7 +53,7 @@ def get_web_user_by_email(email):
 
     if user:
         with _USER_BY_EMAIL_CACHE_LOCK:
-            _USER_BY_EMAIL_CACHE[email_clean] = (now + 5, user)
+            _USER_BY_EMAIL_CACHE[email_clean] = (now + 30, user.copy())
             
     return user
 

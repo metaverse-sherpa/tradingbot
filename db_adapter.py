@@ -20,9 +20,10 @@ if USE_POSTGRES:
         from psycopg2.extras import DictCursor
         
         # Parse connection URL to ensure thread-safe pooling config with TCP keepalive
+        # Right-sized for e2-micro (2 Gunicorn workers x 4 threads)
         pg_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=2,
-            maxconn=30,
+            minconn=1,
+            maxconn=10,
             dsn=DATABASE_URL,
             keepalives=1,
             keepalives_idle=30,
@@ -230,60 +231,74 @@ class PgConnectionAdapter:
         return getattr(self._conn, name)
 
 
+import time as _time
+
+_CONN_LAST_USED = {}
+_CONN_IDLE_PING_SECONDS = 30.0
+
+
 def get_clean_pg_conn():
     if not pg_pool:
         return None
+    now = _time.monotonic()
     for _ in range(3):
         conn = None
         try:
             conn = pg_pool.getconn()
             if conn and conn.closed == 0:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT 1;")
+                last_used = _CONN_LAST_USED.get(id(conn), 0.0)
+                if now - last_used > _CONN_IDLE_PING_SECONDS:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT 1;")
+                _CONN_LAST_USED[id(conn)] = now
                 return conn
             elif conn:
+                _CONN_LAST_USED.pop(id(conn), None)
                 try:
                     pg_pool.putconn(conn, close=True)
                 except Exception:
                     pass
         except Exception:
             if conn:
+                _CONN_LAST_USED.pop(id(conn), None)
                 try:
                     pg_pool.putconn(conn, close=True)
                 except Exception:
                     pass
-    return pg_pool.getconn()
+    conn = pg_pool.getconn()
+    if conn:
+        _CONN_LAST_USED[id(conn)] = _time.monotonic()
+    return conn
 
 
 @contextmanager
-def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0):
+def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0, read_only=False):
     if USE_POSTGRES and pg_pool:
         conn = None
         conn_is_bad = False
         try:
             conn = get_clean_pg_conn()
-            try:
-                conn.rollback()
-            except BaseException:
-                conn_is_bad = True
-            conn.autocommit = False
+            if conn.autocommit != read_only:
+                conn.autocommit = read_only
             adapter = PgConnectionAdapter(conn)
             yield adapter
-            conn.commit()
+            if not read_only:
+                conn.commit()
+            _CONN_LAST_USED[id(conn)] = _time.monotonic()
         except BaseException as e:
             conn_is_bad = True
             if conn:
-                try:
-                    conn.rollback()
-                except BaseException:
-                    pass
+                _CONN_LAST_USED.pop(id(conn), None)
+                if not conn.autocommit:
+                    try:
+                        conn.rollback()
+                    except BaseException:
+                        pass
             raise e
         finally:
             if conn:
-                try:
-                    conn.rollback()
-                except BaseException:
-                    conn_is_bad = True
+                if conn_is_bad:
+                    _CONN_LAST_USED.pop(id(conn), None)
                 try:
                     pg_pool.putconn(conn, close=conn_is_bad)
                 except Exception:
@@ -296,7 +311,8 @@ def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0):
             conn.execute("PRAGMA busy_timeout=30000;")
             conn.execute("PRAGMA synchronous=NORMAL;")
             yield conn
-            conn.commit()
+            if not read_only:
+                conn.commit()
         except Exception as e:
             conn.rollback()
             raise e
@@ -319,8 +335,8 @@ def init_sa_engine(sqlite_db_path):
         
         sa_engine = create_engine(
             db_url,
-            pool_size=30,
-            max_overflow=10,
+            pool_size=6,
+            max_overflow=4,
             pool_pre_ping=True
         )
     else:

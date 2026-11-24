@@ -1,4 +1,6 @@
 import os
+import hashlib
+import threading
 from functools import wraps
 import time
 import database
@@ -8,6 +10,33 @@ import utils_gcp
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Bounded in-memory cache for verified Firebase JWTs to avoid redundant RS256 verification on burst requests
+_VERIFIED_TOKEN_CACHE = {}  # {sha256_hex: (expiry_ts, decoded_token)}
+_VERIFIED_TOKEN_LOCK = threading.Lock()
+_VERIFIED_TOKEN_TTL = 60.0
+_VERIFIED_TOKEN_MAX = 1000
+
+def _verify_firebase_token_cached(token):
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    now = time.time()
+    with _VERIFIED_TOKEN_LOCK:
+        cached = _VERIFIED_TOKEN_CACHE.get(token_hash)
+        if cached is not None:
+            exp_ts, decoded = cached
+            if now < exp_ts:
+                return decoded
+            _VERIFIED_TOKEN_CACHE.pop(token_hash, None)
+
+    decoded = firebase_auth.verify_id_token(token)
+    token_exp = float(decoded.get("exp") or (now + _VERIFIED_TOKEN_TTL))
+    cache_exp = min(now + _VERIFIED_TOKEN_TTL, token_exp)
+    if cache_exp > now:
+        with _VERIFIED_TOKEN_LOCK:
+            if len(_VERIFIED_TOKEN_CACHE) >= _VERIFIED_TOKEN_MAX:
+                _VERIFIED_TOKEN_CACHE.clear()
+            _VERIFIED_TOKEN_CACHE[token_hash] = (cache_exp, decoded)
+    return decoded
 
 # Initialize Firebase Admin SDK
 import firebase_admin
@@ -60,7 +89,7 @@ def require_auth(f):
             
         try:
             # Verify the Firebase ID Token
-            decoded_token = firebase_auth.verify_id_token(token)
+            decoded_token = _verify_firebase_token_cached(token)
             email = decoded_token.get("email")
             uid = decoded_token.get("uid")
             
@@ -132,7 +161,7 @@ def require_auth_web(f):
             
         try:
             # Symmetrically verify the Firebase ID Token
-            decoded_token = firebase_auth.verify_id_token(token)
+            decoded_token = _verify_firebase_token_cached(token)
             email = decoded_token.get("email")
             uid = decoded_token.get("uid")
             
