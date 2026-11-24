@@ -892,6 +892,16 @@ const PortfolioPage: React.FC = () => {
                         Down &ge;15%: <strong>{analysis.portfolio_metrics.deep_losers_count}</strong>
                       </span>
                     )}
+                    {analysis.portfolio_metrics.upcoming_earnings && analysis.portfolio_metrics.upcoming_earnings.length > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 font-semibold">
+                        Earnings &le;14d: <strong>{analysis.portfolio_metrics.upcoming_earnings.slice(0, 3).map((e: any) => `${e.symbol} (${e.days}d)`).join(', ')}</strong>
+                      </span>
+                    )}
+                    {analysis.portfolio_metrics.correlated_clusters && analysis.portfolio_metrics.correlated_clusters.length > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold">
+                        High Corr: <strong>{analysis.portfolio_metrics.correlated_clusters[0].pair} ({analysis.portfolio_metrics.correlated_clusters[0].corr})</strong>
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

@@ -202,8 +202,79 @@ def _compute_stock_quant_metrics(sym, df):
         "swing_low_20d": round(swing_low_20d, 2),
     }
 
+def _extract_days_to_earnings(ticker_obj):
+    """Safely extract days until next upcoming earnings date from a yfinance Ticker object."""
+    try:
+        cal = ticker_obj.calendar
+        if not cal:
+            return None
+        ed = None
+        if isinstance(cal, dict):
+            ed_val = cal.get("Earnings Date")
+            if isinstance(ed_val, (list, tuple)) and ed_val:
+                ed = ed_val[0]
+            else:
+                ed = ed_val
+        elif hasattr(cal, "loc") and "Earnings Date" in getattr(cal, "index", []):
+            vals = cal.loc["Earnings Date"]
+            ed = vals.iloc[0] if hasattr(vals, "iloc") else vals
+        if ed is None:
+            return None
+        if hasattr(ed, "date"):
+            ed_date = ed.date()
+        elif isinstance(ed, str):
+            ed_date = datetime.strptime(ed[:10], "%Y-%m-%d").date()
+        else:
+            ed_date = ed
+        days = (ed_date - datetime.now().date()).days
+        if 0 <= days <= 90:
+            return int(days)
+    except Exception:
+        pass
+    return None
+
+def _compute_correlation_clusters(positions):
+    """Compute 60-day return correlations across top stock holdings and return pairs with corr >= 0.78."""
+    stock_pos = [
+        p for p in positions
+        if (p.get("category") or "stock").lower() == "stock" and p.get("symbol")
+    ]
+    stock_pos = sorted(stock_pos, key=lambda x: float(x.get("allocation_pct") or 0.0), reverse=True)[:12]
+    if len(stock_pos) < 2:
+        return []
+
+    syms = [p["symbol"].strip().upper() for p in stock_pos]
+    alloc_map = {p["symbol"].strip().upper(): float(p.get("allocation_pct") or 0.0) for p in stock_pos}
+    clusters = []
+    try:
+        df = yf.download(syms, period="3mo", interval="1d", auto_adjust=True, threads=True, progress=False)
+        if df is None or df.empty:
+            return []
+        closes = df["Close"] if "Close" in df else df
+        if hasattr(closes, "pct_change"):
+            returns = closes.pct_change().dropna(how="all")
+            if len(returns) < 20:
+                return []
+            corr_mat = returns.corr()
+            cols = list(corr_mat.columns)
+            for i in range(len(cols)):
+                for j in range(i + 1, len(cols)):
+                    s1, s2 = str(cols[i]).upper(), str(cols[j]).upper()
+                    val = corr_mat.iloc[i, j]
+                    if val is not None and val == val and float(val) >= 0.78:
+                        combined_pct = round(alloc_map.get(s1, 0.0) + alloc_map.get(s2, 0.0), 1)
+                        clusters.append({
+                            "pair": f"{s1}+{s2}",
+                            "corr": round(float(val), 2),
+                            "combined_pct": combined_pct,
+                        })
+            clusters.sort(key=lambda x: (x["combined_pct"], x["corr"]), reverse=True)
+    except Exception as e:
+        print(f"[Portfolio] Correlation cluster compute error: {e}")
+    return clusters[:5]
+
 def _enrich_candidate_fundamentals(symbols):
-    """Fetch & cache fundamentals (sector, forward_pe, dividend_yield, analyst target, market_cap) for candidate stocks."""
+    """Fetch & cache fundamentals (sector, forward_pe, dividend_yield, analyst target, market_cap, earnings) for candidate stocks."""
     now_ts = time.time()
     to_fetch = []
     out = {}
@@ -217,7 +288,9 @@ def _enrich_candidate_fundamentals(symbols):
     if to_fetch:
         def fetch_one(sym):
             try:
-                info = yf.Ticker(sym).info or {}
+                t_obj = yf.Ticker(sym)
+                info = t_obj.info or {}
+                days_to_earnings = _extract_days_to_earnings(t_obj)
                 raw_div = info.get("dividendYield")
                 # yfinance dividendYield can be percentage (e.g. 3.45) or decimal (0.0345) depending on version
                 div_yield_pct = None
@@ -239,6 +312,7 @@ def _enrich_candidate_fundamentals(symbols):
                     "forward_pe": fwd_pe,
                     "dividend_yield": div_yield_pct,
                     "market_cap": int(info.get("marketCap") or 0),
+                    "days_to_earnings": days_to_earnings,
                     "ts": now_ts,
                 }
                 _ASSET_META_CACHE[sym] = meta
@@ -391,11 +465,13 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
             "sl_price": s.get("sl_price", 0),
         }
 
-    # 3. Check existing active recommendations & 14-day stop-loss cooldown in AIRecommendations
+    # 3. Check existing active recommendations, 14-day stop-loss cooldown & 90-day closed-loop track record
     active_rec_symbols = set()
     cooldown_symbols = set()
     active_rec_lines = []
+    track_record_summary = None
     cooldown_cutoff = int(time.time()) - 14 * 86400
+    track_cutoff = int(time.time()) - 90 * 86400
     try:
         with db_session() as conn:
             c = conn.cursor()
@@ -414,6 +490,37 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
             )
             for row in c.fetchall():
                 cooldown_symbols.add(str(row[0]).upper())
+
+            c.execute(
+                "SELECT symbol, status, entry_price, current_price FROM AIRecommendations WHERE status != 'active' AND LOWER(category) = 'stock' AND created_at >= ? ORDER BY closed_at DESC LIMIT 30",
+                (track_cutoff,)
+            )
+            closed_rows = c.fetchall()
+            if closed_rows:
+                wins = 0
+                returns = []
+                best_pair = None
+                worst_pair = None
+                for sym_r, st_r, ep_r, cp_r in closed_rows:
+                    ep = float(ep_r or 0)
+                    cp = float(cp_r or 0)
+                    if ep > 0 and cp > 0:
+                        ret = ((cp - ep) / ep) * 100.0
+                        returns.append(ret)
+                        if str(st_r).lower() == 'hit_target' or ret > 0:
+                            wins += 1
+                        if best_pair is None or ret > best_pair[1]:
+                            best_pair = (sym_r, ret)
+                        if worst_pair is None or ret < worst_pair[1]:
+                            worst_pair = (sym_r, ret)
+                if returns:
+                    win_rate = (wins / len(returns)) * 100.0
+                    avg_ret = sum(returns) / len(returns)
+                    track_record_summary = (
+                        f"Last 90d closed stock picks: {len(returns)} trades | Win Rate: {win_rate:.0f}% | Avg Return: {avg_ret:+.1f}%"
+                        + (f" | Best: {best_pair[0]} ({best_pair[1]:+.1f}%)" if best_pair else "")
+                        + (f" | Worst: {worst_pair[0]} ({worst_pair[1]:+.1f}%)" if worst_pair else "")
+                    )
     except Exception as e:
         print(f"[MarketCache] Error reading AIRecommendations state: {e}")
 
@@ -474,12 +581,14 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
         if f.get("target_price") and d["price"] > 0:
             upside = ((float(f["target_price"]) - d["price"]) / d["price"]) * 100.0
             analyst_str = f" | AnalystTarget=${float(f['target_price']):.2f} ({upside:+.1f}%)"
+        earn_days = f.get("days_to_earnings")
+        earn_str = f" | ⚠️ EarningsIn={earn_days}d" if earn_days is not None and earn_days <= 21 else ""
         sma200_str = f"vs200d={d['pct_vs_sma200']:+.1f}%" if d.get("pct_vs_sma200") is not None else "vs200d=N/A"
         line = (
             f"  {sym} [{sector}]: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
             f"Trend={d['trend']} (vs50d={d['pct_vs_sma50']:+.1f}%, {sma200_str}) | RSI14={d['rsi_14']} | "
             f"ATR14={d['atr_pct']}% (${d['atr_14']}) | 20dLow=${d['swing_low_20d']} | "
-            f"52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}%) | {pe_str} | {div_str}{analyst_str}"
+            f"52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}%) | {pe_str} | {div_str}{analyst_str}{earn_str}"
         )
         if sig:
             tp_upside = ((sig['tp_price'] - sig['entry_price']) / sig['entry_price'] * 100) if sig['entry_price'] > 0 else 0
@@ -492,6 +601,10 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
         f"Current Environment: {market_regime}",
         "",
     ]
+    if track_record_summary:
+        brief_lines.append("=== RECENT AI TRACK RECORD (CLOSED-LOOP FEEDBACK) ===")
+        brief_lines.append(f"  {track_record_summary}")
+        brief_lines.append("")
     if active_rec_lines:
         brief_lines.append("=== ALREADY ACTIVE RECOMMENDATIONS FOR THIS PROFILE (DO NOT DUPLICATE; DIVERSIFY SECTORS) ===")
         brief_lines.append("  " + ", ".join(active_rec_lines[:10]))
@@ -1331,18 +1444,22 @@ def analyze_portfolio():
         except Exception as e:
             print(f"[Analysis] Error fetching DB target price for {sym}: {e}")
 
-        # 3. Cached Yahoo Finance metadata (sector, beta, analyst targetMeanPrice) for stocks/ETFs
+        # 3. Cached Yahoo Finance metadata (sector, beta, analyst targetMeanPrice, earnings) for stocks/ETFs
+        days_to_earnings = None
         if cat == 'stock':
             now_ts = time.time()
             cached = _ASSET_META_CACHE.get(sym)
-            if cached and (now_ts - cached.get("ts", 0) < _ASSET_META_TTL):
+            if cached and (now_ts - cached.get("ts", 0) < _ASSET_META_TTL) and "days_to_earnings" in cached:
                 analyst_target = cached.get("target_price")
                 recommendation = cached.get("recommendation")
                 sector = cached.get("sector")
                 beta = cached.get("beta")
+                days_to_earnings = cached.get("days_to_earnings")
             else:
                 try:
-                    info = yf.Ticker(sym).info or {}
+                    t_obj = yf.Ticker(sym)
+                    info = t_obj.info or {}
+                    days_to_earnings = _extract_days_to_earnings(t_obj)
                     analyst_target = info.get('targetMeanPrice')
                     recommendation = info.get('recommendationKey')
                     sector = info.get('sector') or info.get('category') or (
@@ -1359,6 +1476,7 @@ def analyze_portfolio():
                         "recommendation": recommendation,
                         "sector": sector,
                         "beta": beta,
+                        "days_to_earnings": days_to_earnings,
                         "ts": now_ts
                     }
                 except Exception:
@@ -1372,7 +1490,8 @@ def analyze_portfolio():
             'analyst_target': analyst_target,
             'recommendation': recommendation,
             'sector': sector or ('ETF / Other' if cat == 'stock' else 'Digital Assets'),
-            'beta': beta
+            'beta': beta,
+            'days_to_earnings': days_to_earnings
         }
 
     meta_results = [{} for _ in positions]
@@ -1396,6 +1515,7 @@ def analyze_portfolio():
         p['analyst_recommendation'] = res.get('recommendation')
         p['sector'] = res.get('sector') or ('Other' if p.get('category', 'stock').lower() == 'stock' else 'Digital Assets')
         p['beta'] = res.get('beta')
+        p['days_to_earnings'] = res.get('days_to_earnings')
 
     # --- Compute Quantitative Portfolio Concentration, Sector & Risk Metrics ---
     total_port_val = float(stats.get("total_portfolio_value") or stats.get("market_value") or 0.0)
@@ -1445,6 +1565,22 @@ def analyze_portfolio():
     news_items_for_prompt = news_payload.get("news", [])
     news_counts_for_prompt = news_payload.get("counts", {"bullish": 0, "bearish": 0, "neutral": 0})
 
+    # 60-day Correlation Cluster Detection across top stock holdings
+    correlated_clusters = _compute_correlation_clusters(positions)
+
+    # Upcoming Earnings (<= 14 days) & Capital Gains / Holding-Period Awareness
+    upcoming_earnings = []
+    near_ltcg_winners = []
+    for p in positions:
+        dte = p.get("days_to_earnings")
+        if dte is not None and dte <= 14:
+            upcoming_earnings.append({"symbol": p["symbol"], "days": dte})
+        hold_d = int(p.get("hold_time_days") or 0)
+        pnl_p = float(p.get("overall_pnl_pct") or 0.0)
+        if 300 <= hold_d < 365 and pnl_p >= 10.0:
+            near_ltcg_winners.append(f"{p['symbol']} (+{pnl_p:.1f}%, {365 - hold_d}d until Long-Term CG)")
+    upcoming_earnings.sort(key=lambda x: x["days"])
+
     portfolio_metrics = {
         "cash_balance": round(cash_bal, 2),
         "cash_pct": cash_pct,
@@ -1462,11 +1598,15 @@ def analyze_portfolio():
         "spy_benchmark_days": spy_benchmark_days,
         "alpha_vs_spy_pct": alpha_vs_spy_pct,
         "news_sentiment": news_counts_for_prompt,
+        "upcoming_earnings": upcoming_earnings[:5],
+        "correlated_clusters": correlated_clusters[:3],
     }
 
     # Build clean position payload (omit null target/stop-loss keys so LLM doesn't nag about missing UI fields)
     compiled_positions = []
     for p in positions:
+        hold_d = int(p.get("hold_time_days") or 0)
+        tax_status = "Long-Term (>=365d)" if hold_d >= 365 else ("Near Long-Term (300-364d)" if hold_d >= 300 else "Short-Term (<300d)")
         item = {
             "symbol": p["symbol"],
             "category": p["category"],
@@ -1478,9 +1618,13 @@ def analyze_portfolio():
             "overall_pnl_pct": round(float(p["overall_pnl_pct"]), 2),
             "allocation_pct": round(float(p["allocation_pct"]), 2),
             "purchase_date": p["purchase_date"],
+            "hold_days": hold_d,
+            "tax_status": tax_status,
         }
         if p.get("beta") is not None:
             item["beta"] = p["beta"]
+        if p.get("days_to_earnings") is not None and p["days_to_earnings"] <= 21:
+            item["days_to_earnings"] = p["days_to_earnings"]
         if p.get("signal_target") is not None:
             item["system_signal_target"] = p["signal_target"]
         if p.get("signal_stop_loss") is not None:
@@ -1495,13 +1639,14 @@ def analyze_portfolio():
 
     system_instruction = (
         f"You are an institutional-grade investment advisor tailoring advice for a client with a **{risk_profile}** risk profile and an investment goal of **{investment_goal}**.\n"
-        "Analyze the user's holdings, sector/concentration exposure, cash buffer, and performance to produce a high-signal portfolio health report.\n"
+        "Analyze the user's holdings, sector/concentration exposure, 60-day return correlations, upcoming earnings catalysts, tax holding periods, cash buffer, and performance to produce a high-signal portfolio health report.\n"
         "CRITICAL RULE 1 (HOLDINGS OWNERSHIP): The user's ONLY current portfolio positions are the assets explicitly listed in `compiled_positions_str`. Do NOT recommend selling, trimming, or taking profit on ANY asset unless it is explicitly present in `compiled_positions_str`!\n"
         "CRITICAL RULE 2 (TARGET PRICES): For owned positions that have `system_signal_target` or `analyst_consensus_target`, do NOT recommend taking profit solely for hitting target if `current_price` is well below target (unless trimming for concentration/risk management).\n"
         "CRITICAL RULE 3 (RECOMMENDATIONS ARE NOT HOLDINGS): The `ACTIVE RECOMMENDATIONS` list below contains external trade setups available to buy. These are NOT owned by the user unless listed in `compiled_positions_str`. NEVER tell the user to sell or take profit on an unowned recommendation.\n"
         "CRITICAL RULE 4 (STOCK ETFs VS CRYPTO COINS): If a position's category is `stock` (e.g. BTC ETF, ETH ETF, IBIT, BITO, ETHA, or tickers BTC/ETH categorized as `stock`), treat it strictly as an ETF stock equity position priced per share. Do NOT confuse ETF share prices with underlying crypto coin prices, and NEVER tell the user to change its category.\n"
-        "CRITICAL RULE 5 (NO MISSING-METADATA NAGGING): This portfolio tracks static holdings, NOT live brokerage orders. NEVER waste action items telling the user to 'define target prices', 'set stop-loss fields in the tracker', or 'fix missing stop-losses'. Focus exclusively on real investment decisions: position sizing, concentration/sector risk, trimming overweight winners or deep underperformers, rotating capital, and building a cash buffer.\n"
+        "CRITICAL RULE 5 (NO MISSING-METADATA NAGGING): This portfolio tracks static holdings, NOT live brokerage orders. NEVER waste action items telling the user to 'define target prices', 'set stop-loss fields in the tracker', or 'fix missing stop-losses'. Focus exclusively on real investment decisions: position sizing, concentration/sector/correlation risk, trimming overweight winners or deep underperformers, rotating capital, and building a cash buffer.\n"
         "CRITICAL RULE 6 (CASH-AWARE ALLOCATION): Always respect `cash_balance`. If `cash_balance` is $0 (or < 2% of total portfolio value), NEVER recommend initiating a new buy without explicitly specifying which existing holding(s) to trim or exit (and approximate dollar/% amount) to fund it.\n"
+        "CRITICAL RULE 7 (TAX & EARNINGS AWARENESS): If a winning position is `Near Long-Term (300-364d)`, avoid recommending selling it before it crosses 365 days unless risk is urgent (and note the LTCG threshold if you do). Highlight deep losers (>=15% down) as potential tax-loss harvesting candidates, and flag holdings with `days_to_earnings <= 14` as near-term volatility catalysts.\n"
     )
 
     last_score = None
@@ -1641,6 +1786,23 @@ def analyze_portfolio():
         + (f" | Top headlines: {news_headlines_str}\n" if news_headlines_str else "\n")
     )
 
+    corr_line = (
+        "- High-Correlation Clusters (60d corr >= 0.78): "
+        + ", ".join(f"{c['pair']} (corr {c['corr']}, {c['combined_pct']}% combined)" for c in correlated_clusters[:3])
+        + "\n"
+        if correlated_clusters else ""
+    )
+    earn_line = (
+        "- Upcoming Earnings (<=14d): "
+        + ", ".join(f"{e['symbol']} (in {e['days']}d)" for e in upcoming_earnings[:5])
+        + "\n"
+        if upcoming_earnings else ""
+    )
+    tax_line = (
+        f"- Winners Approaching 1-Year Long-Term Capital Gains: {', '.join(near_ltcg_winners)}\n"
+        if near_ltcg_winners else ""
+    )
+
     prompt = (
         f"Analyze this portfolio ({len(positions)} positions): {compiled_positions_str}\n\n"
         f"PORTFOLIO SUMMARY & RISK METRICS:\n"
@@ -1650,8 +1812,11 @@ def analyze_portfolio():
         f"- Annual Dividends: ${stats['annual_dividends']:,.2f}\n"
         f"- Concentration: Largest position = {portfolio_metrics['top_1_symbol']} ({portfolio_metrics['top_1_pct']}%), Top 3 = {top_3_pct}%, Top 5 = {top_5_pct}%\n"
         f"- Sector Exposure: {sector_summary_str}\n"
+        f"{corr_line}"
         f"- Estimated Portfolio Beta: {portfolio_beta if portfolio_beta is not None else 'N/A'}\n"
-        f"- Positions Down >=15%: {', '.join(deep_losers) if deep_losers else 'None'}\n"
+        f"- Positions Down >=15% (Tax-Loss Harvest Candidates): {', '.join(deep_losers) if deep_losers else 'None'}\n"
+        f"{tax_line}"
+        f"{earn_line}"
         f"{news_line}"
     )
 
@@ -1867,7 +2032,7 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
             )
         elif is_income:
             system_instruction += (
-                "8. **INCOME/CONSERVATIVE OVERRIDE**: Prioritize Category C defensive & dividend-paying leaders (strong Div %, lower ATR14 %, reasonable FwdP/E) with steady 3-12 Month total-return targets.\n"
+                "8. **INCOME/CONSERVATIVE OVERRIDE**: Prioritize Category C defensive & dividend-paying leaders (strong Div %, lower ATR14 %, reasonable FwdP/E) with steady 3-12 Month total-return targets. Avoid initiating new entries with `EarningsIn <= 7d` to prevent binary earnings risk.\n"
             )
 
         system_instruction += (

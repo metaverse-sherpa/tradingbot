@@ -1009,11 +1009,19 @@ async def recommendations_resolution_engine(application):
                     continue
                 sym = rec["symbol"]
                 yf_sym = sym if rec["category"] == "stock" else f"{sym}-USD"
-                symbols_to_fetch.append((rec["id"], yf_sym, rec["target_price"], rec["stop_loss"], rec["entry_price"]))
+                symbols_to_fetch.append((
+                    rec["id"],
+                    yf_sym,
+                    float(rec["target_price"] or 0.0),
+                    float(rec["stop_loss"] or 0.0),
+                    float(rec["entry_price"] or 0.0),
+                    int(rec.get("created_at") or 0),
+                    str(rec.get("estimated_timeframe") or ""),
+                ))
                 
             if symbols_to_fetch:
                 now_ts = int(time.time())
-                yf_symbols = [item[1] for item in symbols_to_fetch]
+                yf_symbols = list(dict.fromkeys(item[1] for item in symbols_to_fetch))
                 
                 try:
                     data = yf.download(yf_symbols, period="1d", group_by="ticker", progress=False)
@@ -1021,7 +1029,7 @@ async def recommendations_resolution_engine(application):
                     
                     with database.db_session() as conn:
                         c = conn.cursor()
-                        for rec_id, yf_sym, target, sl, entry_price in symbols_to_fetch:
+                        for rec_id, yf_sym, target, sl, entry_price, created_at, est_timeframe in symbols_to_fetch:
                             price = 0.0
                             high_price = 0.0
                             low_price = 0.0
@@ -1053,24 +1061,51 @@ async def recommendations_resolution_engine(application):
                                 status = 'active'
                                 closed_at = None
                                 final_price = price
-                                
-                                # Trailing stop logic (breakeven)
+
+                                # Avoid same-day false stop-outs/TPs from intraday wicks that occurred BEFORE created_at
+                                # If created within the last 18 hours, evaluate using current live price only
+                                created_recently = created_at > 0 and (now_ts - created_at) < (18 * 3600)
+                                eval_low = price if created_recently else low_price
+                                eval_high = price if created_recently else high_price
+
+                                # Multi-step trailing stop logic (only ratchets UP, never down)
                                 new_sl = sl
                                 if entry_price > 0.0:
-                                    current_gain_pct = ((price - entry_price) / entry_price) * 100.0
-                                    if current_gain_pct >= 15.0:
-                                        breakeven_sl = round(entry_price * 1.02, 2)
-                                        if breakeven_sl > sl:
-                                            new_sl = breakeven_sl
-                                            
-                                if low_price <= new_sl and new_sl > 0:
+                                    peak_gain_pct = ((eval_high - entry_price) / entry_price) * 100.0
+                                    if peak_gain_pct >= 30.0:
+                                        step_sl = round(entry_price * 1.18, 2)
+                                    elif peak_gain_pct >= 20.0:
+                                        step_sl = round(entry_price * 1.10, 2)
+                                    elif peak_gain_pct >= 10.0:
+                                        step_sl = round(entry_price * 1.01, 2)
+                                    else:
+                                        step_sl = 0.0
+                                    if step_sl > new_sl:
+                                        new_sl = step_sl
+
+                                # Timeframe expiry for stale "zombie" picks
+                                tf_lower = est_timeframe.lower()
+                                if "1-3" in tf_lower or "1-2" in tf_lower:
+                                    max_age_days = 95
+                                elif "6-12" in tf_lower or "12" in tf_lower:
+                                    max_age_days = 365
+                                else:
+                                    max_age_days = 185
+                                is_expired = created_at > 0 and (now_ts - created_at) > (max_age_days * 86400)
+
+                                if eval_low <= new_sl and new_sl > 0:
                                     status = 'hit_stop_loss'
                                     closed_at = now_ts
-                                    final_price = round(new_sl * 0.99, 2)
-                                elif high_price >= target and target > 0:
+                                    final_price = round(new_sl, 2)
+                                elif eval_high >= target and target > 0:
                                     status = 'hit_target'
                                     closed_at = now_ts
-                                    final_price = round(max(high_price, target), 2)
+                                    # Realistic limit TP fill at target_price (not inflated intraday spike)
+                                    final_price = round(target, 2)
+                                elif is_expired:
+                                    status = 'expired'
+                                    closed_at = now_ts
+                                    final_price = round(price, 2)
                                     
                                 c.execute('''
                                     UPDATE AIRecommendations 
@@ -1079,10 +1114,15 @@ async def recommendations_resolution_engine(application):
                                 ''', (final_price, new_sl, status, closed_at, rec_id))
                                 
                                 if status != 'active':
-                                    pct_change = ((final_price - entry_price) / entry_price) * 100
+                                    pct_change = ((final_price - entry_price) / entry_price) * 100 if entry_price > 0 else 0.0
                                     sign = '+' if pct_change > 0 else ''
                                     sym_clean = yf_sym.replace('-USD', '')
-                                    verb = "hit Target Price!" if status == 'hit_target' else "hit Stop Loss."
+                                    if status == 'hit_target':
+                                        verb = "hit Target Price!"
+                                    elif status == 'expired':
+                                        verb = "expired (timeframe reached)."
+                                    else:
+                                        verb = "hit Stop Loss."
                                     closed_recs_alerts.append(f"🔔 *AI Recommendation Closed: {sym_clean}* {verb} ({sign}{pct_change:.2f}%)")
                         conn.commit()
                         
