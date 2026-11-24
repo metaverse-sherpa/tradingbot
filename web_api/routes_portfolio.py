@@ -2534,10 +2534,10 @@ def is_us_market_open():
 @require_premium
 def get_tracked_recommendations():
 
-    # 3. Retrieve all recommendations
+    # 3. Retrieve all US equity (stock) recommendations only
     with db_session() as conn:
         c = conn.cursor()
-        c.execute("SELECT * FROM AIRecommendations ORDER BY created_at DESC")
+        c.execute("SELECT * FROM AIRecommendations WHERE LOWER(category) = 'stock' ORDER BY created_at DESC")
         all_recs = [dict(row) for row in c.fetchall()]
 
     # 4. Calculate Stats

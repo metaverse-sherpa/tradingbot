@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Lightbulb, Clock, RefreshCw, ChevronDown, Lock, Trash2, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import { useAuthStore, useDashboardStore } from '../store/useStore';
+import { useAuthStore } from '../store/useStore';
 import LoadingDisplay from './LoadingDisplay';
 import { isStockMarketOpen } from '../utils/market';
 import { formatPrice } from '../utils/formatters';
@@ -55,11 +55,8 @@ const SmallCustomSelect = ({ value, onChange, options }: { value: string, onChan
 const RecommendationsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { activeTab: categoryTab, setTab: setCategoryTab } = useDashboardStore();
-  const activeTab: 'stocks' | 'crypto' = categoryTab === 'stock' ? 'stocks' : 'crypto';
-  const setActiveTab = (tab: 'stocks' | 'crypto') => {
-    setCategoryTab(tab === 'stocks' ? 'stock' : 'crypto');
-  };
+  // US Equities only (crypto recommendations retired)
+  const activeTab: 'stocks' | 'crypto' = 'stocks';
 
   const isPremium = Boolean(user?.is_premium) || ((user?.premium_expiry || 0) > Date.now() / 1000);
 
@@ -470,35 +467,16 @@ const RecommendationsPage: React.FC = () => {
     return <LoadingDisplay />;
   }
 
-  // Automatically set target risk profile & goal based on activeTab:
-  // Crypto: Conservative & Income (63% win rate)
-  // Stocks: Moderate & Speculation (54% win rate)
-  const currentRiskProfile = activeTab === 'crypto' ? 'Conservative' : 'Moderate';
-  const currentInvestmentGoal = activeTab === 'crypto' ? 'Income' : 'Speculation';
+  // US Equities target strategy (Stocks only)
+  const currentRiskProfile = 'Moderate';
+  const currentInvestmentGoal = 'Speculation';
 
-  // Count active recs per category for tab badges (Crypto: Conservative & Income, Stocks: Moderate & Speculation)
-  const activeCryptoCount = recommendations.filter(
-    (r) =>
-      r.category.toLowerCase() === 'crypto' &&
-      r.risk_profile.toLowerCase() === 'conservative' &&
-      r.investment_goal.toLowerCase() === 'income' &&
-      r.status === 'active'
-  ).length;
-
-  const activeStockCount = recommendations.filter(
-    (r) =>
-      r.category.toLowerCase() === 'stock' &&
-      r.risk_profile.toLowerCase() === 'moderate' &&
-      r.investment_goal.toLowerCase() === 'speculation' &&
-      r.status === 'active'
-  ).length;
-
-  // Filter recommendations based on activeTab target strategy
+  // Filter recommendations to US Equities (stocks) only
   const filteredRecs = recommendations.filter(
     (r) =>
       r.risk_profile.toLowerCase() === currentRiskProfile.toLowerCase() &&
       r.investment_goal.toLowerCase() === currentInvestmentGoal.toLowerCase() &&
-      r.category.toLowerCase() === (activeTab === 'stocks' ? 'stock' : 'crypto')
+      r.category.toLowerCase() === 'stock'
   );
 
   const sortedRecs = [...filteredRecs].sort((a, b) => {
@@ -677,30 +655,7 @@ const RecommendationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex bg-[#141620]/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm w-full max-w-sm mb-4">
-        <button
-          onClick={() => setActiveTab('crypto')}
-          className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-            activeTab === 'crypto'
-              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/20'
-              : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          Crypto ({activeCryptoCount})
-        </button>
-        <button
-          onClick={() => setActiveTab('stocks')}
-          className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-            activeTab === 'stocks'
-              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/20'
-              : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          Stocks ({activeStockCount})
-        </button>
-      </div>
-
+      {/* Status Tabs (US Equities only) */}
       <div className="flex bg-[#141620]/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm w-full max-w-sm mb-6">
         <button
           onClick={() => setStatusTab('active')}
@@ -734,43 +689,6 @@ const RecommendationsPage: React.FC = () => {
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xl">📈</span>
               <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Stocks Hold Stats</h3>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Recs</p>
-                <p className="text-xl font-black text-white mt-1">{totalRecs}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Win Rate</p>
-                <p className={`text-xl font-black mt-1 ${winRate >= 50 ? 'text-emerald-400' : winRate > 0 ? 'text-rose-400' : 'text-gray-400'}`}>
-                  {winRate.toFixed(1)}%
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Hit Target</p>
-                <p className="text-xl font-black text-emerald-400 mt-1">{hits}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Stop Loss</p>
-                <p className="text-xl font-black text-rose-400 mt-1">{stops}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Avg Duration</p>
-                <p className="text-xl font-black text-cyan-400 mt-1">
-                  {closedCount > 0 ? `${avgDays.toFixed(1)}d` : '—'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Crypto Hold Stats */}
-        {activeTab === 'crypto' && (
-          <div className="bg-gradient-to-br from-[#141724] to-[#0f111a] border border-white/5 rounded-3xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none"></div>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">🪙</span>
-              <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Crypto Hold Stats</h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div>
