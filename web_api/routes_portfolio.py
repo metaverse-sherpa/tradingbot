@@ -558,17 +558,21 @@ def get_cached_prices(symbols, categories):
 
 
 # --- 🤖 Gemini Helper Function ---
+GEMINI_PRO_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent"
+GEMINI_FLASH_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+GEMINI_FALLBACK_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+
 def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=None, mime_type="image/jpeg", custom_url=None):
-    """Call Google Gemini API using configured env variables/secrets with model fallback."""
+    """Call Google Gemini API using configured env variables/secrets with modern model fallback."""
     api_key = utils_gcp.get_secret("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not configured.")
 
-    preferred_url = custom_url or os.getenv("PORTFOLIO_AI_URL") or "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    preferred_url = custom_url or os.getenv("PORTFOLIO_AI_URL") or GEMINI_FLASH_URL
     fallback_urls = [
         preferred_url,
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent",
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+        GEMINI_FLASH_URL,
+        GEMINI_FALLBACK_URL,
     ]
     # Remove duplicates preserving order
     urls_to_try = list(dict.fromkeys(fallback_urls))
@@ -1510,7 +1514,12 @@ def analyze_portfolio():
     )
 
     try:
-        raw_json_str = call_gemini(prompt, system_instruction=system_instruction, json_mode=True)
+        raw_json_str = call_gemini(
+            prompt,
+            system_instruction=system_instruction,
+            json_mode=True,
+            custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL
+        )
         clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
         analysis = json.loads(clean_json_str)
 
@@ -1756,7 +1765,8 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
             raw_json_str = call_gemini(
                 "Analyze the market data and select the top 5 stocks and top 5 crypto for buy-and-hold investment.",
                 system_instruction=system_instruction,
-                json_mode=True
+                json_mode=True,
+                custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL
             )
             clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
             recommendations = json.loads(clean_json_str)
