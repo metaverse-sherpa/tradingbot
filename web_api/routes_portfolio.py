@@ -1340,6 +1340,99 @@ def import_positions():
     return jsonify({"message": "Positions imported successfully."}), 200
 
 
+@portfolio_bp.route('/api/portfolio/sync-alpaca', methods=['POST'])
+@require_auth
+@require_premium
+def sync_portfolio_alpaca():
+    """Sync live US equity positions and cash balance from the user's connected Alpaca account."""
+    user = dict(g.user)
+    user_id = user["id"]
+
+    # Resolve Alpaca credentials from WebUsers or linked Telegram Users record
+    if not user.get("alpaca_api_key") or not user.get("alpaca_api_secret"):
+        tg_chat_id = user.get("telegram_chat_id")
+        if tg_chat_id:
+            try:
+                tg_user = database.get_user(int(tg_chat_id))
+                if tg_user and tg_user.get("alpaca_api_key") and tg_user.get("alpaca_api_secret"):
+                    user["alpaca_api_key"] = tg_user.get("alpaca_api_key")
+                    user["alpaca_api_secret"] = tg_user.get("alpaca_api_secret")
+                    if "alpaca_paper" in tg_user:
+                        user["alpaca_paper"] = tg_user.get("alpaca_paper")
+            except Exception:
+                pass
+
+    if not user.get("alpaca_api_key") or not user.get("alpaca_api_secret"):
+        return jsonify({"error": "No Alpaca API keys connected. Add your Alpaca keys in Settings first."}), 400
+
+    try:
+        acct = database.make_alpaca_request(user, 'GET', '/v2/account') or {}
+        alpaca_positions = database.make_alpaca_request(user, 'GET', '/v2/positions') or []
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch Alpaca account/positions: {str(e)[:200]}"}), 502
+
+    cash_val = None
+    try:
+        if acct.get("cash") is not None:
+            cash_val = max(0.0, float(acct["cash"]))
+    except (ValueError, TypeError):
+        cash_val = None
+
+    now_ts = int(time.time())
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    synced_count = 0
+
+    with db_session() as conn:
+        c = conn.cursor()
+        # Load existing stock positions for this user to upsert cleanly
+        c.execute('SELECT id, symbol FROM PortfolioPositions WHERE user_id = ? AND LOWER(category) = ?', (user_id, 'stock'))
+        existing_map = {}
+        for row in c.fetchall():
+            try:
+                existing_map[database.decrypt(row[1]).strip().upper()] = row[0]
+            except Exception:
+                continue
+
+        for pos in alpaca_positions:
+            asset_class = str(pos.get("asset_class") or "us_equity").lower()
+            if "crypto" in asset_class:
+                continue
+            sym = str(pos.get("symbol") or "").strip().upper()
+            try:
+                qty = float(pos.get("qty") or 0)
+                avg_entry = float(pos.get("avg_entry_price") or 0)
+            except (ValueError, TypeError):
+                continue
+            if not sym or qty <= 0 or avg_entry <= 0:
+                continue
+
+            if sym in existing_map:
+                c.execute('''
+                    UPDATE PortfolioPositions
+                    SET quantity = ?, avg_entry_price = ?
+                    WHERE id = ? AND user_id = ?
+                ''', (database.encrypt(str(qty)), database.encrypt(str(avg_entry)), existing_map[sym], user_id))
+            else:
+                c.execute('''
+                    INSERT INTO PortfolioPositions (user_id, symbol, name, category, quantity, avg_entry_price, purchase_date, dividend_yield, created_at)
+                    VALUES (?, ?, ?, 'stock', ?, ?, ?, ?, ?)
+                ''', (user_id, database.encrypt(sym), database.encrypt(sym), database.encrypt(str(qty)), database.encrypt(str(avg_entry)), database.encrypt(today_str), database.encrypt("0.0"), now_ts))
+            synced_count += 1
+
+        if cash_val is not None:
+            c.execute('UPDATE WebUsers SET cash_balance = ?, last_portfolio_update = ? WHERE id = ?', (cash_val, now_ts, user_id))
+        else:
+            c.execute('UPDATE WebUsers SET last_portfolio_update = ? WHERE id = ?', (now_ts, user_id))
+        conn.commit()
+
+    return jsonify({
+        "success": True,
+        "synced_count": synced_count,
+        "cash_balance": cash_val,
+        "message": f"Synced {synced_count} stock position{'s' if synced_count != 1 else ''} from Alpaca."
+    }), 200
+
+
 # --- 🤖 AI Analysis Score Handlers ---
 
 @portfolio_bp.route('/api/portfolio/analyze', methods=['POST'])

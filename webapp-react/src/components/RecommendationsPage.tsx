@@ -127,6 +127,57 @@ const RecommendationsPage: React.FC = () => {
   const [selectedQueueOption, setSelectedQueueOption] = useState<'auto_execute' | 'email_reminder'>('auto_execute');
   const [submittingQueue, setSubmittingQueue] = useState(false);
 
+  // Portfolio Fit state (held symbols + 1-click track in portfolio)
+  const [heldSymbols, setHeldSymbols] = useState<Set<string>>(new Set());
+  const [trackingRecId, setTrackingRecId] = useState<number | null>(null);
+
+  const fetchHeldSymbols = useCallback(async () => {
+    try {
+      const res = await api.get('/portfolio');
+      const syms = new Set<string>(
+        (res.data?.positions || []).map((p: any) => String(p.symbol || '').trim().toUpperCase())
+      );
+      setHeldSymbols(syms);
+    } catch {
+      // Non-blocking: ignore if portfolio fails or user has no holdings
+    }
+  }, []);
+
+  const handleTrackInPortfolio = async (rec: any) => {
+    const qtyStr = window.prompt(`Add ${rec.symbol} to your Portfolio tracker.\nEnter number of shares:`, '1');
+    if (qtyStr === null) return;
+    const qty = parseFloat(qtyStr);
+    if (isNaN(qty) || qty <= 0) {
+      alert('Please enter a valid positive share quantity.');
+      return;
+    }
+    const price = Number(rec.current_price || rec.entry_price || 0);
+    if (price <= 0) {
+      alert('Unable to determine current price for this position.');
+      return;
+    }
+    setTrackingRecId(rec.id);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await api.post('/portfolio/position', {
+        symbol: String(rec.symbol).toUpperCase(),
+        name: rec.name || rec.symbol,
+        category: rec.category || 'stock',
+        quantity: qty,
+        avg_entry_price: price,
+        purchase_date: today,
+        dividend_yield: 0,
+        deduct_from_cash: false,
+      });
+      setHeldSymbols((prev) => new Set(prev).add(String(rec.symbol).toUpperCase()));
+      alert(`✅ Added ${qty} ${rec.symbol} to your Portfolio!`);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to add position to portfolio.');
+    } finally {
+      setTrackingRecId(null);
+    }
+  };
+
   const fetchOpenTrades = useCallback(async (bypassCache = false) => {
     try {
       const url = bypassCache ? '/trades/open?bypass_cache=true' : '/trades/open';
@@ -160,13 +211,14 @@ const RecommendationsPage: React.FC = () => {
       setRecommendations(res.data?.recommendations || []);
       fetchPendingTrades();
       fetchOpenTrades();
+      fetchHeldSymbols();
     } catch (err) {
       console.error("Error fetching recommendations:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [fetchPendingTrades, fetchOpenTrades]);
+  }, [fetchPendingTrades, fetchOpenTrades, fetchHeldSymbols]);
 
   const handleCloseLiveTrade = async (rec: any, activePos: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -805,7 +857,7 @@ const RecommendationsPage: React.FC = () => {
                   <div>
                     {/* Top Row */}
                     <div className="flex items-start justify-between gap-2 mb-3">
-                      <div>
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <a
                           href={getYahooFinanceLink(rec.symbol, rec.category)}
                           target="_blank"
@@ -814,9 +866,31 @@ const RecommendationsPage: React.FC = () => {
                         >
                           {rec.symbol}
                         </a>
-                        <span className="ml-2 text-[10px] font-bold bg-white/5 border border-white/10 text-gray-400 uppercase tracking-widest px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-bold bg-white/5 border border-white/10 text-gray-400 uppercase tracking-widest px-2 py-0.5 rounded-md">
                           {rec.category}
                         </span>
+                        {heldSymbols.has(String(rec.symbol || '').toUpperCase()) ? (
+                          <span className="text-[10px] font-bold bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 uppercase tracking-wider px-2 py-0.5 rounded-md">
+                            Already Held
+                          </span>
+                        ) : (
+                          <>
+                            {heldSymbols.size > 0 && (
+                              <span className="text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 uppercase tracking-wider px-2 py-0.5 rounded-md">
+                                New Exposure
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleTrackInPortfolio(rec)}
+                              disabled={trackingRecId === rec.id}
+                              className="text-[10px] font-black bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/40 text-gray-200 hover:text-emerald-300 uppercase tracking-wider px-2 py-0.5 rounded-md transition-colors disabled:opacity-50"
+                              title={`Track ${rec.symbol} in your Portfolio`}
+                            >
+                              {trackingRecId === rec.id ? 'Adding...' : '+ Track'}
+                            </button>
+                          </>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-400">
                         <span className="flex items-center gap-1">

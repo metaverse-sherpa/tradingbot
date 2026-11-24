@@ -103,6 +103,7 @@ const PortfolioPage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [newsLoading, setNewsLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [syncingAlpaca, setSyncingAlpaca] = useState(false);
   const [analysisMessageIndex, setAnalysisMessageIndex] = useState(0);
   const [parsingCSV, setParsingCSV] = useState(false);
 
@@ -251,6 +252,19 @@ const PortfolioPage: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [analyzing]);
+
+  const handleSyncAlpaca = async () => {
+    setSyncingAlpaca(true);
+    try {
+      const res = await api.post('/portfolio/sync-alpaca');
+      showToast(res.data?.message || 'Synced holdings from Alpaca!', 'success');
+      await fetchPortfolioData(false);
+    } catch (err: any) {
+      showToast(err?.response?.data?.error || 'Failed to sync from Alpaca. Check your Alpaca keys in Settings.', 'error');
+    } finally {
+      setSyncingAlpaca(false);
+    }
+  };
 
   // AI analysis trigger
   const runAIAnalysis = async () => {
@@ -593,7 +607,18 @@ const PortfolioPage: React.FC = () => {
           <p className="text-gray-400 text-[11px] md:text-sm mt-1">Track static holdings, perform real-time AI audits and analysis.</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+        <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={handleSyncAlpaca}
+            disabled={syncingAlpaca}
+            title="Sync live stock holdings and cash from your connected Alpaca account"
+            className="flex items-center justify-center gap-1.5 bg-[#1f2028] border border-cyan-500/20 hover:border-cyan-500/40 text-cyan-300 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all uppercase tracking-wider w-full sm:w-auto disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={syncingAlpaca ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{syncingAlpaca ? 'Syncing...' : 'Sync Alpaca'}</span>
+            <span className="sm:hidden">Sync</span>
+          </button>
+
           <button
             onClick={() => setCsvModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-[#1f2028] border border-white/10 hover:border-white/20 text-gray-200 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all uppercase tracking-wider w-full sm:w-auto"
@@ -802,6 +827,58 @@ const PortfolioPage: React.FC = () => {
                         )}
                       </p>
                     </div>
+                    {/* 📈 Health Score History Sparkline */}
+                    {analysisHistory.length > 1 && (() => {
+                      const recent = analysisHistory.slice(0, 15).reverse(); // oldest -> newest
+                      const w = 128;
+                      const h = 30;
+                      const pad = 4;
+                      const scores = recent.map((a: any) => Number(a.score || 0));
+                      const minS = Math.max(0, Math.min(...scores) - 5);
+                      const maxS = Math.min(100, Math.max(...scores) + 5);
+                      const range = Math.max(10, maxS - minS);
+                      const pts = recent.map((a: any, i: number) => {
+                        const x = pad + (i / Math.max(1, recent.length - 1)) * (w - pad * 2);
+                        const y = h - pad - ((Number(a.score || 0) - minS) / range) * (h - pad * 2);
+                        const histIdx = analysisHistory.findIndex((hItem: any) => hItem.id === a.id);
+                        return { x, y, score: a.score, histIdx, num: analysisHistory.length - histIdx };
+                      });
+                      const polylinePts = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+                      const trendingUp = scores[scores.length - 1] >= scores[0];
+                      return (
+                        <div className="hidden md:flex flex-col items-end pl-3 border-l border-white/10" title="Score trend across recent audits (click a point to view)">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">
+                            Score Trend ({recent.length})
+                          </span>
+                          <svg width={w} height={h} className="overflow-visible">
+                            <polyline
+                              fill="none"
+                              stroke={trendingUp ? '#34d399' : '#fb7185'}
+                              strokeWidth="1.75"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              points={polylinePts}
+                            />
+                            {pts.map((p, i) => {
+                              const isActive = p.histIdx === currentAnalysisIndex;
+                              return (
+                                <circle
+                                  key={i}
+                                  cx={p.x}
+                                  cy={p.y}
+                                  r={isActive ? 3.5 : 2.2}
+                                  fill={isActive ? '#38bdf8' : trendingUp ? '#34d399' : '#fb7185'}
+                                  className="cursor-pointer transition-all hover:r-4"
+                                  onClick={() => p.histIdx >= 0 && setCurrentAnalysisIndex(p.histIdx)}
+                                >
+                                  <title>{`Audit #${p.num}: ${p.score}/100`}</title>
+                                </circle>
+                              );
+                            })}
+                          </svg>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <select
