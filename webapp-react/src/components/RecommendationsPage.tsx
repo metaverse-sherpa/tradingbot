@@ -847,6 +847,32 @@ const RecommendationsPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* AI Thesis & Entry Metrics */}
+                    {(rec.rationale || rec.metrics_summary || rec.estimated_timeframe) && (
+                      <div className="bg-purple-500/5 border border-purple-500/15 rounded-2xl p-3.5 mb-4 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                            <Lightbulb size={12} className="text-amber-400" /> AI Thesis
+                          </span>
+                          {rec.estimated_timeframe && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
+                              Horizon: {rec.estimated_timeframe}
+                            </span>
+                          )}
+                        </div>
+                        {rec.rationale && (
+                          <p className="text-xs text-gray-300 leading-relaxed">
+                            {rec.rationale}
+                          </p>
+                        )}
+                        {rec.metrics_summary && (
+                          <p className="text-[11px] text-gray-400 font-mono pt-1 border-t border-white/5">
+                            {rec.metrics_summary}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* PnL Indicator */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                       <div className="flex flex-wrap items-center gap-2">
