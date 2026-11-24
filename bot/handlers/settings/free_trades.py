@@ -250,7 +250,6 @@ async def open_free_trades(update: Update, context: ContextTypes.DEFAULT_TYPE, s
         logger.error(f"Error in open_free_trades: {e}")
         await context.bot.send_message(chat_id=chat_id, text=f"❌ Error displaying free signals: {e}")
     finally:
-        await mdm.close()
         try:
             await status_msg.delete()
         except:
