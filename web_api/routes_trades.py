@@ -2294,8 +2294,115 @@ def share_card():
 
 CHART_MEM_CACHE = {}
 CHART_MEM_CACHE_LOCK = threading.Lock()
+CHART_RENDER_LOCK = threading.Lock()
+CHART_OHLCV_CACHE = {}  # {symbol_tf: (expiry_ts, df)}
 CHART_CACHE_TTL_SECONDS = 300  # 5 minutes
 CHART_MAX_CACHE_SIZE = 200
+
+def _fetch_stock_chart_ohlcv(symbol):
+    """Fast, timeout-bounded daily OHLCV loader for stock charts: MemCache -> SQLite -> Alpaca Bars -> yfinance (5s cap)."""
+    sym = str(symbol or "").strip().upper()
+    now_ts = time.time()
+    cached = CHART_OHLCV_CACHE.get(sym)
+    if cached and now_ts < cached[0]:
+        return cached[1].copy()
+
+    df_chart = None
+
+    # 1. Local SQLite daily cache (short 2s timeout so a busy DB never blocks charts)
+    try:
+        if os.path.exists(STOCK_DB_PATH):
+            conn = sqlite3.connect(STOCK_DB_PATH, timeout=2.0)
+            try:
+                df_tmp = pd.read_sql_query(
+                    "SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC",
+                    conn,
+                    params=(sym,),
+                )
+            finally:
+                conn.close()
+            if not df_tmp.empty:
+                df_tmp['timestamp'] = pd.to_datetime(df_tmp['date']).astype('datetime64[ms]').astype('int64')
+                df_chart = df_tmp.copy()
+    except Exception as e:
+        print(f"[Chart] SQLite stock cache skip for {sym}: {e}", flush=True)
+
+    # 2. Primary network source: Alpaca Historical Daily Bars (~150ms, hard 5s timeout)
+    if df_chart is None or len(df_chart) < 10:
+        try:
+            from datetime import datetime, timedelta
+            api_key = os.getenv("ALPACA_API_KEY") or utils_gcp.get_secret("ALPACA_API_KEY")
+            api_secret = os.getenv("ALPACA_API_SECRET") or utils_gcp.get_secret("ALPACA_API_SECRET")
+            if api_key and api_secret:
+                start_dt = (datetime.utcnow() - timedelta(days=140)).strftime("%Y-%m-%dT00:00:00Z")
+                res = requests.get(
+                    f"https://data.alpaca.markets/v2/stocks/{sym}/bars",
+                    headers={
+                        "APCA-API-KEY-ID": api_key,
+                        "APCA-API-SECRET-KEY": api_secret,
+                    },
+                    params={
+                        "timeframe": "1Day",
+                        "start": start_dt,
+                        "limit": 100,
+                        "adjustment": "split",
+                        "feed": "iex",
+                    },
+                    timeout=5,
+                )
+                if res.status_code == 200:
+                    bars = res.json().get("bars") or []
+                    if bars:
+                        rows = []
+                        for b in bars:
+                            ts_ms = int(pd.to_datetime(b["t"]).value // 10**6)
+                            rows.append({
+                                "timestamp": ts_ms,
+                                "open": float(b["o"]),
+                                "high": float(b["h"]),
+                                "low": float(b["l"]),
+                                "close": float(b["c"]),
+                                "volume": float(b.get("v", 0)),
+                            })
+                        df_chart = pd.DataFrame(rows)
+        except Exception as e:
+            print(f"[Chart] Alpaca bars fetch failed for {sym}: {e}", flush=True)
+
+    # 3. Last-resort fallback: yfinance with a strict 5s timeout cap
+    if df_chart is None or df_chart.empty:
+        import concurrent.futures
+        def _yf_fetch():
+            import yfinance as yf
+            yf_df = yf.Ticker(sym).history(period="3mo")
+            if yf_df is None or yf_df.empty:
+                return None
+            yf_df = yf_df.reset_index()
+            yf_df.columns = [c.lower() for c in yf_df.columns]
+            if 'date' in yf_df.columns:
+                yf_df.rename(columns={'date': 'timestamp'}, inplace=True)
+            if 'datetime' in yf_df.columns:
+                yf_df.rename(columns={'datetime': 'timestamp'}, inplace=True)
+            yf_df['timestamp'] = pd.to_datetime(yf_df['timestamp'])
+            if yf_df['timestamp'].dt.tz is not None:
+                yf_df['timestamp'] = yf_df['timestamp'].dt.tz_convert('UTC').dt.tz_localize(None)
+            yf_df['timestamp'] = yf_df['timestamp'].astype('datetime64[ms]').astype('int64')
+            return yf_df
+
+        ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        try:
+            fut = ex.submit(_yf_fetch)
+            df_chart = fut.result(timeout=5)
+        except Exception as e:
+            print(f"[Chart] yfinance fallback timed out/failed for {sym}: {e}", flush=True)
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
+
+    if df_chart is not None and not df_chart.empty:
+        CHART_OHLCV_CACHE[sym] = (now_ts + 900, df_chart.copy())
+        if len(CHART_OHLCV_CACHE) > 200:
+            CHART_OHLCV_CACHE.pop(next(iter(CHART_OHLCV_CACHE)), None)
+
+    return df_chart
 
 @trades_bp.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
@@ -2339,54 +2446,22 @@ def get_trade_chart():
     with CHART_MEM_CACHE_LOCK:
         cached = CHART_MEM_CACHE.get(cache_key)
         if cached:
-            expiry_ts, png_bytes = cached
+            expiry_ts, img_bytes = cached
             if time.time() < expiry_ts:
                 import io
                 return send_file(
-                    io.BytesIO(png_bytes),
-                    mimetype='image/png',
+                    io.BytesIO(img_bytes),
+                    mimetype='image/jpeg',
                     as_attachment=False
                 )
 
-    t_start = time.time()
     try:
         import charting
-        import live_bot_multi
-        
+
         df_chart = None
         if trade_type == "stock":
             timeframe = "1D"
-            try:
-                conn = sqlite3.connect(STOCK_DB_PATH)
-                df_chart = pd.read_sql_query("SELECT * FROM StockDailyData WHERE symbol = ? ORDER BY date ASC", conn, params=(symbol,))
-                conn.close()
-                if not df_chart.empty:
-                    df_chart['timestamp'] = pd.to_datetime(df_chart['date']).astype('datetime64[ms]').astype('int64')
-                    df_chart = df_chart.copy()
-                else:
-                    df_chart = None
-                    try:
-                        import yfinance as yf
-                        tkr = yf.Ticker(symbol)
-                        yf_df = tkr.history(period="3mo")
-                        if not yf_df.empty:
-                            yf_df.reset_index(inplace=True)
-                            yf_df.columns = [c.lower() for c in yf_df.columns]
-                            if 'date' in yf_df.columns:
-                                yf_df.rename(columns={'date': 'timestamp'}, inplace=True)
-                            if 'datetime' in yf_df.columns:
-                                yf_df.rename(columns={'datetime': 'timestamp'}, inplace=True)
-                            
-                            yf_df['timestamp'] = pd.to_datetime(yf_df['timestamp'])
-                            if yf_df['timestamp'].dt.tz is not None:
-                                yf_df['timestamp'] = yf_df['timestamp'].dt.tz_convert('UTC').dt.tz_localize(None)
-                                
-                            yf_df['timestamp'] = yf_df['timestamp'].astype('datetime64[ms]').astype('int64')
-                            df_chart = yf_df
-                    except Exception as e:
-                        print(f"yfinance fallback failed for chart: {e}", flush=True)
-            except Exception as e:
-                print(f"Error fetching from stock daily cache: {e}", flush=True)
+            df_chart = _fetch_stock_chart_ohlcv(symbol)
         else:
             interval = "1d" if timeframe == "1D" else "15m"
             try:
@@ -2421,6 +2496,7 @@ def get_trade_chart():
                     df_chart = pd.DataFrame(ohlcv, columns=["timestamp","open","high","low","close","volume"])
                 else:
                     # Fallback to CCXT Blofin
+                    import live_bot_multi
                     mdm = live_bot_multi.MarketDataManager()
                     mdm.exchange.timeout = 3000
                     loop = asyncio.new_event_loop()
@@ -2466,29 +2542,30 @@ def get_trade_chart():
                 'volume': [1000] * 30
             })
 
-        chart_file = charting.generate_trade_chart(
-            symbol=symbol,
-            df=df_chart,
-            entry=entry,
-            tp=tp,
-            sl=sl,
-            side=side,
-            open_ts=open_ts,
-            timeframe=timeframe,
-            current_price=current_price,
-            strategy=strategy,
-            leverage=leverage
-        )
-        
-        # Read the generated chart image bytes
-        with open(chart_file, 'rb') as f:
-            png_bytes = f.read()
+        # Serialize matplotlib rendering across gthread workers to prevent pyplot thread-safety deadlocks
+        with CHART_RENDER_LOCK:
+            chart_file = charting.generate_trade_chart(
+                symbol=symbol,
+                df=df_chart,
+                entry=entry,
+                tp=tp,
+                sl=sl,
+                side=side,
+                open_ts=open_ts,
+                timeframe=timeframe,
+                current_price=current_price,
+                strategy=strategy,
+                leverage=leverage
+            )
+            # Read the generated chart image bytes inside the lock before any concurrent overwrite
+            with open(chart_file, 'rb') as f:
+                img_bytes = f.read()
             
         # Save to memory cache and enforce cleanup/size-bounding
         ttl = 3600 if trade_type == "stock" else 900
         expiry_ts = time.time() + ttl
         with CHART_MEM_CACHE_LOCK:
-            CHART_MEM_CACHE[cache_key] = (expiry_ts, png_bytes)
+            CHART_MEM_CACHE[cache_key] = (expiry_ts, img_bytes)
             
             # 1. Evict expired entries
             now = time.time()
@@ -2503,7 +2580,7 @@ def get_trade_chart():
                     CHART_MEM_CACHE.pop(k, None)
                     
         import io
-        return send_file(io.BytesIO(png_bytes), mimetype='image/png')
+        return send_file(io.BytesIO(img_bytes), mimetype='image/jpeg')
     except Exception as e:
         print(f"Error generating chart endpoint: {e}", flush=True)
         return f"Error: {str(e)}", 500

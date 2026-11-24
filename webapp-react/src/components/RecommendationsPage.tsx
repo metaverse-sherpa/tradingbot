@@ -873,6 +873,51 @@ const RecommendationsPage: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Visual Status vs Stop-Loss & Target Progress Bar */}
+                    {rec.target_price > rec.stop_loss && rec.stop_loss > 0 && (() => {
+                      const sl = Number(rec.stop_loss);
+                      const tp = Number(rec.target_price);
+                      const entry = Number(rec.entry_price);
+                      const curr = Number(rec.current_price || entry);
+                      const span = tp - sl;
+                      const entryPos = Math.max(0, Math.min(100, ((entry - sl) / span) * 100));
+                      const currPos = Math.max(0, Math.min(100, ((curr - sl) / span) * 100));
+                      const inProfit = curr >= entry;
+                      return (
+                        <div className="mb-4 px-1">
+                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                            <span className="text-rose-400">SL ${formatPrice(sl)}</span>
+                            <span className={inProfit ? 'text-emerald-400' : 'text-rose-400'}>
+                              Now ${formatPrice(curr)}
+                            </span>
+                            <span className="text-emerald-400">TP ${formatPrice(tp)}</span>
+                          </div>
+                          <div className="relative h-2 w-full bg-white/10 rounded-full overflow-visible">
+                            {/* Fill from Entry to Current */}
+                            <div
+                              className={`absolute top-0 h-full rounded-full transition-all duration-500 ${inProfit ? 'bg-emerald-400/80' : 'bg-rose-500/80'}`}
+                              style={{
+                                left: `${Math.min(entryPos, currPos)}%`,
+                                width: `${Math.max(1.5, Math.abs(currPos - entryPos))}%`,
+                              }}
+                            />
+                            {/* Entry Marker */}
+                            <div
+                              className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3.5 bg-white/70 rounded-full"
+                              style={{ left: `${entryPos}%` }}
+                              title={`Entry: $${formatPrice(entry)}`}
+                            />
+                            {/* Current Price Dot */}
+                            <div
+                              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-[#0c0d12] shadow ${inProfit ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                              style={{ left: `${currPos}%` }}
+                              title={`Current: $${formatPrice(curr)}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* PnL Indicator */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                       <div className="flex flex-wrap items-center gap-2">
@@ -903,18 +948,15 @@ const RecommendationsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Embedded mini chart using get_trade_chart logic */}
+                  {/* Embedded chart showing candles + Entry / TP / SL status */}
                   {expandedCharts[rec.id] && (
-                    <div className="mt-2 bg-[#0c0d12]/40 rounded-xl overflow-hidden border border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="mt-2 mb-4 bg-[#0b0f19]/60 rounded-xl overflow-hidden border border-white/10 animate-in fade-in slide-in-from-top-2 duration-200 min-h-[200px] flex items-center justify-center relative">
                       <img
                         src={`/api/trades/chart?symbol=${encodeURIComponent(
-                          rec.category === 'stock' ? rec.symbol : `${rec.symbol}/USDT`
-                        )}&entry=${rec.entry_price}&tp=${rec.target_price}&sl=${rec.stop_loss}&open_ts=${rec.created_at}&current_price=${rec.current_price}&type=${rec.category}&timeframe=1D&leverage=1`}
+                          rec.symbol
+                        )}&entry=${rec.entry_price}&tp=${rec.target_price}&sl=${rec.stop_loss}&side=LONG&open_ts=${rec.created_at}&current_price=${rec.current_price}&type=stock&strategy=AI+Recommendations&timeframe=1D&leverage=1`}
                         alt={`${rec.symbol} price action chart`}
-                        className="w-full h-auto object-cover opacity-90"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
+                        className="w-full h-auto object-cover block"
                       />
                     </div>
                   )}
