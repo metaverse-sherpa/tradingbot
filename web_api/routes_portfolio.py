@@ -39,6 +39,35 @@ _NEWS_CACHE = {}  # {user_id: (news_json, timestamp)}
 _NEWS_CACHE_DURATION = 3600  # 1 hour in seconds
 _ASSET_META_CACHE = {}  # {symbol: {"target_price": ..., "recommendation": ..., "sector": ..., "beta": ..., "ts": ...}}
 _ASSET_META_TTL = 43200  # 12 hours in seconds
+_SPY_BENCHMARK_CACHE = {"closes": [], "ts": 0}  # Cached daily closes for SPY benchmark comparison
+_SPY_BENCHMARK_TTL = 43200  # 12 hours in seconds
+
+def _get_spy_benchmark_return(hold_days):
+    """Compute SPY percentage return over roughly `hold_days` calendar days using cached daily closes."""
+    now_ts = time.time()
+    closes = _SPY_BENCHMARK_CACHE.get("closes") or []
+    if not closes or (now_ts - _SPY_BENCHMARK_CACHE.get("ts", 0) >= _SPY_BENCHMARK_TTL):
+        try:
+            hist = yf.Ticker("SPY").history(period="2y", interval="1d")
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                closes = [float(x) for x in hist["Close"].dropna().tolist()]
+                _SPY_BENCHMARK_CACHE["closes"] = closes
+                _SPY_BENCHMARK_CACHE["ts"] = now_ts
+        except Exception as e:
+            print(f"[Portfolio] SPY benchmark fetch error: {e}")
+
+    if len(closes) < 5:
+        return None, None
+
+    effective_days = max(7, min(int(hold_days or 30), 700))
+    # Convert calendar days to approximate trading days (~252/365)
+    trading_days = max(5, min(int(effective_days * 0.69), len(closes) - 1))
+    past_close = closes[-1 - trading_days]
+    latest_close = closes[-1]
+    if past_close <= 0:
+        return None, None
+    ret_pct = round(((latest_close - past_close) / past_close) * 100.0, 2)
+    return ret_pct, effective_days
 
 # --- 📊 Global Market Data Cache (shared across all users) ---
 STOCK_WATCHLIST = [
@@ -1075,6 +1104,19 @@ def analyze_portfolio():
     data = request.get_json(silent=True) or {}
     risk_profile = data.get("risk_profile") or g.user.get("risk_profile") or "Moderate"
     investment_goal = data.get("investment_goal") or g.user.get("investment_goal") or "Growth"
+
+    # Persist inline profile/goal updates if provided
+    if data.get("risk_profile") or data.get("investment_goal"):
+        try:
+            with db_session() as conn:
+                c = conn.cursor()
+                c.execute(
+                    "UPDATE WebUsers SET risk_profile = ?, investment_goal = ? WHERE id = ?",
+                    (risk_profile, investment_goal, user_id)
+                )
+                conn.commit()
+        except Exception as e:
+            print(f"[Analysis] Could not persist risk_profile/investment_goal: {e}")
     
     p_response, code = get_portfolio()
     if code != 200:
@@ -1241,6 +1283,22 @@ def analyze_portfolio():
     top_sector = sector_breakdown[0] if sector_breakdown else {"sector": "N/A", "pct": 0.0}
     portfolio_beta = round(weighted_beta_num / weighted_beta_den, 2) if weighted_beta_den > 0 else None
 
+    # SPY Benchmark Comparison over average holding period
+    spy_benchmark_pct, spy_benchmark_days = _get_spy_benchmark_return(stats.get("avg_hold_time_days") or 30)
+    alpha_vs_spy_pct = (
+        round(float(stats.get("total_pnl_pct") or 0.0) - spy_benchmark_pct, 2)
+        if spy_benchmark_pct is not None else None
+    )
+
+    # Fetch / reuse cached holdings news sentiment for top holdings
+    top_news_symbols = [
+        {"symbol": x["symbol"], "category": x["category"]}
+        for x in sorted_by_alloc[:6]
+    ]
+    news_payload = _get_portfolio_news_data(user_id, override_positions=top_news_symbols)
+    news_items_for_prompt = news_payload.get("news", [])
+    news_counts_for_prompt = news_payload.get("counts", {"bullish": 0, "bearish": 0, "neutral": 0})
+
     portfolio_metrics = {
         "cash_balance": round(cash_bal, 2),
         "cash_pct": cash_pct,
@@ -1254,6 +1312,10 @@ def analyze_portfolio():
         "portfolio_beta": portfolio_beta,
         "deep_losers_count": len(deep_losers),
         "positions_count": len(positions),
+        "spy_benchmark_pct": spy_benchmark_pct,
+        "spy_benchmark_days": spy_benchmark_days,
+        "alpha_vs_spy_pct": alpha_vs_spy_pct,
+        "news_sentiment": news_counts_for_prompt,
     }
 
     # Build clean position payload (omit null target/stop-loss keys so LLM doesn't nag about missing UI fields)
@@ -1420,16 +1482,31 @@ def analyze_portfolio():
         system_instruction += prompt_recs_ctx
 
     sector_summary_str = ", ".join(f"{s['sector']} {s['pct']}%" for s in sector_breakdown[:6]) or "N/A"
+    spy_line = (
+        f"- Benchmark vs SPY ({spy_benchmark_days}d avg hold): SPY {spy_benchmark_pct:+.2f}% vs Portfolio {stats['total_pnl_pct']:+.2f}% (Alpha: {alpha_vs_spy_pct:+.2f}%)\n"
+        if spy_benchmark_pct is not None else ""
+    )
+    news_headlines_str = "; ".join(
+        f"[{n.get('sentiment', 'Neutral')}] {n.get('symbol')}: {n.get('title')}"
+        for n in news_items_for_prompt[:3]
+    )
+    news_line = (
+        f"- Recent Holdings News Sentiment: {news_counts_for_prompt['bullish']} Bullish, {news_counts_for_prompt['bearish']} Bearish, {news_counts_for_prompt['neutral']} Neutral"
+        + (f" | Top headlines: {news_headlines_str}\n" if news_headlines_str else "\n")
+    )
+
     prompt = (
         f"Analyze this portfolio ({len(positions)} positions): {compiled_positions_str}\n\n"
         f"PORTFOLIO SUMMARY & RISK METRICS:\n"
         f"- Total Portfolio Value: ${total_port_val:,.2f} (Holdings: ${stats['market_value']:,.2f}, Cash Available: ${cash_bal:,.2f} [{cash_pct:.1f}%])\n"
         f"- Cost Basis: ${stats['cost_basis']:,.2f} | Total P/L: ${stats['total_pnl']:+,.2f} ({stats['total_pnl_pct']:+.2f}%) | Win Rate: {stats['win_rate']:.0f}%\n"
+        f"{spy_line}"
         f"- Annual Dividends: ${stats['annual_dividends']:,.2f}\n"
         f"- Concentration: Largest position = {portfolio_metrics['top_1_symbol']} ({portfolio_metrics['top_1_pct']}%), Top 3 = {top_3_pct}%, Top 5 = {top_5_pct}%\n"
         f"- Sector Exposure: {sector_summary_str}\n"
         f"- Estimated Portfolio Beta: {portfolio_beta if portfolio_beta is not None else 'N/A'}\n"
-        f"- Positions Down >=15%: {', '.join(deep_losers) if deep_losers else 'None'}"
+        f"- Positions Down >=15%: {', '.join(deep_losers) if deep_losers else 'None'}\n"
+        f"{news_line}"
     )
 
     try:
@@ -1843,76 +1920,133 @@ def good_buys():
     return jsonify(result), status_code
 
 
-# --- 📰 Yahoo Finance News Sentiment ---
+# --- 📰 Holdings News & Sentiment (Alpaca News primary + Yahoo Finance fallback) ---
 
-@portfolio_bp.route('/api/portfolio/news', methods=['GET'])
-@require_auth
-@require_premium
-def get_portfolio_news():
-    user_id = g.user["id"]
+def _get_portfolio_news_data(user_id, override_positions=None):
+    """Fetch and cache news + sentiment for a user's holdings."""
     now = time.time()
-    
+
     if user_id in _NEWS_CACHE:
         cached_news, ts = _NEWS_CACHE[user_id]
-        if now - ts < _NEWS_CACHE_DURATION:
-            return jsonify(cached_news), 200
+        if (now - ts < _NEWS_CACHE_DURATION) and cached_news.get("news"):
+            return cached_news
 
-    positions = []
-
-    with db_session() as conn:
-        c = conn.cursor()
-        c.execute('SELECT symbol, category FROM PortfolioPositions WHERE user_id = ? LIMIT 5', (user_id,))
-        rows = c.fetchall()
-        positions = [{"symbol": database.decrypt(r[0]), "category": r[1]} for r in rows]
+    positions = override_positions
+    if not positions:
+        with db_session() as conn:
+            c = conn.cursor()
+            c.execute('SELECT symbol, category FROM PortfolioPositions WHERE user_id = ? LIMIT 8', (user_id,))
+            rows = c.fetchall()
+            positions = [{"symbol": database.decrypt(r[0]), "category": r[1]} for r in rows]
 
     if not positions:
-        positions = [{"symbol": "BTC", "category": "crypto"}, {"symbol": "AAPL", "category": "stock"}]
+        positions = [{"symbol": "SPY", "category": "stock"}, {"symbol": "AAPL", "category": "stock"}]
 
     news_items = []
-    
-    def fetch_news_for_position(p):
-        sym = p["symbol"]
-        cat = p["category"]
-        yf_symbol = f"{sym}-USD" if cat.lower() == 'crypto' else sym
-        
-        items = []
-        try:
-            ticker = yf.Ticker(yf_symbol)
-            ticker_news = ticker.news
-            count = 0
-            for item in ticker_news:
-                if count >= 2:
-                    break
-                content = item.get("content", {})
-                title = content.get("title")
-                summary = content.get("summary") or content.get("description") or ""
-                link = content.get("clickThroughUrl", {}).get("url") or item.get("link")
-                pub_date = content.get("pubDate") or item.get("providerPublishTime")
-                provider = content.get("provider", {}).get("displayName", "Yahoo Finance")
-                
-                if title and link:
-                    items.append({
-                        "symbol": sym,
-                        "title": title,
-                        "summary": summary[:200] + "..." if len(summary) > 200 else summary,
-                        "pubDate": pub_date,
-                        "provider": provider,
-                        "link": link
-                    })
-                    count += 1
-        except Exception:
-            pass
-        return items
+    seen_titles = set()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        results = executor.map(fetch_news_for_position, positions)
-        for items in results:
-            news_items.extend(items)
+    # 1. Primary: Alpaca News API (single fast batch request for stock holdings)
+    stock_syms = list(dict.fromkeys(
+        p["symbol"].strip().upper()
+        for p in positions
+        if (p.get("category") or "stock").lower() == "stock" and p.get("symbol")
+    ))[:8]
+
+    if stock_syms:
+        try:
+            api_key = utils_gcp.get_secret("ALPACA_API_KEY")
+            api_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
+            if api_key and api_secret:
+                res = requests.get(
+                    "https://data.alpaca.markets/v1beta1/news",
+                    headers={
+                        "APCA-API-KEY-ID": api_key,
+                        "APCA-API-SECRET-KEY": api_secret,
+                    },
+                    params={
+                        "symbols": ",".join(stock_syms),
+                        "limit": 8,
+                        "sort": "desc",
+                    },
+                    timeout=6,
+                )
+                if res.status_code == 200:
+                    for art in res.json().get("news", []):
+                        title = (art.get("headline") or "").strip()
+                        link = art.get("url")
+                        if not title or not link or title in seen_titles:
+                            continue
+                        seen_titles.add(title)
+                        art_syms = [s for s in (art.get("symbols") or []) if s in stock_syms]
+                        matched_sym = art_syms[0] if art_syms else stock_syms[0]
+                        summary = (art.get("summary") or "").strip()
+                        news_items.append({
+                            "symbol": matched_sym,
+                            "title": title,
+                            "summary": summary[:200] + "..." if len(summary) > 200 else summary,
+                            "pubDate": art.get("created_at") or art.get("updated_at"),
+                            "provider": art.get("source") or "Alpaca News",
+                            "link": link,
+                        })
+        except Exception as e:
+            print(f"[Portfolio News] Alpaca news fetch error: {e}")
+
+    # 2. Fallback: Yahoo Finance news (safe nested dict access + timeout cap)
+    if len(news_items) < 4:
+        def fetch_news_for_position(p):
+            sym = p["symbol"]
+            cat = (p.get("category") or "stock").lower()
+            yf_symbol = f"{sym}-USD" if cat == 'crypto' else sym
+            items = []
+            try:
+                ticker = yf.Ticker(yf_symbol)
+                ticker_news = ticker.news or []
+                count = 0
+                for item in ticker_news:
+                    if count >= 2:
+                        break
+                    content = item.get("content") or {}
+                    title = content.get("title") or item.get("title")
+                    summary = content.get("summary") or content.get("description") or ""
+                    click_url = (content.get("clickThroughUrl") or {}).get("url")
+                    canon_url = (content.get("canonicalUrl") or {}).get("url")
+                    link = click_url or canon_url or item.get("link")
+                    pub_date = content.get("pubDate") or item.get("providerPublishTime")
+                    provider = (content.get("provider") or {}).get("displayName") or item.get("publisher") or "Yahoo Finance"
+
+                    if title and link:
+                        items.append({
+                            "symbol": sym,
+                            "title": title,
+                            "summary": summary[:200] + "..." if len(summary) > 200 else summary,
+                            "pubDate": pub_date,
+                            "provider": provider,
+                            "link": link
+                        })
+                        count += 1
+            except Exception:
+                pass
+            return items
+
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+        try:
+            futures = [executor.submit(fetch_news_for_position, p) for p in positions[:5]]
+            done, _ = concurrent.futures.wait(futures, timeout=6)
+            for fut in done:
+                try:
+                    for item in fut.result(timeout=0):
+                        if item["title"] not in seen_titles:
+                            seen_titles.add(item["title"])
+                            news_items.append(item)
+                except Exception:
+                    pass
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
     news_items = news_items[:6]
-    
-    bullish_keywords = ['soar', 'surge', 'jump', 'gain', 'buy', 'up', 'high', 'growth', 'positive', 'bull', 'rally', 'beat', 'outperform', 'strong']
-    bearish_keywords = ['plunge', 'drop', 'fall', 'lose', 'sell', 'down', 'low', 'decline', 'negative', 'bear', 'crash', 'miss', 'underperform', 'weak']
+
+    bullish_keywords = ['soar', 'surge', 'jump', 'gain', 'buy', 'up', 'high', 'growth', 'positive', 'bull', 'rally', 'beat', 'outperform', 'strong', 'upgrade', 'record']
+    bearish_keywords = ['plunge', 'drop', 'fall', 'lose', 'sell', 'down', 'low', 'decline', 'negative', 'bear', 'crash', 'miss', 'underperform', 'weak', 'downgrade', 'cut']
 
     bullish_count = 0
     bearish_count = 0
@@ -1922,7 +2056,7 @@ def get_portfolio_news():
         text = (n['title'] + " " + n['summary']).lower()
         bull_score = sum(1 for word in bullish_keywords if word in text)
         bear_score = sum(1 for word in bearish_keywords if word in text)
-        
+
         if bull_score > bear_score:
             sentiment = "Bullish"
             bullish_count += 1
@@ -1932,19 +2066,31 @@ def get_portfolio_news():
         else:
             sentiment = "Neutral"
             neutral_count += 1
-            
+
         n["sentiment"] = sentiment
 
-    counts = {
-        "bullish": bullish_count,
-        "bearish": bearish_count,
-        "neutral": neutral_count
+    payload = {
+        "news": news_items,
+        "counts": {
+            "bullish": bullish_count,
+            "bearish": bearish_count,
+            "neutral": neutral_count
+        }
     }
 
-    return jsonify({
-        "news": news_items,
-        "counts": counts
-    }), 200
+    if news_items:
+        _NEWS_CACHE[user_id] = (payload, now)
+
+    return payload
+
+
+@portfolio_bp.route('/api/portfolio/news', methods=['GET'])
+@require_auth
+@require_premium
+def get_portfolio_news():
+    user_id = g.user["id"]
+    payload = _get_portfolio_news_data(user_id)
+    return jsonify(payload), 200
 
 
 LAST_RECOMMENDATIONS_UPDATE_TIME = 0

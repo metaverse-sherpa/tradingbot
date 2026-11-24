@@ -750,14 +750,36 @@ const PortfolioPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={runAIAnalysis}
-                  disabled={analyzing}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
-                >
-                  {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                  {analyzing ? 'Analyzing...' : 'AI Analysis'}
-                </button>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <select
+                    value={riskProfile}
+                    onChange={(e) => setRiskProfile(e.target.value)}
+                    aria-label="Risk Profile"
+                    className="bg-black/40 border border-white/10 hover:border-white/20 text-gray-200 text-xs font-bold rounded-xl px-2.5 py-2 focus:outline-none focus:border-purple-500/50"
+                  >
+                    <option value="Conservative" className="bg-[#131620]">Conservative</option>
+                    <option value="Moderate" className="bg-[#131620]">Moderate</option>
+                    <option value="Aggressive" className="bg-[#131620]">Aggressive</option>
+                  </select>
+                  <select
+                    value={investmentGoal}
+                    onChange={(e) => setInvestmentGoal(e.target.value)}
+                    aria-label="Investment Goal"
+                    className="bg-black/40 border border-white/10 hover:border-white/20 text-gray-200 text-xs font-bold rounded-xl px-2.5 py-2 focus:outline-none focus:border-purple-500/50"
+                  >
+                    <option value="Income" className="bg-[#131620]">Income</option>
+                    <option value="Growth" className="bg-[#131620]">Growth</option>
+                    <option value="Speculation" className="bg-[#131620]">Speculation</option>
+                  </select>
+                  <button
+                    onClick={runAIAnalysis}
+                    disabled={analyzing}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
+                  >
+                    {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                    {analyzing ? 'Analyzing...' : 'AI Analysis'}
+                  </button>
+                </div>
               </div>
             )}
             
@@ -781,14 +803,36 @@ const PortfolioPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={runAIAnalysis}
-                    disabled={analyzing}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
-                  >
-                    {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                    {analyzing ? 'Analyzing...' : 'AI Analysis'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <select
+                      value={riskProfile}
+                      onChange={(e) => setRiskProfile(e.target.value)}
+                      aria-label="Risk Profile"
+                      className="bg-black/40 border border-white/10 hover:border-white/20 text-gray-200 text-xs font-bold rounded-xl px-2.5 py-2 focus:outline-none focus:border-purple-500/50"
+                    >
+                      <option value="Conservative" className="bg-[#131620]">Conservative</option>
+                      <option value="Moderate" className="bg-[#131620]">Moderate</option>
+                      <option value="Aggressive" className="bg-[#131620]">Aggressive</option>
+                    </select>
+                    <select
+                      value={investmentGoal}
+                      onChange={(e) => setInvestmentGoal(e.target.value)}
+                      aria-label="Investment Goal"
+                      className="bg-black/40 border border-white/10 hover:border-white/20 text-gray-200 text-xs font-bold rounded-xl px-2.5 py-2 focus:outline-none focus:border-purple-500/50"
+                    >
+                      <option value="Income" className="bg-[#131620]">Income</option>
+                      <option value="Growth" className="bg-[#131620]">Growth</option>
+                      <option value="Speculation" className="bg-[#131620]">Speculation</option>
+                    </select>
+                    <button
+                      onClick={runAIAnalysis}
+                      disabled={analyzing}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
+                    >
+                      {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                      {analyzing ? 'Analyzing...' : 'AI Analysis'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* 📊 Score Breakdown Bars */}
@@ -833,6 +877,11 @@ const PortfolioPage: React.FC = () => {
                     {analysis.portfolio_metrics.portfolio_beta !== null && analysis.portfolio_metrics.portfolio_beta !== undefined && (
                       <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 font-semibold">
                         Est. Beta: <strong>{analysis.portfolio_metrics.portfolio_beta}</strong>
+                      </span>
+                    )}
+                    {analysis.portfolio_metrics.alpha_vs_spy_pct !== null && analysis.portfolio_metrics.alpha_vs_spy_pct !== undefined && (
+                      <span className={`px-2.5 py-1 rounded-lg border font-semibold ${analysis.portfolio_metrics.alpha_vs_spy_pct >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-300'}`}>
+                        vs SPY ({analysis.portfolio_metrics.spy_benchmark_days}d): <strong>{analysis.portfolio_metrics.alpha_vs_spy_pct >= 0 ? '+' : ''}{analysis.portfolio_metrics.alpha_vs_spy_pct}%</strong>
                       </span>
                     )}
                     <span className={`px-2.5 py-1 rounded-lg border font-semibold ${analysis.portfolio_metrics.cash_pct < 2 ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'}`}>
@@ -1048,6 +1097,30 @@ const PortfolioPage: React.FC = () => {
                   );
                 })}
               </div>
+
+              {/* ✅ Re-audit prompt when user checks off action items on the latest analysis */}
+              {currentAnalysisIndex === 0 && analysis.action_plan && (() => {
+                const completedCount = (analysis.completed_actions || []).filter(Boolean).length;
+                if (completedCount === 0) return null;
+                return (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3.5 mt-2">
+                    <div className="flex items-center gap-2.5 text-xs text-emerald-200">
+                      <Check size={16} className="text-emerald-400 flex-shrink-0" />
+                      <span>
+                        <strong>{completedCount} of {analysis.action_plan.length}</strong> action{completedCount > 1 ? 's' : ''} completed — re-run AI Analysis to update your health score!
+                      </span>
+                    </div>
+                    <button
+                      onClick={runAIAnalysis}
+                      disabled={analyzing}
+                      className="flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-black px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {analyzing ? <RefreshCw className="animate-spin" size={13} /> : <Sparkles size={13} />}
+                      {analyzing ? 'Auditing...' : 'Re-Audit Now'}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -1102,21 +1175,23 @@ const PortfolioPage: React.FC = () => {
               <div className="w-full md:w-1/2 flex flex-col items-center">
                 <div className="flex flex-col sm:flex-row items-center justify-between w-full mb-4">
                   <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 sm:mb-0">Portfolio Allocation</span>
-                  <div className="flex bg-white/5 p-1 rounded-lg">
-                    {(['all', 'stock', 'crypto'] as const).map(tab => (
-                      <button
-                        key={tab}
-                        onClick={() => setAllocationTab(tab)}
-                        className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-colors ${
-                          allocationTab === tab 
-                            ? 'bg-cyan-500/20 text-cyan-400' 
-                            : 'text-gray-500 hover:text-white'
-                        }`}
-                      >
-                        {tab === 'all' ? 'All' : tab === 'stock' ? 'Stocks' : 'Crypto'}
-                      </button>
-                    ))}
-                  </div>
+                  {positions.some(p => p.category === 'crypto') && (
+                    <div className="flex bg-white/5 p-1 rounded-lg">
+                      {(['all', 'stock', 'crypto'] as const).map(tab => (
+                        <button
+                          key={tab}
+                          onClick={() => setAllocationTab(tab)}
+                          className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-colors ${
+                            allocationTab === tab 
+                              ? 'bg-cyan-500/20 text-cyan-400' 
+                              : 'text-gray-500 hover:text-white'
+                          }`}
+                        >
+                          {tab === 'all' ? 'All' : tab === 'stock' ? 'Stocks' : 'Crypto'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="w-48 h-48 relative">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1233,24 +1308,26 @@ const PortfolioPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
                 <h3 className="text-sm font-bold text-white uppercase tracking-widest whitespace-nowrap">All Holdings</h3>
                 
-                <div className="flex bg-white/5 p-1 rounded-lg">
-                  {(['all', 'stock', 'crypto'] as const).map(tab => {
-                    const count = positions.filter(p => tab === 'all' || p.category === tab).length;
-                    return (
-                      <button
-                        key={tab}
-                        onClick={() => setHoldingsTab(tab)}
-                        className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-colors ${
-                          holdingsTab === tab 
-                            ? 'bg-cyan-500/20 text-cyan-400' 
-                            : 'text-gray-500 hover:text-white'
-                        }`}
-                      >
-                        {tab === 'all' ? 'All' : tab === 'stock' ? 'Stocks' : 'Crypto'} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
+                {positions.some(p => p.category === 'crypto') && (
+                  <div className="flex bg-white/5 p-1 rounded-lg">
+                    {(['all', 'stock', 'crypto'] as const).map(tab => {
+                      const count = positions.filter(p => tab === 'all' || p.category === tab).length;
+                      return (
+                        <button
+                          key={tab}
+                          onClick={() => setHoldingsTab(tab)}
+                          className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-colors ${
+                            holdingsTab === tab 
+                              ? 'bg-cyan-500/20 text-cyan-400' 
+                              : 'text-gray-500 hover:text-white'
+                          }`}
+                        >
+                          {tab === 'all' ? 'All' : tab === 'stock' ? 'Stocks' : 'Crypto'} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="relative w-full md:w-64">
