@@ -100,6 +100,7 @@ const PortfolioPage: React.FC = () => {
 
   // Loading states
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [newsLoading, setNewsLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisMessageIndex, setAnalysisMessageIndex] = useState(0);
@@ -156,13 +157,23 @@ const PortfolioPage: React.FC = () => {
 
   // Fetch portfolio data
   const fetchPortfolioData = async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const res = await api.get('/portfolio');
       setPositions(res.data.positions || []);
       setStats(res.data.stats || {});
-    } catch (err) {
+      setLoadError(null);
+    } catch (err: any) {
       console.error("Failed to fetch portfolio data", err);
+      const status = err?.response?.status;
+      if (status === 504) {
+        setLoadError("The server timed out while fetching live portfolio prices (504). Your holdings are safe — please try again.");
+      } else {
+        setLoadError(err?.response?.data?.error || "Unable to load your portfolio right now. Your holdings are safe — please try again.");
+      }
     } finally {
       if (!silent) setLoading(false);
     }
@@ -589,7 +600,25 @@ const PortfolioPage: React.FC = () => {
         </div>
       </div>
 
-      {positions.length === 0 ? (
+      {loadError && positions.length === 0 ? (
+        <div className="bg-[#131620] border border-red-500/20 p-12 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 mt-8 animate-in zoom-in-95 duration-500">
+          <div className="bg-red-500/10 p-5 rounded-full text-red-400 mb-2 border border-red-500/20">
+            <AlertTriangle size={48} />
+          </div>
+          <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-wide">Could Not Load Portfolio</h3>
+          <p className="text-sm text-gray-400 max-w-md leading-relaxed">
+            {loadError}
+          </p>
+          <div className="flex gap-4 pt-4">
+            <button
+              onClick={() => fetchPortfolioData(false)}
+              className="flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-3 rounded-xl text-sm font-black shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all uppercase tracking-wider"
+            >
+              <RefreshCw size={16} /> Retry
+            </button>
+          </div>
+        </div>
+      ) : positions.length === 0 ? (
         <div className="bg-[#131620] border border-white/5 p-12 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 mt-8 animate-in zoom-in-95 duration-500">
           <div className="bg-cyan-500/10 p-5 rounded-full text-cyan-400 mb-2 border border-cyan-500/20">
             <Wallet size={48} />

@@ -368,7 +368,7 @@ def get_stock_prices(symbols):
     }
 
     try:
-        res = requests.get(url, headers=headers, params=params, timeout=10)
+        res = requests.get(url, headers=headers, params=params, timeout=8)
         if res.status_code == 200:
             data = res.json()
             # Alpaca v2 snapshots returns symbols directly at the root
@@ -389,59 +389,83 @@ def get_stock_prices(symbols):
                 else:
                     prices[sym] = (None, 0.0)
         else:
+            print(f"[Portfolio] Alpaca stock snapshots returned HTTP {res.status_code}")
             for sym in symbols:
                 prices[sym] = (None, 0.0)
-    except Exception:
+    except Exception as e:
+        print(f"[Portfolio] Alpaca stock snapshots error: {e}")
         for sym in symbols:
             prices[sym] = (None, 0.0)
     return prices
 
 def get_crypto_prices(symbols):
-    """Fetch batch crypto prices from CCXT Binance (with Coinbase fallback)."""
+    """Fetch batch crypto prices via Alpaca Crypto Snapshots with Coinbase public REST fallback."""
     prices = {}
     if not symbols:
         return prices
 
+    # 1. Batch fetch via Alpaca Crypto Snapshots (fast, US-friendly, no heavy market-loading)
     try:
-        exchange = ccxt.binance({
-            "options": {"defaultType": "spot"},
-            "enableRateLimit": True,
-            "timeout": 3000
-        })
-        ccxt_symbols = [f"{sym}/USDT" for sym in symbols]
-        tickers = exchange.fetch_tickers(ccxt_symbols)
-        for sym in symbols:
-            t = tickers.get(f"{sym}/USDT")
-            if t:
-                prices[sym] = (float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0))
-    except Exception:
-        pass
+        alpaca_pairs = [f"{sym}/USD" for sym in symbols]
+        res = requests.get(
+            "https://data.alpaca.markets/v1beta3/crypto/us/snapshots",
+            params={"symbols": ",".join(alpaca_pairs)},
+            timeout=6
+        )
+        if res.status_code == 200:
+            snapshots = res.json().get("snapshots", {})
+            for sym in symbols:
+                snap = snapshots.get(f"{sym}/USD")
+                if snap:
+                    last_price = snap.get("latestTrade", {}).get("p") or snap.get("dailyBar", {}).get("c")
+                    prev_close = snap.get("prevDailyBar", {}).get("c") or snap.get("dailyBar", {}).get("o")
+                    if last_price:
+                        change_pct = ((last_price - prev_close) / prev_close) * 100 if prev_close else 0.0
+                        prices[sym] = (float(last_price), float(change_pct))
+    except Exception as e:
+        print(f"[Portfolio] Alpaca crypto snapshots error: {e}")
 
+    # 2. Lightweight Coinbase public REST fallback for any missing symbols (strict timeouts)
     missing_symbols = [s for s in symbols if s not in prices]
     if missing_symbols:
-        binance_exch = ccxt.binance({'timeout': 3000})
-        coinbase_exch = ccxt.coinbase({'timeout': 3000})
-        
-        def fetch_single(sym):
+        def fetch_single_coinbase(sym):
             try:
-                t = binance_exch.fetch_ticker(f"{sym}/USDT")
-                return sym, float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0)
+                r = requests.get(
+                    f"https://api.exchange.coinbase.com/products/{sym}-USD/stats",
+                    timeout=4
+                )
+                if r.status_code == 200:
+                    d = r.json()
+                    last_p = float(d.get("last") or 0)
+                    open_p = float(d.get("open") or 0)
+                    if last_p > 0:
+                        pct = ((last_p - open_p) / open_p) * 100 if open_p > 0 else 0.0
+                        return sym, last_p, pct
             except Exception:
-                try:
-                    t = coinbase_exch.fetch_ticker(f"{sym}/USD")
-                    return sym, float(t.get('last') or t.get('close')), float(t.get('percentage') or 0.0)
-                except Exception:
-                    return sym, None, 0.0
+                pass
+            return sym, None, 0.0
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            results = executor.map(fetch_single, missing_symbols)
-            for sym, price, pct in results:
-                prices[sym] = (price, pct)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(5, len(missing_symbols)))
+        try:
+            futures = {executor.submit(fetch_single_coinbase, sym): sym for sym in missing_symbols}
+            done, _ = concurrent.futures.wait(futures, timeout=6)
+            for fut in done:
+                try:
+                    sym, price, pct = fut.result(timeout=0)
+                    prices[sym] = (price, pct)
+                except Exception:
+                    pass
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        for sym in missing_symbols:
+            if sym not in prices:
+                prices[sym] = (None, 0.0)
 
     return prices
 
 def get_cached_prices(symbols, categories):
-    """Get stock and crypto prices using in-memory caching."""
+    """Get stock and crypto prices using in-memory caching with strict timeouts."""
     now = time.time()
     to_fetch_stock = []
     to_fetch_crypto = []
@@ -463,25 +487,35 @@ def get_cached_prices(symbols, categories):
             if sym not in to_fetch_crypto:
                 to_fetch_crypto.append(sym)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        f_stock = executor.submit(get_stock_prices, to_fetch_stock) if to_fetch_stock else None
-        f_crypto = executor.submit(get_crypto_prices, to_fetch_crypto) if to_fetch_crypto else None
+    if to_fetch_stock or to_fetch_crypto:
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        try:
+            f_stock = executor.submit(get_stock_prices, to_fetch_stock) if to_fetch_stock else None
+            f_crypto = executor.submit(get_crypto_prices, to_fetch_crypto) if to_fetch_crypto else None
 
-        if f_stock:
-            stock_prices = f_stock.result()
-            for sym, val in stock_prices.items():
-                cache_key = f"{sym}_stock"
-                if val[0] is not None:
-                    _PRICE_CACHE[cache_key] = (val[0], val[1], now)
-                result[cache_key] = val
+            if f_stock:
+                try:
+                    stock_prices = f_stock.result(timeout=12)
+                    for sym, val in stock_prices.items():
+                        cache_key = f"{sym}_stock"
+                        if val[0] is not None:
+                            _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+                        result[cache_key] = val
+                except Exception as e:
+                    print(f"[Portfolio] Stock price fetch timed out or failed: {e}")
 
-        if f_crypto:
-            crypto_prices = f_crypto.result()
-            for sym, val in crypto_prices.items():
-                cache_key = f"{sym}_crypto"
-                if val[0] is not None:
-                    _PRICE_CACHE[cache_key] = (val[0], val[1], now)
-                result[cache_key] = val
+            if f_crypto:
+                try:
+                    crypto_prices = f_crypto.result(timeout=12)
+                    for sym, val in crypto_prices.items():
+                        cache_key = f"{sym}_crypto"
+                        if val[0] is not None:
+                            _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+                        result[cache_key] = val
+                except Exception as e:
+                    print(f"[Portfolio] Crypto price fetch timed out or failed: {e}")
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
     # Ensure all requested keys are in the result
     for sym, cat in zip(symbols, categories):
