@@ -2,7 +2,14 @@ import os
 import json
 import time
 import requests
+from requests.adapters import HTTPAdapter
 import concurrent.futures
+
+_HTTP_SESSION = requests.Session()
+_HTTP_ADAPTER = HTTPAdapter(pool_connections=10, pool_maxsize=20)
+_HTTP_SESSION.mount("https://", _HTTP_ADAPTER)
+_HTTP_SESSION.mount("http://", _HTTP_ADAPTER)
+_PRICE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 import yfinance as yf
 import ccxt
 from flask import Blueprint, request, jsonify, g
@@ -389,7 +396,7 @@ def _fetch_speculative_stock_symbols():
     for scr_id in ["most_actives", "day_gainers"]:
         url = f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=true&scrIds={scr_id}&count=25"
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = _HTTP_SESSION.get(url, headers=headers, timeout=10)
             data = response.json()
             results = data.get("finance", {}).get("result", [])
             if results:
@@ -654,7 +661,7 @@ def get_stock_prices(symbols):
     }
 
     try:
-        res = requests.get(url, headers=headers, params=params, timeout=8)
+        res = _HTTP_SESSION.get(url, headers=headers, params=params, timeout=8)
         if res.status_code == 200:
             data = res.json()
             # Alpaca v2 snapshots returns symbols directly at the root
@@ -693,7 +700,7 @@ def get_crypto_prices(symbols):
     # 1. Batch fetch via Alpaca Crypto Snapshots (fast, US-friendly, no heavy market-loading)
     try:
         alpaca_pairs = [f"{sym}/USD" for sym in symbols]
-        res = requests.get(
+        res = _HTTP_SESSION.get(
             "https://data.alpaca.markets/v1beta3/crypto/us/snapshots",
             params={"symbols": ",".join(alpaca_pairs)},
             timeout=6
@@ -716,7 +723,7 @@ def get_crypto_prices(symbols):
     if missing_symbols:
         def fetch_single_coinbase(sym):
             try:
-                r = requests.get(
+                r = _HTTP_SESSION.get(
                     f"https://api.exchange.coinbase.com/products/{sym}-USD/stats",
                     timeout=4
                 )
@@ -774,34 +781,30 @@ def get_cached_prices(symbols, categories):
                 to_fetch_crypto.append(sym)
 
     if to_fetch_stock or to_fetch_crypto:
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-        try:
-            f_stock = executor.submit(get_stock_prices, to_fetch_stock) if to_fetch_stock else None
-            f_crypto = executor.submit(get_crypto_prices, to_fetch_crypto) if to_fetch_crypto else None
+        f_stock = _PRICE_EXECUTOR.submit(get_stock_prices, to_fetch_stock) if to_fetch_stock else None
+        f_crypto = _PRICE_EXECUTOR.submit(get_crypto_prices, to_fetch_crypto) if to_fetch_crypto else None
 
-            if f_stock:
-                try:
-                    stock_prices = f_stock.result(timeout=12)
-                    for sym, val in stock_prices.items():
-                        cache_key = f"{sym}_stock"
-                        if val[0] is not None:
-                            _PRICE_CACHE[cache_key] = (val[0], val[1], now)
-                        result[cache_key] = val
-                except Exception as e:
-                    print(f"[Portfolio] Stock price fetch timed out or failed: {e}")
+        if f_stock:
+            try:
+                stock_prices = f_stock.result(timeout=12)
+                for sym, val in stock_prices.items():
+                    cache_key = f"{sym}_stock"
+                    if val[0] is not None:
+                        _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+                    result[cache_key] = val
+            except Exception as e:
+                print(f"[Portfolio] Stock price fetch timed out or failed: {e}")
 
-            if f_crypto:
-                try:
-                    crypto_prices = f_crypto.result(timeout=12)
-                    for sym, val in crypto_prices.items():
-                        cache_key = f"{sym}_crypto"
-                        if val[0] is not None:
-                            _PRICE_CACHE[cache_key] = (val[0], val[1], now)
-                        result[cache_key] = val
-                except Exception as e:
-                    print(f"[Portfolio] Crypto price fetch timed out or failed: {e}")
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+        if f_crypto:
+            try:
+                crypto_prices = f_crypto.result(timeout=12)
+                for sym, val in crypto_prices.items():
+                    cache_key = f"{sym}_crypto"
+                    if val[0] is not None:
+                        _PRICE_CACHE[cache_key] = (val[0], val[1], now)
+                    result[cache_key] = val
+            except Exception as e:
+                print(f"[Portfolio] Crypto price fetch timed out or failed: {e}")
 
     # Ensure all requested keys are in the result
     for sym, cat in zip(symbols, categories):
@@ -868,7 +871,7 @@ def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=N
             headers["Authorization"] = f"Bearer {api_key}"
 
         try:
-            resp = requests.post(url_with_key, json=payload, headers=headers, timeout=90)
+            resp = _HTTP_SESSION.post(url_with_key, json=payload, headers=headers, timeout=90)
             if resp.status_code == 200:
                 res_data = resp.json()
                 try:
@@ -1136,7 +1139,7 @@ def add_position():
             try:
                 url = f"https://paper-api.alpaca.markets/v2/assets/{symbol}"
                 headers = {"APCA-API-KEY-ID": api_key, "APCA-API-SECRET-KEY": api_secret}
-                res = requests.get(url, headers=headers, timeout=5)
+                res = _HTTP_SESSION.get(url, headers=headers, timeout=5)
                 if res.status_code == 200:
                     name = res.json().get("name", symbol)
             except Exception:
@@ -1187,7 +1190,7 @@ def edit_position(position_id):
         url = f"https://query2.finance.yahoo.com/v1/finance/search?q={symbol}&quotesCount=1&newsCount=0"
         headers = {'User-Agent': 'Mozilla/5.0'}
         try:
-            res = requests.get(url, headers=headers, timeout=5)
+            res = _HTTP_SESSION.get(url, headers=headers, timeout=5)
             if res.status_code == 200 and res.json().get('quotes'):
                 name = res.json()['quotes'][0].get('longname') or res.json()['quotes'][0].get('shortname') or symbol
         except Exception:
@@ -2378,7 +2381,7 @@ def _get_portfolio_news_data(user_id, override_positions=None):
             api_key = utils_gcp.get_secret("ALPACA_API_KEY")
             api_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
             if api_key and api_secret:
-                res = requests.get(
+                res = _HTTP_SESSION.get(
                     "https://data.alpaca.markets/v1beta1/news",
                     headers={
                         "APCA-API-KEY-ID": api_key,

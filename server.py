@@ -24,6 +24,27 @@ import utils_gcp
 # Initialize Database on Startup
 database.init_db()
 
+# Non-blocking startup sweep to prune old generated chart PNGs (>7 days)
+def _prune_old_pnl_cards():
+    try:
+        cards_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pnl_cards")
+        if not os.path.isdir(cards_dir):
+            return
+        cutoff = time.time() - (7 * 86400)
+        for fname in os.listdir(cards_dir):
+            if fname.endswith(".png"):
+                fpath = os.path.join(cards_dir, fname)
+                try:
+                    if os.path.getmtime(fpath) < cutoff:
+                        os.remove(fpath)
+                except OSError:
+                    pass
+    except Exception:
+        pass
+
+import threading as _startup_threading
+_startup_threading.Thread(target=_prune_old_pnl_cards, daemon=True).start()
+
 static_dir = 'webapp-react/dist'
 app = Flask(__name__, static_folder=static_dir, static_url_path='')
 

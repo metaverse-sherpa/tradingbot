@@ -18,6 +18,7 @@ class SqliteSharedCache:
         self._local = threading.local()
         self._l1 = {}  # {skey: (l1_expiry, full_expiry, data)}
         self._l1_lock = threading.Lock()
+        self._write_count = 0
         os.makedirs(os.path.dirname(CACHE_DB_PATH), exist_ok=True)
         # Initialize WAL mode and table once at startup instead of on every query
         try:
@@ -124,6 +125,9 @@ class SqliteSharedCache:
                 INSERT OR REPLACE INTO SharedResponseCache (cache_key, expiry, data)
                 VALUES (?, ?, ?)
             """, (skey, expiry, json.dumps(data)))
+            self._write_count += 1
+            if self._write_count % 100 == 0:
+                conn.execute("DELETE FROM SharedResponseCache WHERE expiry < ?", (now,))
             conn.commit()
         except Exception as e:
             print(f"Error writing to cache: {e}")

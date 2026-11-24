@@ -11,15 +11,20 @@ import utils_gcp
 DATABASE_URL = utils_gcp.get_secret("DATABASE_URL")
 USE_POSTGRES = bool(DATABASE_URL and (DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://")))
 
-# Postgres Pool & Adapters Initialization
+# Postgres Pool & Adapters Initialization (fork-safe for Gunicorn preload_app)
 pg_pool = None
-if USE_POSTGRES:
+_pg_pool_pid = None
+
+def _ensure_pg_pool():
+    global pg_pool, _pg_pool_pid, USE_POSTGRES
+    if not USE_POSTGRES:
+        return None
+    pid = os.getpid()
+    if pg_pool is not None and _pg_pool_pid == pid:
+        return pg_pool
     try:
         import psycopg2
         from psycopg2 import pool
-        from psycopg2.extras import DictCursor
-        
-        # Parse connection URL to ensure thread-safe pooling config with TCP keepalive
         # Right-sized for e2-micro (2 Gunicorn workers x 4 threads)
         pg_pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=1,
@@ -30,8 +35,8 @@ if USE_POSTGRES:
             keepalives_interval=10,
             keepalives_count=5
         )
-        print("Database Adapter: Initialized PostgreSQL connection pool successfully with TCP keepalive.")
-
+        _pg_pool_pid = pid
+        _CONN_LAST_USED.clear()
         try:
             from psycopg2.extensions import register_adapter, AsIs
             import numpy as np
@@ -39,15 +44,17 @@ if USE_POSTGRES:
             register_adapter(np.float32, lambda val: AsIs(val))
             register_adapter(np.int64, lambda val: AsIs(val))
             register_adapter(np.int32, lambda val: AsIs(val))
-            print("Database Adapter: Registered NumPy type adapters for PostgreSQL.")
-        except Exception as adapter_err:
-            print(f"Database Adapter: Non-critical warning registering NumPy adapters: {adapter_err}")
+        except Exception:
+            pass
+        return pg_pool
     except ImportError:
         print("Database Adapter Error: psycopg2 is not installed. Please install psycopg2-binary.")
         USE_POSTGRES = False
+        return None
     except Exception as e:
         print(f"Database Adapter Error: Failed to initialize PostgreSQL pool: {e}")
         USE_POSTGRES = False
+        return None
 
 
 def translate_query(sql):
@@ -238,13 +245,14 @@ _CONN_IDLE_PING_SECONDS = 30.0
 
 
 def get_clean_pg_conn():
-    if not pg_pool:
+    pool_inst = _ensure_pg_pool()
+    if not pool_inst:
         return None
     now = _time.monotonic()
     for _ in range(3):
         conn = None
         try:
-            conn = pg_pool.getconn()
+            conn = pool_inst.getconn()
             if conn and conn.closed == 0:
                 last_used = _CONN_LAST_USED.get(id(conn), 0.0)
                 if now - last_used > _CONN_IDLE_PING_SECONDS:
@@ -255,17 +263,17 @@ def get_clean_pg_conn():
             elif conn:
                 _CONN_LAST_USED.pop(id(conn), None)
                 try:
-                    pg_pool.putconn(conn, close=True)
+                    pool_inst.putconn(conn, close=True)
                 except Exception:
                     pass
         except Exception:
             if conn:
                 _CONN_LAST_USED.pop(id(conn), None)
                 try:
-                    pg_pool.putconn(conn, close=True)
+                    pool_inst.putconn(conn, close=True)
                 except Exception:
                     pass
-    conn = pg_pool.getconn()
+    conn = pool_inst.getconn()
     if conn:
         _CONN_LAST_USED[id(conn)] = _time.monotonic()
     return conn
@@ -273,7 +281,8 @@ def get_clean_pg_conn():
 
 @contextmanager
 def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0, read_only=False):
-    if USE_POSTGRES and pg_pool:
+    pool_inst = _ensure_pg_pool() if USE_POSTGRES else None
+    if USE_POSTGRES and pool_inst:
         conn = None
         conn_is_bad = False
         try:
@@ -300,7 +309,7 @@ def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0, read_only=False):
                 if conn_is_bad:
                     _CONN_LAST_USED.pop(id(conn), None)
                 try:
-                    pg_pool.putconn(conn, close=conn_is_bad)
+                    pool_inst.putconn(conn, close=conn_is_bad)
                 except Exception:
                     pass
     else:
@@ -322,10 +331,12 @@ def db_session_adapter(sqlite_db_path, sqlite_timeout=30.0, read_only=False):
 from sqlalchemy import create_engine
 
 sa_engine = None
+_sa_engine_pid = None
 
 def init_sa_engine(sqlite_db_path):
-    global sa_engine
-    if sa_engine is not None:
+    global sa_engine, _sa_engine_pid
+    pid = os.getpid()
+    if sa_engine is not None and _sa_engine_pid == pid:
         return sa_engine
     
     if USE_POSTGRES:
@@ -344,6 +355,7 @@ def init_sa_engine(sqlite_db_path):
             f"sqlite:///{sqlite_db_path}",
             connect_args={"timeout": 30.0}
         )
+    _sa_engine_pid = pid
     return sa_engine
 
 @contextmanager

@@ -5,10 +5,11 @@ import multiprocessing
 bind = "127.0.0.1:5001"
 
 # Worker configuration (tuned for e2-micro — 1 GB RAM)
-# 2 workers × 4 threads = 8 concurrent requests, ~120-200 MB gunicorn footprint
+# 2 workers × 4 threads = 8 concurrent requests; preload_app shares read-only pages via CoW
 workers = 2
 worker_class = "gthread"
 threads = 4
+preload_app = True
 
 # Timeout settings (seconds)
 # Max time a worker is allowed to process a single request before Gunicorn restarts it.

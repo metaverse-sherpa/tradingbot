@@ -1256,14 +1256,35 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username))
 
+import threading as _user_cache_threading
+_TG_USER_CACHE = {}  # {chat_id: (expiry_ts, user_dict)}
+_TG_USER_CACHE_LOCK = _user_cache_threading.Lock()
+_TG_USER_CACHE_TTL = 15.0
+
+def invalidate_user_cache(chat_id=None):
+    with _TG_USER_CACHE_LOCK:
+        if chat_id is None:
+            _TG_USER_CACHE.clear()
+        else:
+            _TG_USER_CACHE.pop(chat_id, None)
+
 def get_user(chat_id):
+    now = time.time()
+    with _TG_USER_CACHE_LOCK:
+        cached = _TG_USER_CACHE.get(chat_id)
+        if cached is not None:
+            exp_ts, user_dict = cached
+            if now < exp_ts:
+                return user_dict.copy()
+            _TG_USER_CACHE.pop(chat_id, None)
+
     with sa_db_session(DB_PATH) as conn:
         stmt = select(users_table).where(users_table.c.telegram_chat_id == chat_id)
         row = conn.execute(stmt).fetchone()
     if row:
         row_dict = dict(row._mapping)
         def_syms = "AAPL,MSFT,GOOGL,AMZN,NVDA,AVGO,TSM,NFLX,AMD,QCOM,ORCL,CRM,META,ANET,NOW,ASML,MU,LRCX,PANW,GS,MS,CSCO,AXP,WMT,COST,CMG,TJX,MELI,GE,CAT,ETN,URI,PH,LLY,JNJ,VRTX,ISRG"
-        return {
+        user_obj = {
             "api_key": decrypt(row_dict.get('blofin_api_key')),
             "api_secret": decrypt(row_dict.get('blofin_api_secret')),
             "api_password": decrypt(row_dict.get('blofin_api_password')),
@@ -1308,6 +1329,11 @@ def get_user(chat_id):
             "bingx_futures_type": row_dict.get('bingx_futures_type') or 'perpetual',
             "coinbase_sandbox": row_dict.get('coinbase_sandbox') if row_dict.get('coinbase_sandbox') is not None else 1
         }
+        with _TG_USER_CACHE_LOCK:
+            if len(_TG_USER_CACHE) >= 500:
+                _TG_USER_CACHE.clear()
+            _TG_USER_CACHE[chat_id] = (now + _TG_USER_CACHE_TTL, user_obj.copy())
+        return user_obj
     return None
 
 def update_last_audit(chat_id, stats_dict):
