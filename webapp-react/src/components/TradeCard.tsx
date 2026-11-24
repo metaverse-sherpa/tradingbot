@@ -1,6 +1,7 @@
 import React from 'react';
 import { Share2, TrendingUp, TrendingDown, ChevronDown } from 'lucide-react';
 import { formatPrice } from '../utils/formatters';
+import TradeSetupChart from './TradeSetupChart';
 
 export const formatTimeAgo = (timestamp: number) => {
   if (!timestamp) return 'Recent';
@@ -40,7 +41,6 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
   const targetDollar = trade.qty && trade.tp_price ? Math.abs(trade.tp_price - trade.entry_price) * trade.qty : 0;
   
   const markPrice = trade.current_price || trade.mark_price || trade.exit_price || 0;
-  const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(trade.symbol || '')}&entry=${trade.entry_price || 0}&tp=${trade.tp_price || 0}&sl=${trade.sl_price || 0}&side=${trade.side || ''}&open_ts=${trade.open_time || trade.close_time || 0}&type=${type}&current_price=${markPrice}&strategy=${encodeURIComponent(trade.strategy || '')}&leverage=${trade.leverage || 1}`;
   
   const isClickable = activeTab === 'active';
 
@@ -128,9 +128,15 @@ const TradeCard: React.FC<TradeCardProps> = ({ trade, type, activeTab, hideDolla
               </div>
             );
           })()}
-          <div className="relative w-full bg-[#0b0f19]/50 rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[220px]">
-            <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
-          </div>
+          <TradeSetupChart
+            symbol={trade.symbol || ''}
+            entry={Number(trade.entry_price || 0)}
+            tp={Number(trade.tp_price || 0)}
+            sl={Number(trade.sl_price || 0)}
+            currentPrice={Number(markPrice || 0)}
+            side={trade.side || 'LONG'}
+            openTs={Number(trade.open_time || trade.close_time || 0)}
+          />
         </div>
       )}
     </div>

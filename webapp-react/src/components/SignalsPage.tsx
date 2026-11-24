@@ -6,6 +6,7 @@ import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 import SharePnLModal from './SharePnLModal';
 import LoadingDisplay from './LoadingDisplay';
+import TradeSetupChart from './TradeSetupChart';
 import { isStockMarketOpen } from '../utils/market';
 
 const SignalsPage: React.FC = () => {
@@ -307,9 +308,6 @@ const SignalsPage: React.FC = () => {
     
     const isExpanded = expandedId === signal.id;
 
-    const timeframe = '1D';
-    const stratParam = encodeURIComponent(signal.strategy || 'Sherpa Velocity Pullback');
-    const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(signal.symbol || '')}&entry=${signal.entry_price || 0}&tp=${signal.tp_price || 0}&sl=${signal.sl_price || 0}&side=${signal.side || ''}&open_ts=${signal.open_time || signal.close_time || 0}&type=stock&current_price=${markPrice}&strategy=${stratParam}&timeframe=${timeframe}&leverage=1`;
 
     const sigBase = normalizeBaseSymbol(signal.symbol);
     const activePos = userOpenTrades.find((t: any) => {
@@ -440,9 +438,15 @@ const SignalsPage: React.FC = () => {
             <div className="font-bold text-white text-xs mb-2">
               {signal.symbol} ({signal.side?.toUpperCase()}) - 1D Setup | {signal.strategy}
             </div>
-            <div className="relative w-full bg-[#0b0f19]/50 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center min-h-[220px]">
-              <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
-            </div>
+            <TradeSetupChart
+              symbol={signal.symbol || ''}
+              entry={Number(signal.entry_price || 0)}
+              tp={Number(signal.tp_price || 0)}
+              sl={Number(signal.sl_price || 0)}
+              currentPrice={Number(markPrice || 0)}
+              side={signal.side || 'LONG'}
+              openTs={Number(signal.open_time || signal.close_time || 0)}
+            />
           </div>
         )}
       </div>

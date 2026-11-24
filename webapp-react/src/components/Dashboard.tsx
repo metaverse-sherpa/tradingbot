@@ -6,6 +6,7 @@ import { formatPrice } from '../utils/formatters';
 import { useAuthStore } from '../store/useStore';
 import api from '../lib/api';
 import TradeCard from './TradeCard';
+import TradeSetupChart from './TradeSetupChart';
 import SharePnLModal from './SharePnLModal';
 import { isStockMarketOpen } from '../utils/market';
 
@@ -460,9 +461,6 @@ const Dashboard: React.FC = () => {
               let sl_pct = s.entry_price > 0 && s.sl_price > 0 ? Math.abs((s.sl_price - s.entry_price) / s.entry_price * 100) : 0;
               
               const isExpanded = expandedSignalId === (s.id || idx.toString());
-              const timeframe = '1D';
-              const stratParam = encodeURIComponent(s.strategy || 'Sherpa Velocity Pullback');
-              const chartUrl = `/api/trades/chart?symbol=${encodeURIComponent(s.symbol || '')}&entry=${s.entry_price || 0}&tp=${s.tp_price || 0}&sl=${s.sl_price || 0}&side=${s.side || ''}&open_ts=${s.open_time || s.close_time || 0}&type=stock&current_price=${markPrice}&strategy=${stratParam}&timeframe=${timeframe}&leverage=1`;
 
               return (
                 <div 
@@ -531,9 +529,15 @@ const Dashboard: React.FC = () => {
                       <div className="font-bold text-white text-xs mb-2">
                         {s.symbol} ({s.side?.toUpperCase()}) - 1D Setup | {s.strategy}
                       </div>
-                      <div className="relative w-full bg-[#0b0f19]/50 rounded-lg overflow-hidden border border-white/5 flex items-center justify-center min-h-[160px]">
-                        <img src={chartUrl} className="w-full h-auto block" alt="Signal Chart" />
-                      </div>
+                      <TradeSetupChart
+                        symbol={s.symbol || ''}
+                        entry={Number(s.entry_price || 0)}
+                        tp={Number(s.tp_price || 0)}
+                        sl={Number(s.sl_price || 0)}
+                        currentPrice={Number(markPrice || 0)}
+                        side={s.side || 'LONG'}
+                        openTs={Number(s.open_time || s.close_time || 0)}
+                      />
                     </div>
                   )}
                 </div>

@@ -2404,6 +2404,32 @@ def _fetch_stock_chart_ohlcv(symbol):
 
     return df_chart
 
+@trades_bp.route('/api/trades/ohlcv', methods=['GET'])
+def get_trade_ohlcv():
+    """Lightweight JSON OHLCV endpoint for instant client-side candlestick charts (no matplotlib/PIL)."""
+    symbol = (request.args.get("symbol") or "").strip().upper()
+    if not symbol:
+        return jsonify({"error": "Symbol required"}), 400
+
+    limit = min(90, max(15, int(request.args.get("limit", 45))))
+    df = _fetch_stock_chart_ohlcv(symbol)
+    candles = []
+    if df is not None and not df.empty:
+        tail = df.tail(limit)
+        for _, row in tail.iterrows():
+            try:
+                candles.append({
+                    "t": int(row["timestamp"]),
+                    "o": round(float(row["open"]), 4),
+                    "h": round(float(row["high"]), 4),
+                    "l": round(float(row["low"]), 4),
+                    "c": round(float(row["close"]), 4),
+                })
+            except Exception:
+                continue
+
+    return jsonify({"symbol": symbol, "candles": candles}), 200
+
 @trades_bp.route('/api/trades/chart', methods=['GET'])
 def get_trade_chart():
     symbol = request.args.get("symbol")

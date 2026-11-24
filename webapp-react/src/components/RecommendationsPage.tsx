@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 import LoadingDisplay from './LoadingDisplay';
+import TradeSetupChart from './TradeSetupChart';
 import { isStockMarketOpen } from '../utils/market';
 import { formatPrice } from '../utils/formatters';
 
@@ -948,15 +949,17 @@ const RecommendationsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Embedded chart showing candles + Entry / TP / SL status */}
+                  {/* Embedded interactive candlestick chart showing Entry / TP / SL status */}
                   {expandedCharts[rec.id] && (
-                    <div className="mt-2 mb-4 bg-[#0b0f19]/60 rounded-xl overflow-hidden border border-white/10 animate-in fade-in slide-in-from-top-2 duration-200 min-h-[200px] flex items-center justify-center relative">
-                      <img
-                        src={`/api/trades/chart?symbol=${encodeURIComponent(
-                          rec.symbol
-                        )}&entry=${rec.entry_price}&tp=${rec.target_price}&sl=${rec.stop_loss}&side=LONG&open_ts=${rec.created_at}&current_price=${rec.current_price}&type=stock&strategy=AI+Recommendations&timeframe=1D&leverage=1`}
-                        alt={`${rec.symbol} price action chart`}
-                        className="w-full h-auto object-cover block"
+                    <div className="mt-2 mb-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <TradeSetupChart
+                        symbol={rec.symbol}
+                        entry={Number(rec.entry_price || 0)}
+                        tp={Number(rec.target_price || 0)}
+                        sl={Number(rec.stop_loss || 0)}
+                        currentPrice={Number(rec.current_price || rec.entry_price || 0)}
+                        side="LONG"
+                        openTs={Number(rec.created_at || 0)}
                       />
                     </div>
                   )}
