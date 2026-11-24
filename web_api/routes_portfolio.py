@@ -70,18 +70,31 @@ def _get_spy_benchmark_return(hold_days):
     return ret_pct, effective_days
 
 # --- 📊 Global Market Data Cache (shared across all users) ---
+BENCHMARK_SYMBOLS = {"SPY", "QQQ"}
+
 STOCK_WATCHLIST = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "BRK-B",
-    "JPM", "V", "MA", "UNH", "LLY", "AVGO", "COST", "HD",
-    "PG", "JNJ", "ABBV", "CRM", "AMD", "NFLX", "XOM", "CVX",
-    "PEP", "KO", "WMT", "MRK", "ORCL", "ADBE"
+    # Benchmarks (used for macro regime, excluded from picks)
+    "SPY", "QQQ",
+    # Tech & AI / Semiconductors
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AVGO", "AMD", "ORCL", "CRM", "ADBE", "PANW", "PLTR", "NFLX",
+    # Financials
+    "BRK-B", "JPM", "V", "MA", "GS", "BLK", "SCHW",
+    # Healthcare
+    "LLY", "UNH", "JNJ", "ABBV", "MRK", "ISRG", "TMO",
+    # Consumer & Retail
+    "COST", "WMT", "HD", "PG", "KO", "PEP", "MCD", "TSLA",
+    # Industrials, Energy & Utilities / REITs
+    "CAT", "GE", "ETN", "LMT", "XOM", "CVX", "NEE", "DUK", "O",
+    # Core Income / Defensive ETFs
+    "SCHD", "VYM"
 ]
 
-CRYPTO_WATCHLIST = [
-    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
-    "DOT", "LINK", "XLM", "SHIB", "AAVE", "LTC", "ATOM",
-    "NEAR", "LDO", "ARB", "OP", "RENDER"
-]
+INCOME_DEFENSIVE_SYMBOLS = {
+    "SCHD", "VYM", "JNJ", "PG", "KO", "PEP", "ABBV", "MRK",
+    "XOM", "CVX", "NEE", "DUK", "O", "MCD", "JPM", "BRK-B", "WMT", "COST", "HD"
+}
+
+CRYPTO_WATCHLIST = []
 
 _MARKET_DATA_CACHE = {
     "stocks": {},
@@ -98,20 +111,166 @@ _SPECULATIVE_STOCK_CACHE = {
     "last_refresh": 0
 }
 _SPECULATIVE_MARKET_DATA_LOCK = threading.Lock()
-FALLBACK_SPECULATIVE_WATCHLIST = ['TSLA', 'PLTR', 'AMD', 'COIN', 'MARA', 'RIOT', 'SOXL', 'UPST', 'CLSK', 'SOFI']
+FALLBACK_SPECULATIVE_WATCHLIST = ['TSLA', 'PLTR', 'AMD', 'COIN', 'MARA', 'RIOT', 'SOXL', 'UPST', 'CLSK', 'SOFI', 'HOOD', 'APP', 'SMCI', 'RKLB', 'IONQ']
+
+def _compute_stock_quant_metrics(sym, df):
+    """Compute technical & screening metrics directly from a 1y daily OHLCV DataFrame."""
+    closes = df["Close"].dropna()
+    if len(closes) < 15:
+        return None
+
+    current_price = float(closes.iloc[-1])
+    if current_price <= 0:
+        return None
+
+    price_7d_ago = float(closes.iloc[-6]) if len(closes) >= 6 else float(closes.iloc[0])
+    price_30d_ago = float(closes.iloc[-22]) if len(closes) >= 22 else float(closes.iloc[0])
+
+    ret_7d = ((current_price - price_7d_ago) / price_7d_ago) * 100.0
+    ret_30d = ((current_price - price_30d_ago) / price_30d_ago) * 100.0
+    avg_vol = int(df["Volume"].dropna().tail(20).mean()) if "Volume" in df.columns and len(df["Volume"].dropna()) > 0 else 0
+
+    high_series = df["High"].dropna() if "High" in df.columns else closes
+    low_series = df["Low"].dropna() if "Low" in df.columns else closes
+    high_52w = float(high_series.max()) if len(high_series) > 0 else current_price
+    low_52w = float(low_series.min()) if len(low_series) > 0 else current_price
+    swing_low_20d = float(low_series.tail(20).min()) if len(low_series) >= 5 else round(current_price * 0.92, 2)
+
+    # RSI(14)
+    delta = closes.diff().dropna()
+    gains = delta.clip(lower=0.0)
+    losses = (-delta).clip(lower=0.0)
+    avg_gain = float(gains.tail(14).mean()) if len(gains) >= 14 else float(gains.mean())
+    avg_loss = float(losses.tail(14).mean()) if len(losses) >= 14 else float(losses.mean())
+    if avg_loss == 0:
+        rsi_14 = 100.0 if avg_gain > 0 else 50.0
+    else:
+        rs = avg_gain / avg_loss
+        rsi_14 = 100.0 - (100.0 / (1.0 + rs))
+
+    # Moving Averages (50d & 200d)
+    sma_50 = float(closes.tail(50).mean()) if len(closes) >= 50 else float(closes.mean())
+    sma_200 = float(closes.tail(200).mean()) if len(closes) >= 120 else None
+    pct_vs_sma50 = ((current_price - sma_50) / sma_50) * 100.0 if sma_50 > 0 else 0.0
+    pct_vs_sma200 = ((current_price - sma_200) / sma_200) * 100.0 if sma_200 and sma_200 > 0 else None
+
+    if sma_200 is not None:
+        if current_price > sma_50 and sma_50 > sma_200:
+            trend = "Strong Uptrend"
+        elif current_price > sma_200 and current_price <= sma_50:
+            trend = "Pullback in Uptrend"
+        elif current_price > sma_50:
+            trend = "Reversal / Recovering"
+        else:
+            trend = "Downtrend"
+    else:
+        trend = "Uptrend" if current_price > sma_50 else "Downtrend"
+
+    # ATR(14)
+    try:
+        prev_close = closes.shift(1)
+        tr_df = df[["High", "Low", "Close"]].dropna()
+        if len(tr_df) >= 15:
+            tr = (tr_df["High"] - tr_df["Low"]).combine(
+                (tr_df["High"] - prev_close.reindex(tr_df.index)).abs(), max
+            ).combine(
+                (tr_df["Low"] - prev_close.reindex(tr_df.index)).abs(), max
+            )
+            atr_14 = float(tr.tail(14).mean())
+        else:
+            atr_14 = current_price * 0.025
+    except Exception:
+        atr_14 = current_price * 0.025
+    atr_pct = (atr_14 / current_price) * 100.0 if current_price > 0 else 2.5
+
+    return {
+        "price": round(current_price, 2),
+        "7d_return": round(ret_7d, 2),
+        "30d_return": round(ret_30d, 2),
+        "avg_volume": avg_vol,
+        "52w_high": round(high_52w, 2),
+        "52w_low": round(low_52w, 2),
+        "pct_from_52w_high": round(((current_price - high_52w) / high_52w) * 100.0, 2) if high_52w > 0 else 0.0,
+        "rsi_14": round(rsi_14, 1),
+        "sma_50": round(sma_50, 2),
+        "pct_vs_sma50": round(pct_vs_sma50, 1),
+        "sma_200": round(sma_200, 2) if sma_200 is not None else None,
+        "pct_vs_sma200": round(pct_vs_sma200, 1) if pct_vs_sma200 is not None else None,
+        "trend": trend,
+        "atr_14": round(atr_14, 2),
+        "atr_pct": round(atr_pct, 2),
+        "swing_low_20d": round(swing_low_20d, 2),
+    }
+
+def _enrich_candidate_fundamentals(symbols):
+    """Fetch & cache fundamentals (sector, forward_pe, dividend_yield, analyst target, market_cap) for candidate stocks."""
+    now_ts = time.time()
+    to_fetch = []
+    out = {}
+    for sym in symbols:
+        cached = _ASSET_META_CACHE.get(sym)
+        if cached and (now_ts - cached.get("ts", 0) < _ASSET_META_TTL) and "dividend_yield" in cached:
+            out[sym] = cached
+        else:
+            to_fetch.append(sym)
+
+    if to_fetch:
+        def fetch_one(sym):
+            try:
+                info = yf.Ticker(sym).info or {}
+                raw_div = info.get("dividendYield")
+                # yfinance dividendYield can be percentage (e.g. 3.45) or decimal (0.0345) depending on version
+                div_yield_pct = None
+                if raw_div is not None:
+                    try:
+                        val = float(raw_div)
+                        div_yield_pct = round(val * 100.0, 2) if val < 0.25 else round(val, 2)
+                    except (ValueError, TypeError):
+                        div_yield_pct = None
+                raw_pe = info.get("forwardPE") or info.get("trailingPE")
+                fwd_pe = round(float(raw_pe), 1) if raw_pe and float(raw_pe) > 0 else None
+                raw_beta = info.get("beta") or info.get("beta3Year")
+                beta = round(float(raw_beta), 2) if raw_beta is not None else None
+                meta = {
+                    "target_price": info.get("targetMeanPrice"),
+                    "recommendation": info.get("recommendationKey"),
+                    "sector": info.get("sector") or info.get("category") or ("ETF / Index" if info.get("quoteType") == "ETF" else "Other"),
+                    "beta": beta,
+                    "forward_pe": fwd_pe,
+                    "dividend_yield": div_yield_pct,
+                    "market_cap": int(info.get("marketCap") or 0),
+                    "ts": now_ts,
+                }
+                _ASSET_META_CACHE[sym] = meta
+                return sym, meta
+            except Exception:
+                return sym, _ASSET_META_CACHE.get(sym) or {}
+
+        ex = concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(to_fetch)))
+        try:
+            futs = [ex.submit(fetch_one, s) for s in to_fetch]
+            done, _ = concurrent.futures.wait(futs, timeout=12)
+            for f in done:
+                try:
+                    sym, meta = f.result(timeout=0)
+                    out[sym] = meta
+                except Exception:
+                    pass
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
+
+    return out
 
 def _refresh_market_data_cache():
-    """Fetch 30d price history for all watchlist assets and compute screening metrics."""
+    """Fetch 1y daily history for all watchlist US equities and compute technical screening metrics."""
     try:
         now = time.time()
         new_stocks = {}
-        new_crypto = {}
 
-        # --- STOCKS ---
         try:
             stock_df = yf.download(
                 STOCK_WATCHLIST,
-                period="1mo",
+                period="1y",
                 interval="1d",
                 group_by="ticker",
                 auto_adjust=True,
@@ -120,39 +279,10 @@ def _refresh_market_data_cache():
             )
             for sym in STOCK_WATCHLIST:
                 try:
-                    if len(STOCK_WATCHLIST) == 1:
-                        df = stock_df
-                    else:
-                        df = stock_df[sym]
-
-                    closes = df["Close"].dropna()
-                    if len(closes) < 2:
-                        continue
-
-                    current_price = float(closes.iloc[-1])
-                    price_7d_ago = float(closes.iloc[-6]) if len(closes) >= 6 else float(closes.iloc[0])
-                    price_30d_ago = float(closes.iloc[0])
-
-                    ret_7d = ((current_price - price_7d_ago) / price_7d_ago) * 100
-                    ret_30d = ((current_price - price_30d_ago) / price_30d_ago) * 100
-                    avg_vol = int(df["Volume"].dropna().mean()) if "Volume" in df.columns else 0
-
-                    ticker_obj = yf.Ticker(sym)
-                    fi = ticker_obj.fast_info
-                    high_52w = float(fi.get("year_high", current_price))
-                    low_52w = float(fi.get("year_low", current_price))
-                    market_cap = int(fi.get("market_cap", 0))
-
-                    new_stocks[sym] = {
-                        "price": round(current_price, 2),
-                        "7d_return": round(ret_7d, 2),
-                        "30d_return": round(ret_30d, 2),
-                        "avg_volume": avg_vol,
-                        "52w_high": round(high_52w, 2),
-                        "52w_low": round(low_52w, 2),
-                        "market_cap": market_cap,
-                        "pct_from_52w_high": round(((current_price - high_52w) / high_52w) * 100, 2)
-                    }
+                    df = stock_df if len(STOCK_WATCHLIST) == 1 else stock_df[sym]
+                    metrics = _compute_stock_quant_metrics(sym, df)
+                    if metrics:
+                        new_stocks[sym] = metrics
                 except Exception:
                     continue
         except Exception as e:
@@ -164,16 +294,15 @@ def _refresh_market_data_cache():
             _MARKET_DATA_CACHE["crypto"] = {}
             _MARKET_DATA_CACHE["last_refresh"] = now
 
-        print(f"[MarketCache] Refreshed: {len(new_stocks)} stocks")
+        print(f"[MarketCache] Refreshed: {len(new_stocks)} US equities with quant indicators")
     except Exception as e:
         print(f"[MarketCache] Fatal refresh error: {e}")
 
 def _schedule_market_data_refresh():
     """Run market data refresh every 4 hours in a background thread."""
     _refresh_market_data_cache()
-    # Schedule next run in 4 hours (14400 seconds)
     t = threading.Timer(14400, _schedule_market_data_refresh)
-    t.daemon = True  # Dies when main process dies
+    t.daemon = True
     t.start()
 
 # Start the first refresh in a background thread on module load
@@ -198,7 +327,7 @@ def _fetch_speculative_stock_symbols():
             print(f"[MarketCache] Speculative fetch error for {scr_id}: {e}")
     if not symbols:
         return FALLBACK_SPECULATIVE_WATCHLIST
-    return list(symbols)
+    return list(symbols)[:30]
 
 def _get_speculative_market_data():
     with _SPECULATIVE_MARKET_DATA_LOCK:
@@ -209,35 +338,13 @@ def _get_speculative_market_data():
     symbols = _fetch_speculative_stock_symbols()
     new_stocks = {}
     try:
-        stock_df = yf.download(symbols, period="1mo", interval="1d", group_by="ticker", auto_adjust=True, threads=True, progress=False)
+        stock_df = yf.download(symbols, period="1y", interval="1d", group_by="ticker", auto_adjust=True, threads=True, progress=False)
         for sym in symbols:
             try:
                 df = stock_df if len(symbols) == 1 else stock_df[sym]
-                closes = df["Close"].dropna()
-                if len(closes) < 2: continue
-                current_price = float(closes.iloc[-1])
-                price_7d_ago = float(closes.iloc[-6]) if len(closes) >= 6 else float(closes.iloc[0])
-                price_30d_ago = float(closes.iloc[0])
-                ret_7d = ((current_price - price_7d_ago) / price_7d_ago) * 100
-                ret_30d = ((current_price - price_30d_ago) / price_30d_ago) * 100
-                avg_vol = int(df["Volume"].dropna().mean()) if "Volume" in df.columns else 0
-                
-                ticker_obj = yf.Ticker(sym)
-                fi = ticker_obj.fast_info
-                high_52w = float(fi.get("year_high", current_price))
-                low_52w = float(fi.get("year_low", current_price))
-                market_cap = int(fi.get("market_cap", 0))
-
-                new_stocks[sym] = {
-                    "price": round(current_price, 2),
-                    "7d_return": round(ret_7d, 2),
-                    "30d_return": round(ret_30d, 2),
-                    "avg_volume": avg_vol,
-                    "52w_high": round(high_52w, 2),
-                    "52w_low": round(low_52w, 2),
-                    "market_cap": market_cap,
-                    "pct_from_52w_high": round(((current_price - high_52w) / high_52w) * 100, 2)
-                }
+                metrics = _compute_stock_quant_metrics(sym, df)
+                if metrics and metrics["price"] >= 5.0 and metrics["avg_volume"] >= 500000:
+                    new_stocks[sym] = metrics
             except Exception:
                 continue
         with _SPECULATIVE_MARKET_DATA_LOCK:
@@ -245,35 +352,35 @@ def _get_speculative_market_data():
             _SPECULATIVE_STOCK_CACHE["last_refresh"] = time.time()
     except Exception as e:
         print(f"[MarketCache] Failed to download speculative data: {e}")
-    
+
     return new_stocks
 
 def _build_market_research_brief(user_id, risk_profile="Moderate", investment_goal="Growth"):
-    """Build a structured research brief from cached market data + active signals."""
+    """Build a global, profile-tailored US equities quant research brief (does NOT leak a single user's personal holdings)."""
     # 1. Get cached market data
     with _MARKET_DATA_LOCK:
-        stock_data = dict(_MARKET_DATA_CACHE.get("stocks", {}))
-        crypto_data = dict(_MARKET_DATA_CACHE.get("crypto", {}))
-        last_refresh = _MARKET_DATA_CACHE.get("last_refresh", 0)
+        core_stock_data = dict(_MARKET_DATA_CACHE.get("stocks", {}))
 
-    # If cache is empty or stale (>12h), do an on-demand refresh
-    if not stock_data and not crypto_data:
+    if not core_stock_data:
         _refresh_market_data_cache()
         with _MARKET_DATA_LOCK:
-            stock_data = dict(_MARKET_DATA_CACHE.get("stocks", {}))
-            crypto_data = dict(_MARKET_DATA_CACHE.get("crypto", {}))
+            core_stock_data = dict(_MARKET_DATA_CACHE.get("stocks", {}))
 
-    # If aggressive and speculation, swap the stock_data with dynamic speculative candidates
+    stock_data = dict(core_stock_data)
+
+    # If aggressive and speculation, swap candidates with dynamic speculative screen (keeping SPY/QQQ for macro)
     if risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation":
         speculative_data = _get_speculative_market_data()
         if speculative_data:
-            stock_data = speculative_data
+            stock_data = dict(speculative_data)
+            for bm in BENCHMARK_SYMBOLS:
+                if bm in core_stock_data:
+                    stock_data[bm] = core_stock_data[bm]
 
     # 2. Get active bot signals
     active_signals = get_active_signals_internal(bypass_cache=False)
     open_longs = [s for s in active_signals if s.get("status") == "open" and s.get("side", "").lower() == "long"]
 
-    # Build lookup: symbol -> signal data
     signal_lookup = {}
     for s in open_longs:
         sym = s.get("symbol", "").replace("/USDT", "").replace("/USD", "").upper()
@@ -284,97 +391,132 @@ def _build_market_research_brief(user_id, risk_profile="Moderate", investment_go
             "sl_price": s.get("sl_price", 0),
         }
 
-    # 3. Get user's existing holdings to exclude
-    held_symbols = set()
-    with db_session() as conn:
-        c = conn.cursor()
-        c.execute('SELECT symbol FROM PortfolioPositions WHERE user_id = ?', (user_id,))
-        for row in c.fetchall():
-            held_symbols.add(database.decrypt(row[0]).upper())
+    # 3. Check existing active recommendations & 14-day stop-loss cooldown in AIRecommendations
+    active_rec_symbols = set()
+    cooldown_symbols = set()
+    active_rec_lines = []
+    cooldown_cutoff = int(time.time()) - 14 * 86400
+    try:
+        with db_session() as conn:
+            c = conn.cursor()
+            c.execute(
+                "SELECT symbol, entry_price, target_price, stop_loss FROM AIRecommendations WHERE status = 'active' AND risk_profile = ? AND investment_goal = ?",
+                (risk_profile, investment_goal)
+            )
+            for row in c.fetchall():
+                s_u = str(row[0]).upper()
+                active_rec_symbols.add(s_u)
+                active_rec_lines.append(f"{s_u} (Entry ${row[1]}, Target ${row[2]}, SL ${row[3]})")
 
-    # Determine Macro Market Regime (via SPY if present, or overall average stock 7d return)
-    spy_7d = stock_data.get("SPY", {}).get("7d_return", 0.0) if "SPY" in stock_data else 0.0
-    if not spy_7d and stock_data:
-        spy_7d = sum(d.get("7d_return", 0.0) for d in stock_data.values()) / len(stock_data)
+            c.execute(
+                "SELECT symbol FROM AIRecommendations WHERE LOWER(status) IN ('hit_stop_loss', 'stopped_out', 'loss') AND created_at >= ?",
+                (cooldown_cutoff,)
+            )
+            for row in c.fetchall():
+                cooldown_symbols.add(str(row[0]).upper())
+    except Exception as e:
+        print(f"[MarketCache] Error reading AIRecommendations state: {e}")
 
-    if spy_7d >= 1.5:
-        market_regime = f"BULLISH MOMENTUM (SPY 7d: {spy_7d:+.1f}%) - Favor growth & breakouts"
-    elif spy_7d <= -1.5:
-        market_regime = f"PULLBACK / CONSOLIDATION (SPY 7d: {spy_7d:+.1f}%) - Favor defensive value, dip buys, & wider support SLs"
+    excluded_symbols = BENCHMARK_SYMBOLS | active_rec_symbols | cooldown_symbols
+
+    # 4. Macro Market Regime via real SPY & QQQ technicals
+    spy = core_stock_data.get("SPY") or stock_data.get("SPY")
+    qqq = core_stock_data.get("QQQ") or stock_data.get("QQQ")
+    if spy:
+        spy_7d = spy.get("7d_return", 0.0)
+        spy_30d = spy.get("30d_return", 0.0)
+        spy_trend = spy.get("trend", "Unknown")
+        spy_rsi = spy.get("rsi_14", 50.0)
+        qqq_str = f" | QQQ 30d: {qqq['30d_return']:+.1f}% ({qqq['trend']})" if qqq else ""
+        if spy_7d >= 1.5 and spy_trend in ("Strong Uptrend", "Reversal / Recovering"):
+            market_regime = f"BULLISH MOMENTUM (SPY 7d: {spy_7d:+.1f}%, 30d: {spy_30d:+.1f}%, RSI: {spy_rsi}, {spy_trend}{qqq_str}) - Favor trend-following breakouts & quality leaders"
+        elif spy_7d <= -1.5 or spy_trend == "Downtrend":
+            market_regime = f"PULLBACK / RISK-OFF (SPY 7d: {spy_7d:+.1f}%, 30d: {spy_30d:+.1f}%, RSI: {spy_rsi}, {spy_trend}{qqq_str}) - Prioritize Pullback/Dip value, defensive quality, & ATR-buffered support stops"
+        else:
+            market_regime = f"NEUTRAL / CONSOLIDATION (SPY 7d: {spy_7d:+.1f}%, 30d: {spy_30d:+.1f}%, RSI: {spy_rsi}, {spy_trend}{qqq_str}) - Favor selective high-conviction setups near support with strong R:R"
     else:
-        market_regime = f"NEUTRAL / RANGEBOUND (SPY 7d: {spy_7d:+.1f}%) - Favor high-conviction signals with tight technical levels"
+        avg_7d = sum(d.get("7d_return", 0.0) for d in stock_data.values()) / max(1, len(stock_data))
+        market_regime = f"BROAD MARKET (Avg 7d: {avg_7d:+.1f}%)"
 
-    # 4. Build the text brief
-    brief_lines = []
-    brief_lines.append(f"=== MACRO MARKET REGIME ===")
-    brief_lines.append(f"Current Environment: {market_regime}")
-    brief_lines.append("")
-    
-    brief_lines.append("=== STOCK CANDIDATES ===")
-    brief_lines.append("(Excludes assets user currently holds. Grouped into Momentum Leaders and Pullback/Dip Opportunities.)")
-    brief_lines.append("")
+    # 5. Select candidate buckets & enrich with cached fundamentals
+    eligible_syms = [s for s in stock_data.keys() if s not in excluded_symbols]
 
-    all_stock_syms = [s for s in stock_data.keys() if s not in held_symbols]
-    
-    # 1. Momentum Leaders (Top 30d return)
-    momentum_stocks = sorted(all_stock_syms, key=lambda s: stock_data[s].get("30d_return", 0), reverse=True)[:10]
-    
-    # 2. Pullback / Dip Opportunities (5% - 25% below 52w high, sorted by market cap or 30d quality)
-    dip_candidates = [s for s in all_stock_syms if -25.0 <= stock_data[s].get("pct_from_52w_high", 0) <= -5.0]
-    dip_stocks = sorted(dip_candidates, key=lambda s: stock_data[s].get("market_cap", 0), reverse=True)[:10]
+    # Category A: Momentum Leaders (above 50d SMA, not wildly overbought RSI < 78)
+    mom_pool = [s for s in eligible_syms if stock_data[s].get("pct_vs_sma50", -99) > 0 and stock_data[s].get("rsi_14", 50) < 78]
+    if len(mom_pool) < 8:
+        mom_pool = eligible_syms
+    momentum_stocks = sorted(mom_pool, key=lambda s: stock_data[s].get("30d_return", 0), reverse=True)[:10]
 
-    brief_lines.append("--- CATEGORY A: MOMENTUM LEADERS (Top 30d Gains) ---")
+    # Category B: Quality Pullback / Dip Opportunities (5%-25% off 52w high, RSI 30-60)
+    dip_pool = [
+        s for s in eligible_syms
+        if -28.0 <= stock_data[s].get("pct_from_52w_high", 0) <= -5.0
+        and 25.0 <= stock_data[s].get("rsi_14", 50) <= 62.0
+        and s not in momentum_stocks
+    ]
+    dip_stocks = sorted(dip_pool, key=lambda s: stock_data[s].get("pct_vs_sma200") or -99, reverse=True)[:10]
+
+    # Category C: Income & Defensive Leaders (for Conservative or Income goals)
+    is_defensive_goal = (risk_profile.lower() == "conservative" or investment_goal.lower() == "income")
+    income_stocks = [s for s in eligible_syms if s in INCOME_DEFENSIVE_SYMBOLS][:12] if is_defensive_goal else []
+
+    all_selected = list(dict.fromkeys(momentum_stocks + dip_stocks + income_stocks))
+    fundamentals = _enrich_candidate_fundamentals(all_selected)
+
+    def format_candidate(sym):
+        d = stock_data[sym]
+        f = fundamentals.get(sym, {})
+        sig = signal_lookup.get(sym)
+        sector = f.get("sector") or "N/A"
+        pe_str = f"FwdP/E={f['forward_pe']}" if f.get("forward_pe") else "FwdP/E=N/A"
+        div_str = f"Div={f['dividend_yield']}%" if f.get("dividend_yield") else "Div=0%"
+        analyst_str = ""
+        if f.get("target_price") and d["price"] > 0:
+            upside = ((float(f["target_price"]) - d["price"]) / d["price"]) * 100.0
+            analyst_str = f" | AnalystTarget=${float(f['target_price']):.2f} ({upside:+.1f}%)"
+        sma200_str = f"vs200d={d['pct_vs_sma200']:+.1f}%" if d.get("pct_vs_sma200") is not None else "vs200d=N/A"
+        line = (
+            f"  {sym} [{sector}]: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
+            f"Trend={d['trend']} (vs50d={d['pct_vs_sma50']:+.1f}%, {sma200_str}) | RSI14={d['rsi_14']} | "
+            f"ATR14={d['atr_pct']}% (${d['atr_14']}) | 20dLow=${d['swing_low_20d']} | "
+            f"52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}%) | {pe_str} | {div_str}{analyst_str}"
+        )
+        if sig:
+            tp_upside = ((sig['tp_price'] - sig['entry_price']) / sig['entry_price'] * 100) if sig['entry_price'] > 0 else 0
+            line += f" | ⚡ ACTIVE BOT SIGNAL (Strategy: {sig['strategy']}, TP Upside: {tp_upside:+.1f}%)"
+        return line
+
+    # 6. Build the structured text brief
+    brief_lines = [
+        "=== MACRO MARKET REGIME ===",
+        f"Current Environment: {market_regime}",
+        "",
+    ]
+    if active_rec_lines:
+        brief_lines.append("=== ALREADY ACTIVE RECOMMENDATIONS FOR THIS PROFILE (DO NOT DUPLICATE; DIVERSIFY SECTORS) ===")
+        brief_lines.append("  " + ", ".join(active_rec_lines[:10]))
+        brief_lines.append("")
+    if cooldown_symbols:
+        brief_lines.append(f"=== 14-DAY STOP-LOSS COOLDOWN (EXCLUDED) ===\n  {', '.join(sorted(cooldown_symbols))}")
+        brief_lines.append("")
+
+    brief_lines.append("=== US EQUITIES CANDIDATES ===")
+    brief_lines.append("--- CATEGORY A: MOMENTUM & TREND LEADERS (Above 50d SMA, RSI < 78) ---")
     for sym in momentum_stocks:
-        d = stock_data[sym]
-        sig = signal_lookup.get(sym)
-        line = (
-            f"  {sym}: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
-            f"Vol={d['avg_volume']:,} | 52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}% from high) | "
-            f"MktCap=${d['market_cap']:,}"
-        )
-        if sig:
-            tp_upside = ((sig['tp_price'] - sig['entry_price']) / sig['entry_price'] * 100) if sig['entry_price'] > 0 else 0
-            line += f" | ⚡ ACTIVE BOT SIGNAL (Strategy: {sig['strategy']}, TP Upside: {tp_upside:+.1f}%)"
-        brief_lines.append(line)
+        brief_lines.append(format_candidate(sym))
 
     brief_lines.append("")
-    brief_lines.append("--- CATEGORY B: PULLBACK & DIP OPPORTUNITIES (Quality assets 5%-25% off 52w Highs) ---")
+    brief_lines.append("--- CATEGORY B: QUALITY PULLBACK & DIP OPPORTUNITIES (5%-28% off 52w High, RSI 25-62) ---")
     for sym in dip_stocks:
-        if sym in momentum_stocks:
-            continue
-        d = stock_data[sym]
-        sig = signal_lookup.get(sym)
-        line = (
-            f"  {sym}: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
-            f"Vol={d['avg_volume']:,} | 52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}% from high) | "
-            f"MktCap=${d['market_cap']:,}"
-        )
-        if sig:
-            tp_upside = ((sig['tp_price'] - sig['entry_price']) / sig['entry_price'] * 100) if sig['entry_price'] > 0 else 0
-            line += f" | ⚡ ACTIVE BOT SIGNAL (Strategy: {sig['strategy']}, TP Upside: {tp_upside:+.1f}%)"
-        brief_lines.append(line)
+        brief_lines.append(format_candidate(sym))
 
-    brief_lines.append("")
-    brief_lines.append("=== CRYPTO CANDIDATES ===")
-    brief_lines.append("(Sorted by 30-day return. Assets user already holds excluded.)")
-    brief_lines.append("(Note: Crypto bot signals are 15-minute scalps, NOT buy-and-hold. Weigh them less.)")
-    brief_lines.append("")
+    if income_stocks:
+        brief_lines.append("")
+        brief_lines.append("--- CATEGORY C: INCOME & DEFENSIVE LEADERS (Prioritize Dividend Yield & Low Volatility) ---")
+        for sym in income_stocks:
+            brief_lines.append(format_candidate(sym))
 
-    for sym in sorted(crypto_data.keys(), key=lambda s: crypto_data[s].get("30d_return", 0), reverse=True):
-        if sym in held_symbols:
-            continue
-        d = crypto_data[sym]
-        sig = signal_lookup.get(sym)
-        line = (
-            f"  {sym}: Price=${d['price']} | 7d={d['7d_return']:+.1f}% | 30d={d['30d_return']:+.1f}% | "
-            f"Vol={d['avg_volume']:,} | 52wHigh=${d['52w_high']} ({d['pct_from_52w_high']:+.1f}% from high) | "
-            f"MktCap=${d['market_cap']:,}"
-        )
-        if sig:
-            line += f" | ⚡ ACTIVE SIGNAL (Strategy: {sig['strategy']}, short-term scalp)"
-        brief_lines.append(line)
-
-    return "\n".join(brief_lines)
+    return "\n".join(brief_lines), stock_data, set(all_selected)
 
 def get_stock_prices(symbols):
     """Fetch batch stock prices from Alpaca snapshots API using system credentials."""
@@ -1698,29 +1840,36 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
         if "good_buys" in analysis_data and not is_admin and not force_regenerate:
              pass 
 
-        # Build the market research brief from cached data
-        research_brief = _build_market_research_brief(user_id, risk_profile, investment_goal)
+        # Build the quant US equities market research brief (global, not biased by one user's personal holdings)
+        research_brief, stock_lookup, valid_candidate_syms = _build_market_research_brief(user_id, risk_profile, investment_goal)
 
-        # Construct the AI Prompt
+        is_speculative = (risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation")
+        is_income = (risk_profile.lower() == "conservative" or investment_goal.lower() == "income")
+
+        # Construct the AI Prompt (100% US Equities, quant-grounded)
         system_instruction = (
-            "You are a senior quantitative portfolio analyst AI for Metaverse Sherpa. "
-            "You are selecting the best buy-and-hold investment ideas for a user.\n\n"
-            f"User's risk profile: '{risk_profile}'\n"
-            f"User's investment goal: '{investment_goal}'\n\n"
+            "You are a senior quantitative US equities portfolio analyst AI for Metaverse Sherpa. "
+            "You are selecting the top 5 institutional-grade US equity / ETF buy-and-hold ideas.\n\n"
+            f"Target Risk Profile: '{risk_profile}'\n"
+            f"Target Investment Goal: '{investment_goal}'\n\n"
             "IMPORTANT STRATEGY & RISK MANAGEMENT RULES:\n"
-            "1. Base your analysis ONLY on the market data provided below. Do NOT fabricate numbers.\n"
-            "2. ADAPT TO MACRO REGIME: Read the MACRO MARKET REGIME section at top of brief. If market is in Pullback/Consolidation, prioritize Category B (Pullback/Dip candidates) and defensive value. If Bullish, prioritize Category A (Momentum leaders).\n"
-            "3. BALANCED SELECTION: Select a healthy mix of both Category A (Momentum Leaders) and Category B (Pullback / Dip Opportunities). Avoid selecting exclusively top-performing stocks that are overextended at local tops.\n"
-            "4. STRICT RISK-TO-REWARD (MINIMUM 2:1 R:R): The potential upside to `target_price` MUST be at least TWO TIMES the potential downside to `stop_loss`. (e.g., if Stop Loss is -10% below entry, Target Price MUST be at least +20% above entry).\n"
-            "5. TECHNICAL LEVEL PLACEMENT: Place `stop_loss` at logical technical support levels based on 52-week price ranges and price action, not arbitrary round numbers.\n"
-            "6. Assets marked with ⚡ ACTIVE BOT SIGNAL have been identified by our algorithm. Stock signals are high-conviction momentum plays.\n"
-            "7. Diversify across sectors. Do not recommend 5 stocks in the exact same sub-industry.\n"
-            "8. Calculate `expected_growth_pct` (number) mathematically from current price to target_price, and provide an `estimated_timeframe` (e.g., '3-6 Months').\n"
+            "1. Base your analysis ONLY on the US equities listed in the brief below. NEVER invent tickers or fabricate numbers.\n"
+            "2. ADAPT TO MACRO REGIME: Read the MACRO MARKET REGIME section (SPY/QQQ trend & RSI). In Pullback/Risk-Off regimes, favor Category B dips and defensive quality. In Bullish regimes, favor Category A trend leaders.\n"
+            "3. BALANCED & SECTOR-DIVERSIFIED SELECTION: Pick 5 stocks across at least 3-4 distinct sectors (shown in [Sector] brackets). Avoid picking overbought names (RSI14 > 75) or falling knives unless justified by strong valuation/support.\n"
+            "4. TECHNICAL STOP-LOSS PLACEMENT: Place `stop_loss` below the `20dLow` or ~1.8-2.5x `ATR14` below current price — never arbitrary round numbers or tighter than 1.5x ATR14.\n"
+            "5. STRICT RISK-TO-REWARD (MINIMUM 2:1 R:R): Upside from current price to `target_price` MUST be at least 2.0x the downside to `stop_loss`. Ground `target_price` in `52wHigh`, `AnalystTarget`, and trend momentum.\n"
+            "6. Assets marked with ⚡ ACTIVE BOT SIGNAL have confirmed algorithmic momentum — prioritize them when their technicals & R:R align.\n"
+            "7. Calculate `expected_growth_pct` (number) accurately from current price to `target_price`, and provide a realistic `estimated_timeframe` (e.g., '3-6 Months').\n"
         )
-        if risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation":
+        if is_speculative:
             system_instruction += (
-                "9. **AGGRESSIVE/SPECULATION OVERRIDE**: Target higher volatility assets, larger projected gains (e.g., 25-50%+), and shorter timeframes ('1-3 Months'). Maintain the >= 2:1 R:R requirement.\n"
+                "8. **AGGRESSIVE/SPECULATION OVERRIDE**: Favor high-beta momentum/breakout equities with larger projected upside (25-60%+) and shorter timeframes ('1-3 Months'), while still honoring >= 2:1 R:R.\n"
             )
+        elif is_income:
+            system_instruction += (
+                "8. **INCOME/CONSERVATIVE OVERRIDE**: Prioritize Category C defensive & dividend-paying leaders (strong Div %, lower ATR14 %, reasonable FwdP/E) with steady 3-12 Month total-return targets.\n"
+            )
+
         system_instruction += (
             "\nReturn a JSON object with exactly this structure (no markdown, no extra text):\n"
             "{\n"
@@ -1729,41 +1878,27 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
             '      "symbol": "AAPL",\n'
             '      "name": "Apple Inc.",\n'
             '      "type": "stock",\n'
-            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\n'
+            '      "rationale": "1-2 sentence quant rationale citing actual Trend, RSI14, Sector, valuation/dividend, or AnalystTarget numbers.",\n'
             '      "is_active_signal": true,\n'
             '      "conviction": "high",\n'
-            '      "metrics_summary": "Price: $198 | 30d: +5.2% | 8% below 52w high",\n'
-            '      "target_price": "$220.00",\n'
-            '      "stop_loss": "$180.00",\n'
-            '      "expected_growth_pct": 11.1,\n'
+            '      "metrics_summary": "Price: $198 | RSI: 54 | Strong Uptrend | ATR: 1.8% | 8% off 52w high",\n'
+            '      "target_price": "$224.00",\n'
+            '      "stop_loss": "$185.00",\n'
+            '      "expected_growth_pct": 13.1,\n'
             '      "estimated_timeframe": "3-6 Months"\n'
-            '    }\n'
-            '  ],\n'
-            '  "crypto": [\n'
-            '    {\n'
-            '      "symbol": "SOL",\n'
-            '      "name": "Solana",\n'
-            '      "type": "crypto",\n'
-            '      "rationale": "1-2 sentence rationale referencing actual data numbers.",\n'
-            '      "is_active_signal": false,\n'
-            '      "conviction": "medium",\n'
-            '      "metrics_summary": "Price: $142 | 30d: +18.4% | 22% below 52w high",\n'
-            '      "target_price": "$175.00",\n'
-            '      "stop_loss": "$120.00",\n'
-            '      "expected_growth_pct": 23.2,\n'
-            '      "estimated_timeframe": "2-4 Months"\n'
-            '    }\n'
-            '  ]\n'
-            '}\n\n'
-            "Select exactly 5 stocks and exactly 5 crypto assets. "
-            "Set conviction to 'high' if the asset has an active signal AND strong momentum, otherwise 'medium'.\n\n"
+            "    }\n"
+            "  ],\n"
+            '  "crypto": []\n'
+            "}\n\n"
+            "Select exactly 5 US equities in `stocks` and keep `crypto` as an empty list `[]`. "
+            "Set conviction to 'high' if the asset has an active signal OR strong trend + favorable R:R + analyst support, otherwise 'medium'.\n\n"
             "--- MARKET DATA RESEARCH BRIEF ---\n\n"
             f"{research_brief}"
         )
 
         try:
             raw_json_str = call_gemini(
-                "Analyze the market data and select the top 5 stocks and top 5 crypto for buy-and-hold investment.",
+                "Analyze the US equities quantitative brief and select the top 5 sector-diversified US stocks/ETFs.",
                 system_instruction=system_instruction,
                 json_mode=True,
                 custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL
@@ -1771,115 +1906,133 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
             clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
             recommendations = json.loads(clean_json_str)
 
-            # Store in cache
+            raw_stock_recs = recommendations.get("stocks", [])
+            validated_stock_recs = []
+
+            # Hard Python post-validation: verify real symbols, ATR-aware stop-loss, >= 2:1 R:R, and exact math
+            max_sl_pct = 0.25 if is_speculative else 0.18
+            max_tp_pct = 1.00 if is_speculative else 0.60
+
+            for rec in raw_stock_recs:
+                sym = str(rec.get("symbol", "")).strip().upper()
+                if not sym or sym in BENCHMARK_SYMBOLS:
+                    continue
+                # Reject hallucinated tickers not present in our market brief
+                if valid_candidate_syms and sym not in valid_candidate_syms:
+                    continue
+
+                cand_metrics = stock_lookup.get(sym, {})
+                entry_price = float(cand_metrics.get("price") or 0.0)
+                if entry_price <= 0.0:
+                    try:
+                        entry_price = float(yf.Ticker(sym).fast_info.get("lastPrice", 0.0))
+                    except Exception:
+                        entry_price = 0.0
+                if entry_price <= 0.0:
+                    continue
+
+                atr_14 = float(cand_metrics.get("atr_14") or (entry_price * 0.025))
+                swing_low_20d = float(cand_metrics.get("swing_low_20d") or (entry_price * 0.92))
+
+                t_price_str = str(rec.get("target_price", "0")).replace("$", "").replace(",", "").strip()
+                try:
+                    target_price = float(t_price_str)
+                except ValueError:
+                    target_price = 0.0
+
+                sl_price_str = str(rec.get("stop_loss", "0")).replace("$", "").replace(",", "").strip()
+                try:
+                    stop_loss = float(sl_price_str)
+                except ValueError:
+                    stop_loss = 0.0
+
+                # 1. Validate / clamp stop_loss (must be below entry, at least 1.5x ATR or 4% away, at most max_sl_pct away)
+                min_sl_dist = max(entry_price * 0.04, atr_14 * 1.5)
+                max_sl_dist = entry_price * max_sl_pct
+                if stop_loss <= 0 or stop_loss >= entry_price:
+                    stop_loss = min(swing_low_20d * 0.99, entry_price - (2.0 * atr_14))
+                sl_dist = entry_price - stop_loss
+                if sl_dist < min_sl_dist:
+                    stop_loss = entry_price - min_sl_dist
+                elif sl_dist > max_sl_dist:
+                    stop_loss = entry_price - max_sl_dist
+                stop_loss = round(max(0.01, stop_loss), 2)
+
+                # 2. Validate / enforce minimum 2.0:1 Reward-to-Risk ratio & realistic ceiling
+                risk_per_share = entry_price - stop_loss
+                min_target = entry_price + (2.0 * risk_per_share)
+                max_target = entry_price * (1.0 + max_tp_pct)
+                if target_price <= entry_price or target_price < min_target:
+                    target_price = min(min_target, max_target)
+                elif target_price > max_target:
+                    target_price = max_target
+                target_price = round(target_price, 2)
+
+                # 3. Recompute exact expected_growth_pct mathematically
+                expected_growth_pct = round(((target_price - entry_price) / entry_price) * 100.0, 1)
+
+                rec["symbol"] = sym
+                rec["type"] = "stock"
+                rec["entry_price"] = round(entry_price, 2)
+                rec["target_price"] = f"${target_price:.2f}"
+                rec["stop_loss"] = f"${stop_loss:.2f}"
+                rec["expected_growth_pct"] = expected_growth_pct
+                rec["_validated_entry"] = round(entry_price, 2)
+                rec["_validated_target"] = target_price
+                rec["_validated_sl"] = stop_loss
+                validated_stock_recs.append(rec)
+
+            recommendations = {
+                "stocks": [
+                    {k: v for k, v in r.items() if not k.startswith("_")}
+                    for r in validated_stock_recs
+                ],
+                "crypto": []
+            }
+
+            # Store validated recommendations in cache
             cache_payload = {
                 "timestamp": time.time(),
                 "recommendations": recommendations
             }
             update_config(cache_key, json.dumps(cache_payload))
 
-            # Ensure we have both keys
-            stock_recs = recommendations.get("stocks", [])
-            crypto_recs = recommendations.get("crypto", [])
-
-            # Record recommendations to AIRecommendations table
+            # Record validated recommendations to AIRecommendations table
             with db_session() as conn:
                 c = conn.cursor()
                 now_ts = int(time.time())
-                
-                with _MARKET_DATA_LOCK:
-                    stock_cache = dict(_MARKET_DATA_CACHE.get("stocks", {}))
-                    crypto_cache = dict(_MARKET_DATA_CACHE.get("crypto", {}))
-                
-                speculative_cache = _get_speculative_market_data() or {}
 
-                for rec in stock_recs:
-                    rec['_cat_override'] = 'stock'
-                for rec in crypto_recs:
-                    rec['_cat_override'] = 'crypto'
-
-                for rec in stock_recs + crypto_recs:
-                    sym = rec.get("symbol", "").upper()
-                    cat = rec.get("_cat_override") or rec.get("type", "stock").lower()
-                    
-                    t_price_str = str(rec.get("target_price", "0")).replace("$", "").replace(",", "").strip()
-                    try:
-                        target_price = float(t_price_str)
-                    except ValueError:
-                        target_price = 0.0
-                        
-                    sl_price_str = str(rec.get("stop_loss", "0")).replace("$", "").replace(",", "").strip()
-                    try:
-                        stop_loss = float(sl_price_str)
-                    except ValueError:
-                        stop_loss = 0.0
-
-                    entry_price = 0.0
-                    if cat == "stock":
-                        if sym in speculative_cache:
-                            entry_price = speculative_cache[sym].get("price", 0.0)
-                        elif sym in stock_cache:
-                            entry_price = stock_cache[sym].get("price", 0.0)
-                    else:
-                        if sym in crypto_cache:
-                            entry_price = crypto_cache[sym].get("price", 0.0)
-
-                    if entry_price <= 0.0:
-                        try:
-                            yf_sym = sym if cat == "stock" else f"{sym}-USD"
-                            ticker = yf.Ticker(yf_sym)
-                            entry_price = float(ticker.fast_info.get("lastPrice", 0.0))
-                        except Exception:
-                            import re
-                            price_match = re.search(r"Price:\s*\$?([\d\.]+)", rec.get("metrics_summary", ""))
-                            if price_match:
-                                try:
-                                    entry_price = float(price_match.group(1))
-                                except ValueError:
-                                    pass
-
-                    if entry_price <= 0.0:
-                        continue
-
-                    if stop_loss <= 0.0:
-                        stop_loss = round(entry_price * 0.85, 2)
+                for rec in validated_stock_recs:
+                    sym = rec["symbol"]
+                    cat = "stock"
+                    entry_price = rec["_validated_entry"]
+                    target_price = rec["_validated_target"]
+                    stop_loss = rec["_validated_sl"]
 
                     # Check if there is an active recommendation for this combination already
                     c.execute('''
-                        SELECT id FROM AIRecommendations 
+                        SELECT id FROM AIRecommendations
                         WHERE symbol = ? AND risk_profile = ? AND investment_goal = ? AND status = 'active'
                     ''', (sym, risk_profile, investment_goal))
                     existing = c.fetchone()
-                    
+
                     if not existing:
                         rec_name = rec.get('name', sym)
                         expected_growth_pct = rec.get('expected_growth_pct', 0)
                         estimated_timeframe = rec.get('estimated_timeframe', '')
                         rationale = rec.get('rationale', '')
                         metrics_summary = rec.get('metrics_summary', '')
-                        
+
                         c.execute('''
-                            INSERT INTO AIRecommendations 
+                            INSERT INTO AIRecommendations
                             (symbol, name, category, risk_profile, investment_goal, entry_price, current_price, target_price, stop_loss, expected_growth_pct, estimated_timeframe, rationale, metrics_summary, status, created_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
                         ''', (sym, rec_name, cat, risk_profile, investment_goal, entry_price, entry_price, target_price, stop_loss, expected_growth_pct, estimated_timeframe, rationale, metrics_summary, now_ts))
                 conn.commit()
 
             # Build markdown for the Detailed Implementation Plan
-            buys_md = "\n\n### 💡 Fresh Investment Ideas\n\n"
-            buys_md += "#### 📈 Top Stock Ideas\n\n"
-            for rec in stock_recs:
-                active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
-                conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
-                buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
-                buys_md += f"  * {rec.get('metrics_summary', '')}\n"
-                if rec.get('target_price'):
-                    sl_str = f" | Stop Loss: {rec.get('stop_loss')}" if rec.get('stop_loss') else ""
-                    buys_md += f"  * Target: {rec.get('target_price')}{sl_str} (+{rec.get('expected_growth_pct')}%) | Timeframe: {rec.get('estimated_timeframe')}\n"
-                buys_md += f"  * {rec.get('rationale', '')}\n"
-
-            buys_md += "\n#### 🪙 Top Crypto Ideas\n\n"
-            for rec in crypto_recs:
+            buys_md = "\n\n### 💡 Fresh US Equities Investment Ideas\n\n"
+            for rec in recommendations["stocks"]:
                 active_badge = " ⚡ (Active Signal)" if rec.get('is_active_signal') else ""
                 conviction_badge = " 🟢 HIGH" if rec.get('conviction') == 'high' else " 🟡 MEDIUM"
                 buys_md += f"* **{rec.get('symbol')} ({rec.get('name')})**{active_badge}{conviction_badge}\n"
