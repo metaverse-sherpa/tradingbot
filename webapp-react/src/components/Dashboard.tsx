@@ -261,9 +261,17 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="h-44 mt-2 w-full opacity-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.chart} margin={{ top: 5, right: hideDollars ? 5 : 20, left: 5, bottom: 0 }}>
-                <XAxis dataKey="x" tick={{ fontSize: 10, fill: '#ffffff' }} tickLine={false} axisLine={false} />
-                <YAxis orientation="right" domain={['dataMin', 'dataMax']} hide={hideDollars} tick={{ fontSize: 10, fill: '#ffffff' }} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value.toLocaleString()}`} />
+              <LineChart data={data.chart} margin={{ top: 8, right: hideDollars ? 8 : 12, left: 5, bottom: 0 }}>
+                <XAxis dataKey="x" tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                <YAxis
+                  orientation="right"
+                  domain={['dataMin', 'dataMax']}
+                  width={hideDollars ? 12 : 68}
+                  tick={hideDollars ? false : { fontSize: 10, fill: '#9ca3af' }}
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.12)' }}
+                  tickFormatter={(value) => `$${Math.round(Number(value)).toLocaleString()}`}
+                />
                 {!hideDollars && (
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1b1f2c', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
