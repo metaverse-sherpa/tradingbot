@@ -37,6 +37,8 @@ _PRICE_CACHE = {}  # {symbol: (price, change_pct, timestamp)}
 _CACHE_DURATION = 3600  # 1 hour in seconds
 _NEWS_CACHE = {}  # {user_id: (news_json, timestamp)}
 _NEWS_CACHE_DURATION = 3600  # 1 hour in seconds
+_ASSET_META_CACHE = {}  # {symbol: {"target_price": ..., "recommendation": ..., "sector": ..., "beta": ..., "ts": ...}}
+_ASSET_META_TTL = 43200  # 12 hours in seconds
 
 # --- 📊 Global Market Data Cache (shared across all users) ---
 STOCK_WATCHLIST = [
@@ -1085,88 +1087,213 @@ def analyze_portfolio():
     if not positions:
         return jsonify({"error": "Cannot analyze an empty portfolio."}), 400
 
-    # Fetch analyst target prices and recommendations concurrently for stock & crypto positions
+    # Fetch analyst target prices, sector, beta, and active signal setups concurrently
     def fetch_info(p):
-        target_price = None
-        stop_loss = None
+        signal_target = None
+        signal_stop_loss = None
+        analyst_target = None
         recommendation = None
-        sym = p.get('symbol', '')
+        sector = None
+        beta = None
+        sym = p.get('symbol', '').strip().upper()
         cat = p.get('category', 'stock').lower()
+        curr_p = float(p.get('current_price') or p.get('avg_entry_price') or 0)
+        clean_sym = sym.replace('/', '').replace('USDT', '').replace('USD', '').strip()
 
-        # 1. Check AIRecommendations DB for active setup on this symbol WITH MATCHING CATEGORY
+        # 1. Check AIRecommendations DB using EXACT normalized symbol match (prevents LIKE '%PAY%' matching PAYC/PAYX)
         try:
             with db_session() as conn:
                 c = conn.cursor()
-                clean_sym = sym.replace('/', '').replace('USDT', '').replace('USD', '').strip()
                 c.execute("""
-                    SELECT target_price, stop_loss FROM AIRecommendations 
-                    WHERE (symbol = ? OR symbol LIKE ? OR REPLACE(REPLACE(REPLACE(symbol, '/', ''), 'USDT', ''), 'USD', '') = ?) 
-                    AND LOWER(category) = ? AND status = 'active' ORDER BY id DESC LIMIT 1
-                """, (sym, f"%{clean_sym}%", clean_sym, cat))
+                    SELECT target_price, stop_loss FROM AIRecommendations
+                    WHERE (
+                        UPPER(symbol) = ?
+                        OR UPPER(REPLACE(REPLACE(REPLACE(symbol, '/', ''), 'USDT', ''), 'USD', '')) = ?
+                    )
+                    AND LOWER(category) = ? AND status = 'active'
+                    ORDER BY id DESC LIMIT 1
+                """, (sym, clean_sym, cat))
                 rec_row = c.fetchone()
                 if rec_row and rec_row[0]:
-                    target_price = float(rec_row[0])
-                    stop_loss = float(rec_row[1]) if rec_row[1] else None
-                
-                # 2. Check TheoreticalTrades DB for active signal target price if not found (only for crypto or matching category)
-                if not target_price:
+                    cand_tp = float(rec_row[0])
+                    cand_sl = float(rec_row[1]) if rec_row[1] else None
+                    # Sanity check against current price so stale/mismatched prices don't poison the audit
+                    if curr_p <= 0 or (0.1 * curr_p <= cand_tp <= 5.0 * curr_p):
+                        signal_target = cand_tp
+                        if cand_sl and (curr_p <= 0 or (0.1 * curr_p <= cand_sl <= 3.0 * curr_p)):
+                            signal_stop_loss = cand_sl
+
+                # 2. Check TheoreticalTrades DB for active signal target price if not found (exact match)
+                if not signal_target:
                     c.execute("""
-                        SELECT tp_price, sl_price FROM TheoreticalTrades 
-                        WHERE (symbol = ? OR symbol LIKE ? OR REPLACE(REPLACE(REPLACE(symbol, '/', ''), 'USDT', ''), 'USD', '') = ?) 
-                        AND status = 'open' ORDER BY id DESC LIMIT 1
-                    """, (sym, f"%{clean_sym}%", clean_sym))
+                        SELECT tp_price, sl_price FROM TheoreticalTrades
+                        WHERE (
+                            UPPER(symbol) = ?
+                            OR UPPER(REPLACE(REPLACE(REPLACE(symbol, '/', ''), 'USDT', ''), 'USD', '')) = ?
+                        )
+                        AND status = 'open'
+                        ORDER BY id DESC LIMIT 1
+                    """, (sym, clean_sym))
                     tt_row = c.fetchone()
                     if tt_row and tt_row[0] and cat == 'crypto':
-                        target_price = float(tt_row[0])
-                        stop_loss = float(tt_row[1]) if tt_row[1] else None
+                        cand_tp = float(tt_row[0])
+                        if curr_p <= 0 or (0.1 * curr_p <= cand_tp <= 5.0 * curr_p):
+                            signal_target = cand_tp
+                            signal_stop_loss = float(tt_row[1]) if tt_row[1] else None
         except Exception as e:
             print(f"[Analysis] Error fetching DB target price for {sym}: {e}")
 
-        # 3. Fallback for stock if yfinance has targetMeanPrice and no DB target price
-        if not target_price and cat == 'stock':
-            try:
-                info = yf.Ticker(sym).info
-                target_price = info.get('targetMeanPrice')
-                recommendation = info.get('recommendationKey')
-            except Exception:
-                pass
+        # 3. Cached Yahoo Finance metadata (sector, beta, analyst targetMeanPrice) for stocks/ETFs
+        if cat == 'stock':
+            now_ts = time.time()
+            cached = _ASSET_META_CACHE.get(sym)
+            if cached and (now_ts - cached.get("ts", 0) < _ASSET_META_TTL):
+                analyst_target = cached.get("target_price")
+                recommendation = cached.get("recommendation")
+                sector = cached.get("sector")
+                beta = cached.get("beta")
+            else:
+                try:
+                    info = yf.Ticker(sym).info or {}
+                    analyst_target = info.get('targetMeanPrice')
+                    recommendation = info.get('recommendationKey')
+                    sector = info.get('sector') or info.get('category') or (
+                        'ETF / Index' if info.get('quoteType') == 'ETF' else None
+                    )
+                    raw_beta = info.get('beta') or info.get('beta3Year')
+                    if raw_beta is not None:
+                        try:
+                            beta = round(float(raw_beta), 2)
+                        except (ValueError, TypeError):
+                            beta = None
+                    _ASSET_META_CACHE[sym] = {
+                        "target_price": analyst_target,
+                        "recommendation": recommendation,
+                        "sector": sector,
+                        "beta": beta,
+                        "ts": now_ts
+                    }
+                except Exception:
+                    pass
+        else:
+            sector = "Digital Assets"
 
         return {
-            'target_price': target_price,
-            'stop_loss': stop_loss,
-            'recommendation': recommendation
+            'signal_target': signal_target,
+            'signal_stop_loss': signal_stop_loss,
+            'analyst_target': analyst_target,
+            'recommendation': recommendation,
+            'sector': sector or ('ETF / Other' if cat == 'stock' else 'Digital Assets'),
+            'beta': beta
         }
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        results = list(executor.map(fetch_info, positions))
-        
-    for p, res in zip(positions, results):
-        p['target_price'] = res.get('target_price')
-        p['stop_loss'] = res.get('stop_loss')
-        p['analyst_recommendation'] = res.get('recommendation')
+    meta_results = [{} for _ in positions]
+    meta_executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(8, max(1, len(positions))))
+    try:
+        future_to_idx = {meta_executor.submit(fetch_info, p): idx for idx, p in enumerate(positions)}
+        done, _ = concurrent.futures.wait(future_to_idx, timeout=15)
+        for fut in done:
+            idx = future_to_idx[fut]
+            try:
+                meta_results[idx] = fut.result(timeout=0)
+            except Exception:
+                meta_results[idx] = {}
+    finally:
+        meta_executor.shutdown(wait=False, cancel_futures=True)
 
-    compiled_positions_str = json.dumps([{
-        "symbol": p["symbol"],
-        "category": p["category"],
-        "quantity": p["quantity"],
-        "avg_entry_price": p["avg_entry_price"],
-        "current_price": p["current_price"],
-        "target_price": p.get("target_price"),
-        "stop_loss": p.get("stop_loss"),
-        "analyst_recommendation": p.get("analyst_recommendation"),
-        "market_value": p["market_value"],
-        "overall_pnl_pct": p["overall_pnl_pct"],
-        "allocation_pct": p["allocation_pct"],
-        "purchase_date": p["purchase_date"]
-    } for p in positions])
+    for p, res in zip(positions, meta_results):
+        p['signal_target'] = res.get('signal_target')
+        p['signal_stop_loss'] = res.get('signal_stop_loss')
+        p['analyst_target'] = res.get('analyst_target')
+        p['analyst_recommendation'] = res.get('recommendation')
+        p['sector'] = res.get('sector') or ('Other' if p.get('category', 'stock').lower() == 'stock' else 'Digital Assets')
+        p['beta'] = res.get('beta')
+
+    # --- Compute Quantitative Portfolio Concentration, Sector & Risk Metrics ---
+    total_port_val = float(stats.get("total_portfolio_value") or stats.get("market_value") or 0.0)
+    cash_bal = float(stats.get("cash_balance") or 0.0)
+    cash_pct = round((cash_bal / total_port_val * 100.0), 2) if total_port_val > 0 else 0.0
+
+    sorted_by_alloc = sorted(positions, key=lambda x: x.get("allocation_pct", 0.0), reverse=True)
+    top_1_pos = sorted_by_alloc[0] if sorted_by_alloc else None
+    top_3_pct = round(sum(x.get("allocation_pct", 0.0) for x in sorted_by_alloc[:3]), 1)
+    top_5_pct = round(sum(x.get("allocation_pct", 0.0) for x in sorted_by_alloc[:5]), 1)
+
+    sector_totals = collections.defaultdict(float)
+    weighted_beta_num = 0.0
+    weighted_beta_den = 0.0
+    deep_losers = []
+    for p in positions:
+        sec = p.get("sector") or "Other"
+        alloc = float(p.get("allocation_pct") or 0.0)
+        sector_totals[sec] += alloc
+        if p.get("beta") is not None and alloc > 0:
+            weighted_beta_num += float(p["beta"]) * alloc
+            weighted_beta_den += alloc
+        if float(p.get("overall_pnl_pct") or 0.0) <= -15.0:
+            deep_losers.append(f"{p['symbol']} ({p['overall_pnl_pct']:.1f}%)")
+
+    sector_breakdown = sorted(
+        [{"sector": k, "pct": round(v, 1)} for k, v in sector_totals.items()],
+        key=lambda x: x["pct"],
+        reverse=True
+    )
+    top_sector = sector_breakdown[0] if sector_breakdown else {"sector": "N/A", "pct": 0.0}
+    portfolio_beta = round(weighted_beta_num / weighted_beta_den, 2) if weighted_beta_den > 0 else None
+
+    portfolio_metrics = {
+        "cash_balance": round(cash_bal, 2),
+        "cash_pct": cash_pct,
+        "top_1_symbol": top_1_pos["symbol"] if top_1_pos else None,
+        "top_1_pct": round(top_1_pos.get("allocation_pct", 0.0), 1) if top_1_pos else 0.0,
+        "top_3_pct": top_3_pct,
+        "top_5_pct": top_5_pct,
+        "top_sector": top_sector["sector"],
+        "top_sector_pct": top_sector["pct"],
+        "sector_breakdown": sector_breakdown[:6],
+        "portfolio_beta": portfolio_beta,
+        "deep_losers_count": len(deep_losers),
+        "positions_count": len(positions),
+    }
+
+    # Build clean position payload (omit null target/stop-loss keys so LLM doesn't nag about missing UI fields)
+    compiled_positions = []
+    for p in positions:
+        item = {
+            "symbol": p["symbol"],
+            "category": p["category"],
+            "sector": p.get("sector"),
+            "quantity": round(float(p["quantity"]), 4),
+            "avg_entry_price": round(float(p["avg_entry_price"]), 4),
+            "current_price": round(float(p["current_price"]), 4),
+            "market_value": round(float(p["market_value"]), 2),
+            "overall_pnl_pct": round(float(p["overall_pnl_pct"]), 2),
+            "allocation_pct": round(float(p["allocation_pct"]), 2),
+            "purchase_date": p["purchase_date"],
+        }
+        if p.get("beta") is not None:
+            item["beta"] = p["beta"]
+        if p.get("signal_target") is not None:
+            item["system_signal_target"] = p["signal_target"]
+        if p.get("signal_stop_loss") is not None:
+            item["system_signal_stop_loss"] = p["signal_stop_loss"]
+        if p.get("analyst_target") is not None:
+            item["analyst_consensus_target"] = p["analyst_target"]
+        if p.get("analyst_recommendation"):
+            item["analyst_recommendation"] = p["analyst_recommendation"]
+        compiled_positions.append(item)
+
+    compiled_positions_str = json.dumps(compiled_positions)
 
     system_instruction = (
-        f"You are an expert investment advisor tailoring advice for a client with a **{risk_profile}** risk profile and an investment goal of **{investment_goal}**.\n"
-        "Analyze the user's holdings and provide a detailed portfolio health report. Pay close attention to target prices (`target_price`).\n"
-        "CRITICAL RULE 1 (HOLDINGS OWNERSHIP): The user's ONLY current portfolio positions are the assets explicitly listed in `compiled_positions_str`. Do NOT recommend selling, trimming, or taking profit on ANY asset (like ATAI or others) unless it is explicitly present in `compiled_positions_str`!\n"
-        "CRITICAL RULE 2 (TARGET PRICES): For positions the user owns (`compiled_positions_str`), do NOT recommend selling or taking profit if `current_price` is below `target_price` (unless `current_price` is within 1-2% of `target_price`).\n"
-        "CRITICAL RULE 3 (RECOMMENDATIONS ARE NOT HOLDINGS): The `ACTIVE RECOMMENDATIONS` list below contains potential external trade setups available to buy. These are NOT owned by the user unless listed in `compiled_positions_str`. NEVER tell the user to 'sell' or 'take profit' on an asset from `ACTIVE RECOMMENDATIONS` if it is not in their portfolio.\n"
-        "CRITICAL RULE 4 (STOCK ETFs VS CRYPTO COINS): If a position's category is `stock` (e.g. BTC ETF, ETH ETF, IBIT, BITO, ETHA, or tickers BTC/ETH categorized as `stock`), treat it strictly as an ETF stock equity position priced per share ($15-$100/share). Do NOT confuse stock/ETF share prices with underlying cryptocurrency coin prices (e.g., $60,000+ per coin), and NEVER tell the user to change its category from 'stock' to 'crypto'!\n"
+        f"You are an institutional-grade investment advisor tailoring advice for a client with a **{risk_profile}** risk profile and an investment goal of **{investment_goal}**.\n"
+        "Analyze the user's holdings, sector/concentration exposure, cash buffer, and performance to produce a high-signal portfolio health report.\n"
+        "CRITICAL RULE 1 (HOLDINGS OWNERSHIP): The user's ONLY current portfolio positions are the assets explicitly listed in `compiled_positions_str`. Do NOT recommend selling, trimming, or taking profit on ANY asset unless it is explicitly present in `compiled_positions_str`!\n"
+        "CRITICAL RULE 2 (TARGET PRICES): For owned positions that have `system_signal_target` or `analyst_consensus_target`, do NOT recommend taking profit solely for hitting target if `current_price` is well below target (unless trimming for concentration/risk management).\n"
+        "CRITICAL RULE 3 (RECOMMENDATIONS ARE NOT HOLDINGS): The `ACTIVE RECOMMENDATIONS` list below contains external trade setups available to buy. These are NOT owned by the user unless listed in `compiled_positions_str`. NEVER tell the user to sell or take profit on an unowned recommendation.\n"
+        "CRITICAL RULE 4 (STOCK ETFs VS CRYPTO COINS): If a position's category is `stock` (e.g. BTC ETF, ETH ETF, IBIT, BITO, ETHA, or tickers BTC/ETH categorized as `stock`), treat it strictly as an ETF stock equity position priced per share. Do NOT confuse ETF share prices with underlying crypto coin prices, and NEVER tell the user to change its category.\n"
+        "CRITICAL RULE 5 (NO MISSING-METADATA NAGGING): This portfolio tracks static holdings, NOT live brokerage orders. NEVER waste action items telling the user to 'define target prices', 'set stop-loss fields in the tracker', or 'fix missing stop-losses'. Focus exclusively on real investment decisions: position sizing, concentration/sector risk, trimming overweight winners or deep underperformers, rotating capital, and building a cash buffer.\n"
+        "CRITICAL RULE 6 (CASH-AWARE ALLOCATION): Always respect `cash_balance`. If `cash_balance` is $0 (or < 2% of total portfolio value), NEVER recommend initiating a new buy without explicitly specifying which existing holding(s) to trim or exit (and approximate dollar/% amount) to fund it.\n"
     )
 
     last_score = None
@@ -1183,7 +1310,11 @@ def analyze_portfolio():
                 last_plan = json.loads(last_plan_str)
                 num_total_plan = len(last_plan)
                 completed_bools = json.loads(last_analysis[3])
-                checked_items = [item for i, item in enumerate(last_plan) if i < len(completed_bools) and completed_bools[i]]
+                checked_items = [
+                    (item.get("title", str(item)) if isinstance(item, dict) else item)
+                    for i, item in enumerate(last_plan)
+                    if i < len(completed_bools) and completed_bools[i]
+                ]
                 num_completed = len(checked_items)
                 if checked_items:
                     checked_items_str = json.dumps(checked_items)
@@ -1199,11 +1330,28 @@ def analyze_portfolio():
         )
 
     system_instruction += (
-        "\nReturn a JSON object containing the following keys:\n"
-        "- score: An integer score (1-100) representing how well the portfolio aligns with their specific risk profile and goals.\n"
-        "- action_plan: A JSON list of 3-5 clean recommendation strings (e.g. ['Diversify out of high-growth tech stocks', 'Trim CRWD due to high volatility']).\n"
-        "- detailed_recommendations: A detailed markdown summary of your findings (under 300 words, no HTML).\n"
-        "- show_me_how: Step-by-step instructions in markdown showing exactly how the user can execute the action plan (e.g., sell orders, re-allocating to crypto/stocks).\n"
+        "\nReturn a valid JSON object containing EXACTLY these keys:\n"
+        "- score: An integer score (1-100) representing overall portfolio health aligned with their risk profile and goal.\n"
+        "- score_breakdown: An object with 5 integer sub-scores (0-100) explaining the overall score:\n"
+        "    {\n"
+        "      \"diversification\": <int 0-100, based on sector spread and single-stock/top-3 concentration>,\n"
+        "      \"risk_management\": <int 0-100, based on beta, drawdown exposure, and deep losers>,\n"
+        "      \"momentum_upside\": <int 0-100, based on win rate, P&L health, and analyst/signal upside>,\n"
+        "      \"goal_alignment\": <int 0-100, how well holdings match the client's risk_profile and investment_goal>,\n"
+        "      \"liquidity\": <int 0-100, based on cash_pct dry powder for dip-buying/rebalancing>\n"
+        "    }\n"
+        "- action_plan: A JSON list of 3-5 structured action objects ordered by priority:\n"
+        "    [\n"
+        "      {\n"
+        "        \"title\": \"Concise, specific action (e.g. 'Trim NVDA from 18% to 12% to lock in gains and fund cash buffer')\",\n"
+        "        \"action_type\": \"TRIM\" | \"EXIT\" | \"ADD\" | \"REBALANCE\" | \"RISK\" | \"HOLD\",\n"
+        "        \"symbol\": \"Ticker symbol if specific to one holding (e.g. 'NVDA'), or null if portfolio-wide\",\n"
+        "        \"priority\": \"HIGH\" | \"MEDIUM\" | \"LOW\",\n"
+        "        \"rationale\": \"One crisp sentence citing exact numbers (allocation %, P&L %, sector %, or cash $).\"\n"
+        "      }\n"
+        "    ]\n"
+        "- detailed_recommendations: A concise executive audit summary in markdown (150-240 words, no HTML) covering key strengths, biggest risks (citing exact concentration/sector/drawdown numbers), and strategic priorities.\n"
+        "- show_me_how: Step-by-step execution guide in markdown showing exact trades/percentages/dollar amounts to execute the action plan.\n"
         "Ensure the response is valid JSON and nothing else."
     )
 
@@ -1271,7 +1419,18 @@ def analyze_portfolio():
         
         system_instruction += prompt_recs_ctx
 
-    prompt = f"Analyze this portfolio: {compiled_positions_str}. General stats: Market Value: ${stats['market_value']:.2f}, Cost Basis: ${stats['cost_basis']:.2f}, Dividends: ${stats['annual_dividends']:.2f}."
+    sector_summary_str = ", ".join(f"{s['sector']} {s['pct']}%" for s in sector_breakdown[:6]) or "N/A"
+    prompt = (
+        f"Analyze this portfolio ({len(positions)} positions): {compiled_positions_str}\n\n"
+        f"PORTFOLIO SUMMARY & RISK METRICS:\n"
+        f"- Total Portfolio Value: ${total_port_val:,.2f} (Holdings: ${stats['market_value']:,.2f}, Cash Available: ${cash_bal:,.2f} [{cash_pct:.1f}%])\n"
+        f"- Cost Basis: ${stats['cost_basis']:,.2f} | Total P/L: ${stats['total_pnl']:+,.2f} ({stats['total_pnl_pct']:+.2f}%) | Win Rate: {stats['win_rate']:.0f}%\n"
+        f"- Annual Dividends: ${stats['annual_dividends']:,.2f}\n"
+        f"- Concentration: Largest position = {portfolio_metrics['top_1_symbol']} ({portfolio_metrics['top_1_pct']}%), Top 3 = {top_3_pct}%, Top 5 = {top_5_pct}%\n"
+        f"- Sector Exposure: {sector_summary_str}\n"
+        f"- Estimated Portfolio Beta: {portfolio_beta if portfolio_beta is not None else 'N/A'}\n"
+        f"- Positions Down >=15%: {', '.join(deep_losers) if deep_losers else 'None'}"
+    )
 
     try:
         raw_json_str = call_gemini(prompt, system_instruction=system_instruction, json_mode=True)
@@ -1287,6 +1446,17 @@ def analyze_portfolio():
             bonus_pts = max(3 * num_completed, int(ratio * 15))
             score = min(100, max(raw_score, last_score + bonus_pts))
 
+        raw_breakdown = analysis.get("score_breakdown") or {}
+        score_breakdown = None
+        if isinstance(raw_breakdown, dict) and raw_breakdown:
+            score_breakdown = {
+                "diversification": max(0, min(100, int(raw_breakdown.get("diversification", score)))),
+                "risk_management": max(0, min(100, int(raw_breakdown.get("risk_management", score)))),
+                "momentum_upside": max(0, min(100, int(raw_breakdown.get("momentum_upside", score)))),
+                "goal_alignment": max(0, min(100, int(raw_breakdown.get("goal_alignment", score)))),
+                "liquidity": max(0, min(100, int(raw_breakdown.get("liquidity", score)))),
+            }
+
         action_plan = analysis.get("action_plan", [])
         detailed_recs = analysis.get("detailed_recommendations", "")
         show_me_how = analysis.get("show_me_how", "")
@@ -1296,7 +1466,9 @@ def analyze_portfolio():
 
         analysis_data = {
             "detailed_recommendations": detailed_recs,
-            "show_me_how": show_me_how
+            "show_me_how": show_me_how,
+            "score_breakdown": score_breakdown,
+            "portfolio_metrics": portfolio_metrics,
         }
 
         with db_session() as conn:
@@ -1309,6 +1481,8 @@ def analyze_portfolio():
 
         return jsonify({
             "score": score,
+            "score_breakdown": score_breakdown,
+            "portfolio_metrics": portfolio_metrics,
             "action_plan": action_plan,
             "detailed_recommendations": detailed_recs,
             "show_me_how": show_me_how
@@ -1346,6 +1520,8 @@ def get_analysis_history():
                 "score": r[1],
                 "detailed_recommendations": text_data.get("detailed_recommendations", ""),
                 "show_me_how": text_data.get("show_me_how", ""),
+                "score_breakdown": text_data.get("score_breakdown", None),
+                "portfolio_metrics": text_data.get("portfolio_metrics", None),
                 "good_buys": text_data.get("good_buys", None),
                 "action_plan": json.loads(r[3]),
                 "timestamp": r[4],

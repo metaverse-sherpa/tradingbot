@@ -129,8 +129,18 @@ const PortfolioPage: React.FC = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Show detailed instructions state
+  // Show detailed instructions & summary state
   const [showHowOpen, setShowHowOpen] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(true);
+
+  const jumpToHolding = (symbol: string) => {
+    setHoldingsTab('all');
+    setSearchQuery(symbol);
+    const el = document.getElementById('portfolio-holdings-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // AI Config Modal state
   const [cashModalOpen, setCashModalOpen] = useState(false);
@@ -752,33 +762,90 @@ const PortfolioPage: React.FC = () => {
             )}
             
             {analysis && (
-              <div className={`bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in slide-in-from-top-4 duration-300 ${analyzing ? 'blur-sm opacity-30 pointer-events-none' : ''}`}>
-              <div className="flex items-start sm:items-center gap-3">
-                <span className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg text-lg flex-shrink-0">🏆</span>
-                <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Portfolio Health Audited!</h4>
-                  <p className="text-xs text-gray-400 mt-0.5 leading-normal">
-                    Current health score: <span className="text-emerald-400 font-bold">{analysis.score}/100</span>
-                    {prevScore !== null && prevScore !== analysis.score && (
-                      <span>
-                        {" "}(from <span className="text-gray-300">{prevScore}/100</span>, {" "}
-                        <span className={analysis.score > prevScore ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                          {analysis.score > prevScore ? `+${analysis.score - prevScore}` : `${analysis.score - prevScore}`} pts
-                        </span>)
+              <div className={`bg-[#14231E]/40 border border-emerald-500/20 rounded-2xl p-4 space-y-4 animate-in slide-in-from-top-4 duration-300 ${analyzing ? 'blur-sm opacity-30 pointer-events-none' : ''}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <span className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg text-lg flex-shrink-0">🏆</span>
+                    <div>
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wider">Portfolio Health Audited!</h4>
+                      <p className="text-xs text-gray-400 mt-0.5 leading-normal">
+                        Current health score: <span className={`font-bold ${analysis.score >= 75 ? 'text-emerald-400' : analysis.score >= 55 ? 'text-amber-400' : 'text-rose-400'}`}>{analysis.score}/100</span>
+                        {prevScore !== null && prevScore !== analysis.score && (
+                          <span>
+                            {" "}(from <span className="text-gray-300">{prevScore}/100</span>, {" "}
+                            <span className={analysis.score > prevScore ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                              {analysis.score > prevScore ? `+${analysis.score - prevScore}` : `${analysis.score - prevScore}`} pts
+                            </span>)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={runAIAnalysis}
+                    disabled={analyzing}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
+                  >
+                    {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                    {analyzing ? 'Analyzing...' : 'AI Analysis'}
+                  </button>
+                </div>
+
+                {/* 📊 Score Breakdown Bars */}
+                {analysis.score_breakdown && (
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-3 border-t border-white/5">
+                    {[
+                      { key: 'diversification', label: 'Diversification' },
+                      { key: 'risk_management', label: 'Risk Mgmt' },
+                      { key: 'momentum_upside', label: 'Upside' },
+                      { key: 'goal_alignment', label: 'Goal Fit' },
+                      { key: 'liquidity', label: 'Liquidity' },
+                    ].map(({ key, label }) => {
+                      const val = Number(analysis.score_breakdown?.[key] ?? 0);
+                      const barColor = val >= 75 ? 'bg-emerald-400' : val >= 50 ? 'bg-amber-400' : 'bg-rose-400';
+                      const textColor = val >= 75 ? 'text-emerald-400' : val >= 50 ? 'text-amber-400' : 'text-rose-400';
+                      return (
+                        <div key={key} className="bg-black/30 border border-white/5 rounded-xl p-2.5">
+                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                            <span className="text-gray-400 truncate">{label}</span>
+                            <span className={textColor}>{val}</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${Math.min(100, Math.max(0, val))}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 🧬 Sector & Concentration Metrics Strip */}
+                {analysis.portfolio_metrics && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                    <span className={`px-2.5 py-1 rounded-lg border font-semibold ${analysis.portfolio_metrics.top_3_pct > 50 ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' : 'bg-white/5 border-white/10 text-gray-300'}`}>
+                      Top 3 Holdings: <strong>{analysis.portfolio_metrics.top_3_pct}%</strong>
+                    </span>
+                    {analysis.portfolio_metrics.top_sector && analysis.portfolio_metrics.top_sector !== 'N/A' && (
+                      <span className={`px-2.5 py-1 rounded-lg border font-semibold ${analysis.portfolio_metrics.top_sector_pct > 45 ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-300'}`}>
+                        Top Sector: <strong>{analysis.portfolio_metrics.top_sector} ({analysis.portfolio_metrics.top_sector_pct}%)</strong>
                       </span>
                     )}
-                  </p>
-                </div>
+                    {analysis.portfolio_metrics.portfolio_beta !== null && analysis.portfolio_metrics.portfolio_beta !== undefined && (
+                      <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 font-semibold">
+                        Est. Beta: <strong>{analysis.portfolio_metrics.portfolio_beta}</strong>
+                      </span>
+                    )}
+                    <span className={`px-2.5 py-1 rounded-lg border font-semibold ${analysis.portfolio_metrics.cash_pct < 2 ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'}`}>
+                      Cash Buffer: <strong>{analysis.portfolio_metrics.cash_pct}%</strong>
+                    </span>
+                    {analysis.portfolio_metrics.deep_losers_count > 0 && (
+                      <span className="px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 font-semibold">
+                        Down &ge;15%: <strong>{analysis.portfolio_metrics.deep_losers_count}</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-              <button
-                onClick={runAIAnalysis}
-                disabled={analyzing}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3 py-2 rounded-xl text-xs md:text-sm font-bold shadow-[0_0_15px_rgba(138,43,226,0.3)] transition-all uppercase tracking-wider disabled:opacity-50"
-              >
-                {analyzing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                {analyzing ? 'Analyzing...' : 'AI Analysis'}
-              </button>
-            </div>
             )}
             
             {/* Analyzing Overlay */}
@@ -841,6 +908,33 @@ const PortfolioPage: React.FC = () => {
             </div>
           )}
 
+          {/* 📝 Executive Audit Summary (detailed_recommendations) */}
+          {analysis && analysis.detailed_recommendations && (
+            <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-3">
+              <button
+                type="button"
+                onClick={() => setSummaryExpanded(!summaryExpanded)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                  <Sparkles className="text-purple-400" size={15} /> Executive Audit Summary
+                </h3>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 hover:text-white transition-colors">
+                  {summaryExpanded ? 'Hide' : 'Show'}
+                </span>
+              </button>
+              {summaryExpanded && (
+                <div className="prose prose-invert max-w-none text-xs md:text-sm text-gray-300 leading-relaxed space-y-2 border-t border-white/5 pt-3">
+                  {analysis.detailed_recommendations.split('\n').filter((l: string) => l.trim() !== '').map((line: string, i: number) => {
+                    if (line.startsWith('###')) return <h4 key={i} className="text-xs md:text-sm font-bold text-white uppercase mt-3 tracking-wide">{formatMarkdownLine(line.replace(/^#+\s*/, ''))}</h4>;
+                    if (line.startsWith('##')) return <h3 key={i} className="text-sm md:text-base font-black text-white uppercase mt-3 tracking-wide">{formatMarkdownLine(line.replace(/^#+\s*/, ''))}</h3>;
+                    return <p key={i}>{formatMarkdownLine(line)}</p>;
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ⚡ Action Plan & recommendations */}
           {analysis && (
             <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-3.5">
@@ -882,19 +976,74 @@ const PortfolioPage: React.FC = () => {
                   )}
                 </div>
               </div>
-              <div className="space-y-2">
-                {analysis.action_plan && analysis.action_plan.map((act: string, idx: number) => {
+              <div className="space-y-2.5">
+                {analysis.action_plan && analysis.action_plan.map((act: any, idx: number) => {
                   const isChecked = analysis.completed_actions?.[idx] === true;
+                  const isStructured = act && typeof act === 'object';
+                  const title = isStructured ? (act.title || '') : String(act);
+                  const actionType = isStructured && act.action_type ? String(act.action_type).toUpperCase() : null;
+                  const priority = isStructured && act.priority ? String(act.priority).toUpperCase() : null;
+                  const symbol = isStructured && act.symbol ? String(act.symbol).toUpperCase() : null;
+                  const rationale = isStructured && act.rationale ? String(act.rationale) : null;
+
+                  const actionBadgeStyle: Record<string, string> = {
+                    TRIM: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                    EXIT: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+                    ADD: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                    REBALANCE: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+                    RISK: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+                    HOLD: 'bg-gray-500/15 text-gray-300 border-gray-500/30',
+                  };
+                  const priorityBadgeStyle: Record<string, string> = {
+                    HIGH: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    MEDIUM: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                    LOW: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+                  };
+
                   return (
                     <div 
                       key={idx} 
                       onClick={() => toggleAction(idx)}
-                      className={`cursor-pointer border p-3.5 rounded-xl text-xs md:text-sm flex items-start gap-3 transition-colors ${isChecked ? 'bg-emerald-500/5 border-emerald-500/20 text-gray-400' : 'bg-[#1c1f2e]/60 border-white/5 text-gray-300'}`}
+                      className={`cursor-pointer border p-3.5 rounded-xl text-xs md:text-sm flex items-start gap-3 transition-colors ${isChecked ? 'bg-emerald-500/5 border-emerald-500/20 text-gray-400' : 'bg-[#1c1f2e]/60 border-white/5 hover:border-white/15 text-gray-200'}`}
                     >
                       <div className={`w-5 h-5 flex items-center justify-center rounded-md border flex-shrink-0 mt-0.5 transition-colors ${isChecked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-500 bg-black/40 text-transparent'}`}>
                         {isChecked && <Check size={12} strokeWidth={4} />}
                       </div>
-                      <span className={`leading-relaxed ${isChecked ? 'line-through opacity-50' : ''}`}>{act}</span>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        {isStructured && (actionType || priority || symbol) && (
+                          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            {actionType && (
+                              <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${actionBadgeStyle[actionType] || actionBadgeStyle.HOLD}`}>
+                                {actionType}
+                              </span>
+                            )}
+                            {priority && (
+                              <span className={`px-1.5 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-wider ${priorityBadgeStyle[priority] || priorityBadgeStyle.MEDIUM}`}>
+                                {priority}
+                              </span>
+                            )}
+                            {symbol && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  jumpToHolding(symbol);
+                                }}
+                                title={`Filter holdings for ${symbol}`}
+                                className="px-2 py-0.5 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[10px] font-black uppercase tracking-wider transition-colors"
+                              >
+                                ${symbol}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <p className={`leading-relaxed font-medium ${isChecked ? 'line-through opacity-50' : ''}`}>{title}</p>
+                        {rationale && (
+                          <p className={`text-[11px] md:text-xs text-gray-400 leading-relaxed ${isChecked ? 'line-through opacity-40' : ''}`}>
+                            {rationale}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1079,7 +1228,7 @@ const PortfolioPage: React.FC = () => {
           </div>
 
           {/* 📋 Positions Table */}
-          <div className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4">
+          <div id="portfolio-holdings-section" className="bg-[#131620] border border-white/5 rounded-2xl p-5 space-y-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-3 border-b border-white/5 pb-3">
               <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
                 <h3 className="text-sm font-bold text-white uppercase tracking-widest whitespace-nowrap">All Holdings</h3>
