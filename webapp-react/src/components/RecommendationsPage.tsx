@@ -433,13 +433,17 @@ const RecommendationsPage: React.FC = () => {
 
   const getDurationString = (created_at: number, closed_at?: number) => {
     const end = closed_at || Math.floor(Date.now() / 1000);
-    const diffSeconds = end - created_at;
+    const diffSeconds = Math.max(0, end - created_at);
     const diffDays = Math.floor(diffSeconds / 86400);
+    const suffix = closed_at ? 'held' : 'open';
+    const openedDate = created_at
+      ? new Date(created_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
     if (diffDays <= 0) {
       const hours = Math.floor(diffSeconds / 3600);
-      return `${hours}h open`;
+      return closed_at ? `${hours}h ${suffix}` : `${openedDate} • ${hours}h ${suffix}`;
     }
-    return `${diffDays}d open`;
+    return closed_at ? `${diffDays}d ${suffix}` : `${openedDate} • ${diffDays}d ${suffix}`;
   };
 
   if (!isPremium) {
@@ -1100,7 +1104,6 @@ const RecommendationsPage: React.FC = () => {
                   {pastRecs.map((rec) => {
                     const pnl = ((rec.current_price - rec.entry_price) / rec.entry_price) * 100;
                     const isProfit = pnl >= 0;
-                    const isTarget = rec.current_price >= rec.target_price;
 
                     return (
                       <tr key={rec.id} className="hover:bg-white/[0.02] transition-colors">
@@ -1124,9 +1127,28 @@ const RecommendationsPage: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-gray-400">{getDurationString(rec.created_at, rec.closed_at)}</td>
                         <td className="px-6 py-4">
-                          <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase border ${isTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
-                            {isTarget ? 'Target Hit' : 'Stopped Out'}
-                          </span>
+                          {(() => {
+                            const st = String(rec.status || '').toLowerCase();
+                            const isWin =
+                              st === 'hit_target' ||
+                              st === 'ai_closed_profit' ||
+                              (st === 'expired' && Number(rec.current_price || 0) >= Number(rec.entry_price || 0));
+                            const label =
+                              st === 'hit_target'
+                                ? 'Target Hit'
+                                : st === 'ai_closed_profit'
+                                ? 'AI Closed (+)'
+                                : st === 'ai_closed_loss'
+                                ? 'AI Closed (-)'
+                                : st === 'expired'
+                                ? 'Expired'
+                                : 'Stopped Out';
+                            return (
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase border ${isWin ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                                {label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         {user?.is_admin && (
                           <td className="px-6 py-4 text-right">

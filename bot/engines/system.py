@@ -532,9 +532,8 @@ async def daily_recommendations_generator_engine(application):
     
     # Only pre-generate AI recommendations for the winning combinations:
     # Crypto focus: Conservative & Income
-    # Stocks focus: Moderate & Speculation
+    # US Equities focus (stocks only)
     target_combinations = [
-        ("Conservative", "Income"),
         ("Moderate", "Speculation"),
     ]
     
@@ -551,15 +550,16 @@ async def daily_recommendations_generator_engine(application):
             logger.debug(f"Daily Recommendations Generator Scheduler sleeping for {wait_time:.1f}s until next run at {target.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             await asyncio.sleep(wait_time)
             
-            logger.debug("🤖 Generating daily AI recommendations for target combinations...")
+            logger.info("🤖 Generating daily US Equities AI recommendations & reviewing active picks...")
             
             from server import app
             from web_api.routes_portfolio import generate_and_cache_recommendations
             
+            summary_lines = []
             with app.app_context():
                 for risk, goal in target_combinations:
                     try:
-                        logger.debug(f"Generating recommendations for {risk} & {goal}...")
+                        logger.info(f"Running AI recommendations review/generation for {risk} & {goal}...")
                         result = generate_and_cache_recommendations(
                             user_id=None, 
                             risk_profile=risk, 
@@ -567,20 +567,38 @@ async def daily_recommendations_generator_engine(application):
                             force_regenerate=True, 
                             is_admin=True
                         )
-                        logger.debug(f"Result for {risk} & {goal}: Status {result.get('status_code')}")
+                        closed_recs = result.get("closed_recommendations") or []
+                        inserted = result.get("inserted_count", 0)
+                        if closed_recs or inserted:
+                            lines = [f"🤖 *Daily AI Picks Update ({risk} / {goal})*"]
+                            for cl in closed_recs:
+                                sign = "+" if cl["pnl_pct"] >= 0 else ""
+                                lines.append(f"• Closed *{cl['symbol']}* @ ${cl['exit_price']} ({sign}{cl['pnl_pct']}%) — {cl['reason']}")
+                            if inserted:
+                                lines.append(f"• Added *{inserted}* new US equity pick{'s' if inserted != 1 else ''} (target roster: 10).")
+                            summary_lines.append("\n".join(lines))
                     except Exception as e:
                         logger.error(f"Error generating recommendations for {risk} & {goal}: {e}")
                     
-                    await asyncio.sleep(10) # 10 second delay between combinations
+                    await asyncio.sleep(5)
                         
-            logger.info("✅ Daily AI recommendations generated successfully.")
-            
-            # 🚀 Trigger AI Recommendations Autopilot execution for crypto users
-            try:
-                from bot.engines.crypto import execute_ai_recommendations_autopilot
-                await execute_ai_recommendations_autopilot(application)
-            except Exception as auto_err:
-                logger.error(f"Error triggering AI Recommendations Autopilot after generation: {auto_err}")
+            logger.info("✅ Daily AI recommendations review/generation completed.")
+
+            if summary_lines:
+                try:
+                    admin_ids = database.get_all_admins()
+                    from bot.config import SUPER_ADMIN_ID
+                    if str(SUPER_ADMIN_ID) not in [str(a) for a in admin_ids]:
+                        admin_ids.append(SUPER_ADMIN_ID)
+                    msg = "\n\n".join(summary_lines)
+                    for a_id in set(admin_ids):
+                        try:
+                            await application.bot.send_message(chat_id=a_id, text=msg, parse_mode="Markdown")
+                        except Exception:
+                            pass
+                except Exception as notify_err:
+                    logger.error(f"Failed to send daily AI picks admin summary: {notify_err}")
+        except asyncio.CancelledError:
             logger.debug("⏳ Daily Recommendations Generator Engine cancelled.")
             break
         except Exception as e:

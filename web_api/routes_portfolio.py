@@ -2104,36 +2104,100 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
         # Build the quant US equities market research brief (global, not biased by one user's personal holdings)
         research_brief, stock_lookup, valid_candidate_syms = _build_market_research_brief(user_id, risk_profile, investment_goal)
 
+        TARGET_ACTIVE_STOCK_RECS = 10
+        now_ts = int(time.time())
+
+        # Load currently active stock recommendations for AI review (determine if any should be closed/rotated)
+        active_to_review = []
+        try:
+            with db_session() as conn:
+                c = conn.cursor()
+                c.execute('''
+                    SELECT id, symbol, entry_price, current_price, target_price, stop_loss, created_at, estimated_timeframe, rationale
+                    FROM AIRecommendations
+                    WHERE status = 'active' AND LOWER(category) = 'stock' AND risk_profile = ? AND investment_goal = ?
+                    ORDER BY created_at ASC
+                ''', (risk_profile, investment_goal))
+                active_to_review = [dict(r) for r in c.fetchall()]
+        except Exception as e:
+            print(f"[AI Recs] Could not load active picks for review: {e}")
+
+        # Fetch fresh live prices for active picks so AI reviews real current P&L
+        active_review_lines = []
+        active_live_prices = {}
+        if active_to_review:
+            active_syms = [str(r["symbol"]).upper() for r in active_to_review]
+            live_map = get_cached_prices(active_syms, ["stock"] * len(active_syms))
+            for r in active_to_review:
+                sym = str(r["symbol"]).upper()
+                ep = float(r.get("entry_price") or 0)
+                lp, _ = live_map.get(f"{sym}_stock", (None, 0.0))
+                if lp is None or lp <= 0:
+                    lp = float(stock_lookup.get(sym, {}).get("price") or r.get("current_price") or ep)
+                active_live_prices[sym] = round(float(lp), 2)
+                pnl_pct = ((lp - ep) / ep * 100.0) if ep > 0 else 0.0
+                days_open = max(0, int((now_ts - int(r.get("created_at") or now_ts)) / 86400))
+                tech = stock_lookup.get(sym, {})
+                tech_str = (
+                    f" | Trend={tech.get('trend')} | RSI14={tech.get('rsi_14')} | 30d={tech.get('30d_return', 0):+.1f}%"
+                    if tech else ""
+                )
+                active_review_lines.append(
+                    f"  - {sym}: Entry=${ep:.2f}, Live=${lp:.2f} ({pnl_pct:+.2f}%), Target=${float(r.get('target_price') or 0):.2f}, "
+                    f"SL=${float(r.get('stop_loss') or 0):.2f}, Open={days_open}d (Horizon: {r.get('estimated_timeframe') or '3-6 Months'}){tech_str}"
+                )
+
+        current_active_count = len(active_to_review)
+        # Allow Gemini to propose enough new picks to reach TARGET_ACTIVE_STOCK_RECS (plus replacements for any it closes)
+        suggested_new_count = max(3, TARGET_ACTIVE_STOCK_RECS - current_active_count + min(3, current_active_count))
+        suggested_new_count = min(10, suggested_new_count)
+
         is_speculative = (risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation")
         is_income = (risk_profile.lower() == "conservative" or investment_goal.lower() == "income")
 
-        # Construct the AI Prompt (100% US Equities, quant-grounded)
+        active_review_block = ""
+        if active_review_lines:
+            active_review_block = (
+                "\n--- ACTIVE RECOMMENDATIONS TO REVIEW (CURRENTLY OPEN) ---\n"
+                + "\n".join(active_review_lines)
+                + "\n"
+            )
+
+        # Construct the AI Prompt (100% US Equities, quant-grounded, with active-pick review + 10-pick roster)
         system_instruction = (
             "You are a senior quantitative US equities portfolio analyst AI for Metaverse Sherpa. "
-            "You are selecting the top 5 institutional-grade US equity / ETF buy-and-hold ideas.\n\n"
+            f"Your job has TWO parts: (A) Review our {current_active_count} currently active US equity recommendations and decide if any should be closed early (locking in profit or cutting stalled/broken setups), and (B) Select fresh sector-diversified US equity / ETF ideas so our active roster reaches {TARGET_ACTIVE_STOCK_RECS} high-conviction positions.\n\n"
             f"Target Risk Profile: '{risk_profile}'\n"
             f"Target Investment Goal: '{investment_goal}'\n\n"
             "IMPORTANT STRATEGY & RISK MANAGEMENT RULES:\n"
             "1. Base your analysis ONLY on the US equities listed in the brief below. NEVER invent tickers or fabricate numbers.\n"
-            "2. ADAPT TO MACRO REGIME: Read the MACRO MARKET REGIME section (SPY/QQQ trend & RSI). In Pullback/Risk-Off regimes, favor Category B dips and defensive quality. In Bullish regimes, favor Category A trend leaders.\n"
-            "3. BALANCED & SECTOR-DIVERSIFIED SELECTION: Pick 5 stocks across at least 3-4 distinct sectors (shown in [Sector] brackets). Avoid picking overbought names (RSI14 > 75) or falling knives unless justified by strong valuation/support.\n"
-            "4. TECHNICAL STOP-LOSS PLACEMENT: Place `stop_loss` below the `20dLow` or ~1.8-2.5x `ATR14` below current price — never arbitrary round numbers or tighter than 1.5x ATR14.\n"
-            "5. STRICT RISK-TO-REWARD (MINIMUM 2:1 R:R): Upside from current price to `target_price` MUST be at least 2.0x the downside to `stop_loss`. Ground `target_price` in `52wHigh`, `AnalystTarget`, and trend momentum.\n"
-            "6. Assets marked with ⚡ ACTIVE BOT SIGNAL have confirmed algorithmic momentum — prioritize them when their technicals & R:R align.\n"
-            "7. Calculate `expected_growth_pct` (number) accurately from current price to `target_price`, and provide a realistic `estimated_timeframe` (e.g., '3-6 Months').\n"
+            "2. ACTIVE PICK REVIEW (`close_recommendations`): Review each open pick in `ACTIVE RECOMMENDATIONS TO REVIEW`. Recommend closing an active pick ONLY if (a) its technical trend broke down (Downtrend / weak 30d momentum), (b) it has been open > 90 days with stalled progress and better opportunities exist, or (c) it has strong gains that should be locked in ahead of resistance/regime shift. Leave strong, healthy setups open.\n"
+            "3. ADAPT TO MACRO REGIME: Read the MACRO MARKET REGIME section (SPY/QQQ trend & RSI). In Pullback/Risk-Off regimes, favor Category B dips and defensive quality. In Bullish regimes, favor Category A trend leaders.\n"
+            "4. BALANCED & SECTOR-DIVERSIFIED SELECTION: Pick new stocks across diverse sectors (shown in [Sector] brackets), complementing the remaining active picks. Avoid overbought names (RSI14 > 75) or falling knives unless justified by strong valuation/support.\n"
+            "5. TECHNICAL STOP-LOSS PLACEMENT: Place `stop_loss` below the `20dLow` or ~1.8-2.5x `ATR14` below current price — never arbitrary round numbers or tighter than 1.5x ATR14.\n"
+            "6. STRICT RISK-TO-REWARD (MINIMUM 2:1 R:R): Upside from current price to `target_price` MUST be at least 2.0x the downside to `stop_loss`. Ground `target_price` in `52wHigh`, `AnalystTarget`, and trend momentum.\n"
+            "7. Assets marked with ⚡ ACTIVE BOT SIGNAL have confirmed algorithmic momentum — prioritize them when their technicals & R:R align.\n"
+            "8. Calculate `expected_growth_pct` (number) accurately from current price to `target_price`, and provide a realistic `estimated_timeframe` (e.g., '3-6 Months').\n"
         )
         if is_speculative:
             system_instruction += (
-                "8. **AGGRESSIVE/SPECULATION OVERRIDE**: Favor high-beta momentum/breakout equities with larger projected upside (25-60%+) and shorter timeframes ('1-3 Months'), while still honoring >= 2:1 R:R.\n"
+                "9. **AGGRESSIVE/SPECULATION OVERRIDE**: Favor high-beta momentum/breakout equities with larger projected upside (25-60%+) and shorter timeframes ('1-3 Months'), while still honoring >= 2:1 R:R.\n"
             )
         elif is_income:
             system_instruction += (
-                "8. **INCOME/CONSERVATIVE OVERRIDE**: Prioritize Category C defensive & dividend-paying leaders (strong Div %, lower ATR14 %, reasonable FwdP/E) with steady 3-12 Month total-return targets. Avoid initiating new entries with `EarningsIn <= 7d` to prevent binary earnings risk.\n"
+                "9. **INCOME/CONSERVATIVE OVERRIDE**: Prioritize Category C defensive & dividend-paying leaders (strong Div %, lower ATR14 %, reasonable FwdP/E) with steady 3-12 Month total-return targets. Avoid initiating new entries with `EarningsIn <= 7d` to prevent binary earnings risk.\n"
             )
 
         system_instruction += (
             "\nReturn a JSON object with exactly this structure (no markdown, no extra text):\n"
             "{\n"
+            '  "close_recommendations": [\n'
+            "    {\n"
+            '      "symbol": "KO",\n'
+            '      "action": "CLOSE_PROFIT",\n'
+            '      "reason": "1-sentence quant reason for closing now (e.g., momentum stalled after 115d open; locking in +9.5% gain to rotate into higher R:R setup)."\n'
+            "    }\n"
+            "  ],\n"
             '  "stocks": [\n'
             "    {\n"
             '      "symbol": "AAPL",\n'
@@ -2151,21 +2215,67 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
             "  ],\n"
             '  "crypto": []\n'
             "}\n\n"
-            "Select exactly 5 US equities in `stocks` and keep `crypto` as an empty list `[]`. "
+            f"Provide up to {suggested_new_count} ranked US equities in `stocks` (we will insert as many as needed to reach {TARGET_ACTIVE_STOCK_RECS} active picks after any closes) and keep `crypto` as an empty list `[]`. "
             "Set conviction to 'high' if the asset has an active signal OR strong trend + favorable R:R + analyst support, otherwise 'medium'.\n\n"
+            f"{active_review_block}\n"
             "--- MARKET DATA RESEARCH BRIEF ---\n\n"
             f"{research_brief}"
         )
 
         try:
             raw_json_str = call_gemini(
-                "Analyze the US equities quantitative brief and select the top 5 sector-diversified US stocks/ETFs.",
+                f"Review the active US equity recommendations for any closes/rotations, then select up to {suggested_new_count} fresh sector-diversified US stocks/ETFs to build a 10-position roster.",
                 system_instruction=system_instruction,
                 json_mode=True,
                 custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL
             )
             clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
             recommendations = json.loads(clean_json_str)
+
+            # 1. Process AI-recommended closes first and record realized P&L in AIRecommendations
+            ai_closes_raw = recommendations.get("close_recommendations") or []
+            closed_summary = []
+            active_by_sym = {str(r["symbol"]).upper(): r for r in active_to_review}
+            closed_syms = set()
+
+            if isinstance(ai_closes_raw, list) and ai_closes_raw and active_by_sym:
+                with db_session() as conn:
+                    c = conn.cursor()
+                    for item in ai_closes_raw:
+                        if not isinstance(item, dict):
+                            continue
+                        sym = str(item.get("symbol", "")).strip().upper()
+                        if sym not in active_by_sym or sym in closed_syms:
+                            continue
+                        rec_row = active_by_sym[sym]
+                        ep = float(rec_row.get("entry_price") or 0)
+                        exit_p = float(active_live_prices.get(sym) or rec_row.get("current_price") or ep)
+                        if exit_p <= 0:
+                            continue
+                        pnl_pct = ((exit_p - ep) / ep * 100.0) if ep > 0 else 0.0
+                        close_status = "ai_closed_profit" if exit_p >= ep else "ai_closed_loss"
+                        reason = str(item.get("reason") or "Closed by AI portfolio rotation review.").strip()
+                        existing_rat = str(rec_row.get("rationale") or "").strip()
+                        updated_rat = f"{existing_rat}\n\n[AI Closed @ ${exit_p:.2f} ({pnl_pct:+.2f}%): {reason}]".strip()
+
+                        c.execute('''
+                            UPDATE AIRecommendations
+                            SET current_price = ?, status = ?, closed_at = ?, rationale = ?
+                            WHERE id = ? AND status = 'active'
+                        ''', (round(exit_p, 2), close_status, now_ts, updated_rat, rec_row["id"]))
+                        closed_syms.add(sym)
+                        closed_summary.append({
+                            "symbol": sym,
+                            "status": close_status,
+                            "entry_price": round(ep, 2),
+                            "exit_price": round(exit_p, 2),
+                            "pnl_pct": round(pnl_pct, 2),
+                            "reason": reason,
+                        })
+                    conn.commit()
+
+            remaining_active_count = max(0, current_active_count - len(closed_syms))
+            slots_needed = max(0, TARGET_ACTIVE_STOCK_RECS - remaining_active_count)
 
             raw_stock_recs = recommendations.get("stocks", [])
             validated_stock_recs = []
@@ -2258,12 +2368,14 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
             }
             update_config(cache_key, json.dumps(cache_payload))
 
-            # Record validated recommendations to AIRecommendations table
+            # Record validated recommendations to AIRecommendations table (up to slots_needed to reach 10 active)
+            inserted_count = 0
             with db_session() as conn:
                 c = conn.cursor()
-                now_ts = int(time.time())
 
                 for rec in validated_stock_recs:
+                    if inserted_count >= slots_needed:
+                        break
                     sym = rec["symbol"]
                     cat = "stock"
                     entry_price = rec["_validated_entry"]
@@ -2289,6 +2401,7 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
                             (symbol, name, category, risk_profile, investment_goal, entry_price, current_price, target_price, stop_loss, expected_growth_pct, estimated_timeframe, rationale, metrics_summary, status, created_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
                         ''', (sym, rec_name, cat, risk_profile, investment_goal, entry_price, entry_price, target_price, stop_loss, expected_growth_pct, estimated_timeframe, rationale, metrics_summary, now_ts))
+                        inserted_count += 1
                 conn.commit()
 
             # Build markdown for the Detailed Implementation Plan
@@ -2316,7 +2429,12 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
                     ''', (json.dumps(analysis_data), analysis_id))
                     conn.commit()
 
-            return {"recommendations": recommendations, "status_code": 200}
+            return {
+                "recommendations": recommendations,
+                "closed_recommendations": closed_summary,
+                "inserted_count": inserted_count,
+                "status_code": 200
+            }
         except Exception as e:
             return {"error": f"Failed to generate recommendations: {str(e)}", "status_code": 500}
     finally:
@@ -2553,16 +2671,24 @@ def get_tracked_recommendations():
     stock_stats["total"] = len([r for r in all_recs if r["category"] == "stock"])
     crypto_stats["total"] = len([r for r in all_recs if r["category"] == "crypto"])
 
-    # Stock win rate
+    # Stock win rate (counts hit_target, ai_closed_profit, and profitable expired closes as wins)
     closed_stock_count = len(closed_stocks)
     if closed_stock_count > 0:
-        hits = len([r for r in closed_stocks if r["status"] == "hit_target"])
-        stops = len([r for r in closed_stocks if r["status"] == "hit_stop_loss"])
+        hits = len([
+            r for r in closed_stocks
+            if r["status"] in ("hit_target", "ai_closed_profit")
+            or (r["status"] == "expired" and float(r.get("current_price") or 0) >= float(r.get("entry_price") or 0))
+        ])
+        stops = len([
+            r for r in closed_stocks
+            if r["status"] in ("hit_stop_loss", "ai_closed_loss")
+            or (r["status"] == "expired" and float(r.get("current_price") or 0) < float(r.get("entry_price") or 0))
+        ])
         stock_stats["hits"] = hits
         stock_stats["stops"] = stops
         stock_stats["win_rate"] = round((hits / closed_stock_count) * 100, 1)
         
-        total_dur = sum((r["closed_at"] - r["created_at"]) for r in closed_stocks)
+        total_dur = sum(max(0, (r["closed_at"] or r["created_at"]) - r["created_at"]) for r in closed_stocks)
         stock_stats["avg_days"] = round((total_dur / closed_stock_count) / 86400, 1)
 
     # Crypto win rate

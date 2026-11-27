@@ -34,7 +34,9 @@ from bot.engines import (
     alpaca_hourly_sync_engine,
     premium_expiration_engine,
     daily_combined_email_engine,
-    weekly_combined_email_engine
+    weekly_combined_email_engine,
+    daily_recommendations_generator_engine,
+    recommendations_resolution_engine,
 )
 from bot.engines.websockets import websocket_engine
 from bot.handlers.system import error_handler
@@ -113,12 +115,14 @@ async def post_init(application):
     task5 = asyncio.create_task(premium_expiration_engine(application))
     task6_1 = asyncio.create_task(daily_combined_email_engine(application))
     task6_2 = asyncio.create_task(weekly_combined_email_engine(application))
+    task7_1 = asyncio.create_task(daily_recommendations_generator_engine(application))
+    task7_2 = asyncio.create_task(recommendations_resolution_engine(application))
     task8 = asyncio.create_task(websocket_engine(application))
     
     # Store references to prevent garbage collection
     application.bot_data["bg_tasks"] = [
         task1, task3, task4, task4_1, task5,
-        task6_1, task6_2, task8
+        task6_1, task6_2, task7_1, task7_2, task8
     ]
 
 
