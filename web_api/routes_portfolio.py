@@ -820,8 +820,8 @@ GEMINI_PRO_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini
 GEMINI_FLASH_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 GEMINI_FALLBACK_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
-def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=None, mime_type="image/jpeg", custom_url=None):
-    """Call Google Gemini API using configured env variables/secrets with modern model fallback."""
+def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=None, mime_type="image/jpeg", custom_url=None, thinking_budget=None):
+    """Call Google Gemini API using configured env variables/secrets with modern model fallback and optional thinking budget."""
     api_key = utils_gcp.get_secret("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not configured.")
@@ -845,18 +845,26 @@ def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=N
         })
     parts.append({"text": prompt})
     contents = [{"parts": parts}]
-    payload = {
+    base_payload = {
         "contents": contents,
         "generationConfig": {
             "temperature": 0.2
         }
     }
     if system_instruction:
-        payload["systemInstruction"] = {
+        base_payload["systemInstruction"] = {
             "parts": [{"text": system_instruction}]
         }
     if json_mode:
-        payload["generationConfig"]["responseMimeType"] = "application/json"
+        base_payload["generationConfig"]["responseMimeType"] = "application/json"
+
+    def _extract_response_text(res_data):
+        cand_parts = res_data["candidates"][0]["content"]["parts"]
+        # Skip internal thought parts when thinkingConfig is active
+        for p in reversed(cand_parts):
+            if isinstance(p, dict) and "text" in p and not p.get("thought"):
+                return p["text"]
+        return cand_parts[0]["text"]
 
     last_error = None
     for url in urls_to_try:
@@ -870,12 +878,20 @@ def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=N
             headers["x-goog-api-key"] = api_key
             headers["Authorization"] = f"Bearer {api_key}"
 
+        payload = json.loads(json.dumps(base_payload))
+        if thinking_budget and int(thinking_budget) > 0:
+            payload["generationConfig"]["thinkingConfig"] = {"thinkingBudget": int(thinking_budget)}
+
         try:
-            resp = _HTTP_SESSION.post(url_with_key, json=payload, headers=headers, timeout=90)
+            resp = _HTTP_SESSION.post(url_with_key, json=payload, headers=headers, timeout=110)
+            # If a model rejects thinkingConfig with 400, retry same endpoint cleanly without it
+            if resp.status_code == 400 and "thinkingConfig" in payload["generationConfig"]:
+                payload["generationConfig"].pop("thinkingConfig", None)
+                resp = _HTTP_SESSION.post(url_with_key, json=payload, headers=headers, timeout=110)
             if resp.status_code == 200:
                 res_data = resp.json()
                 try:
-                    return res_data["candidates"][0]["content"]["parts"][0]["text"]
+                    return _extract_response_text(res_data)
                 except (KeyError, IndexError):
                     raise ValueError(f"Unexpected response structure from Gemini API: {res_data}")
             else:
@@ -886,6 +902,49 @@ def call_gemini(prompt, system_instruction=None, json_mode=False, image_base64=N
             print(f"[Gemini API] Exception calling {url}: {e}. Trying fallback...")
 
     raise ValueError(f"All Gemini API endpoints failed. Last error: {last_error}")
+
+def _fetch_batch_stock_news(symbols, limit=18):
+    """Fetch recent Alpaca News headlines for a batch of US equity symbols (fast, single HTTP request)."""
+    clean_syms = list(dict.fromkeys(
+        str(s).strip().upper() for s in (symbols or []) if s and str(s).strip()
+    ))[:20]
+    if not clean_syms:
+        return []
+    try:
+        api_key = utils_gcp.get_secret("ALPACA_API_KEY")
+        api_secret = utils_gcp.get_secret("ALPACA_API_SECRET")
+        if not api_key or not api_secret:
+            return []
+        res = _HTTP_SESSION.get(
+            "https://data.alpaca.markets/v1beta1/news",
+            headers={
+                "APCA-API-KEY-ID": api_key,
+                "APCA-API-SECRET-KEY": api_secret,
+            },
+            params={
+                "symbols": ",".join(clean_syms),
+                "limit": limit,
+                "sort": "desc",
+            },
+            timeout=6,
+        )
+        if res.status_code != 200:
+            return []
+        out = []
+        seen = set()
+        for art in res.json().get("news", []):
+            title = (art.get("headline") or "").strip()
+            if not title or title in seen:
+                continue
+            seen.add(title)
+            matched = [s for s in (art.get("symbols") or []) if s in clean_syms]
+            sym_tag = ",".join(matched[:2]) if matched else clean_syms[0]
+            pub = str(art.get("created_at") or "")[:10]
+            out.append(f"  - [{sym_tag} | {pub}] {title}")
+        return out
+    except Exception as e:
+        print(f"[AI Recs] Batch Alpaca news fetch error: {e}")
+        return []
 
 
 # --- 📂 DB / Positions API Handlers ---
@@ -1921,7 +1980,8 @@ def analyze_portfolio():
             prompt,
             system_instruction=system_instruction,
             json_mode=True,
-            custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL
+            custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL,
+            thinking_budget=4096
         )
         clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
         analysis = json.loads(clean_json_str)
@@ -2155,6 +2215,17 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
         is_speculative = (risk_profile.lower() == "aggressive" and investment_goal.lower() == "speculation")
         is_income = (risk_profile.lower() == "conservative" or investment_goal.lower() == "income")
 
+        # Fetch recent Alpaca News headlines for active picks & top candidates so Gemini sees live catalysts
+        news_target_syms = [str(r["symbol"]).upper() for r in active_to_review] + list(valid_candidate_syms)[:14]
+        recent_news_lines = _fetch_batch_stock_news(news_target_syms, limit=18)
+        recent_news_block = ""
+        if recent_news_lines:
+            recent_news_block = (
+                "\n--- RECENT NEWS & CATALYSTS (ALPACA NEWS) ---\n"
+                + "\n".join(recent_news_lines)
+                + "\n"
+            )
+
         active_review_block = ""
         if active_review_lines:
             active_review_block = (
@@ -2217,17 +2288,19 @@ def generate_and_cache_recommendations(user_id, risk_profile, investment_goal, f
             "}\n\n"
             f"Provide up to {suggested_new_count} ranked US equities in `stocks` (we will insert as many as needed to reach {TARGET_ACTIVE_STOCK_RECS} active picks after any closes) and keep `crypto` as an empty list `[]`. "
             "Set conviction to 'high' if the asset has an active signal OR strong trend + favorable R:R + analyst support, otherwise 'medium'.\n\n"
-            f"{active_review_block}\n"
+            f"{active_review_block}"
+            f"{recent_news_block}\n"
             "--- MARKET DATA RESEARCH BRIEF ---\n\n"
             f"{research_brief}"
         )
 
         try:
             raw_json_str = call_gemini(
-                f"Review the active US equity recommendations for any closes/rotations, then select up to {suggested_new_count} fresh sector-diversified US stocks/ETFs to build a 10-position roster.",
+                f"Review the active US equity recommendations and recent news catalysts for any closes/rotations, then select up to {suggested_new_count} fresh sector-diversified US stocks/ETFs to build a 10-position roster.",
                 system_instruction=system_instruction,
                 json_mode=True,
-                custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL
+                custom_url=os.getenv("PORTFOLIO_AI_URL") or GEMINI_PRO_URL,
+                thinking_budget=4096
             )
             clean_json_str = raw_json_str.strip().replace("```json", "").replace("```", "")
             recommendations = json.loads(clean_json_str)
