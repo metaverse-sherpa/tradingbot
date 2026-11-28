@@ -49,6 +49,7 @@ Stores active strategy settings and encrypted api keys for Telegram tenants.
 | `had_premium_before` | BOOLEAN | `0` | History flag |
 | `referral_reward_triggered` | BOOLEAN | `0` | Reward redemption tracker |
 | `bingx_futures_type` | TEXT | `'standard'` | Futures category for BingX |
+| `last_login` | INTEGER | `0` | Unix timestamp of last Telegram bot activity |
 
 ---
 
@@ -96,6 +97,7 @@ Tracks web-only users, sessions, and linked settings.
 | `public_key` | TEXT | | Public encryption key |
 | `encrypted_private_key` | TEXT | | Encrypted private key block |
 | `bingx_futures_type` | TEXT | `'standard'` | BingX futures mode |
+| `last_login` | INTEGER | `0` | Unix timestamp of last web app login/activity |
 
 ---
 

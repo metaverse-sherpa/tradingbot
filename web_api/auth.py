@@ -113,11 +113,13 @@ def require_auth(f):
                     created_at = int(time.time())
                     full_name = decoded_token.get("name") or email.split("@")[0]
                     c.execute('''
-                        INSERT INTO WebUsers (email, google_id, full_name, created_at, is_active)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (email.strip().lower(), uid, full_name, created_at, 1))
+                        INSERT INTO WebUsers (email, google_id, full_name, created_at, is_active, last_login)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (email.strip().lower(), uid, full_name, created_at, 1, created_at))
                     conn.commit()
                 user = get_web_user_by_email(email)
+            else:
+                database.record_web_last_login(user["id"])
                 
             g.user = user
         except Exception as db_err:
@@ -177,11 +179,13 @@ def require_auth_web(f):
                     created_at = int(time.time())
                     full_name = decoded_token.get("name") or email.split("@")[0]
                     c.execute('''
-                        INSERT INTO WebUsers (email, google_id, full_name, created_at, is_active)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (email.strip().lower(), uid, full_name, created_at, 1))
+                        INSERT INTO WebUsers (email, google_id, full_name, created_at, is_active, last_login)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (email.strip().lower(), uid, full_name, created_at, 1, created_at))
                     conn.commit()
                 user = get_web_user_by_email(email)
+            else:
+                database.record_web_last_login(user["id"])
                 
             g.user = user
         except Exception as e:

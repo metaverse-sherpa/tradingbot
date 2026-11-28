@@ -283,7 +283,9 @@ def admin_users():
                         u3.email as referrer_email_by_tg,
                         t2.username as referrer_tg_username,
                         t2.full_name as referrer_tg_fullname,
-                        (SELECT COUNT(*) FROM ProcessedPayments p WHERE p.user_id = u1.id) as payments_count
+                        (SELECT COUNT(*) FROM ProcessedPayments p WHERE p.user_id = u1.id) as payments_count,
+                        COALESCE(u1.last_login, 0) as web_last_login,
+                        COALESCE(t.last_login, 0) as tg_last_login
                     FROM WebUsers u1
                     LEFT JOIN Users t ON u1.telegram_chat_id = t.telegram_chat_id
                     LEFT JOIN WebUsers u2 ON COALESCE(u1.referred_by, t.referred_by) = u2.id
@@ -305,7 +307,9 @@ def admin_users():
                         u3.email as referrer_email_by_tg,
                         t2.username as referrer_tg_username,
                         t2.full_name as referrer_tg_fullname,
-                        0 as payments_count
+                        0 as payments_count,
+                        0 as web_last_login,
+                        COALESCE(t.last_login, 0) as tg_last_login
                     FROM Users t
                     LEFT JOIN WebUsers u3 ON t.referred_by = u3.telegram_chat_id
                     LEFT JOIN Users t2 ON t.referred_by = t2.telegram_chat_id
@@ -328,6 +332,13 @@ def admin_users():
             if not ref_email and ref_id:
                 ref_email = f"@{row[10]}" if row[10] else (row[11] or str(ref_id))
 
+            web_last_login = int(row[13] or 0)
+            tg_last_login = int(row[14] or 0)
+            last_login_ts = max(web_last_login, tg_last_login)
+            last_login_source = None
+            if last_login_ts > 0:
+                last_login_source = "web" if web_last_login >= tg_last_login else "telegram"
+
             users_list.append({
                 "id": row[0],
                 "email": row[1],
@@ -339,7 +350,12 @@ def admin_users():
                 "referred_by": ref_id,
                 "referrer_email": ref_email,
                 "telegram_username": row[7],
-                "payments_count": row[12]
+                "payments_count": row[12],
+                "last_login": datetime.utcfromtimestamp(last_login_ts).isoformat() + "Z" if last_login_ts else None,
+                "last_login_ts": last_login_ts,
+                "last_login_source": last_login_source,
+                "last_web_login": datetime.utcfromtimestamp(web_last_login).isoformat() + "Z" if web_last_login else None,
+                "last_tg_login": datetime.utcfromtimestamp(tg_last_login).isoformat() + "Z" if tg_last_login else None
             })
             
         return jsonify({"users": users_list}), 200

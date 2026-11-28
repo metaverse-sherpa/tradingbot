@@ -5,6 +5,29 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useStore';
 import { useToast } from './Toast';
 
+const formatLastLogin = (isoStr?: string | null) => {
+  if (!isoStr) return null;
+  const date = new Date(isoStr);
+  if (isNaN(date.getTime())) return null;
+  const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSec < 60) return 'Just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 7 * 86400) return `${Math.floor(diffSec / 86400)}d ago`;
+  return date.toISOString().slice(0, 10);
+};
+
+const formatLastLoginTooltip = (u: any) => {
+  const parts: string[] = [];
+  if (u.last_web_login) {
+    parts.push(`Web: ${new Date(u.last_web_login).toLocaleString()}`);
+  }
+  if (u.last_tg_login) {
+    parts.push(`Telegram: ${new Date(u.last_tg_login).toLocaleString()}`);
+  }
+  return parts.join('\n');
+};
+
 const AdminPage: React.FC = () => {
   const { user, setUser } = useAuthStore();
   const { showToast } = useToast();
@@ -294,12 +317,13 @@ const AdminPage: React.FC = () => {
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Plan</th>
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Joined</th>
+                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Last Login</th>
                     <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {loading ? (
-                    <tr><td colSpan={7} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
+                    <tr><td colSpan={8} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
                   ) : (
                     hierarchicalUsers.map(u => (
                       <tr key={u.id || ('tg-' + u.telegram_chat_id)} className="hover:bg-white/5 transition-colors">
@@ -340,7 +364,21 @@ const AdminPage: React.FC = () => {
                             Active
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-400">{u.joined?.slice(0, 10)}</td>
+                        <td className="py-4 px-4 text-sm text-gray-400 whitespace-nowrap">{u.joined?.slice(0, 10)}</td>
+                        <td className="py-4 px-4 text-sm whitespace-nowrap" title={formatLastLoginTooltip(u)}>
+                          {u.last_login ? (
+                            <div className="flex flex-col">
+                              <span className="text-gray-200">{formatLastLogin(u.last_login)}</span>
+                              {u.last_login_source && (
+                                <span className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${u.last_login_source === 'telegram' ? 'text-sky-400' : 'text-cyan-400'}`}>
+                                  {u.last_login_source === 'telegram' ? 'Telegram' : 'Web'}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
                         <td className="py-4 px-4 text-right flex items-center justify-end gap-4">
                           {u.payments_count > 0 && (
                             <button 

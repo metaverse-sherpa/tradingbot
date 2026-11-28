@@ -47,6 +47,7 @@ users_table = Table(
     Column('bingx_futures_type', String, default='standard'),
     Column('coinbase_sandbox', Integer, default=1),
     Column('hide_dollars', Boolean, default=False),
+    Column('last_login', Integer, default=0),
 )
 
 webusers_table = Table(
@@ -100,6 +101,7 @@ webusers_table = Table(
     Column('developer_api_key', String, unique=True),
     Column('risk_profile', String),
     Column('investment_goal', String),
+    Column('last_login', Integer, default=0),
 )
 
 theoretical_trades_table = Table(

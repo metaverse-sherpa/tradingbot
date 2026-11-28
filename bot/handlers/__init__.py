@@ -1,4 +1,6 @@
-from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, filters
+from telegram import Update
+from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, TypeHandler, ContextTypes, filters
+import database
 from bot.handlers.system import start, setup, cancel_command, docs, stop_bot, resume_bot, diagnose_command, unknown_command_handler
 from bot.handlers.auth import handle_message
 from bot.handlers.trading import stats, stats_simulated, open_trades, list_trades, backtest, balance_command, share_callback, privacy_command
@@ -6,7 +8,20 @@ from bot.handlers.strategy import strategy_command, strategy_guide_command, stra
 from bot.handlers.admin import promote_command, demote_command, admin_command, sql_command, dbinspect_command, refer_command, show_premium_menu
 from bot.handlers.settings import settings_command, settings_callback
 
+async def _track_telegram_activity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if update.effective_user and update.effective_user.is_bot:
+            return
+        chat_id = update.effective_chat.id if update.effective_chat else (update.effective_user.id if update.effective_user else None)
+        if chat_id:
+            database.record_telegram_last_login(chat_id)
+    except Exception:
+        pass
+
 def register_handlers(app):
+    # Track last Telegram bot activity across all commands, messages, and button clicks
+    app.add_handler(TypeHandler(Update, _track_telegram_activity), group=-1)
+
     # Register Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("settings", settings_command))

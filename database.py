@@ -715,7 +715,8 @@ def init_db():
             ("had_premium_before", "BOOLEAN DEFAULT 0"),
             ("referral_reward_triggered", "BOOLEAN DEFAULT 0"),
             ("bingx_futures_type", "TEXT DEFAULT 'standard'"),
-            ("coinbase_sandbox", "INTEGER DEFAULT 1")
+            ("coinbase_sandbox", "INTEGER DEFAULT 1"),
+            ("last_login", "INTEGER DEFAULT 0")
         ]
         conn.commit()
         for col_name, col_def in cols:
@@ -989,7 +990,8 @@ def init_db():
             "risk_profile": "TEXT",
             "investment_goal": "TEXT",
             "last_portfolio_update": "INTEGER DEFAULT 0",
-            "cash_balance": "REAL DEFAULT 0.0"
+            "cash_balance": "REAL DEFAULT 0.0",
+            "last_login": "INTEGER DEFAULT 0"
         }
         for col_name, col_def in web_cols_additional.items():
             if col_name not in existing_web_cols_2:
@@ -1251,15 +1253,61 @@ def upsert_user(chat_id, api_key, api_secret, api_pass, exchange_id, is_active=F
             ''', (encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username, chat_id))
             reset_crypto_stats(chat_id)
         else:
+            now_ts = int(time.time())
             c.execute('''
-                INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id, is_active, full_name, username)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username))
+                INSERT INTO Users (telegram_chat_id, blofin_api_key, blofin_api_secret, blofin_api_password, exchange_id, is_active, full_name, username, last_login)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (chat_id, encrypt(api_key), encrypt(api_secret), encrypt(api_pass), exchange_id, is_active, full_name, username, now_ts))
 
 import threading as _user_cache_threading
 _TG_USER_CACHE = {}  # {chat_id: (expiry_ts, user_dict)}
 _TG_USER_CACHE_LOCK = _user_cache_threading.Lock()
 _TG_USER_CACHE_TTL = 15.0
+
+_LAST_LOGIN_LOCK = _user_cache_threading.Lock()
+_WEB_LAST_LOGIN_THROTTLE = {}  # {user_id: last_recorded_ts}
+_TG_LAST_LOGIN_THROTTLE = {}   # {chat_id: last_recorded_ts}
+_WEB_LAST_LOGIN_TTL = 300      # 5 minutes
+_TG_LAST_LOGIN_TTL = 60        # 1 minute
+_LAST_LOGIN_CACHE_MAX = 2000
+
+def record_web_last_login(user_id, timestamp=None, force=False):
+    if not user_id:
+        return
+    now_ts = int(timestamp if timestamp is not None else time.time())
+    with _LAST_LOGIN_LOCK:
+        last_ts = _WEB_LAST_LOGIN_THROTTLE.get(user_id, 0)
+        if not force and (now_ts - last_ts) < _WEB_LAST_LOGIN_TTL:
+            return
+        if len(_WEB_LAST_LOGIN_THROTTLE) >= _LAST_LOGIN_CACHE_MAX:
+            _WEB_LAST_LOGIN_THROTTLE.clear()
+        _WEB_LAST_LOGIN_THROTTLE[user_id] = now_ts
+    try:
+        with db_session() as conn:
+            c = conn.cursor()
+            c.execute('UPDATE WebUsers SET last_login = ? WHERE id = ?', (now_ts, user_id))
+            conn.commit()
+    except Exception as e:
+        print(f"Warning: Failed to update WebUsers.last_login for user {user_id}: {e}")
+
+def record_telegram_last_login(chat_id, timestamp=None, force=False):
+    if not chat_id:
+        return
+    now_ts = int(timestamp if timestamp is not None else time.time())
+    with _LAST_LOGIN_LOCK:
+        last_ts = _TG_LAST_LOGIN_THROTTLE.get(chat_id, 0)
+        if not force and (now_ts - last_ts) < _TG_LAST_LOGIN_TTL:
+            return
+        if len(_TG_LAST_LOGIN_THROTTLE) >= _LAST_LOGIN_CACHE_MAX:
+            _TG_LAST_LOGIN_THROTTLE.clear()
+        _TG_LAST_LOGIN_THROTTLE[chat_id] = now_ts
+    try:
+        with db_session() as conn:
+            c = conn.cursor()
+            c.execute('UPDATE Users SET last_login = ? WHERE telegram_chat_id = ?', (now_ts, chat_id))
+            conn.commit()
+    except Exception as e:
+        print(f"Warning: Failed to update Users.last_login for chat {chat_id}: {e}")
 
 def invalidate_user_cache(chat_id=None):
     with _TG_USER_CACHE_LOCK:

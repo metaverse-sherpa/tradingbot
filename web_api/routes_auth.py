@@ -19,6 +19,11 @@ def sync_firebase_user():
     user = g.user
     data = request.json or {}
     referred_by = data.get("referred_by")
+
+    # Record web app login/sync timestamp
+    now_login_ts = int(time.time())
+    database.record_web_last_login(user["id"], timestamp=now_login_ts, force=True)
+    user["last_login"] = now_login_ts
     
     # If the user was newly created in require_auth and has a referrer, apply it
     if referred_by and not user.get("referred_by"):
