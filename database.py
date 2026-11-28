@@ -2784,7 +2784,7 @@ def get_closed_theoretical_trades_for_replay(strategy_name):
     with db_session() as conn:
         c = conn.cursor()
         c.execute("""
-            SELECT entry_price, close_price, sl_price, side, pnl_usdt
+            SELECT entry_price, tp_price, sl_price, side, status, pnl_pct, pnl_usdt
             FROM TheoreticalTrades
             WHERE strategy = ? AND status != 'open'
             ORDER BY COALESCE(close_time, open_time, id) ASC, id ASC

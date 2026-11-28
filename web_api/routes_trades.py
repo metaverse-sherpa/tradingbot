@@ -503,9 +503,10 @@ def simulate_theoretical_portfolio(closed_trades, starting_balance=1000.0, risk_
     r_pct = float(risk_pct) if risk_pct and float(risk_pct) > 0 else 2.0
     for tr in closed_trades or []:
         entry = float(tr.get("entry_price") or 0.0)
-        close_p = float(tr.get("close_price") or 0.0)
+        tp = float(tr.get("tp_price") or 0.0)
         sl = float(tr.get("sl_price") or 0.0)
-        if entry <= 0 or close_p <= 0 or equity <= 0:
+        pnl_pct_val = float(tr.get("pnl_pct") or 0.0)
+        if entry <= 0 or equity <= 0:
             continue
         side = str(tr.get("side") or "LONG").upper()
         is_short = side in ("SHORT", "SELL", "S")
@@ -514,7 +515,18 @@ def simulate_theoretical_portfolio(closed_trades, starting_balance=1000.0, risk_
         risk_dollars = equity * (r_pct / 100.0)
         # Cap position notional at 1x current equity (realistic cash account, no phantom leverage)
         pos_notional = min(equity, risk_dollars / sl_dist)
-        ret_pct = ((entry - close_p) / entry) if is_short else ((close_p - entry) / entry)
+
+        if pnl_pct_val != 0.0:
+            ret_pct = pnl_pct_val / 100.0
+        else:
+            st = str(tr.get("status") or "").lower()
+            if "tp" in st or "win" in st or "target" in st:
+                ret_pct = ((entry - tp) / entry) if (is_short and tp > 0) else (((tp - entry) / entry) if tp > 0 else 0.0)
+            elif "sl" in st or "loss" in st or "stop" in st:
+                ret_pct = -sl_dist
+            else:
+                ret_pct = 0.0
+
         equity += pos_notional * ret_pct
     return round(((equity - starting_balance) / starting_balance) * 100.0, 2)
 
