@@ -17,15 +17,11 @@ const formatLastLogin = (isoStr?: string | null) => {
   return date.toISOString().slice(0, 10);
 };
 
-const formatLastLoginTooltip = (u: any) => {
-  const parts: string[] = [];
-  if (u.last_web_login) {
-    parts.push(`Web: ${new Date(u.last_web_login).toLocaleString()}`);
-  }
-  if (u.last_tg_login) {
-    parts.push(`Telegram: ${new Date(u.last_tg_login).toLocaleString()}`);
-  }
-  return parts.join('\n');
+const formatLoginTooltip = (label: string, isoStr?: string | null) => {
+  if (!isoStr) return `${label}: Never`;
+  const date = new Date(isoStr);
+  if (isNaN(date.getTime())) return `${label}: Never`;
+  return `${label}: ${date.toLocaleString()}`;
 };
 
 const AdminPage: React.FC = () => {
@@ -49,12 +45,12 @@ const AdminPage: React.FC = () => {
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [aiBuilderEnabled, setAiBuilderEnabled] = useState(true);
   const [sortConfig, setSortConfig] = useState<{
-    key: 'email' | 'referrer' | 'telegram' | 'plan' | 'joined' | 'last_login' | null;
+    key: 'email' | 'referrer' | 'telegram' | 'plan' | 'joined' | 'web_login' | 'tg_login' | null;
     direction: 'asc' | 'desc';
   }>({ key: null, direction: 'desc' });
 
-  const handleSort = (key: 'email' | 'referrer' | 'telegram' | 'plan' | 'joined' | 'last_login') => {
-    const defaultDir: 'asc' | 'desc' = (key === 'joined' || key === 'last_login' || key === 'plan') ? 'desc' : 'asc';
+  const handleSort = (key: 'email' | 'referrer' | 'telegram' | 'plan' | 'joined' | 'web_login' | 'tg_login') => {
+    const defaultDir: 'asc' | 'desc' = (key === 'joined' || key === 'web_login' || key === 'tg_login' || key === 'plan') ? 'desc' : 'asc';
     setSortConfig((prev) => {
       if (prev.key !== key) {
         return { key, direction: defaultDir };
@@ -166,8 +162,12 @@ const AdminPage: React.FC = () => {
           const ts = u.joined ? Date.parse(u.joined) : 0;
           return { empty: !ts || isNaN(ts), value: ts || 0 };
         }
-        case 'last_login': {
-          const ts = u.last_login_ts || (u.last_login ? Date.parse(u.last_login) : 0);
+        case 'web_login': {
+          const ts = u.last_web_login ? Date.parse(u.last_web_login) : 0;
+          return { empty: !ts || isNaN(ts), value: ts || 0 };
+        }
+        case 'tg_login': {
+          const ts = u.last_tg_login ? Date.parse(u.last_tg_login) : 0;
           return { empty: !ts || isNaN(ts), value: ts || 0 };
         }
       }
@@ -294,7 +294,7 @@ const AdminPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 w-full max-w-6xl mx-auto space-y-8">
+    <div className="flex-1 w-full max-w-7xl mx-auto space-y-8">
       
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -391,12 +391,12 @@ const AdminPage: React.FC = () => {
                         <th
                           key={col.key}
                           aria-sort={active ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
-                          className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                          className="py-4 px-3 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
                         >
                           <button
                             type="button"
                             onClick={() => handleSort(col.key)}
-                            className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors cursor-pointer select-none ${active ? 'text-cyan-400' : 'hover:text-white'}`}
+                            className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors cursor-pointer select-none focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400 rounded ${active ? 'text-cyan-400' : 'hover:text-white'}`}
                           >
                             {col.label}
                             {active ? (
@@ -408,11 +408,12 @@ const AdminPage: React.FC = () => {
                         </th>
                       );
                     })}
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Status</th>
+                    <th className="py-4 px-3 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Status</th>
                     {(
                       [
                         { key: 'joined', label: 'Joined' },
-                        { key: 'last_login', label: 'Last Login' },
+                        { key: 'web_login', label: 'Web Login' },
+                        { key: 'tg_login', label: 'TG Login' },
                       ] as const
                     ).map((col) => {
                       const active = sortConfig.key === col.key;
@@ -420,12 +421,12 @@ const AdminPage: React.FC = () => {
                         <th
                           key={col.key}
                           aria-sort={active ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
-                          className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                          className="py-4 px-3 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
                         >
                           <button
                             type="button"
                             onClick={() => handleSort(col.key)}
-                            className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors cursor-pointer select-none ${active ? 'text-cyan-400' : 'hover:text-white'}`}
+                            className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors cursor-pointer select-none focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400 rounded ${active ? 'text-cyan-400' : 'hover:text-white'}`}
                           >
                             {col.label}
                             {active ? (
@@ -437,16 +438,16 @@ const AdminPage: React.FC = () => {
                         </th>
                       );
                     })}
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
+                    <th className="py-4 px-3 text-xs font-bold text-gray-400 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {loading ? (
-                    <tr><td colSpan={8} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
+                    <tr><td colSpan={9} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
                   ) : (
                     displayedUsers.map(u => (
                       <tr key={u.id || ('tg-' + u.telegram_chat_id)} className="hover:bg-white/5 transition-colors">
-                        <td className="py-4 px-4 text-sm text-white font-medium">
+                        <td className="py-4 px-3 text-sm text-white font-medium">
                           <div style={{ paddingLeft: `${u.depth * 1.5}rem` }} className="flex flex-col">
                             <span className="flex items-center gap-2">
                               {u.depth > 0 && <span className="text-gray-500 text-xs">↳</span>}
@@ -455,8 +456,8 @@ const AdminPage: React.FC = () => {
                             {u.full_name && <span className="text-xs text-gray-400 pl-[calc(1.5rem * ${u.depth})]">{u.full_name}</span>}
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-400">{u.referrer_email || '-'}</td>
-                        <td className="py-4 px-4 text-sm text-cyan-400 font-mono">
+                        <td className="py-4 px-3 text-sm text-gray-400">{u.referrer_email || '-'}</td>
+                        <td className="py-4 px-3 text-sm text-cyan-400 font-mono">
                           {u.telegram_username ? (
                             <a href={`https://t.me/${u.telegram_username.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
                               {u.telegram_username.startsWith('@') ? u.telegram_username : `@${u.telegram_username}`}
@@ -465,7 +466,7 @@ const AdminPage: React.FC = () => {
                             u.telegram_chat_id ? String(u.telegram_chat_id) : <span className="text-gray-500 italic">None</span>
                           )}
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-3">
                           <div className="flex flex-col">
                             <span className={`w-max px-2 py-1 rounded text-xs font-bold ${u.is_premium ? 'bg-yellow-500/20 text-yellow-500' : 'bg-gray-500/20 text-gray-400'}`}>
                               {u.is_premium ? 'Premium' : 'Free'}
@@ -477,28 +478,28 @@ const AdminPage: React.FC = () => {
                             )}
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-3">
                           <span className="flex items-center gap-2 text-sm text-emerald-400">
                             <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                             Active
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-400 whitespace-nowrap">{u.joined?.slice(0, 10)}</td>
-                        <td className="py-4 px-4 text-sm whitespace-nowrap" title={formatLastLoginTooltip(u)}>
-                          {u.last_login ? (
-                            <div className="flex flex-col">
-                              <span className="text-gray-200">{formatLastLogin(u.last_login)}</span>
-                              {u.last_login_source && (
-                                <span className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${u.last_login_source === 'telegram' ? 'text-sky-400' : 'text-cyan-400'}`}>
-                                  {u.last_login_source === 'telegram' ? 'Telegram' : 'Web'}
-                                </span>
-                              )}
-                            </div>
+                        <td className="py-4 px-3 text-sm text-gray-400 whitespace-nowrap">{u.joined?.slice(0, 10)}</td>
+                        <td className="py-4 px-3 text-sm whitespace-nowrap" title={formatLoginTooltip('Web', u.last_web_login)}>
+                          {u.last_web_login ? (
+                            <span className="text-cyan-300">{formatLastLogin(u.last_web_login)}</span>
                           ) : (
                             <span className="text-gray-500">-</span>
                           )}
                         </td>
-                        <td className="py-4 px-4 text-right flex items-center justify-end gap-4">
+                        <td className="py-4 px-3 text-sm whitespace-nowrap" title={formatLoginTooltip('Telegram', u.last_tg_login)}>
+                          {u.last_tg_login ? (
+                            <span className="text-sky-300">{formatLastLogin(u.last_tg_login)}</span>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-3 text-right flex items-center justify-end gap-4">
                           {u.payments_count > 0 && (
                             <button 
                               onClick={async () => {

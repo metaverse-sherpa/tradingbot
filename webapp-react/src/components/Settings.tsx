@@ -317,9 +317,17 @@ const Settings: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    const { logoutUser } = await import('../lib/firebase');
-    await logoutUser();
-    window.location.href = '/';
+    useAuthStore.getState().setLoggingOut(true);
+    try {
+      await Promise.allSettled([
+        api.post('/auth/logout'),
+        import('../lib/firebase').then(({ logoutUser }) => logoutUser()),
+      ]);
+      useAuthStore.getState().setUser(null);
+      window.location.href = '/login';
+    } finally {
+      useAuthStore.getState().setLoggingOut(false);
+    }
   };
 
   return (

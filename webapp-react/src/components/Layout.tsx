@@ -96,7 +96,7 @@ import { useAuthStore } from '../store/useStore';
 const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, cachedUser, isAuthenticated, isLoading, setUser } = useAuthStore();
+  const { user, cachedUser, isAuthenticated, isLoading, isLoggingOut, setUser, setLoggingOut } = useAuthStore();
   const displayUser = user || (isLoading ? cachedUser : null);
   const showAuthenticatedUI = isAuthenticated || (isLoading && !!cachedUser);
   const isPremium = Boolean(displayUser?.is_premium) || ((displayUser?.premium_expiry || 0) > Date.now() / 1000);
@@ -130,21 +130,51 @@ const Layout: React.FC = () => {
   }, []);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setProfileOpen(false);
+    setLoggingOut(true);
     try {
-      await api.post('/auth/logout');
-      const { logoutUser } = await import('../lib/firebase');
-      await logoutUser();
+      await Promise.allSettled([
+        api.post('/auth/logout'),
+        import('../lib/firebase').then(({ logoutUser }) => logoutUser()),
+      ]);
       setUser(null);
-      setProfileOpen(false);
       navigate('/login');
     } catch (e) {
       console.error('Logout failed', e);
+    } finally {
+      setLoggingOut(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#0f131f] text-gray-300 dark:text-gray-300 font-sans overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
       <ParticlesBackground />
+
+      {isLoggingOut && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="fixed inset-0 z-[100] bg-[#070b14]/75 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-200"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-[#111622]/90 border border-[#3cd7ff]/30 shadow-[0_0_50px_rgba(60,215,255,0.2)] p-8 flex flex-col items-center text-center gap-5">
+            <div className="relative flex items-center justify-center w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-2 border-[#3cd7ff]/20"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-t-[#3cd7ff] border-r-[#00e676] border-b-transparent border-l-transparent animate-spin"></div>
+              <div className="w-3 h-3 rounded-full bg-[#3cd7ff] animate-pulse shadow-[0_0_12px_rgba(60,215,255,0.8)]"></div>
+            </div>
+            <div className="space-y-1.5">
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                Logging you out...
+              </h2>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Closing your session securely.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="relative z-10 flex flex-col min-h-screen">
         

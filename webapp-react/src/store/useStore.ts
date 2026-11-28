@@ -93,9 +93,11 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isSyncing: boolean;
+  isLoggingOut: boolean;
   authError: string | null;
   setUser: (user: User | null) => void;
   setSyncing: (isSyncing: boolean) => void;
+  setLoggingOut: (isLoggingOut: boolean) => void;
   setAuthError: (authError: string | null) => void;
 }
 
@@ -105,12 +107,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
   isSyncing: false,
+  isLoggingOut: false,
   authError: null,
   setUser: (user) => {
     writeCachedAuthUser(user);
     set({ user, cachedUser: null, isAuthenticated: !!user, isLoading: false, isSyncing: false });
   },
   setSyncing: (isSyncing) => set({ isSyncing }),
+  setLoggingOut: (isLoggingOut) => set({ isLoggingOut }),
   setAuthError: (authError) => set({ authError }),
 }))
 
