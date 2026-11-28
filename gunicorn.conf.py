@@ -6,6 +6,8 @@ bind = "127.0.0.1:5001"
 
 # Worker configuration (tuned for e2-micro — 1 GB RAM)
 # 2 workers × 4 threads = 8 concurrent requests; preload_app shares read-only pages via CoW
+# NOTE: With preload_app = True, SIGHUP (`systemctl reload`) does NOT reload Python code;
+# deploys must use `systemctl restart webapi`.
 workers = 2
 worker_class = "gthread"
 threads = 4
