@@ -232,6 +232,17 @@ const Dashboard: React.FC = () => {
     const totalTrades = data.wins + data.losses;
     const winRate = totalTrades > 0 ? ((data.wins / totalTrades) * 100).toFixed(1) : '68.4';
 
+    const baseEquity =
+      data.bal > 0 && data.bal - data.pnl > 0
+        ? data.bal - data.pnl
+        : data.chart.length > 0 && data.chart[0].value > 0
+          ? data.chart[0].value
+          : 1;
+    const chartData = data.chart.map((pt) => ({
+      ...pt,
+      pnlPct: Number((((pt.value - baseEquity) / baseEquity) * 100).toFixed(2)),
+    }));
+
     return (
       <div className="space-y-4">
         {/* Equity Card */}
@@ -266,27 +277,33 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="h-44 mt-2 w-full opacity-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.chart} margin={{ top: 8, right: hideDollars ? 8 : 12, left: 5, bottom: 0 }}>
+              <LineChart data={chartData} margin={{ top: 8, right: 12, left: 5, bottom: 0 }}>
                 <XAxis dataKey="x" tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
                 <YAxis
                   orientation="right"
                   domain={['dataMin', 'dataMax']}
-                  width={hideDollars ? 12 : 68}
-                  tick={hideDollars ? false : { fontSize: 10, fill: '#9ca3af' }}
+                  width={hideDollars ? 56 : 68}
+                  tick={{ fontSize: 10, fill: '#9ca3af' }}
                   tickLine={false}
                   axisLine={{ stroke: 'rgba(255,255,255,0.12)' }}
-                  tickFormatter={(value) => `$${Math.round(Number(value)).toLocaleString()}`}
+                  tickFormatter={(value) =>
+                    hideDollars
+                      ? `${Number(value) > 0 ? '+' : ''}${Number(value).toFixed(1)}%`
+                      : `$${Math.round(Number(value)).toLocaleString()}`
+                  }
                 />
-                {!hideDollars && (
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1b1f2c', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
-                    itemStyle={{ color: '#ffdb3c' }}
-                    formatter={(value: any) => [`$${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 'Balance']}
-                  />
-                )}
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1b1f2c', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
+                  itemStyle={{ color: '#ffdb3c' }}
+                  formatter={(value: any) =>
+                    hideDollars
+                      ? [`${Number(value) >= 0 ? '+' : ''}${Number(value).toFixed(2)}%`, 'PnL %']
+                      : [`$${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 'Balance']
+                  }
+                />
                 <Line 
                   type="monotone" 
-                  dataKey="value" 
+                  dataKey={hideDollars ? 'pnlPct' : 'value'} 
                   stroke="#ffdb3c" 
                   strokeWidth={2} 
                   strokeDasharray="4 4"
