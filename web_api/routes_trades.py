@@ -576,19 +576,14 @@ def get_free_stats_internal(bypass_cache=False, user_risk=2.0):
                     threading.Thread(target=_update_free_stats_cache).start()
         return format_stats_for_risk(cached_data, user_risk)
 
-    if bypass_cache:
+    if bypass_cache or not has_cache:
         fresh = _update_free_stats_cache()
         if fresh:
             return format_stats_for_risk(fresh, user_risk)
         if has_cache:
             return format_stats_for_risk(cached_data, user_risk)
-        
-    with STATS_FREE_UPDATING_LOCK:
-        if not STATS_FREE_UPDATING:
-            STATS_FREE_UPDATING = True
-            threading.Thread(target=_update_free_stats_cache).start()
-            
-    # Fallback placeholder if cache is empty
+
+    # Fallback placeholder only if DB/API computation failed completely
     disabled = database.get_disabled_strategies()
     strategy_names = [s for s in ["Sherpa Velocity Pullback"] if s not in disabled]
     fallback = {
