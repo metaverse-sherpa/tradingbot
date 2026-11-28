@@ -90,6 +90,12 @@ const CreditCardIcon = ({ size = 20, className = '' }) => (
   </svg>
 );
 
+const SparklesIcon = ({ size = 20, className = '' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+  </svg>
+);
+
 import api from '../lib/api';
 import { useAuthStore } from '../store/useStore';
 
@@ -318,6 +324,12 @@ const Layout: React.FC = () => {
               <Link to="/trades" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/trades' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
                 <TrendingUpIcon size={20} className="md:w-4 md:h-4" />
                 <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">Trades</span>
+              </Link>
+            )}
+            {isPremium && (
+              <Link to="/recommendations" className={`flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 min-w-[64px] md:min-w-0 px-2 md:px-4 py-2 rounded-lg transition-colors ${location.pathname === '/recommendations' ? 'text-cyan-400 md:bg-white/10 md:text-white' : 'text-gray-500 hover:text-gray-300 md:text-gray-400 md:hover:text-white md:hover:bg-white/5'}`}>
+                <SparklesIcon size={20} className="md:w-4 md:h-4" />
+                <span className="text-[10px] md:text-sm font-medium whitespace-nowrap">AI Picks</span>
               </Link>
             )}
             {showAdvancedTabs && (
