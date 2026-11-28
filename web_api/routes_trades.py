@@ -497,18 +497,44 @@ def get_stats():
     data = get_stats_internal(user, segment, bypass_cache)
     return jsonify(data), 200
 
+def simulate_theoretical_portfolio(closed_trades, starting_balance=1000.0, risk_pct=2.0):
+    """Replay closed TheoreticalTrades chronologically from $1,000 starting equity with 1x cash-account cap & compounding."""
+    equity = float(starting_balance)
+    r_pct = float(risk_pct) if risk_pct and float(risk_pct) > 0 else 2.0
+    for tr in closed_trades or []:
+        entry = float(tr.get("entry_price") or 0.0)
+        close_p = float(tr.get("close_price") or 0.0)
+        sl = float(tr.get("sl_price") or 0.0)
+        if entry <= 0 or close_p <= 0 or equity <= 0:
+            continue
+        side = str(tr.get("side") or "LONG").upper()
+        is_short = side in ("SHORT", "SELL", "S")
+        sl_dist = abs(entry - sl) / entry if sl > 0 else 0.07
+        sl_dist = max(0.01, min(0.50, sl_dist))
+        risk_dollars = equity * (r_pct / 100.0)
+        # Cap position notional at 1x current equity (realistic cash account, no phantom leverage)
+        pos_notional = min(equity, risk_dollars / sl_dist)
+        ret_pct = ((entry - close_p) / entry) if is_short else ((close_p - entry) / entry)
+        equity += pos_notional * ret_pct
+    return round(((equity - starting_balance) / starting_balance) * 100.0, 2)
+
 def format_stats_for_risk(raw_data, target_risk=2.0):
     if not raw_data or "strategies" not in raw_data:
         return raw_data
-    scale = (target_risk / 2.0) if target_risk and target_risk > 0 else 1.0
+    eff_risk = float(target_risk) if target_risk and float(target_risk) > 0 else 2.0
+    scale = eff_risk / 2.0
     scaled_strategies = []
     for s in raw_data.get("strategies", []):
         sc = dict(s)
-        base_realized = float(s.get("realized_pct") or 0.0)
+        closed_replay = sc.pop("_closed_replay", None)
+        if isinstance(closed_replay, list) and len(closed_replay) > 0:
+            sc["realized_pct"] = simulate_theoretical_portfolio(closed_replay, starting_balance=1000.0, risk_pct=eff_risk)
+        else:
+            base_realized = float(s.get("realized_pct") or 0.0)
+            sc["realized_pct"] = round(base_realized * scale, 2)
         base_unrealized = float(s.get("unrealized_pct") or 0.0)
-        sc["realized_pct"] = round(base_realized * scale, 2)
         sc["unrealized_pct"] = round(base_unrealized * scale, 2)
-        sc["risk_pct"] = target_risk
+        sc["risk_pct"] = eff_risk
         scaled_strategies.append(sc)
     return {
         "total_open": raw_data.get("total_open", 0),
@@ -1874,7 +1900,11 @@ def _update_free_stats_cache():
         
         for name in strategy_names:
             s_stats = database.get_theoretical_stats_by_strategy(name)
-            realized_pct = (s_stats['cumulative_pnl'] / starting_capital) * 100
+            closed_replay = database.get_closed_theoretical_trades_for_replay(name)
+            if closed_replay:
+                realized_pct = simulate_theoretical_portfolio(closed_replay, starting_balance=starting_capital, risk_pct=2.0)
+            else:
+                realized_pct = (s_stats['cumulative_pnl'] / starting_capital) * 100
             open_trades = strategy_open_trades[name]
             
             unrealized_pnl = 0.0
@@ -1900,7 +1930,8 @@ def _update_free_stats_cache():
                 "realized_pct": realized_pct,
                 "unrealized_pct": unrealized_pct,
                 "active_count": len(open_trades),
-                "active_trades": []
+                "active_trades": [],
+                "_closed_replay": closed_replay
             })
 
         total_active = sum(s["active_count"] for s in stats_data)

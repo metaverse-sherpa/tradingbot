@@ -2779,6 +2779,18 @@ def get_theoretical_stats_by_strategy(strategy_name):
         "cumulative_pnl": pnl_sum
     }
 
+def get_closed_theoretical_trades_for_replay(strategy_name):
+    """Returns chronologically ordered closed TheoreticalTrades for realistic $1k risk-compounded replay."""
+    with db_session() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT entry_price, close_price, sl_price, side, pnl_usdt
+            FROM TheoreticalTrades
+            WHERE strategy = ? AND status != 'open'
+            ORDER BY COALESCE(close_time, open_time, id) ASC, id ASC
+        """, (strategy_name,))
+        return [dict(r) for r in c.fetchall()]
+
 def get_recent_theoretical_trades(limit=10):
     """Returns the most recent theoretical stock trades (open and closed)."""
     with db_session() as conn:

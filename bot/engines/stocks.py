@@ -73,7 +73,13 @@ async def alpaca_fractional_monitor_engine(application):
         try:
             # Sleep 5 minutes between checks
             await asyncio.sleep(300)
-            
+
+            # Only attempt live stock TP/SL exits during US market hours (Mon-Fri 9:30 AM - 4:00 PM ET)
+            tz_et = ZoneInfo('US/Eastern')
+            now_et = datetime.now(tz_et)
+            if now_et.weekday() >= 5 or not ((now_et.hour == 9 and now_et.minute >= 30) or (10 <= now_et.hour < 16)):
+                continue
+
             open_trades = database.get_open_alpaca_trades()
             if not open_trades:
                 continue
@@ -90,18 +96,28 @@ async def alpaca_fractional_monitor_engine(application):
                 for chat_id, user_trades in trades_by_user.items():
                     user = database.get_user(chat_id)
                     if not user or not user.get('alpaca_api_key'):
+                        # Fallback to WebUsers if opened via web-only account
+                        web_uid = user_trades[0].get('web_user_id') or (int(chat_id) - 1000000000 if int(chat_id) >= 1000000000 else None)
+                        if web_uid:
+                            try:
+                                from web_api.db_web import get_web_user_by_id
+                                user = get_web_user_by_id(web_uid)
+                            except Exception:
+                                pass
+                    if not user or not user.get('alpaca_api_key'):
                         continue
                         
-                    symbols = [t['symbol'] for t in user_trades]
+                    symbols = list(dict.fromkeys(t['symbol'] for t in user_trades))
                     sym_str = ",".join(symbols)
                     
-                    url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}"
+                    # Always specify feed=iex so standard Alpaca accounts don't get HTTP 403 SIP errors
+                    url = f"https://data.alpaca.markets/v2/stocks/snapshots?symbols={sym_str}&feed=iex"
                     headers = {
                         "APCA-API-KEY-ID": user.get('alpaca_api_key'),
                         "APCA-API-SECRET-KEY": user.get('alpaca_api_secret')
                     }
                     
-                    async with session.get(url, headers=headers) as resp:
+                    async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                         if resp.status != 200:
                             logger.error(f"Alpaca data fetch failed for user {chat_id}: {resp.status}")
                             continue
@@ -113,27 +129,30 @@ async def alpaca_fractional_monitor_engine(application):
                                 continue
                             
                             snapshot = data[sym]
-                            daily_bar = snapshot.get("dailyBar", {})
-                            if not daily_bar:
+                            daily_bar = snapshot.get("dailyBar") or {}
+                            latest_trade = snapshot.get("latestTrade") or {}
+                            latest_price = float(latest_trade.get("p") or 0)
+                            close_price = float(daily_bar.get("c") or latest_price or 0)
+                            if close_price <= 0:
                                 continue
-                                
-                            high_price = daily_bar.get('h', 0)
-                            low_price = daily_bar.get('l', 0)
-                            close_price = daily_bar.get('c', 0)
+
+                            high_price = max(float(daily_bar.get('h') or 0), latest_price, close_price)
+                            low_candidates = [p for p in [float(daily_bar.get('l') or 0), latest_price, close_price] if p > 0]
+                            low_price = min(low_candidates) if low_candidates else close_price
                             
-                            tp = trade['tp_price']
-                            sl = trade['sl_price']
-                            qty = trade['qty']
+                            tp = float(trade.get('tp_price') or 0)
+                            sl = float(trade.get('sl_price') or 0)
+                            qty = float(trade.get('qty') or 0)
                             
                             exit_reason = None
                             exit_price = None
                             
-                            if high_price >= tp:
+                            if tp > 0 and high_price >= tp:
                                 exit_reason = "TAKE PROFIT"
-                                exit_price = tp
-                            elif low_price <= sl:
+                                exit_price = close_price if latest_price >= tp else tp
+                            elif sl > 0 and low_price <= sl:
                                 exit_reason = "STOP LOSS"
-                                exit_price = sl
+                                exit_price = close_price if latest_price <= sl else sl
                             else:
                                 strategy_name = user.get("active_stock_strategy", "None")
                                 is_custom = strategy_name not in ["Mean Reversion Scalper", "Valkyrie Elite Scalper", "Sherpa Velocity Pullback", "None"]
@@ -187,16 +206,20 @@ async def alpaca_fractional_monitor_engine(application):
                                 
                             if exit_reason:
                                 logger.info(f"Closing fractional {sym} for {chat_id}. Reason: {exit_reason} at {exit_price}")
-                                order_payload = {
-                                    "symbol": sym,
-                                    "qty": str(qty),
-                                    "side": "sell",
-                                    "type": "market",
-                                    "time_in_force": "day"
-                                }
                                 try:
-                                    # Execute market sell
-                                    await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
+                                    # Close full position cleanly via DELETE /v2/positions/{sym} (avoids fractional qty rounding errors)
+                                    try:
+                                        await database.make_alpaca_request_async(user, "DELETE", f"/v2/positions/{sym}")
+                                    except Exception as del_err:
+                                        logger.warning(f"DELETE /v2/positions/{sym} failed ({del_err}), falling back to market sell order...")
+                                        order_payload = {
+                                            "symbol": sym,
+                                            "qty": str(qty),
+                                            "side": "sell",
+                                            "type": "market",
+                                            "time_in_force": "day"
+                                        }
+                                        await database.make_alpaca_request_async(user, "POST", "/v2/orders", json_data=order_payload)
                                     
                                     # Notify
                                     pnl_raw = (exit_price - trade['entry_price']) * qty
