@@ -794,7 +794,7 @@ const RecommendationsPage: React.FC = () => {
                 <p className="text-[11px] text-gray-500 mt-0.5">{closedCount} closed</p>
               </div>
               <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Hit Target / SL</p>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Wins / Losses</p>
                 <p className="text-xl font-black mt-1">
                   <span className="text-emerald-400">{hits}</span>
                   <span className="text-gray-600 mx-1">/</span>
