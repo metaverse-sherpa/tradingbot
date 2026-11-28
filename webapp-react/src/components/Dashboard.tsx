@@ -119,17 +119,22 @@ const Dashboard: React.FC = () => {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  const openTradesCountRef = React.useRef(0);
+  useEffect(() => {
+    openTradesCountRef.current = openTrades.length;
+  }, [openTrades.length]);
+
   useEffect(() => {
     fetchData();
     
     // Auto-refresh every 15 minutes during US market hours or when open trades exist
     const interval = setInterval(() => {
-      if (openTrades.length > 0 || isStockMarketOpen()) {
+      if (openTradesCountRef.current > 0 || isStockMarketOpen()) {
         fetchData(false, true);
       }
     }, 15 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [openTrades.length]);
+  }, []);
 
   const fetchOpenTrades = async (bypassCache = false, isBackground = false) => {
     if (!isBackground && (bypassCache || openTrades.length === 0)) setOpenTradesLoading(true);

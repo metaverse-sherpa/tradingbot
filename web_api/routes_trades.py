@@ -340,23 +340,23 @@ def get_stats_internal(user, segment=None, bypass_cache=False):
     
     stock_api_key = tg_user.get("alpaca_api_key")
     stock_api_secret = tg_user.get("alpaca_api_secret")
-    
+    stock_fetch_succeeded = False
+
     if (not segment or segment == 'stock') and stock_api_key and stock_api_secret:
         def fetch_stock_stats():
-            eq = 10000.0
-            start_eq = 10000.0
+            eq = 0.0
+            start_eq = tg_user.get("alpaca_start_equity") or user.get("alpaca_start_equity")
             unreal = 0.0
             open_c = 0
-            closed_c = 0
-            w = 0
-            l = 0
-            
-            acc = database.make_alpaca_request(tg_user, "GET", "/v2/account")
+
+            # Fetch /v2/account and /v2/positions concurrently for fast response
+            f_acc = THREAD_POOL.submit(database.make_alpaca_request, tg_user, "GET", "/v2/account")
+            f_pos = THREAD_POOL.submit(database.make_alpaca_request, tg_user, "GET", "/v2/positions")
+
+            acc = f_acc.result(timeout=8.0)
             if acc:
                 eq = float(acc.get("equity", 0) or acc.get("portfolio_value", 0))
-                
-            # Use the user's configured starting equity if set. Otherwise, query Alpaca's portfolio history.
-            start_eq = tg_user.get("alpaca_start_equity") or user.get("alpaca_start_equity")
+
             if not start_eq:
                 try:
                     portfolio_hist = database.make_alpaca_request(tg_user, "GET", "/v2/account/portfolio/history", params={"period": "all", "timeframe": "1D"})
@@ -366,12 +366,10 @@ def get_stats_internal(user, segment=None, bypass_cache=False):
                         start_eq = float(portfolio_hist["equity"][0])
                 except Exception as hist_err:
                     print(f"Error fetching Alpaca portfolio history starting equity: {hist_err}")
-                
-                # Fallback to current equity or 10k if history query failed/returned zero
+
                 if not start_eq or start_eq <= 0:
                     start_eq = eq or 10000.0
-                
-                # Save it to the database so we never hit Alpaca's slow history endpoint again
+
                 if start_eq and start_eq > 0:
                     try:
                         with database.db_session() as conn:
@@ -382,48 +380,30 @@ def get_stats_internal(user, segment=None, bypass_cache=False):
                             conn.commit()
                     except Exception as db_save_err:
                         print(f"Error saving alpaca_start_equity: {db_save_err}")
-                
-            positions = database.make_alpaca_request(tg_user, "GET", "/v2/positions")
+
+            positions = f_pos.result(timeout=8.0)
             if isinstance(positions, list):
                 open_c = len(positions)
                 unreal = sum(float(p.get("unrealized_pl", 0) or p.get("unrealized_intraday_pl", 0) or 0) for p in positions)
-                
-            orders = database.make_alpaca_request(tg_user, "GET", "/v2/orders", params={"status": "closed", "limit": 100})
-            if isinstance(orders, list):
-                closed_c = len(orders)
-                # Compute actual stock wins/losses from closed orders on Alpaca
-                for o in orders:
-                    qty = float(o.get("filled_qty", 0) or 0)
-                    if qty > 0 and o.get("side") == "sell":
-                        price = float(o.get("filled_avg_price", 0))
-                        entry = price
-                        for prev in orders:
-                            if prev["symbol"] == o["symbol"] and prev["side"] == "buy":
-                                entry = float(prev.get("filled_avg_price", price))
-                                break
-                        pnl_raw = (price - entry) * qty
-                        if pnl_raw > 0:
-                            w += 1
-                        else:
-                            l += 1
-            return eq, start_eq, unreal, open_c, closed_c, w, l
 
-        stock_stats_fallback = (stock_equity, stock_start_equity, stock_unrealized, stock_open_count, stock_closed_count, stock_wins, stock_losses)
-        stock_equity, stock_start_equity, stock_unrealized, stock_open_count, stock_closed_count, stock_wins, stock_losses = run_with_timeout(
-            fetch_stock_stats, 6.0, stock_stats_fallback
+            return eq, float(start_eq or eq or 10000.0), unreal, open_c, bool(acc and eq > 0)
+
+        stock_stats_fallback = (stock_equity, stock_start_equity, stock_unrealized, stock_open_count, False)
+        stock_equity, stock_start_equity, stock_unrealized, stock_open_count, stock_fetch_succeeded = run_with_timeout(
+            fetch_stock_stats, 10.0, stock_stats_fallback
         )
-            
+
     # Calculate stock growth from starting base
     stock_overall_pnl = stock_equity - stock_start_equity
     stock_overall_pnl_pct = round((stock_overall_pnl / stock_start_equity) * 100, 2) if stock_start_equity > 0 else 0.0
-    
-    # If not retrieved directly from Alpaca API, fall back to AlpacaActiveTrades table
-    if (not segment or segment == 'stock') and stock_wins == 0 and stock_losses == 0:
+
+    # Compute accurate Win/Loss stats from AlpacaActiveTrades (avoids broken 100-order FIFO mismatch on Alpaca /v2/orders)
+    if not segment or segment == 'stock':
         if tg_user.get("telegram_chat_id"):
             trade_chat_id = int(tg_user["telegram_chat_id"])
         else:
             trade_chat_id = int(user["id"]) + 1000000000
-            
+
         try:
             with database.db_session() as conn:
                 c = conn.cursor()
@@ -431,7 +411,8 @@ def get_stats_internal(user, segment=None, bypass_cache=False):
                 stock_wins = c.fetchone()[0] or 0
                 c.execute("SELECT COUNT(*) FROM AlpacaActiveTrades WHERE telegram_chat_id = ? AND status = 'closed' AND pnl_raw <= 0", (trade_chat_id,))
                 stock_losses = c.fetchone()[0] or 0
-        except:
+                stock_closed_count = stock_wins + stock_losses
+        except Exception:
             stock_wins = 0
             stock_losses = 0
         
@@ -488,16 +469,22 @@ def get_stats_internal(user, segment=None, bypass_cache=False):
     elif segment == 'stock':
         response_data.pop("crypto", None)
         
-    with RESPONSE_CACHE_LOCK:
-        if segment == 'crypto' or (not segment and 'stock' not in response_data):
-            ttl = 900
-        elif segment == 'stock' or (not segment and 'crypto' not in response_data):
-            ttl = 900 if is_us_market_open() else time_until_us_market_opens()
-        else:
-            ttl_stock = 900 if is_us_market_open() else time_until_us_market_opens()
-            ttl = min(900, ttl_stock)
-            
-        RESPONSE_CACHE[cache_key] = (now + ttl, response_data)
+    # Never cache a timed-out Alpaca fallback (+0%) into RESPONSE_CACHE!
+    should_cache = True
+    if (not segment or segment == 'stock') and stock_api_key and stock_api_secret and not stock_fetch_succeeded:
+        should_cache = False
+
+    if should_cache:
+        with RESPONSE_CACHE_LOCK:
+            if segment == 'crypto' or (not segment and 'stock' not in response_data):
+                ttl = 900
+            elif segment == 'stock' or (not segment and 'crypto' not in response_data):
+                ttl = 900 if is_us_market_open() else time_until_us_market_opens()
+            else:
+                ttl_stock = 900 if is_us_market_open() else time_until_us_market_opens()
+                ttl = min(900, ttl_stock)
+                
+            RESPONSE_CACHE[cache_key] = (now + ttl, response_data)
         
     return response_data
 
@@ -654,19 +641,17 @@ def get_dashboard_summary():
     bypass_cache = request.args.get("bypass_cache", "false").lower() == "true"
     user_risk = float(user.get("stock_risk_pct") or 2.0)
 
-    # Execute all 7 independent I/O calls concurrently via THREAD_POOL
-    f_crypto_bal = THREAD_POOL.submit(get_balance_internal, user, 'crypto', bypass_cache)
+    # Execute only active US Equities I/O calls concurrently (skip decommissioned crypto tasks)
     f_stock_bal = THREAD_POOL.submit(get_balance_internal, user, 'stock', bypass_cache)
-    f_crypto_stats = THREAD_POOL.submit(get_stats_internal, user, 'crypto', bypass_cache)
     f_stock_stats = THREAD_POOL.submit(get_stats_internal, user, 'stock', bypass_cache)
     f_bal_hist = THREAD_POOL.submit(get_balance_history_internal, user["id"])
     f_free_stats = THREAD_POOL.submit(get_free_stats_internal, bypass_cache, user_risk)
     f_active_sigs = THREAD_POOL.submit(get_active_signals_internal, bypass_cache)
 
     return jsonify({
-        "crypto_balance": f_crypto_bal.result(),
+        "crypto_balance": {"crypto_balance": 0.0, "total_balance": 0.0},
         "stock_balance": f_stock_bal.result(),
-        "crypto_stats": f_crypto_stats.result(),
+        "crypto_stats": {"crypto": {"portfolio_value": 0.0, "overall_pnl": 0.0, "overall_pnl_pct": 0.0, "wins": 0, "losses": 0, "total_trades": 0, "win_rate": 0.0, "open_positions": 0, "unrealized_pnl": 0.0}},
         "stock_stats": f_stock_stats.result(),
         "balance_history": f_bal_hist.result(),
         "free_stats": f_free_stats.result(),

@@ -73,8 +73,8 @@ def sync_firebase_user():
     max_expiry = max(web_premium_expiry, bot_premium_expiry)
     
     is_super_admin = False
-    import utils_gcp
-    super_admin_id = utils_gcp.get_secret("SUPER_ADMIN_ID")
+    import os
+    super_admin_id = os.getenv("SUPER_ADMIN_ID") or "1567788633"
     if super_admin_id:
         try:
             super_admin_id = int(super_admin_id)
