@@ -518,55 +518,86 @@ const RecommendationsPage: React.FC = () => {
     ? pastRecs.reduce((sum, r) => sum + Math.max(0, (r.closed_at || r.created_at) - r.created_at), 0) / closedCount / 86400
     : 0;
 
-  // Theoretical portfolio replay ($1,000 starting capital, user risk % per trade, 1x cash-account cap & compounding)
+  // Chronological 10-slot cash-constrained replay ($1,000 starting capital, user risk % per trade, 1x cash cap)
   const startingCapital = 1000.0;
+  const maxSlots = 10;
   const userRiskPct = Number(user?.stock_risk_pct) > 0 ? Number(user?.stock_risk_pct) : 2.0;
-  const chronologicalClosed = [...pastRecs].sort((a, b) => {
-    const timeA = Number(a.closed_at || a.created_at || 0);
-    const timeB = Number(b.closed_at || b.created_at || 0);
-    return timeA !== timeB ? timeA - timeB : Number(a.id || 0) - Number(b.id || 0);
+
+  type ReplayEvent = { type: 'open' | 'close'; time: number; id: number; rec: any };
+  const replayEvents: ReplayEvent[] = [];
+  for (const r of filteredRecs) {
+    const entry = Number(r.entry_price || 0);
+    if (entry <= 0) continue;
+    const openTime = Number(r.created_at || 0);
+    const id = Number(r.id || 0);
+    replayEvents.push({ type: 'open', time: openTime, id, rec: r });
+    if (r.status !== 'active') {
+      const closeTime = Math.max(openTime, Number(r.closed_at || openTime));
+      replayEvents.push({ type: 'close', time: closeTime, id, rec: r });
+    }
+  }
+  replayEvents.sort((a, b) => {
+    if (a.time !== b.time) return a.time - b.time;
+    if (a.type !== b.type) return a.type === 'close' ? -1 : 1; // Free cash before opening new slots
+    return a.id - b.id;
   });
 
-  let theoEquity = startingCapital;
-  for (const r of chronologicalClosed) {
+  let theoCash = startingCapital;
+  let theoreticalRealizedUsd = 0;
+  const openSlotPositions = new Map<number, { notional: number; entry: number; slDist: number; rec: any }>();
+
+  for (const ev of replayEvents) {
+    const r = ev.rec;
     const entry = Number(r.entry_price || 0);
-    const target = Number(r.target_price || 0);
     const sl = Number(r.stop_loss || 0);
-    const curr = Number(r.current_price || 0);
-    if (entry <= 0 || theoEquity <= 0) continue;
-
-    const rawSlDist = sl > 0 ? Math.abs(entry - sl) / entry : 0.07;
+    const rawSlDist = sl > 0 && entry > 0 ? Math.abs(entry - sl) / entry : 0.07;
     const slDist = Math.max(0.01, Math.min(0.50, rawSlDist));
-    const riskDollars = theoEquity * (userRiskPct / 100.0);
-    const posNotional = Math.min(theoEquity, riskDollars / slDist);
 
-    let retPct = 0;
-    if (r.status === 'hit_target' && target > 0) {
-      retPct = (target - entry) / entry;
-    } else if (r.status === 'hit_stop_loss') {
-      retPct = -slDist;
-    } else if (curr > 0) {
-      retPct = (curr - entry) / entry;
+    if (ev.type === 'open') {
+      let deployed = 0;
+      openSlotPositions.forEach((p) => { deployed += p.notional; });
+      const currentEq = theoCash + deployed;
+      if (currentEq <= 0 || theoCash <= 0.01) continue;
+
+      const riskDollars = currentEq * (userRiskPct / 100.0);
+      const notional = Math.min(riskDollars / slDist, currentEq / maxSlots, theoCash);
+      if (notional > 0.01) {
+        theoCash -= notional;
+        openSlotPositions.set(ev.id, { notional, entry, slDist, rec: r });
+      }
+    } else {
+      const pos = openSlotPositions.get(ev.id);
+      if (!pos) continue;
+      openSlotPositions.delete(ev.id);
+
+      const target = Number(r.target_price || 0);
+      const curr = Number(r.current_price || 0);
+      let retPct = 0;
+      if (r.status === 'hit_target' && target > 0) {
+        retPct = (target - pos.entry) / pos.entry;
+      } else if (r.status === 'hit_stop_loss') {
+        retPct = -pos.slDist;
+      } else if (curr > 0) {
+        retPct = (curr - pos.entry) / pos.entry;
+      }
+
+      const pnlUsd = pos.notional * retPct;
+      theoreticalRealizedUsd += pnlUsd;
+      theoCash += Math.max(0, pos.notional + pnlUsd);
     }
-    theoEquity += posNotional * retPct;
   }
-  const theoreticalRealizedUsd = theoEquity - startingCapital;
+
   const theoreticalRealizedPct = (theoreticalRealizedUsd / startingCapital) * 100.0;
+  const realizedEquity = startingCapital + theoreticalRealizedUsd;
 
   let theoreticalUnrealizedUsd = 0;
-  for (const r of activeRecs) {
-    const entry = Number(r.entry_price || 0);
-    const sl = Number(r.stop_loss || 0);
-    const curr = Number(r.current_price || 0);
-    if (entry <= 0 || curr <= 0 || theoEquity <= 0) continue;
-
-    const rawSlDist = sl > 0 ? Math.abs(entry - sl) / entry : 0.07;
-    const slDist = Math.max(0.01, Math.min(0.50, rawSlDist));
-    const riskDollars = theoEquity * (userRiskPct / 100.0);
-    const posNotional = Math.min(theoEquity, riskDollars / slDist);
-    theoreticalUnrealizedUsd += posNotional * ((curr - entry) / entry);
-  }
-  const theoreticalUnrealizedPct = (theoreticalUnrealizedUsd / startingCapital) * 100.0;
+  openSlotPositions.forEach((pos) => {
+    const curr = Number(pos.rec.current_price || 0);
+    if (curr > 0 && pos.entry > 0) {
+      theoreticalUnrealizedUsd += pos.notional * ((curr - pos.entry) / pos.entry);
+    }
+  });
+  const theoreticalUnrealizedPct = realizedEquity > 0 ? (theoreticalUnrealizedUsd / realizedEquity) * 100.0 : 0;
 
 
   return (
@@ -727,7 +758,7 @@ const RecommendationsPage: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl">📈</span>
-                <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Stocks Hold Stats</h3>
+                <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">AI Pick Stats</h3>
               </div>
               <span className="text-[11px] font-semibold text-gray-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
                 $1,000 Start • {userRiskPct.toFixed(1)}% Risk / Trade
