@@ -2787,7 +2787,7 @@ def get_closed_theoretical_trades_for_replay(strategy_name):
             SELECT entry_price, tp_price, sl_price, side, status, pnl_pct, pnl_usdt
             FROM TheoreticalTrades
             WHERE strategy = ? AND status != 'open'
-            ORDER BY COALESCE(close_time, open_time, id) ASC, id ASC
+            ORDER BY id ASC
         """, (strategy_name,))
         return [dict(r) for r in c.fetchall()]
 

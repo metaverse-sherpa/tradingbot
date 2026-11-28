@@ -568,13 +568,20 @@ def get_free_stats_internal(bypass_cache=False, user_risk=2.0):
             has_cache = True
             is_expired = bypass_cache or (now >= expiry)
             
-    if has_cache:
+    if has_cache and not bypass_cache:
         if is_expired:
             with STATS_FREE_UPDATING_LOCK:
                 if not STATS_FREE_UPDATING:
                     STATS_FREE_UPDATING = True
                     threading.Thread(target=_update_free_stats_cache).start()
         return format_stats_for_risk(cached_data, user_risk)
+
+    if bypass_cache:
+        fresh = _update_free_stats_cache()
+        if fresh:
+            return format_stats_for_risk(fresh, user_risk)
+        if has_cache:
+            return format_stats_for_risk(cached_data, user_risk)
         
     with STATS_FREE_UPDATING_LOCK:
         if not STATS_FREE_UPDATING:
