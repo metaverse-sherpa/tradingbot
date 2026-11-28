@@ -499,15 +499,74 @@ const RecommendationsPage: React.FC = () => {
   const activeRecs = sortedRecs.filter((r) => r.status === 'active');
   const pastRecs = sortedRecs.filter((r) => r.status !== 'active');
 
-  // Compute stats locally
+  // Compute stats locally (matching backend win/loss classification & Signals page theoretical portfolio replay)
   const totalRecs = filteredRecs.length;
   const closedCount = pastRecs.length;
-  const hits = pastRecs.filter((r) => r.status === 'hit_target').length;
-  const stops = pastRecs.filter((r) => r.status === 'hit_stop_loss').length;
+  const isWinRec = (r: any) =>
+    r.status === 'hit_target' ||
+    r.status === 'ai_closed_profit' ||
+    (r.status === 'expired' && Number(r.current_price || 0) >= Number(r.entry_price || 0));
+  const isLossRec = (r: any) =>
+    r.status === 'hit_stop_loss' ||
+    r.status === 'ai_closed_loss' ||
+    (r.status === 'expired' && Number(r.current_price || 0) < Number(r.entry_price || 0));
+
+  const hits = pastRecs.filter(isWinRec).length;
+  const stops = pastRecs.filter(isLossRec).length;
   const winRate = closedCount > 0 ? (hits / closedCount) * 100 : 0;
   const avgDays = closedCount > 0
-    ? pastRecs.reduce((sum, r) => sum + ((r.closed_at || r.created_at) - r.created_at), 0) / closedCount / 86400
+    ? pastRecs.reduce((sum, r) => sum + Math.max(0, (r.closed_at || r.created_at) - r.created_at), 0) / closedCount / 86400
     : 0;
+
+  // Theoretical portfolio replay ($1,000 starting capital, user risk % per trade, 1x cash-account cap & compounding)
+  const startingCapital = 1000.0;
+  const userRiskPct = Number(user?.stock_risk_pct) > 0 ? Number(user?.stock_risk_pct) : 2.0;
+  const chronologicalClosed = [...pastRecs].sort((a, b) => {
+    const timeA = Number(a.closed_at || a.created_at || 0);
+    const timeB = Number(b.closed_at || b.created_at || 0);
+    return timeA !== timeB ? timeA - timeB : Number(a.id || 0) - Number(b.id || 0);
+  });
+
+  let theoEquity = startingCapital;
+  for (const r of chronologicalClosed) {
+    const entry = Number(r.entry_price || 0);
+    const target = Number(r.target_price || 0);
+    const sl = Number(r.stop_loss || 0);
+    const curr = Number(r.current_price || 0);
+    if (entry <= 0 || theoEquity <= 0) continue;
+
+    const rawSlDist = sl > 0 ? Math.abs(entry - sl) / entry : 0.07;
+    const slDist = Math.max(0.01, Math.min(0.50, rawSlDist));
+    const riskDollars = theoEquity * (userRiskPct / 100.0);
+    const posNotional = Math.min(theoEquity, riskDollars / slDist);
+
+    let retPct = 0;
+    if (r.status === 'hit_target' && target > 0) {
+      retPct = (target - entry) / entry;
+    } else if (r.status === 'hit_stop_loss') {
+      retPct = -slDist;
+    } else if (curr > 0) {
+      retPct = (curr - entry) / entry;
+    }
+    theoEquity += posNotional * retPct;
+  }
+  const theoreticalRealizedUsd = theoEquity - startingCapital;
+  const theoreticalRealizedPct = (theoreticalRealizedUsd / startingCapital) * 100.0;
+
+  let theoreticalUnrealizedUsd = 0;
+  for (const r of activeRecs) {
+    const entry = Number(r.entry_price || 0);
+    const sl = Number(r.stop_loss || 0);
+    const curr = Number(r.current_price || 0);
+    if (entry <= 0 || curr <= 0 || theoEquity <= 0) continue;
+
+    const rawSlDist = sl > 0 ? Math.abs(entry - sl) / entry : 0.07;
+    const slDist = Math.max(0.01, Math.min(0.50, rawSlDist));
+    const riskDollars = theoEquity * (userRiskPct / 100.0);
+    const posNotional = Math.min(theoEquity, riskDollars / slDist);
+    theoreticalUnrealizedUsd += posNotional * ((curr - entry) / entry);
+  }
+  const theoreticalUnrealizedPct = (theoreticalUnrealizedUsd / startingCapital) * 100.0;
 
 
   return (
@@ -660,6 +719,68 @@ const RecommendationsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats Panel (Always visible above Active/Closed tabs) */}
+      {totalRecs > 0 && activeTab === 'stocks' && (
+        <div className="w-full">
+          <div className="bg-gradient-to-br from-[#141724] to-[#0f111a] border border-white/5 rounded-3xl p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📈</span>
+                <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Stocks Hold Stats</h3>
+              </div>
+              <span className="text-[11px] font-semibold text-gray-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                $1,000 Start • {userRiskPct.toFixed(1)}% Risk / Trade
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Win Rate</p>
+                <p className={`text-xl font-black mt-1 ${winRate >= 50 ? 'text-emerald-400' : winRate > 0 ? 'text-rose-400' : 'text-gray-400'}`}>
+                  {closedCount > 0 ? `${winRate.toFixed(1)}%` : '—'}
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5">{hits}W | {stops}L</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Theoretical PnL</p>
+                <p className={`text-xl font-black mt-1 ${theoreticalRealizedPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {theoreticalRealizedPct >= 0 ? '+' : ''}{theoreticalRealizedPct.toFixed(2)}%
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  {theoreticalRealizedUsd >= 0 ? '+' : '-'}${Math.abs(theoreticalRealizedUsd).toFixed(2)} realized
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Unrealized PnL</p>
+                <p className={`text-xl font-black mt-1 ${theoreticalUnrealizedPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {theoreticalUnrealizedPct >= 0 ? '+' : ''}{theoreticalUnrealizedPct.toFixed(2)}%
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5">{activeRecs.length} active</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Recs</p>
+                <p className="text-xl font-black text-white mt-1">{totalRecs}</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">{closedCount} closed</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Hit Target / SL</p>
+                <p className="text-xl font-black mt-1">
+                  <span className="text-emerald-400">{hits}</span>
+                  <span className="text-gray-600 mx-1">/</span>
+                  <span className="text-rose-400">{stops}</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Avg Duration</p>
+                <p className="text-xl font-black text-cyan-400 mt-1">
+                  {closedCount > 0 ? `${avgDays.toFixed(1)}d` : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status Tabs (US Equities only) */}
       <div className="flex bg-[#141620]/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm w-full max-w-sm mb-6">
         <button
@@ -670,7 +791,7 @@ const RecommendationsPage: React.FC = () => {
               : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          Active
+          Active ({activeRecs.length})
         </button>
         <button
           onClick={() => setStatusTab('closed')}
@@ -683,48 +804,6 @@ const RecommendationsPage: React.FC = () => {
           Closed ({closedCount})
         </button>
       </div>
-
-      {/* Stats Panels */}
-      {statusTab === 'closed' && (hits > 0 || stops > 0) && (
-        <div className="w-full mb-6">
-        {/* Stocks Hold Stats */}
-        {activeTab === 'stocks' && (
-          <div className="bg-gradient-to-br from-[#141724] to-[#0f111a] border border-white/5 rounded-3xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">📈</span>
-              <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Stocks Hold Stats</h3>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Recs</p>
-                <p className="text-xl font-black text-white mt-1">{totalRecs}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Win Rate</p>
-                <p className={`text-xl font-black mt-1 ${winRate >= 50 ? 'text-emerald-400' : winRate > 0 ? 'text-rose-400' : 'text-gray-400'}`}>
-                  {winRate.toFixed(1)}%
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Hit Target</p>
-                <p className="text-xl font-black text-emerald-400 mt-1">{hits}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Stop Loss</p>
-                <p className="text-xl font-black text-rose-400 mt-1">{stops}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Avg Duration</p>
-                <p className="text-xl font-black text-cyan-400 mt-1">
-                  {closedCount > 0 ? `${avgDays.toFixed(1)}d` : '—'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      )}
 
       {/* Active Recommendations Section */}
       {statusTab === 'active' && (
