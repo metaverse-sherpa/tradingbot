@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, ShieldAlert, Activity, Search, Loader2, MessageCircleQuestion, Plus, Edit, Trash2, FileText, CreditCard, Copy } from 'lucide-react';
+import { Users, ShieldAlert, Activity, Search, Loader2, MessageCircleQuestion, Plus, Edit, Trash2, FileText, CreditCard, Copy, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import api from '../lib/api';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useStore';
@@ -48,6 +48,23 @@ const AdminPage: React.FC = () => {
   const [userPayments, setUserPayments] = useState<any[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [aiBuilderEnabled, setAiBuilderEnabled] = useState(true);
+  const [sortConfig, setSortConfig] = useState<{
+    key: 'email' | 'referrer' | 'telegram' | 'plan' | 'joined' | 'last_login' | null;
+    direction: 'asc' | 'desc';
+  }>({ key: null, direction: 'desc' });
+
+  const handleSort = (key: 'email' | 'referrer' | 'telegram' | 'plan' | 'joined' | 'last_login') => {
+    const defaultDir: 'asc' | 'desc' = (key === 'joined' || key === 'last_login' || key === 'plan') ? 'desc' : 'asc';
+    setSortConfig((prev) => {
+      if (prev.key !== key) {
+        return { key, direction: defaultDir };
+      }
+      if (prev.direction === defaultDir) {
+        return { key, direction: defaultDir === 'desc' ? 'asc' : 'desc' };
+      }
+      return { key: null, direction: 'desc' };
+    });
+  };
 
   const fetchConfig = async () => {
     try {
@@ -120,6 +137,56 @@ const AdminPage: React.FC = () => {
 
     return flatList;
   }, [users]);
+
+  const displayedUsers = React.useMemo(() => {
+    if (!sortConfig.key) return hierarchicalUsers;
+
+    const dir = sortConfig.direction === 'asc' ? 1 : -1;
+    const key = sortConfig.key;
+
+    const getVal = (u: any): { empty: boolean; value: string | number } => {
+      switch (key) {
+        case 'email': {
+          const v = (u.email || u.full_name || '').toLowerCase();
+          return { empty: !v, value: v };
+        }
+        case 'referrer': {
+          const v = (u.referrer_email || '').toLowerCase();
+          return { empty: !v, value: v };
+        }
+        case 'telegram': {
+          const v = (u.telegram_username || (u.telegram_chat_id ? String(u.telegram_chat_id) : '')).toLowerCase();
+          return { empty: !v, value: v };
+        }
+        case 'plan': {
+          const score = u.is_premium ? (u.premium_expiry || Number.MAX_SAFE_INTEGER) : 0;
+          return { empty: false, value: score };
+        }
+        case 'joined': {
+          const ts = u.joined ? Date.parse(u.joined) : 0;
+          return { empty: !ts || isNaN(ts), value: ts || 0 };
+        }
+        case 'last_login': {
+          const ts = u.last_login_ts || (u.last_login ? Date.parse(u.last_login) : 0);
+          return { empty: !ts || isNaN(ts), value: ts || 0 };
+        }
+      }
+    };
+
+    return [...users]
+      .sort((a, b) => {
+        const av = getVal(a);
+        const bv = getVal(b);
+        if (av.empty && bv.empty) return 0;
+        if (av.empty) return 1;
+        if (bv.empty) return -1;
+        if (typeof av.value === 'number' && typeof bv.value === 'number') {
+          return (av.value - bv.value) * dir;
+        }
+        return String(av.value).localeCompare(String(bv.value)) * dir;
+      })
+      .map((u) => ({ ...u, depth: 0 }));
+  }, [hierarchicalUsers, users, sortConfig]);
 
   const fetchUsers = async () => {
     try {
@@ -311,21 +378,73 @@ const AdminPage: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Email</th>
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Referred By</th>
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Telegram</th>
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Plan</th>
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Joined</th>
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Last Login</th>
-                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                    {(
+                      [
+                        { key: 'email', label: 'Email' },
+                        { key: 'referrer', label: 'Referred By' },
+                        { key: 'telegram', label: 'Telegram' },
+                        { key: 'plan', label: 'Plan' },
+                      ] as const
+                    ).map((col) => {
+                      const active = sortConfig.key === col.key;
+                      return (
+                        <th
+                          key={col.key}
+                          aria-sort={active ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSort(col.key)}
+                            className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors cursor-pointer select-none ${active ? 'text-cyan-400' : 'hover:text-white'}`}
+                          >
+                            {col.label}
+                            {active ? (
+                              sortConfig.direction === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                            ) : (
+                              <ArrowUpDown size={13} className="opacity-40" />
+                            )}
+                          </button>
+                        </th>
+                      );
+                    })}
+                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Status</th>
+                    {(
+                      [
+                        { key: 'joined', label: 'Joined' },
+                        { key: 'last_login', label: 'Last Login' },
+                      ] as const
+                    ).map((col) => {
+                      const active = sortConfig.key === col.key;
+                      return (
+                        <th
+                          key={col.key}
+                          aria-sort={active ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSort(col.key)}
+                            className={`inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors cursor-pointer select-none ${active ? 'text-cyan-400' : 'hover:text-white'}`}
+                          >
+                            {col.label}
+                            {active ? (
+                              sortConfig.direction === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+                            ) : (
+                              <ArrowUpDown size={13} className="opacity-40" />
+                            )}
+                          </button>
+                        </th>
+                      );
+                    })}
+                    <th className="py-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {loading ? (
                     <tr><td colSpan={8} className="py-8 text-center text-gray-500"><Loader2 className="animate-spin size-6 mx-auto" /></td></tr>
                   ) : (
-                    hierarchicalUsers.map(u => (
+                    displayedUsers.map(u => (
                       <tr key={u.id || ('tg-' + u.telegram_chat_id)} className="hover:bg-white/5 transition-colors">
                         <td className="py-4 px-4 text-sm text-white font-medium">
                           <div style={{ paddingLeft: `${u.depth * 1.5}rem` }} className="flex flex-col">
