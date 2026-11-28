@@ -555,7 +555,7 @@ def format_stats_for_risk(raw_data, target_risk=2.0):
 
 def get_free_stats_internal(bypass_cache=False, user_risk=2.0):
     global STATS_FREE_UPDATING
-    cache_key = "stats_free"
+    cache_key = "stats_free_v2"
     now = time.time()
     
     cached_data = None
@@ -1959,7 +1959,7 @@ def _update_free_stats_cache():
             "strategies": stats_data
         }
         
-        cache_key = "stats_free"
+        cache_key = "stats_free_v2"
         with RESPONSE_CACHE_LOCK:
             RESPONSE_CACHE[cache_key] = (time.time() + 900, response_data)  # Cache for 15 minutes
         return response_data

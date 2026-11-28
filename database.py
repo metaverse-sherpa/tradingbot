@@ -2780,7 +2780,7 @@ def get_theoretical_stats_by_strategy(strategy_name):
     }
 
 def get_closed_theoretical_trades_for_replay(strategy_name):
-    """Returns chronologically ordered closed TheoreticalTrades for realistic $1k risk-compounded replay."""
+    """Returns chronologically ordered closed TheoreticalTrades (pure float/str dicts for JSON cache safety)."""
     with db_session() as conn:
         c = conn.cursor()
         c.execute("""
@@ -2789,7 +2789,19 @@ def get_closed_theoretical_trades_for_replay(strategy_name):
             WHERE strategy = ? AND status != 'open'
             ORDER BY id ASC
         """, (strategy_name,))
-        return [dict(r) for r in c.fetchall()]
+        rows = c.fetchall()
+        out = []
+        for r in rows:
+            out.append({
+                "entry_price": float(r[0] or 0.0),
+                "tp_price": float(r[1] or 0.0),
+                "sl_price": float(r[2] or 0.0),
+                "side": str(r[3] or "LONG"),
+                "status": str(r[4] or ""),
+                "pnl_pct": float(r[5] or 0.0),
+                "pnl_usdt": float(r[6] or 0.0),
+            })
+        return out
 
 def get_recent_theoretical_trades(limit=10):
     """Returns the most recent theoretical stock trades (open and closed)."""
