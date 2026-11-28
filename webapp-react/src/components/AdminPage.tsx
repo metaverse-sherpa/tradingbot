@@ -202,7 +202,7 @@ const AdminPage: React.FC = () => {
   const fetchFaqs = async () => {
     setLoadingFaqs(true);
     try {
-      const res = await api.get('/faq');
+      const res = await api.get(`/faq?_t=${Date.now()}`);
       setFaqs(res.data?.faqs || []);
     } catch (e) {
       console.error('Failed to fetch FAQs', e);
@@ -214,7 +214,7 @@ const AdminPage: React.FC = () => {
   const fetchDocs = async () => {
     setLoadingDocs(true);
     try {
-      const res = await api.get('/docs');
+      const res = await api.get(`/docs?_t=${Date.now()}`);
       setDocs(res.data?.docs || []);
     } catch (e) {
       console.error('Failed to fetch Docs', e);
@@ -259,6 +259,7 @@ const AdminPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this FAQ?')) return;
     try {
       await api.delete(`/admin/faq/${id}`);
+      setFaqs((prev) => prev.filter((f) => f.id !== id));
       fetchFaqs();
     } catch (e) {
       console.error('Failed to delete FAQ', e);
@@ -286,6 +287,7 @@ const AdminPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this Document?')) return;
     try {
       await api.delete(`/admin/docs/${id}`);
+      setDocs((prev) => prev.filter((d) => d.id !== id));
       fetchDocs();
     } catch (e) {
       console.error('Failed to delete document', e);
