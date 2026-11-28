@@ -294,70 +294,22 @@ async def run_theoretical_tally_engine(today_opens):
                 
             y_open, y_high, y_low, y_close, y_date = rows[0]
             
-            indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
-            if indicator_dict:
-                # Dynamic exit: yesterday's close > 5-day SMA or RSI(4) > 70
-                is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70
-                
-                if is_dynamic_exit:
-                    # Close trade at today's open!
-                    today_open = today_opens.get(sym, y_close)
-                    pnl_raw = today_open - entry_price
-                    pnl_pct = (pnl_raw / entry_price) * 100
-                    pnl_usdt = position_size * (pnl_pct / 100)
-                    
-                    with database.db_session() as update_conn:
-                        uc = update_conn.cursor()
-                        uc.execute("""
-                            UPDATE TheoreticalTrades 
-                            SET close_time = ?, status = 'dynamic_exit', pnl_raw = ?, pnl_pct = ?, pnl_usdt = ?
-                            WHERE id = ?
-                        """, (int(datetime.now().timestamp()), pnl_raw, pnl_pct, pnl_usdt, trade_id))
-                        
-                        uc.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
-                        bal_row = uc.fetchone()
-                        bal = float(bal_row[0]) if bal_row else 1000.0
-                        new_bal = bal + pnl_usdt
-                        uc.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
-                        
-                    logger.info(f"Theoretical Trade CLOSED (Dynamic Exit) for {sym}: PnL = {pnl_usdt:+.2f} USDT. New Balance: {new_bal:.2f}")
-                    
-                    # Broadcast dynamic exit to all targets
-                    try:
-                        from telegram import MessageEntity
-                        from datetime import timezone
-                        import database
-                        all_targets = database.get_all_broadcast_targets()
-                        now_ts = int(time.time())
-                        close_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
-                        
-                        exit_text_before = (
-                            "📊 *FREE TRADE CLOSED* 📊\n"
-                            "───────────────────────────────\n"
-                            f"Symbol:        `{sym}`\n"
-                            "Strategy:      Sherpa Velocity Pullback\n"
-                            "Direction:     LONG 📈\n"
-                            "Exit Trigger:  DYNAMIC EXIT (RSI > 75)\n\n"
-                            f"Entry Price:   ${entry_price:.2f}\n"
-                            f"Exit Price:    ${today_open:.2f}\n"
-                            f"Trade PnL:     {pnl_pct:+.2f}%\n"
-                            "───────────────────────────────\n\n"
-                            "Closed at: "
-                        )
-                        placeholder = close_dt.strftime("%Y-%m-%d %H:%M UTC")
-                        exit_msg = exit_text_before + placeholder
-                        for target_id in all_targets:
-                            await send_telegram_message(target_id, exit_msg)
-                    except Exception as b_err:
-                        logger.warning(f"Failed to send free exit broadcast to targets: {b_err}")
-                    continue
-            
+            # 1. Check yesterday's SL/TP hits FIRST (including gap opens, matching stock_backtester_daily.py)
+            # If yesterday's bar hit SL or TP, the trade already closed yesterday before today's open.
+            hit_gap_sl = y_open <= sl_price
+            hit_gap_tp = y_open >= tp_price
             hit_sl = y_low <= sl_price
             hit_tp = y_high >= tp_price
             
-            if hit_sl or hit_tp:
+            if hit_gap_sl or hit_gap_tp or hit_sl or hit_tp:
                 close_time_ts = int(datetime.strptime(y_date, "%Y-%m-%d").timestamp())
-                if hit_sl and hit_tp:
+                if hit_gap_sl:
+                    close_price = y_open
+                    status = 'sl'
+                elif hit_gap_tp:
+                    close_price = y_open
+                    status = 'tp'
+                elif hit_sl and hit_tp:
                     close_price = sl_price
                     status = 'sl'
                 elif hit_sl:
@@ -415,6 +367,65 @@ async def run_theoretical_tally_engine(today_opens):
                         await send_telegram_message(target_id, exit_msg)
                 except Exception as b_err:
                     logger.warning(f"Failed to send free exit broadcast to targets: {b_err}")
+                continue
+            
+            # 2. Only if yesterday did NOT hit SL/TP, check dynamic exit (yesterday's close > SMA(5) or RSI(4) > 70) -> exit at today's open
+            indicator_dict, _ = calculate_symbol_indicators_and_signal(sym)
+            if indicator_dict:
+                is_dynamic_exit = indicator_dict['close'] > indicator_dict['sma_5'] or indicator_dict['rsi'] > 70
+                
+                if is_dynamic_exit:
+                    # Close trade at today's open!
+                    today_open = today_opens.get(sym, y_close)
+                    pnl_raw = today_open - entry_price
+                    pnl_pct = (pnl_raw / entry_price) * 100
+                    pnl_usdt = position_size * (pnl_pct / 100)
+                    
+                    with database.db_session() as update_conn:
+                        uc = update_conn.cursor()
+                        uc.execute("""
+                            UPDATE TheoreticalTrades 
+                            SET close_time = ?, status = 'dynamic_exit', pnl_raw = ?, pnl_pct = ?, pnl_usdt = ?
+                            WHERE id = ?
+                        """, (int(datetime.now().timestamp()), pnl_raw, pnl_pct, pnl_usdt, trade_id))
+                        
+                        uc.execute("SELECT value FROM Config WHERE key = 'theoretical_balance'")
+                        bal_row = uc.fetchone()
+                        bal = float(bal_row[0]) if bal_row else 1000.0
+                        new_bal = bal + pnl_usdt
+                        uc.execute("UPDATE Config SET value = ? WHERE key = 'theoretical_balance'", (str(new_bal),))
+                        
+                    logger.info(f"Theoretical Trade CLOSED (Dynamic Exit) for {sym}: PnL = {pnl_usdt:+.2f} USDT. New Balance: {new_bal:.2f}")
+                    
+                    # Broadcast dynamic exit to all targets
+                    try:
+                        from telegram import MessageEntity
+                        from datetime import timezone
+                        import database
+                        all_targets = database.get_all_broadcast_targets()
+                        now_ts = int(time.time())
+                        close_dt = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+                        
+                        exit_text_before = (
+                            "📊 *FREE TRADE CLOSED* 📊\n"
+                            "───────────────────────────────\n"
+                            f"Symbol:        `{sym}`\n"
+                            "Strategy:      Sherpa Velocity Pullback\n"
+                            "Direction:     LONG 📈\n"
+                            "Exit Trigger:  DYNAMIC EXIT (SMA5 or RSI > 70)\n\n"
+                            f"Entry Price:   ${entry_price:.2f}\n"
+                            f"Exit Price:    ${today_open:.2f}\n"
+                            f"Trade PnL:     {pnl_pct:+.2f}%\n"
+                            "───────────────────────────────\n\n"
+                            "Closed at: "
+                        )
+                        placeholder = close_dt.strftime("%Y-%m-%d %H:%M UTC")
+                        exit_msg = exit_text_before + placeholder
+                        for target_id in all_targets:
+                            await send_telegram_message(target_id, exit_msg)
+                    except Exception as b_err:
+                        logger.warning(f"Failed to send free exit broadcast to targets: {b_err}")
+                    continue
                 
         except Exception as e:
             logger.error(f"Error checking exit for theoretical trade {sym}: {e}")

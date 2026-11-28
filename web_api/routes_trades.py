@@ -1497,7 +1497,8 @@ def run_backtest():
                 "trend_ema": "ema_200",
                 "long_only": True,
                 "mode": "LONG",
-                "leverage": 1.6,
+                "leverage": 1.0,
+                "fee_rate": 0.0,
                 "rr_ratio": 1.6
             }
             if engine_strategy == "Velocity_Pullback":

@@ -8,7 +8,7 @@ from datetime import datetime
 # 🏛️ Backtest Engine Configuration
 INITIAL_CASH = 10000.0
 PCT_PER_TRADE = 0.02   # Risk 2% of equity per trade
-FEE_RATE = 0.0005      # 0.05% fee per transaction (0.1% round-trip)
+FEE_RATE = 0.0         # $0 commission on Alpaca US equities (matches Signals page replay)
 DB_PATH = "data/stock_daily_cache.db"
 SYMBOLS = [
     # Technology & Megacap growth (15)
@@ -28,23 +28,29 @@ SYMBOLS = [
 ]
 
 _cached_stock_data = None
+_cached_stock_db_mtime = None
 
 def load_data_from_db():
-    """Loads all daily stock data from the local database (cached in-memory)."""
-    global _cached_stock_data
-    if _cached_stock_data is not None:
+    """Loads all daily stock data from the local database (cached in-memory, invalidated when DB file updates)."""
+    global _cached_stock_data, _cached_stock_db_mtime
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    actual_db_path = os.path.join(base_dir, "data", "stock_daily_cache.db")
+    
+    if not os.path.exists(actual_db_path):
+        import stock_data_cache_daily
+        stock_data_cache_daily.init_db()
+        if not os.path.exists(actual_db_path):
+            raise Exception(f"Database file does not exist at {actual_db_path}")
+    
+    current_mtime = os.path.getmtime(actual_db_path)
+    if _cached_stock_data is not None and _cached_stock_db_mtime == current_mtime:
         # Return deep copy of the dictionary of DataFrames to avoid mutation between requests
         return {k: v.copy() for k, v in _cached_stock_data.items()}
         
     import stock_data_cache_daily
     stock_data_cache_daily.init_db()
     
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    actual_db_path = os.path.join(base_dir, "data", "stock_daily_cache.db")
-    
-    if not os.path.exists(actual_db_path):
-        raise Exception(f"Database file does not exist at {actual_db_path}")
-        
     conn = sqlite3.connect(actual_db_path)
     query = "SELECT * FROM StockDailyData ORDER BY date ASC"
     df = pd.read_sql_query(query, conn)
@@ -62,6 +68,9 @@ def load_data_from_db():
         sym_df.sort_index(inplace=True)
         data_dict[sym] = sym_df
     _cached_stock_data = data_dict
+    _cached_stock_db_mtime = current_mtime
+    GLOBAL_STOCK_INDICATORS_CACHE.clear()
+    GLOBAL_SYM_INDICES_CACHE.clear()
     return {k: v.copy() for k, v in _cached_stock_data.items()}
 
 # 🕵️ Technical Indicator Calculators
@@ -259,6 +268,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
     # Parameters
     atr_sl_mult = params.get("atr_sl_mult", 2.0)
     rr_ratio = params.get("rr_ratio", 1.5)
+    fee_rate = params.get("fee_rate", FEE_RATE)
     
     # Helper to map date to its row index in each symbol's DataFrame (cached globally)
     global GLOBAL_SYM_INDICES_CACHE
@@ -391,7 +401,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
                     gross_pnl = (entry_price - exit_price) * shares
                     exit_value = exit_price * shares # Notional cost to buy back
                     
-                fee = exit_value * FEE_RATE
+                fee = exit_value * fee_rate
                 net_pnl = gross_pnl - fee - t['entry_fee']
                 
                 # Reclaim / Deduct cash
@@ -526,7 +536,7 @@ def run_backtest(data_dict, strategy_name, params, verbose=False, initial_cash=I
                 position_notional = shares * entry_price
                 
             # Transaction cost
-            entry_fee = position_notional * FEE_RATE
+            entry_fee = position_notional * fee_rate
             
             # Min shares threshold to avoid micro-trades
             if shares > 0.01 and position_notional > 10.0 and available_power >= (position_notional + entry_fee if sig_type == "LONG" else entry_fee):
@@ -627,7 +637,8 @@ def run_stock_visual_audit(risk_val_pct=2.0, user_id="admin", start_balance=1000
         "trend_ema": "ema_200",
         "long_only": True,
         "mode": "LONG",
-        "leverage": 1.6,
+        "leverage": 1.0,
+        "fee_rate": 0.0,
         "rr_ratio": 1.6
     }
     
